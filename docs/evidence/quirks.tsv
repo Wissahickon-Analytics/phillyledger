@@ -1,0 +1,692 @@
+id	kind	what
+BIB-Q01	inherent	Adopted and proposed share one catalog category
+BIB-Q02	inherent	"Approved" and "as Approved by Council" mean adopted
+BIB-Q03	inherent	A proposed file is named "approved"; only the title is trusted
+BIB-Q04	unsure	Unstaged titles ("FY2024 Budget in Brief") exist and are skipped
+BIB-Q05	inherent	FY in two or four digits across title and filename
+BIB-Q06	artifact	Local excerpts sit under the full-book filename
+BIB-Q07	unsure	FY2006 to FY2008 adopted held only as obligation-history excerpts
+BIB-Q08	unsure	Proposed FY2022 to FY2027 held only as excerpts
+BIB-Q09	artifact	Pages have titles but no form code
+BIB-Q10	inherent	Title case varies
+BIB-Q11	inherent	Narrative and chart pages outnumber table pages
+BIB-Q12	inherent	Unit declared in a page banner, thousands
+BIB-Q13	inherent	OCR splits "(Amounts in Thousands)" onto its own line (FY2011)
+BIB-Q14	inherent	Fund banner has three ruled cells; All Funds has no number
+BIB-Q15	inherent	All Funds caption "Summary All" (FY2017) vs "Summary All Funds" (FY2026)
+BIB-Q16	inherent	OCR reads the All Funds table id as "-" (FY2015)
+BIB-Q17	inherent	Scan drops the period in "FUND NO." (FY2012)
+BIB-Q18	inherent	Revenue schedule banner gives category and schedule id
+BIB-Q19	inherent	One fund summary per box; schedules span pages; history spans about 8 pages
+BIB-Q20	inherent	Department heading runs across pages; the General Fund total must not inherit the last department
+BIB-Q21	inherent	Revenue schedule owner is the bold agency row; "Federal:", "State:" refine it
+BIB-Q22	inherent	Agency banners span several ruled cells and bound subtotals
+BIB-Q23	inherent	Repeated banners on every page
+BIB-Q24	inherent	Numbered notes "(9) ..." print below the last department
+BIB-Q25	inherent	A wrapped data label starts with "Fiscal Year"
+BIB-Q26	inherent	Ruled boxes with a LINE NO. margin (FY2009 to FY2027)
+BIB-Q27	artifact	FY2008, FY2009, FY2010 need their own layout profiles
+BIB-Q28	artifact	FY2008 acks use `table_types: [null]`
+BIB-Q29	inherent	Fund summary has a schedule-reference column; roles are anchored from the right
+BIB-Q30	inherent	Percent column optional and sparse
+BIB-Q31	inherent	Obligation history in whole dollars, schedules in thousands
+BIB-Q32	inherent	History grows from 5 to 6 (FY2026) to 7 (FY2027) columns
+BIB-Q33	artifact	Two or three change columns share the role `increase_decrease`
+BIB-Q34	unsure	History header verification is empty strings
+BIB-Q35	artifact	Every config lists editions one by one; FY2028 fails closed
+BIB-Q36	inherent	FY2011 to FY2015 are image-only scans
+BIB-Q37	inherent	OCR reads "/" as "I" in "Obligations / Appropriations"
+BIB-Q38	inherent	Labels contain line formulas "(19+20)"; normalized text turns them into "23 29"
+BIB-Q39	inherent	One fund statement prints "of Prior Fiscal Year", the rest "or"
+BIB-Q40	inherent	Summary says "Revenue from Other Funds of the City"; schedule omits "of the City"
+BIB-Q41	inherent	Advances and Misc. Payments label varies; grand summary splits it across siblings
+BIB-Q42	inherent	"Subtotal" repeats within one statement
+BIB-Q43	inherent	A schedule has intermediate subtotals; its last total feeds the summary
+BIB-Q44	inherent	Fund numbers print with a trailing zero (010, 690) or composite (01-011)
+BIB-Q45	inherent	Fund 15 reused: Budget Stabilization to FY2020, Demolition from FY2023
+BIB-Q46	unsure	Fund names misspelled ("Communtiy", "Fuelstax")
+BIB-Q47	inherent	Department names carry footnote markers
+BIB-Q48	inherent	Sub-department blocks (Finance-Refunds and others)
+BIB-Q49	inherent	Fairmount Park and Recreation merge in FY2011
+BIB-Q50	inherent	Double-dash cells in ruled schedules
+BIB-Q51	inherent	FY2026 Procurement subtotal leaves a due change blank
+BIB-Q52	inherent	FY2009 General Fund adopted total rounded to thousands
+BIB-Q53	inherent	District Attorney 222,029 omitted from change totals in FY2008, repeated in FY2009
+BIB-Q54	inherent	FY2010 change columns contradict endpoints; Refunds change repeats the estimate
+BIB-Q55	inherent	Revenue schedule totals omit a detail (FY2022) or misprint a subtotal (FY2023)
+BIB-Q56	inherent	Summary and schedule disagree (FY2019, FY2022, FY2023, FY2026)
+BIB-Q57	inherent	All Funds disagrees with its funds (FY2009, FY2025, FY2027)
+BIB-Q58	artifact	Acks bind table index, row index and fingerprints
+BIB-Q59	artifact	Cross-table relations live in a generic engine used by one family, and gate nothing
+BIB-Q60	artifact	FY2006 to FY2008 excluded from cross-table checks by an exclusion list
+BIB-Q61	artifact	Textract cache keyed by document id and file hash
+BIB-Q62	unsure	FY2020 book cited at pages 2, 3 and 8 for obligation data
+BSALES-Q01	inherent	BIRT editions are cumulative snapshots. They overlap and later ones revise earlier tax years
+BSALES-Q02	inherent	BIRT coverage is in the listing title. The filename may carry a later workbook date that must not widen it
+BSALES-Q03	inherent	BIRT edition order is known only from the media URL upload stamp
+BSALES-Q04	artifact	A same-coverage BIRT revision is chosen on the listing but never downloaded, because the stored path is the coverage range
+BSALES-Q05	artifact	Canonical edition per tax year is computed in code and typed again by hand in semantics, with no test tying them
+BSALES-Q06	artifact	Editions with no canonical year need a written reason
+BSALES-Q07	artifact	BIRT download is not checked against the PDF's printed years
+BSALES-Q08	inherent	Two oldest sales attachments hold one annual table per page
+BSALES-Q09	artifact	Bundles are cut into one PDF per year with a sidecar naming the source page
+BSALES-Q10	inherent	Sales listing year is a single year or a range with hyphen, en dash or em dash, in title or filename
+BSALES-Q11	inherent	Every sales page prints "Fiscal Year YYYY Collections". Its year must match the listing, once each
+BSALES-Q12	unsure	A listing repeating a sales year fails. Whether the City ever reposts a sales report is unknown
+BSALES-Q13	inherent	No FY2019 sales report. FY2019 comes from FY2020's prior-year column
+BSALES-Q14	artifact	BIRT document year is the coverage end, so the catalog shows "FY2017-2023" for tax years 2004 to 2023
+BSALES-Q15	artifact	Sales splitting needs PyMuPDF (AGPL)
+BSALES-Q16	inherent	BIRT title reads BPT on older pages, BIRT on newer
+BSALES-Q17	inherent	BIRT years come from "Period: 12/31/YYYY" twice per page, the first sometimes "(Preliminary)"
+BSALES-Q18	inherent	2018-2022 edition repeats "Tax Year 2022" and one filing date in the right caption
+BSALES-Q19	artifact	BIRT pages are partitioned by tax year so the stitcher does not join six years into one table
+BSALES-Q20	artifact	Marker pattern filled with codes that cannot match
+BSALES-Q21	unsure	BIRT untitled pages are evidence only. Whether such pages exist is not recorded
+BSALES-Q22	inherent	Sales title ends "Collections" or "Collections Report"
+BSALES-Q23	inherent	BIRT grid: 8 columns, two halves, each half a different tax year
+BSALES-Q24	artifact	All 8 BIRT columns carry role `year_actual` against the coverage-end year, then the year is overwritten from context
+BSALES-Q25	artifact	BIRT sub-sectors become components only through an indentation trial, backstopped by a registry relabel
+BSALES-Q26	inherent	BIRT prints "Other Services" as a Professional Services child and "Other Services **2" as a sector
+BSALES-Q27	inherent	BIRT labels carry ", subtotal" and footnote marks "**1", "**2"
+BSALES-Q28	inherent	Total Retail prints above its store types; block ends at "Car and truck rental" before FY2020
+BSALES-Q29	inherent	FY2020 moves the rental rows above Retail; block ends at "Unclassified"
+BSALES-Q30	inherent	FY2020 adds Delivery/couriers and Online retailers and restates 2017 to 2019 with them
+BSALES-Q31	inherent	"Total FYyy Sales Tax per FAMIS" is a comparator line, not a total; label carries the year and "**2"
+BSALES-Q32	inherent	"FAMIS amount as a percent of total" is a memo and is not published
+BSALES-Q33	inherent	Sales entity counts are not additive; one account can be in several sectors
+BSALES-Q34	inherent	Sales totals sit in a ruled box below footnotes in some legacy tables
+BSALES-Q35	inherent	Sales has a 3-column era and an 11-column era, chosen by a list of document ids
+BSALES-Q36	inherent	FY2017 on, percent and tax cells fuse without whitespace
+BSALES-Q37	artifact	No header text is verified for either series; verify templates are blank or absent
+BSALES-Q38	inherent	Motor Vehicle Sales Tax count prints a dash; it means no count
+BSALES-Q39	inherent	Percent of total uses Total Philadelphia Sales Tax, which includes Motor Vehicle, so sector shares sum below 100
+BSALES-Q40	inherent	Sector sum and Subtotal differ by up to $2 from whole-dollar rounding
+BSALES-Q41	inherent	BIRT 2004-2017 page 1: 2017 account counts sum to 34,487; Total prints 32,956
+BSALES-Q42	inherent	BIRT 2018-2023 page 3: 2018 combined Total prints 468,801,829 against 468,794,493
+BSALES-Q43	artifact	First match wins, so each BIRT acknowledgment profile repeats `export_component_rows`
+BSALES-Q44	artifact	Acknowledgments pin evidence and check fingerprints and row indices
+BSALES-Q45	artifact	Three sales aliases split at a comma and each claims "retail"
+BSALES-Q46	inherent	Sales labels have letter-spacing gaps ("truc k", "repai r", "T ax", "s oftware", "s tores")
+BSALES-Q47	inherent	"Delivery / couriers" and "Delivery/couriers"
+BSALES-Q48	inherent	BIRT, sales and wage tax use three unrelated taxonomies; same words in each
+BSALES-Q49	artifact	Resolution fingerprint omits entity dimension; an industry to sub_industry edit leaves stale BIRT artifacts current
+BSALES-Q50	unsure	Sales FY2017, FY2018, FY2020 restate prior years, but no vintage policy is declared
+BSALES-Q51	unsure	FY2020 sales had no export or resolved parquet on 2026-09-11
+BSALES-Q52	unsure	FAMIS alias exists for FY19, a year with no report
+BSALES-Q53	artifact	BIRT filing-through dates and "(Preliminary)" are captured as context and never used
+BSALES-Q54	unsure	Editions with an odd number of tax years cannot be one pair per page
+BSALES-Q55	artifact	BIRT notebook text places the account mismatch in 2018-2023, contradicting the record
+ENT-Q01	inherent	One printed label names different things in different datasets: 27 normalized labels have more than one id. "Licenses & Inspections" is a City revenue line and 
+ENT-Q02	inherent	One label changes meaning by era in one table: positions "Streets" is the department in FY08 to FY13 and FY26, Streets including Sanitation in FY18 to FY25.
+ENT-Q03	inherent	One label, different entity by table in one document: RTT "Other Vacant Land" in property and location tables.
+ENT-Q04	inherent	One label, different entity by row role: BIRT "Other Services" is a component and a standalone sector; the "**2" marker that separates them is stripped.
+ENT-Q05	inherent	One-edition relabels: June 2025 City prints TOTAL HOTEL FUND as "HOTEL TAX"; June 2020 School prints PILOTs as "MISCELLANEOUS NON TAX REVENUES".
+ENT-Q06	inherent	OCR-damaged labels on scans: 8 FY07 Q4 cash labels ("Property Tull"); FY12 Q3 "Burchase of Services".
+ENT-Q07	inherent	Footnote marks on labels change by edition: "Human Services (1)", "Office of Public Safety (9)" in Budget in Brief and "(7)" in QCMR, "Sheriff 2", "**1".
+ENT-Q08	inherent	Printed line numbers fuse into labels: QCMR recap "24 First Judicial District", "I Records"; Budget in Brief LINE NO. margin.
+ENT-Q09	unsure	Labels cut at the column edge in monthly City: "TOTAL PICA AND CITY WAGE TA"; about 169 aliases are prefixes.
+ENT-Q10	unsure	Kerning breaks inside words in sales tax: "Car and truc k rental", "Department s tores, retail".
+ENT-Q11	artifact	Three sales tax aliases split at the comma; each sub-industry claims "retail"; the registry accepts four claimants.
+ENT-Q12	inherent	Rows that name a breakdown, not an entity: positions Civilian and Uniform (with fused numbers "23 Civilian"); collections CURRENT YEAR, PRIOR YEAR(S); suffix fo
+ENT-Q13	inherent	Parent and qualifier fused in one cell: "SCHOOL INCOME TAX CURRENT YEAR", "USE AND OCCUPANCY TAX CURRENT YEAR COLLECTIONS".
+ENT-Q14	inherent	A value-less heading carries CURRENT or PRIOR and the next "-" row carries the amounts (BIRT block).
+ENT-Q15	inherent	An amount-bearing parent row sits directly above its current and prior rows inside a coarse "OTHER TAXES" section.
+ENT-Q16	inherent	A wrapped section heading: one fragment unreadable must not erase the other; contradictory fragments clear the parent.
+ENT-Q17	inherent	Personal services: three metric rows under each department section, some matched only through organization aliases.
+ENT-Q18	inherent	QCMR cash: "Purchase of Services" and "Payments to Other Funds" repeat under different sections.
+ENT-Q19	inherent	Budget in Brief obligation rows are (department section, class). Class labels have no canonical form, so "Advances and Other Misc. Payments" and "Advances & Mis
+ENT-Q20	unsure	The Budget in Brief class qualifier rule has no table or row-kind scope; the test models a scoped rule.
+ENT-Q21	inherent	Sub-department appropriation lines print beside the department (Finance-Indemnities, OIT-Base, Streets-Disposal, reserves) and are separate series.
+ENT-Q22	artifact	"X-Base" lines are modelled two ways: MDO-Base and Office of Public Safety-Base are aliases of the department; OIT-Base is a child entity.
+ENT-Q23	artifact	Child lines use two dimensions: "Finance: Refunds" is a department with a parent, "Finance - Indemnities" is `other`.
+ENT-Q24	unsure	Combined labels are handled two ways: two are rollup organizations, three are aliases of one member.
+ENT-Q25	artifact	Monthly City prints departmental revenue rows HEALTH, SHERIFF, RECORDS, STREETS; they get department ids, while LICENSES & INSPECTIONS gets a revenue entity.
+ENT-Q26	artifact	Three fund registries; four ids for the General Fund.
+ENT-Q27	inherent	Fund codes are reused over time: 15 is Budget Stabilization to FY2020 and Demolition from FY2023; Budget Stabilization is 01-011 from FY2021.
+ENT-Q28	inherent	Department number 66 moves between Education and Children and Families.
+ENT-Q29	inherent	Fund codes print padded or composite ("010", "060", "01-011").
+ENT-Q30	inherent	A fund banner can disagree with its code; the name wins and the conflict is kept.
+ENT-Q31	inherent	"All Funds" and "General/Grants Revenue" are scopes, not funds.
+ENT-Q32	inherent	Single-agency funds print no agency banner; the fund banner is the department (HealthChoices Behavioral Health, Water Residual), and fund names are department a
+ENT-Q33	inherent	Budget in Brief revenue schedule banners carry a category suffix ("State:", "Federal"); bold banners set the owner, plain ones refine it.
+ENT-Q34	unsure	Budget in Brief section text fuses the table banner (FY2011 "Obligation History Fiscal Years 2009 - 2011 City Planning", FY2015) or wraps a name over two lines 
+ENT-Q35	inherent	Budget in Brief "Total, General Fund" follows the last department with no new heading.
+ENT-Q36	inherent	Budget in Brief fund summary and revenue schedule spell one category two ways ("... of the City").
+ENT-Q37	inherent	One fund statement prints "June 30 of Prior Fiscal Year" where all others print "or".
+ENT-Q38	artifact	Budget in Brief acknowledgment keys are normalized labels that include fused numbers and wrap fragments ("... prior fiscal year 23 29", "june 30 of prior fiscal
+ENT-Q39	inherent	Retired units stay in Budget in Brief obligation history at zero beside the parent.
+ENT-Q40	inherent	FY18 prints the retired Office of Planning and Development beside new code-72 Planning & Development.
+ENT-Q41	inherent	New and moved agencies: Office of Prison Oversight and OPS-* blocks from FY26; Sanitation standalone in personal services FY08 to FY13.
+ENT-Q42	inherent	About 30 personal services division sections have no entity and must not be summed into citywide totals.
+ENT-Q43	inherent	Fairmount Park and Recreation merged into Parks and Recreation, effective FY2011.
+ENT-Q44	inherent	Reorganizations recorded as comparison folds: 23 rollups, 1 dated fold, 4 fund-scoped folds.
+ENT-Q45	artifact	Edition misprints stored as global aliases ("Office of Human Services", "Community Engagement and Opportunity", "CITY COMMSISSIONERS OFFICE", RTT "Non-residenti
+ENT-Q46	artifact	Aliases from budget detail apply in every family of the entity (": 100 Personal Services" forms).
+ENT-Q47	artifact	Fairmount Park and Recreation are scoped by the `qcmr_*` catch-all.
+ENT-Q48	inherent	Two different totals in one table: taxpayer database total (PRISM, TIPS) and accounting system total (FAMIS); sales tax FAMIS comparator prints its year in the 
+ENT-Q49	inherent	RTT 2024 class splits are kept apart from the legacy classes, with no event.
+ENT-Q50	unsure	Sub-industry indentation is lost, so sub-industries classify as line items and are relabelled from the catalog.
+ENT-Q51	inherent	Industry taxonomies differ by tax; 14 sector names repeat across them with different definitions.
+ENT-Q52	inherent	Some subtotal rows are the parent entity ("Total Retail", "Manufacturing, subtotal"), others are rollups.
+ENT-Q53	inherent	Residual categories (All Other Taxes, Unclassified, Other Funds, Unassigned) look like ordinary entities.
+ENT-Q54	inherent	Monthly School wraps "TOTAL U&O TAX COLLECTIONS &" and "SETTLEMENTS" over two rows.
+ENT-Q55	artifact	Unknown and ambiguous labels publish with a null id and enter a review queue; nothing blocks QCMR or collections.
+ENT-Q56	artifact	The registry accepts two scoped claimants of one label and the resolver returns nothing.
+ENT-Q57	artifact	The supplemental identity requirement starts at FY2025, after the last edition.
+ENT-Q58	artifact	The identity regression gate keys rows on ordinals and flags only id to null.
+ENT-Q59	artifact	The resolution fingerprint once omitted `dimension`, leaving stale BIRT artifacts.
+ENT-Q60	artifact	A placeholder row once skipped section-group bookkeeping and misattributed qualifiers (M22).
+ENT-Q61	unsure	No check that two rows of one table get the same key; MDO-Base and the MDO block may collide.
+ENT-Q62	artifact	Expenditure classes and cash-flow lines are filed as `revenue_category`.
+ENT-Q63	artifact	66 in-scope aliases equal their entity's name after normalization.
+ENT-Q64	unsure	Positions FY14 to FY17 print some other label for Streets; no entity pattern covers those years.
+ENT-Q65	inherent	Department ids are shared with budget detail, which stays in the old repo.
+ENT-Q66	artifact	Organization lookup ignores family scope, so a section in any family can resolve through any family's alias.
+ENT-Q67	inherent	The fiscal-year cash label for prior-year collections prints the date: "Collection of 6-30-06/Govt." and later years.
+MCITY-Q01	inherent	Listing filenames put month and year in either order
+MCITY-Q02	inherent	Two links for one month in a listing; the later one is the revision
+MCITY-Q03	unsure	A filename carries the fiscal year instead of the calendar year; the listing's fiscal year overrides
+MCITY-Q04	inherent	Title prints the month without a calendar year; year comes from one printed "FY YYYY", else a unique body "Month YYYY"
+MCITY-Q05	inherent	Title forms vary: "MONTH OF DECEMBER" over "2014", "MONTH OF MAY, 2017", "October 31,2018"
+MCITY-Q06	inherent	Title month misspelled or split: SEPTMEBER, SEPT, APRI L. This is in the PDF title, not the listing
+MCITY-Q07	inherent	A footnote names a different month and year than the title
+MCITY-Q08	inherent	Same PDF bytes posted under two months
+MCITY-Q09	inherent	A stale link must not overwrite a good file
+MCITY-Q10	artifact	Manifest field `fiscal_year` holds the calendar year, so the catalog says FY2014 for a series that starts in FY2015
+MCITY-Q11	inherent	From July 2021, month captions print the fiscal year ("Month of September 2022" in a September 2021 edition)
+MCITY-Q12	inherent	Header captions span 3 or 4 lines with years on their own lines, repeated on every page
+MCITY-Q13	unsure	Header year split by a glyph seam ("Fiscal 202 4")
+MCITY-Q14	inherent	2014 to 2019: spring editions add "Current Estimates March"; other months may print prior-year budget and final
+MCITY-Q15	inherent	2020 on: revised budget estimate column is optional
+MCITY-Q16	inherent	June close editions insert FYTD before accruals and net accruals for both years (13 columns)
+MCITY-Q17	inherent	July editions repeat month values as FYTD
+MCITY-Q18	inherent	Text layer paints labels and amounts twice: welded copies (PICAWAGETAX), comma-less twins, amounts inside label spans
+MCITY-Q19	unsure	A comma-less twin thrown into a neighbouring column survives as a cell
+MCITY-Q20	inherent	2014-07 to 2015-11: labels on their own baseline above their amounts
+MCITY-Q21	inherent	Labels truncated by column width
+MCITY-Q22	inherent	Line items renamed across editions
+MCITY-Q23	inherent	Current/prior split printed as qualifier rows or as label suffixes
+MCITY-Q24	inherent	2015 compound headings, such as "WAGE, EARNINGS AND NET PROFITS TAX CITY WAGE"
+MCITY-Q25	inherent	Parking labels repeat in General Fund and dedicated-fund blocks
+MCITY-Q26	inherent	Dedicated Parking row has a printed remaining-budget identity using revised budget when present
+MCITY-Q27	inherent	FY2024 on: General Fund Parking and Valet print N/A in current columns; only 2024-04 is configured
+MCITY-Q28	inherent	2025-06 prints HOTEL TAX for TOTAL HOTEL FUND
+MCITY-Q29	inherent	2023-07 page 4: orphan (359,304,205) under TOTAL GENERAL FUND
+MCITY-Q30	inherent	Combined total printed above its deduction and net (GFP, LESS PICA, TGF)
+MCITY-Q31	inherent	Deduction row restates the three PICA subtotals under a truncated label
+MCITY-Q32	inherent	A measure printed only at subtotal level (BIRT and beverage budgets, 2026-08)
+MCITY-Q33	inherent	Dashes meaning zero in some lanes
+MCITY-Q34	inherent	N/A cells, including all-N/A fund rows
+MCITY-Q35	artifact	Each null source cell opens a presence assertion that blocks trust
+MCITY-Q36	artifact	August 2026 has its own layout file
+MCITY-Q37	artifact	Two empty profiles shadow the catch-all for 2023-08, 2023-09, 2025-07, 2025-08
+MCITY-Q38	artifact	Semantics profile lists 2021-01 to 2021-06, but an earlier profile already matches them
+MCITY-Q39	inherent	GFP vertical sum broken in 52 editions
+MCITY-Q40	inherent	FY2022 revised budget: City wage subtotal adds City and PICA current rows (+502,034,000, opposite on PICA)
+MCITY-Q41	inherent	PICA deduction disagrees with its parts (2017-01; 2022-02 to 2022-06)
+MCITY-Q42	inherent	2016-02 budget total keeps an unitemized 5,700,000
+MCITY-Q43	inherent	2018-03 beverage total prints current FYTD as the increase and leaves prior FYTD blank
+MCITY-Q44	inherent	2020-06 monthly local non-tax total is a typo; governmental accrual columns transposed
+MCITY-Q45	inherent	2024-07 TOTAL TAX REVENUE prior-period off by 188,954 in both duplicated cells
+MCITY-Q46	inherent	Whole-dollar rounding: 1 dollar per subtotal, up to 3 on long leaf sums
+MCITY-Q47	artifact	A 2022-07 acknowledgment turned out to be an extraction error and was retired
+MCITY-Q48	artifact	Acknowledgments keyed by table index, row index, column index and hypothesis name; 60 of 74 lack fingerprints
+MCITY-Q49	artifact	Literal asterisk in a label collides with glob matching
+MCITY-Q50	inherent	Block placement shifts: TOTAL TAX REVENUE on page 3 in 2016-02, page 2 in 2024; GFP on page 3 in 2019-08
+MCITY-Q51	artifact	Column index of the same measure moves by one when the optional estimate column prints (2017 to 2019 GFP records use 4, 6 and 7)
+MCITY-Q52	unsure	Stray leading or trailing column shifts positional role mapping
+MCITY-Q53	unsure	Printed FYTD date range contradicting the edition's period
+MCITY-Q54	artifact	Family hard-coded in staleness and source audit
+MCITY-Q55	artifact	Release fails if no City document is eligible (exact-value contract)
+MCITY-Q56	inherent	Current fiscal-year listing page may not exist yet
+MCITY-Q57	unsure	Prior-year columns can disagree with last year's own edition
+MCITY-Q58	unsure	201 default facts lack a stable entity (91,914 trusted versus 91,713 entity observations)
+MSCH-Q01	inherent	2015_12 file is the December 2014 report, byte-identical to 2014_12. December 2015 is missing.
+MSCH-Q02	inherent	July and August filenames sometimes carry the fiscal year.
+MSCH-Q03	unsure	Year override trusts the listing page. A page listing a month from the next fiscal year would be misdated (seen on the Water page).
+MSCH-Q04	inherent	Title prints the month without a year; year comes from the one printed "FY". Fallbacks: title date "October 31,2018", body month-year, decayed tokens "SEPTMEBER
+MSCH-Q05	inherent	Narrative "month of December 2023" text near the title must not win.
+MSCH-Q06	artifact	The manifest field `fiscal_year` holds the calendar year for monthly reports.
+MSCH-Q07	inherent	One-page report; one table.
+MSCH-Q08	inherent	Two increase/decrease columns, Month and FYTD.
+MSCH-Q09	inherent	Revised estimate and prior-year final are each optional; 8 to 11 columns.
+MSCH-Q10	inherent	2020_03 to 2021_06 print a revised budget column.
+MSCH-Q11	inherent	2021_07 to 2023_12 month captions carry the fiscal year; prior-year final always printed.
+MSCH-Q12	unsure	2024 on fall back to "Current Estimates" and calendar-year captions.
+MSCH-Q13	inherent	June close adds four accrual columns (13 total).
+MSCH-Q14	artifact	Remaining and percent identities are missing for 46 editions because the era profiles shadow the catch-all.
+MSCH-Q15	artifact	No exact Decimal or dash contract for School.
+MSCH-Q16	inherent	Tax heading rows carry the parent for bare CURRENT YEAR and PRIOR YEARS rows. "FISCAL YEAR TO DATE" furniture must not reset it.
+MSCH-Q17	inherent	Fused parent and cohort: "SCHOOL INCOME TAX CURRENT YEAR", "USE AND OCCUPANCY TAX CURRENT YEAR COLLECTIONS".
+MSCH-Q18	inherent	An unknown heading or unknown fused label clears the parent; cohort rows stay unresolved.
+MSCH-Q19	unsure	Clipped cohort suffixes: C, CU, CUR, CURRE, CURREN, P, PR, PRI.
+MSCH-Q20	unsure	"LI QUOR SALES TAX" spaced label.
+MSCH-Q21	unsure	Clipped totals "TOTAL USE AND OCCUPANCY T" and "TA"; "Subtotal REAL ESTATE TAX".
+MSCH-Q22	inherent	U&O settlements block with a two-line total label "TOTAL U&O TAX COLLECTIONS &" / "SETTLEMENTS".
+MSCH-Q23	inherent	June 2020 prints the PILOT row as MISCELLANEOUS NON TAX REVENUES; the misc row is absent.
+MSCH-Q24	inherent	Misc non-tax cells print a dash meaning zero; it blocks the TOTAL REVENUE sum in that column.
+MSCH-Q25	inherent	2016_04 overprint: U&O Prior final, budget and prior-month amounts unreadable.
+MSCH-Q26	inherent	2016_11 overprint: two Prior amounts lost and 7,500,000 read as 77,500,000. The ack encodes the -70,000,000 residual.
+MSCH-Q27	artifact	An acknowledged numeric review marks every covered cell in its columns as accounted, so the misread 77,500,000 can pass the accounting gate.
+MSCH-Q28	artifact	The two 2016 acks are filed as `numeric_discrepancy` and have no fingerprints.
+MSCH-Q29	unsure	April 2016 has a fused money lane.
+MSCH-Q30	inherent	Early labels sit on their own baseline above amounts. City needs a layout flag; School uses the unflagged repair.
+MSCH-Q31	artifact	No layout catch-all for School; most editions run engine defaults.
+MSCH-Q32	inherent	Remaining and percent use the revised estimate when printed, else the budget. A printed but unusable revised cell must not fall back.
+MSCH-Q33	inherent	Percent proof needs accounted operands and proves only the result.
+MSCH-Q34	inherent	Prior-year month cells can be negative.
+MSCH-Q35	inherent	"REAL ESTATE TAX" also names a City entity.
+MSCH-Q36	inherent	FY2014 appears only through prior-year columns.
+MSCH-Q37	artifact	Watch covers FY2025 pages on; older completeness unknown.
+MSCH-Q38	unsure	Several links per month: last wins. Seen for City ("March-2025-revised.pdf").
+QCASH-Q01	inherent	Cash pages are found by "CASH FLOW PROJECTIONS" in the top two lines; title uses non-breaking spaces
+QCASH-Q02	inherent	Contents page repeats the title; true run is the longest contiguous one
+QCASH-Q03	inherent	Infographics share the listing category; revised attachments are appended later
+QCASH-Q04	inherent	Same asset served from admin and www hosts
+QCASH-Q05	inherent	Period is printed as "PERIOD ENDING"; listing date must agree
+QCASH-Q06	artifact	Only FY2022 onward can be split automatically; older cash files were cut by hand with no URL
+QCASH-Q07	inherent	FY14 Q2 file prints the Q3 date and cutoff
+QCASH-Q08	inherent	FY25 Q3 edition was missing from the corpus
+QCASH-Q09	inherent	Page 1 stacks a revenue grid over an expense grid of a different width
+QCASH-Q10	artifact	From FY14 a table finder sees only narrow ruled fragments; the span path uses them
+QCASH-Q11	artifact	Structured table boxes clip the expense tail (Opening, CLOSING)
+QCASH-Q12	artifact	Expense caption band sits right under TOTAL CASH RECEIPTS; a fixed lookback swallowed that total
+QCASH-Q13	inherent	Final endpoint columns print closer than the page whitespace threshold
+QCASH-Q14	inherent	FY23 Q1 and Q2 broken font: `E(cid:121)PENSES`, or "E PENSES"; OCR reads AND as ANO
+QCASH-Q15	artifact	A tall word bridges two baselines so labels weld: FY08 Q1, FY08 Q4, FY14 Q1
+QCASH-Q16	inherent	FY08 Q4 margin debris "co ~" bridges Long-Term Debt and Interfund Charges
+QCASH-Q17	artifact	Numeric-only rows and a "CASH FLOW PROJECTIONS" row leak into tables
+QCASH-Q18	unsure	FY08 Q2 raw Textract makes a right-margin "68.9" into a row label
+QCASH-Q19	artifact	Early Textract grids weld three sparse zero rows into one band; eight explicit zeros restored in four reports
+QCASH-Q20	inherent	One printed decimal in millions; rounding mode not stated
+QCASH-Q21	inherent	Textract drops or swaps the decimal separator: 33 FY07 Q3 cells, FY08 Q1 "69,2"
+QCASH-Q22	inherent	FY07 Q4: Textract reads 65.8, 108.7, 1,165.9; page prints 85.8, 109.7, 1,185.9. The native word layer has the right digits. Labels arrive garbled from an OCR la
+QCASH-Q23	inherent	Textract's wrong FY07 Q4 annual 1,165.9 makes the row and column foot; the printed value breaks both
+QCASH-Q24	inherent	FY07 Q4 OCR label corruption ("Property Tull", "Opening Bai.nee")
+QCASH-Q25	inherent	Family-wide OCR label variants, including FY12 Q3 "Burchase"
+QCASH-Q26	inherent	One scan OCRs the "Mergers" header as "mergere"
+QCASH-Q27	inherent	Rows named Total are line items; Current Year Appropriation is an unlabeled subtotal
+QCASH-Q28	inherent	Memo breakdowns printed beside their combined row: gross wage and Tax to PICA; CY and PY; PICA Debt Service and City Account
+QCASH-Q29	inherent	FY10 Q3 abbreviates the gross label and drops "Total" from the net wage row
+QCASH-Q30	inherent	Component identities CY + PY and Debt Service + City Account
+QCASH-Q31	inherent	FY25 Q2 prints no net wage row, only gross and the PICA deduction
+QCASH-Q32	inherent	Revenue grid has three column eras (16, 15, 16 measures)
+QCASH-Q33	inherent	Expense grid has two column eras (17 with Mergers, then 16)
+QCASH-Q34	inherent	A 15-column extraction of a modern revenue grid must fail, not be read as the middle era
+QCASH-Q35	inherent	A printed but empty physical column (FY26 Q1)
+QCASH-Q36	artifact	Sparse rows shifted the annual value into June in 19 editions
+QCASH-Q37	inherent	Thirteenth column means annual sum on flows, FY start on Opening, FY end on Closing
+QCASH-Q38	inherent	Page 2 is a 12-month grid with no total; its caption is damaged or missing in some editions
+QCASH-Q39	artifact	Stitching joins page 2 to the page 1 expense grid
+QCASH-Q40	artifact	Revenue and expense come out as one extracted table in some modern editions
+QCASH-Q41	inherent	Actual vs projected follows the quarter cutoff, with 8 edition overrides
+QCASH-Q42	inherent	Each month reprinted in up to four editions; snapshots, not additive
+QCASH-Q43	inherent	CLOSING = Opening + Excess + TRANS; blank TRANS is not zero
+QCASH-Q44	inherent	Revenue endpoint identity changes by era
+QCASH-Q45	inherent	Row Total = sum of months within rounding (1,215.9 vs printed 1,215.8 in FY08 Q2)
+QCASH-Q46	inherent	Publisher arithmetic errors in 10 editions, 11 records
+QCASH-Q47	inherent	Some discrepancies are left open on purpose, so acknowledgments must be narrow
+QCASH-Q48	artifact	Acknowledgments bind to table index, row index, column index, hypothesis name and fingerprints; FY12 Q4 drifted
+QCASH-Q49	artifact	Residuals stored as binary floats (40.400000000000006, -14.200000000000003)
+QCASH-Q50	artifact	Word source chosen per edition by reconciliation score; FY25 Q2 bound to raw Textract
+QCASH-Q51	inherent	Unit is millions; multiplier 1,000,000; source scale declared as 4
+QCASH-Q52	inherent	Dashes and nonnumeric marks are not zero
+QCASH-Q53	inherent	Negatives in parentheses and with a minus sign
+QCASH-Q54	inherent	Label renames across eras
+QCASH-Q55	inherent	Two-line label "Excess (Def) of Receipts / over Disbursements"; welded variants
+QCASH-Q56	unsure	"Purchase of Services" and "Payments to Other Funds" act as section qualifiers
+QCASH-Q57	inherent	Funds appear mid-series on page 2
+QCASH-Q58	inherent	FY11 Q2 CLOSING BALANCE loses November and June to OCR decay
+QCASH-Q59	artifact	Exact Decimal values are enforced only for cash and monthly City
+QCASH-Q60	unsure	Release notes say seven FY07 Q4 cells were corrected; config holds three. A fixture names an FY07 Q4 August fixed-decimal cell not in config
+QCASH-Q61	unsure	Catalog says 79 documents; FY07 Q3 to FY26 Q3 is 77 quarters
+QOBL-Q01	inherent	Sections are marked by "TABLE O-2" and "TABLE O-3" in the page header.
+QOBL-Q02	unsure	Header band is the first two non-empty lines; U+00A0 spacing must be collapsed.
+QOBL-Q03	unsure	A code can appear outside its section (contents); keep the longest contiguous run.
+QOBL-Q04	inherent	Period is printed as "FOR THE PERIOD ENDING Month D, YYYY"; Sep and Dec belong to the next FY.
+QOBL-Q05	inherent	Listing mixes reports and same-dated infographics; revisions are appended.
+QOBL-Q06	inherent	Listing date and printed period can disagree; acquisition fails on mismatch.
+QOBL-Q07	artifact	Split writes section PDFs before the period and completeness checks raise.
+QOBL-Q08	artifact	Page numbers in records refer to cut files, not the report.
+QOBL-Q09	artifact	Pre-FY22 editions were hand-cut and have no source URL or retrieval date.
+QOBL-Q10	unsure	Many quarters have no O-3; completeness by file existence flags 39 quarters.
+QOBL-Q11	artifact	Scan or text layer is not recorded; word source is chosen per document by assertion count.
+QOBL-Q12	inherent	O-3 rows repeat three metric labels under each department section.
+QOBL-Q13	inherent	O-3 citywide block is a value-less TOTAL GENERAL FUND row plus three metric rows.
+QOBL-Q14	inherent	Sub-department blocks print beside parents and are inside them; 30 text-era and 29 scan-era exclusion patterns.
+QOBL-Q15	inherent	FY08 to FY13 Sanitation is standalone; FY14 on it is a Streets division.
+QOBL-Q16	inherent	FY26 Office of Public Safety is a bold parent with OPS-* sub-blocks.
+QOBL-Q17	unsure	FY26 Sanitation may be standalone again, but the text-era list still excludes it.
+QOBL-Q18	unsure	FY11 Q4 OCR reads the Engineering Design section row as the tail of a Gasoline Funds footnote.
+QOBL-Q19	inherent	Footnotes print mid-body and above the citywide box.
+QOBL-Q20	inherent	Citywide total sits in its own drawn box below footnotes on the last page.
+QOBL-Q21	inherent	A split drawing stream can expose only the top rule of the footer box.
+QOBL-Q22	unsure	Scan-era profile does not recover the trailing box.
+QOBL-Q23	inherent	O-3 fiscal-year sub-columns are not ruled.
+QOBL-Q24	inherent	Footnote marks fuse into scanned metric labels; match by prefix.
+QOBL-Q25	artifact	OCR promotes marker-only or one-glyph fragments to section rows.
+QOBL-Q26	inherent	Position counts must sum exactly; generic money tolerance gave 26.5 positions of slack.
+QOBL-Q27	inherent	One column holds positions and dollars, chosen by row label.
+QOBL-Q28	inherent	O-3 Q4 FY11 to FY25 uses an 8-column year-end form without YTD.
+QOBL-Q29	unsure	Year-end pattern ends at fy25; FY08 to FY10 Q4 and FY26 Q4 fall to the in-year profile.
+QOBL-Q30	inherent	Most recent completed year is "Unaudited Actual" in-year and "Year-End Actual (FY-1)" in Q4.
+QOBL-Q31	inherent	O-3 in-year column count varies 9 to 11; mapped right to left with leading extras as unknown.
+QOBL-Q32	artifact	`optional_roles: [unknown]` on O-3 is a no-op.
+QOBL-Q33	artifact	Header verification is off for every O-2 and O-3 role, so `column_verified` is vacuous.
+QOBL-Q34	artifact	O-2 reuses `budget_estimate` for three printed columns.
+QOBL-Q35	artifact	Adopted minus projection identity is declared only for the O-3 year-end form.
+QOBL-Q36	inherent	FY14 Q4 citywide target variance omits OPA (-39 positions, -1,200,000 USD).
+QOBL-Q37	artifact	Acks are keyed to table, row and column indexes and a hypothesis name, without fingerprints.
+QOBL-Q38	artifact	Metric checks could be dropped on the acknowledged retry; now re-appended.
+QOBL-Q39	inherent	O-3 sub-department blocks have no parent-equals-sum check.
+QOBL-Q40	inherent	O-3 sections match departments only via organization aliases.
+QOBL-Q41	inherent	FY08 Q4 O-3 prints the combined "City Rep. / Commerce" section.
+QOBL-Q42	inherent	FY21 O-3 section "Office of Children & Families / Human Services".
+QOBL-Q43	unsure	Section headings can carry footnote markers.
+QOBL-Q44	artifact	O-2 has no layout profile; its checks are inferred, never declared.
+QOBL-Q45	inherent	O-2 is General Fund only and ends with TOTAL GENERAL FUND.
+QOBL-Q46	inherent	O-2 central appropriations print as own rows with a parent department.
+QOBL-Q47	unsure	O-2 may nest italic components under bold department totals.
+QOBL-Q48	inherent	FY26 O-2 labels carry markers "(3)" to "(10)"; some editions print the name without one.
+QOBL-Q49	inherent	FY18 O-2 prints old and new Planning offices side by side.
+QOBL-Q50	inherent	O-2 lists CPOC under the Managing Director.
+QOBL-Q51	unsure	FY26 Office of Prison Oversight label wraps across two underlined lines.
+QOBL-Q52	inherent	FY13 Q3 IAFF arbitration provision has no FY2012 value; blank is not zero.
+QOBL-Q53	inherent	O-2 and O-3 FY08 print combined "City Rep. / Commerce".
+QOBL-Q54	inherent	Several O-2 labels resolve to one department in one edition.
+QOBL-Q55	unsure	Line-numbered recap labels ("1 First Judicial District", "24 First Judicial District").
+QOBL-Q56	inherent	"(Over) Under" columns are budget minus projection.
+QOBL-Q57	inherent	Value year is set by column role offsets.
+QOBL-Q58	inherent	No canonical edition rule; notebooks choose last edition or Q4.
+QOBL-Q59	unsure	FY14 Q2 container may hold Q3 content.
+QOBL-Q60	artifact	Neither dataset has an exact Decimal release contract.
+QPOS-Q01	inherent	Ten count columns: three fund triplets plus one variance
+QPOS-Q02	unsure	Columns mapped right to left by count; printed headers not verified (`verify_templates` empty)
+QPOS-Q03	inherent	Counts add exactly; no rounding allowance
+QPOS-Q04	artifact	One rule copied into 7 profiles to carry 7 acknowledgments
+QPOS-Q05	inherent	Police parent prints above Civilian and Uniform; Prisons follows
+QPOS-Q06	artifact	DA and Fire print the same parent-above-components shape but are not declared; found by `sum_of_next_k_items` search and re-kinded at resolution
+QPOS-Q07	inherent	A footnote mark can drag a child's left edge left of its parent, so indent cannot mark children
+QPOS-Q08	inherent	Civilian and Uniform labels carry OCR prefixes ("I", "23", "24", "26")
+QPOS-Q09	inherent	OCR-damaged department labels in scans
+QPOS-Q10	unsure	Leading numbers on labels ("1", "2", "5", "23", "24", "25", "27")
+QPOS-Q11	inherent	Footnote mark in a label: "Human Services (1)"
+QPOS-Q12	inherent	"Streets" means the department or Streets plus Sanitation by era
+QPOS-Q13	inherent	Combined "City Rep. / Commerce" row in 4 FY2008 editions
+QPOS-Q14	inherent	Department renames and merges across 19 years
+QPOS-Q15	inherent	TOTAL ALL FUNDS on the last page sums rows from all pages
+QPOS-Q16	inherent	FY2008 Q1 to Q4: adopted total 29,346 for 29,355 (-9); actual -3, -4, -4, -6
+QPOS-Q17	inherent	FY2008 Q2: FY2007 total +10; DA total 635 for 535 (+100)
+QPOS-Q18	inherent	FY2011 Q2 and Q3: total omits OPA's 134 and 138; variance proves it
+QPOS-Q19	unsure	FY2008 Q2: 8 fund residuals and 3 variance residuals, no acknowledgment, published unverified
+QPOS-Q20	unsure	FY2008 Q2: Fire budget General Fund total minus components is +1
+QPOS-Q21	inherent	FY2010: column 10 blank for 3 offices, 12 cells
+QPOS-Q22	inherent	Variance on a total row is checked by row identity, not by column sum
+QPOS-Q23	artifact	Ack column indices shift by one between editions ([6, 9] vs [4, 7, 10] vs [7, 10])
+QPOS-Q24	artifact	6 of 7 acks lack fingerprints and cannot cover live checks
+QPOS-Q25	artifact	Acks pin engine hypothesis names that differ by edition for the same row
+QPOS-Q26	artifact	Exact-count mode turns on digit-confusable repair, one-digit identity repair and near-consensus identity inference
+QPOS-Q27	artifact	Bare-integer counts: space join, label weld, orphan drop
+QPOS-Q28	artifact	Fund identities declared twice, as accounting and as value identities
+QPOS-Q29	inherent	Components must be published as their own series, marked so nobody sums them
+QPOS-Q30	unsure	Split anchor `TABLE P-1` only for FY2022 on; older sub-PDFs hand-cut
+QPOS-Q31	artifact	Ack pages and hashes refer to cut sub-PDFs
+QPOS-Q32	inherent	Revised attachment listed after the original
+QPOS-Q33	inherent	Infographics share the listing category
+QPOS-Q34	inherent	Fiscal quarter from period-ending date; Sep and Dec belong to next FY
+QPOS-Q35	unsure	FY2025 Q4 sub-PDF is 3 pages and 5 times the size
+QPOS-Q36	inherent	Quarter-end count is a point-in-time value stored as `month_actual`
+QPOS-Q37	inherent	Parent labels print as "X Total" or "X - Total", both in one edition
+RTT-Q01	inherent	One listing page per calendar year; 2015 slug ends `-2`
+RTT-Q02	inherent	Listing pages carry unrelated PDFs
+RTT-Q03	unsure	Filename can name the wrong year or month; title is the better witness
+RTT-Q04	inherent	Title forms vary: "2014 Q4", "January 2021", "October to December 2021" (printed with a dash); quarters are calendar quarters
+RTT-Q05	inherent	Title with no period falls back to compact `YYYYMM` in filename, then page year
+RTT-Q06	inherent	Revised attachment appended for the same period
+RTT-Q07	artifact	Revision posted after first ingest is never picked up
+RTT-Q08	artifact	Quarterly and monthly editions share one ending-month key; `2020_03` is a month, `2021_03` a quarter
+RTT-Q09	artifact	No check that a file's printed period matches its key
+RTT-Q10	inherent	Next year's page 404s until published; monitored from 2025 by calendar year
+RTT-Q11	inherent	Two or three independent tables stacked on one page
+RTT-Q12	artifact	Page typing by title; marker regex is a never-matching placeholder
+RTT-Q13	inherent	Seven page titles; FYTD has three wordings; year-comparison titles are unanchored
+RTT-Q14	inherent	Top transactions page is not an aggregate table
+RTT-Q15	inherent	FAMIS zone: comparator rows, no total, spelling "Data file" and "Datafile"
+RTT-Q16	artifact	Region detector clips one stacked grid
+RTT-Q17	artifact	Budget-detail box-bottom clip runs on RTT pages
+RTT-Q18	artifact	Page with no zone heading stays whole under its form type, which has no semantics profile
+RTT-Q19	inherent	Legacy grid: three months then quarter, each a (records, tax) pair
+RTT-Q20	inherent	2020 and Jan 2021 Monthly Comparison has 14 columns over three years
+RTT-Q21	unsure	Feb and Mar 2020 property comparison: lost column, fused cell, empty slots; pinned by absolute index
+RTT-Q22	unsure	2020 location FYTD prints both percents in one cell; property grid in the same file does not
+RTT-Q23	inherent	Jan 2020 FYTD prints "Non-residential" where "General Commercial" belongs
+RTT-Q24	inherent	Aug 2020 FYTD header reads July 2019 to August 2020
+RTT-Q25	inherent	Sep 2020 printed difference 836,440; subtraction gives 836,439
+RTT-Q26	inherent	Difference residuals off by 1 to 2 dollars from rounding
+RTT-Q27	inherent	Location detail omits small amounts; grand totals still match property table
+RTT-Q28	inherent	Omission carried into a later edition's prior column
+RTT-Q29	inherent	Location difference total computed from grand totals, not from its own rows
+RTT-Q30	inherent	2025-03 General Commercial difference repeats current value
+RTT-Q31	unsure	Dec 2021 prior FYTD Unclassified 72,642 vs Dec 2020 6,010
+RTT-Q32	inherent	Property labels repeat under Residential and Non-residential
+RTT-Q33	inherent	Same label means different rows in property and location tables
+RTT-Q34	unsure	Section and dimension scope declared on some profiles only (absent on monthly grid, fiscal-year, calendar-year; no section rules on monthly comparison)
+RTT-Q35	inherent	Label drift: ward wording, assessment code suffixes, code list grows
+RTT-Q36	inherent	2024 classification split; old and new classes do not join
+RTT-Q37	inherent	Typos and truncated labels in the source
+RTT-Q38	inherent	Footnote mark on grand total label
+RTT-Q39	inherent	Dash for a missing count
+RTT-Q40	unsure	Percent columns possibly printed without "%"
+RTT-Q41	inherent	One document mixes year bases: quarter, month and calendar-year tables use the key's calendar year; FYTD and fiscal-year tables use the fiscal year
+RTT-Q42	artifact	Release column `fiscal_year` holds a calendar year for quarter tables
+RTT-Q43	artifact	Percent identity declared only for 2020 monthly local tax
+RTT-Q44	artifact	Property total equals location total, never declared as a check
+RTT-Q45	artifact	Acks keyed to table index, row index, hypothesis string and fingerprints; two lack fingerprints, one lacks page
+RTT-Q46	artifact	12 typed subsets: table type encodes dimension and window
+RTT-Q47	artifact	Ack profile repeats family options by YAML anchor because the first matching profile wins
+RTT-Q48	inherent	2020 has no quarter table
+RTT-Q49	unsure	FAMIS total could be checked against monthly City and QCMR cash lines
+SUPCAP-Q01	inherent	No acquirer; PDFs entered by hand or by `import-source`. Listing is the Finance document-finder feed, post 151831
+SUPCAP-Q02	unsure	12 of 22 years absent (FY06 to 09, FY11 to 14, FY16 to 19); reason unrecorded
+SUPCAP-Q03	artifact	Fiscal year taken from file name FY24.pdf; printed "For the Fiscal Year Ended June 30, YYYY" never checked
+SUPCAP-Q04	inherent	Next edition posts about 14 months after year end; FY2025 is 123 pages
+SUPCAP-Q05	inherent	PDF page = printed folio + 8 or 9; folio prints as "- N -"
+SUPCAP-Q06	inherent	No marker code; the statement title is the only page type signal
+SUPCAP-Q07	inherent	Title variants: year in activity title, caps, prior title with or without "Capital Budget", straight or curly apostrophe
+SUPCAP-Q08	artifact	Type chosen by first matching rule in list order; comments warn order matters
+SUPCAP-Q09	inherent	Cover, contents and note pages carry no title
+SUPCAP-Q10	unsure	Older reports stack several statements on one page
+SUPCAP-Q11	inherent	Two header layouts: caps with units and schedule on one line, then title case with units beside the period
+SUPCAP-Q12	inherent	Capital statements print no fund banner
+SUPCAP-Q13	unsure	Capital summary pages lose or lack unit context; table published unitless
+SUPCAP-Q14	inherent	Activity gains a leading numeric column in a later era
+SUPCAP-Q15	artifact	Roles mapped from the right edge, leading columns left unknown
+SUPCAP-Q16	artifact	Sparse page detects one fewer column; fragments re-binned onto densest page
+SUPCAP-Q17	artifact	Two value-less banners (agency, category) sit between money rows
+SUPCAP-Q18	artifact	`bridge_region_gaps` is documented as unsafe for stacked Philly schedules, yet set for a family with stacked pages
+SUPCAP-Q19	artifact	Comment about the bridge sits inside the FY21 acknowledgment
+SUPCAP-Q20	inherent	Category banner reprinted after a page break; one subtotal closes both fragments
+SUPCAP-Q21	unsure	FY05 "Subtotal Buildings and Facilities-Other:" Original 22,711,000 printed, 18,611,000 summed
+SUPCAP-Q22	unsure	FY05 Net Adjustments column sparse and letter-coded; grand total 7,000,000 not reproducible
+SUPCAP-Q23	inherent	Three-level hierarchy: agency, category, project; "Subtotal X:" colon labels; "Totals - All Budget Agencies"
+SUPCAP-Q24	inherent	Very long blocks: 223 projects in one FY23 department; 726 rows in FY05
+SUPCAP-Q25	inherent	Project label form changes: name with "-FY2001" suffix, then codes like "07-ITEF-CD8"
+SUPCAP-Q26	unsure	Same project in several fiscal-year rows; sums can coincide
+SUPCAP-Q27	inherent	Project year in a label is not the report year
+SUPCAP-Q28	inherent	Dash means blank, not zero
+SUPCAP-Q29	inherent	Summary subtotal excludes the reporting-year row
+SUPCAP-Q30	inherent	Reporting year read from a header date "6-30-21"
+SUPCAP-Q31	inherent	Budget year prints as both label and numeric cell
+SUPCAP-Q32	unsure	Summary subtotal may carry no printed label; old code synthesizes "Subtotal <section>"
+SUPCAP-Q33	inherent	An empty historical year collapses to one dash and must not break the year run
+SUPCAP-Q34	inherent	Industrial & Commercial Development Fund prints N/A; all-funds total repeats the subtotal
+SUPCAP-Q35	inherent	FY21 Encumbrances subtotal omits the 1998 row (5,949.17)
+SUPCAP-Q36	artifact	FY23 subtotal correctly excludes 2023 but is acknowledged as a defect
+SUPCAP-Q37	artifact	Horizontal identities inferred from data
+SUPCAP-Q38	artifact	Role names disagree with captions ("Financed Authorizations Merged" maps to `net_authorization_adjustments`; acknowledgments say "Adjusted Financed Authorizatio
+SUPCAP-Q39	artifact	Acknowledgments keyed by table and row ordinals and hypothesis names
+SUPCAP-Q40	artifact	Capital acknowledgments have no fingerprints
+SUPCAP-Q41	unsure	Capital tables published but outside the readiness scope
+SUPCAP-Q42	inherent	Report also holds three statement types never published: encumbrances by agency, summary encumbrances, non-budgeted obligations NOTE
+SUPCAP-Q43	inherent	Text layer present (geometric backend) in every cited edition; no Textract or LLM config
+SUPOP-Q01	inherent	No form code; the printed statement title is the only table identifier. Case varies (caps in FY05).
+SUPOP-Q02	inherent	Title variants: "Net Revenue" or "Net Revenues"; "Current Year" inserted in the summary activity title.
+SUPOP-Q03	inherent	Older editions stack several statements on one page.
+SUPOP-Q04	inherent	Activity pages can append a "NOTE:" block of non-budgeted obligations with its own total.
+SUPOP-Q05	inherent	Prior years' encumbrance statements sit beside in-scope tables; single-agency ones print no total.
+SUPOP-Q06	inherent	Fund is a banner line under "City of Philadelphia"; names end in "Fund"; summary pages print "Operating Funds" instead.
+SUPOP-Q07	inherent	Single-agency funds (HealthChoices Behavioral Health, Water Residual) print no agency banner.
+SUPOP-Q08	inherent	Header block layout differs by era; FY10 summaries use "Exhibit".
+SUPOP-Q09	inherent	Schedule letters are not stable across editions.
+SUPOP-Q10	inherent	Agencies are colon-ended section banners; subtotals read "Subtotal <Agency>:".
+SUPOP-Q11	inherent	Column header spans lines; "Percent of" prints alone and welds onto the first agency banner.
+SUPOP-Q12	inherent	Utilization or collection percent printed bare on some tables, suffixed on others.
+SUPOP-Q13	artifact	Short single-agency tables: whitespace detection fuses the percent into Unencumbered Balance ("110,626,142.01 92.31").
+SUPOP-Q14	artifact	Roles assigned right to left; a missing percent column shifts every role ("the Police lesson").
+SUPOP-Q15	unsure	FAMIS and "Fd BAL/AP Adjs" columns make 9 numeric columns; FAMIS has no mapped meaning.
+SUPOP-Q16	inherent	Indented class 100 detail lines under the class row are not additive.
+SUPOP-Q17	inherent	A small agency prints one amount row with no classes.
+SUPOP-Q18	inherent	Revenue Sub-Total label sits on the last item's baseline; its amounts print a line below.
+SUPOP-Q19	unsure	Text layer drops spaces ("PublicHealthSub-Total").
+SUPOP-Q20	inherent	Parent banners repeat on continuation pages; a later Sub-Total closes the whole parent.
+SUPOP-Q21	inherent	Some hierarchy is shown only by bold type (FY10 Water).
+SUPOP-Q22	artifact	Two value-less banners in a row (category then department) between money rows.
+SUPOP-Q23	inherent	An all-dash department Sub-Total sits under live rows of the previous section.
+SUPOP-Q24	inherent	Dash means no value; dash on a total with valued contributors is a source fault.
+SUPOP-Q25	inherent	Increase (Decrease) is unnumbered and derived; the source breaks it 20 times.
+SUPOP-Q26	inherent	FY23 and FY24 Grants print 6,895,171.96 prior actual on two departments.
+SUPOP-Q27	inherent	FY20 Total Special Revenue Funds omits Grants Revenue's original appropriation only.
+SUPOP-Q28	inherent	FY22 and FY23 MOCS subtotal prints a dash for encumbrances its sole row has.
+SUPOP-Q29	inherent	FY23 Grants Revenue subtotal mixes bases across columns.
+SUPOP-Q30	unsure	FY21 Water "Totals": FAMIS residual 365,040,550.73 and a 9,158.34 Final below Original with blank adjustment.
+SUPOP-Q31	inherent	FY20 Other Funds total exceeds its rows by exactly 2,000,000 in two columns.
+SUPOP-Q32	inherent	FY21 prints hyphens as U+2010 with spaces in labels.
+SUPOP-Q33	inherent	Grand total label differs: "Total Net Revenue" and "Total Net Revenues".
+SUPOP-Q34	inherent	Fund banner misspelled "Communtiy Development Fund".
+SUPOP-Q35	inherent	Page footers "- N -" and header lines leak into bodies.
+SUPOP-Q36	inherent	Revenue period covers two years, so prior actual overlaps the previous edition.
+SUPOP-Q37	inherent	PDF page differs from printed page by 8 in FY20 and FY23.
+SUPOP-Q38	inherent	Editions exist only for 10 milestone years.
+SUPOP-Q39	inherent	Agency names change across eras (MOCS, MOIS, Office of Housing).
+SUPOP-Q40	unsure	FY03 to FY24 agency rows are not all resolvable to an entity.
+SUPOP-Q41	artifact	Acks keyed to table and row ordinals and to hypothesis names holding row numbers; FY10 rows moved 435 to 427.
+SUPOP-Q42	artifact	18 of 26 acks lack fingerprints, so a release-ready gate would fail.
+SUPOP-Q43	artifact	A comment about the region bridge sits inside an ack, 50 lines from its key.
+SUPOP-Q44	unsure	The bridge option is documented as unsafe for stacked tables, yet this family stacks older pages.
+SUPOP-Q45	unsure	Percent of Obligations is mapped to `unknown` and not a published measure.
+SUPOP-Q46	inherent	FY2020 cells differ from the FY2021 book (Water class 800, 74m against 69m).
+VAL-Q01	artifact	Word source per edition chosen by arithmetic rank, stored outside git
+VAL-Q02	inherent	QCMR cash FY07 Q4: Textract digits wrong and tie better; text layer right
+VAL-Q03	inherent	School 2016-04, 2016-11: overprinted text layer loses amounts, reads 77,500,000
+VAL-Q04	artifact	Raw Textract grid cells have no words or cell confidence; cash FY07 Q4, FY09 Q2, FY25 Q2, O-2 FY13 Q3 use it
+VAL-Q05	inherent	Damaged font `E(cid:121)PENSES` in cash FY23 Q1, Q2
+VAL-Q06	inherent	Scans in QCMR cash, personal services FY08 to FY13, BiB, wage tax industry 2023-12
+VAL-Q07	inherent	OCR output depends on render dpi (300) and API config
+VAL-Q08	inherent	Leader and fused-suffix splits invent boxes by character count
+VAL-Q09	inherent	Standalone `$` words dropped before regions
+VAL-Q10	artifact	Bare integers weld into label phrases
+VAL-Q11	artifact	Orphan merge drops displaced bare integers
+VAL-Q12	inherent	Cash page 1 stacks two grids; split at captions
+VAL-Q13	unsure	Baseline guard needed on three cash editions
+VAL-Q14	inherent	Grand total in a ruled box below footnotes
+VAL-Q15	inherent	Ruled forms need rebin from drawn rules; short supplemental tables fuse `110,626,142.01 92.31`
+VAL-Q16	inherent	BiB LINE NO. margin; FY09 labels still carry `23 29`
+VAL-Q17	inherent	Labels above amounts, City 2014 to Nov 2015
+VAL-Q18	artifact	Region gaps bridged on supplemental pages
+VAL-Q19	inherent	Totals on a later page than contributors (positions, City, BiB 8 pages, supplemental)
+VAL-Q20	artifact	Cash page 2 all-funds joined to page 1 expense grid
+VAL-Q21	artifact	`12 345`, `1 2`, `12, 345` join into one number
+VAL-Q22	artifact	Three lexers disagree on `-$`
+VAL-Q23	artifact	Dash is 0.0 in one lexer, None in another; `---` differs
+VAL-Q24	inherent	Dash meaning varies by family, column and era
+VAL-Q25	inherent	N/A leaves an operand only by explicit record
+VAL-Q26	unsure	Trailing minus and plus sign rejected
+VAL-Q27	inherent	Percent parsed as 12.3, unit lost; bare `74.98` found by statistics
+VAL-Q28	inherent	Footnote marks stripped; superscript digits not
+VAL-Q29	inherent	Units: millions, thousands from page text, dollars, cents, counts
+VAL-Q30	inherent	Personal services grid mixes counts and dollars by row
+VAL-Q31	inherent	BiB FY09 total rounded to thousands in a dollar table
+VAL-Q32	artifact	Values held as float; Decimal only for cash and City collections
+VAL-Q33	inherent	Two amounts in one cell, spaces after commas
+VAL-Q34	inherent	Amount fused with label text, either side
+VAL-Q35	inherent	OCR drops decimal: `2100`, `266 1`, `69,2`, `67: 3`, `(29 1)`
+VAL-Q36	inherent	OCR letters and `(59.8j`
+VAL-Q37	inherent	Orphan negating amount below a total, City 2023-07
+VAL-Q38	artifact	Arithmetic-picked digit verified by rounding receipt
+VAL-Q39	artifact	Letter map verified with no review
+VAL-Q40	artifact	Arithmetic chooses between word sources per cell
+VAL-Q41	artifact	Arithmetic-only repairs made, then reset
+VAL-Q42	artifact	Acks keyed by parser ordinals and hypothesis names
+VAL-Q43	artifact	102 of 215 acks inert without fingerprints
+VAL-Q44	artifact	Fingerprints hash boxes and parser name, so drift on any change
+VAL-Q45	artifact	Residuals stored as drifting floats
+VAL-Q46	inherent	One root defect repeated across editions
+VAL-Q47	artifact	63 records for one edition's dashes
+VAL-Q48	inherent	BiB cross-table records keyed by meaning, no hash
+VAL-Q49	inherent	One-decimal bound 0.65 strict; exact for counts
+VAL-Q50	inherent	Supplemental subtotal excludes the reporting year, FY23 still acknowledged
+VAL-Q51	artifact	Fact rows carry no box, words or hash
+VAL-Q52	artifact	QCMR pages refer to cut PDFs; publisher page lost for multi-page sections
+WAGE-Q01	inherent	Industry listings are one page per year; 2016 uses an unprefixed slug
+WAGE-Q02	inherent	Page year is calendar in old pages and fiscal in new ones
+WAGE-Q03	inherent	Each link appears twice; the icon anchor is untitled
+WAGE-Q04	inherent	Oldest files are named `Wage_YYYYMM.pdf`
+WAGE-Q05	inherent	Modern filenames omit the year; the title holds it
+WAGE-Q06	inherent	FY2026 Q1 is titled July to September but named July to June
+WAGE-Q07	inherent	"FY2026" titles put July to December in calendar 2025
+WAGE-Q08	inherent	Unrelated PDFs can share the listing page
+WAGE-Q09	unsure	A corrected attachment may follow the original for one period
+WAGE-Q10	inherent	A media URL was reused with new bytes; old pages point at the newer report (2022_12, 2024_03)
+WAGE-Q11	inherent	Lost editions survive only in the Wayback Machine
+WAGE-Q12	artifact	Reuse guard lives only in the CLI; source sync skips it
+WAGE-Q13	inherent	URL timestamp predates the report it serves
+WAGE-Q14	inherent	Downloaded bytes must state the listed period inside the PDF
+WAGE-Q15	unsure	The period validator needs a text layer; 2023_12 is scan only
+WAGE-Q16	artifact	`--list` once downloaded Wayback PDFs
+WAGE-Q17	artifact	Validation once ran after replacing the file
+WAGE-Q18	artifact	Residency ingest has no in-PDF check
+WAGE-Q19	inherent	Monthly era to 2021_02, quarter ends from 2021_03
+WAGE-Q20	unsure	2021_03 may be a month or a quarter; the notebook sums it as a month
+WAGE-Q21	artifact	Temporal contracts stop at 2026 and name roles the family lacks
+WAGE-Q22	inherent	Chart pages have no table title
+WAGE-Q23	inherent	Table numbers change meaning by era
+WAGE-Q24	inherent	Table 1 is FYTD in July to September and July to December reports; only the header says FYTD
+WAGE-Q25	inherent	Title spacing and wording vary ("Industry-", "thru", "2nd Quarter (Apr, May, Jun)")
+WAGE-Q26	unsure	Bare "Table 2" maps to an unpublished type
+WAGE-Q27	artifact	Five typed subsets mix table number and period
+WAGE-Q28	artifact	Marker pattern that never matches
+WAGE-Q29	unsure	Two tables of the same type in one PDF would be pooled
+WAGE-Q30	artifact	Year captions fall outside the detected region
+WAGE-Q31	inherent	2023_12 Table 2 prints "Oct-Dec 2024" for Oct-Dec 2023
+WAGE-Q32	artifact	The misprint needs a whole profile copy to be visible
+WAGE-Q33	inherent	2024_09 labels July to September as FYTD 2025
+WAGE-Q34	inherent	FYTD tables use the July to June year; quarter and CYTD use the calendar year
+WAGE-Q35	inherent	A printed FYTD range may contradict the assigned year
+WAGE-Q36	inherent	Totals sit in a ruled box below footnotes
+WAGE-Q37	unsure	Percent columns may print without %
+WAGE-Q38	inherent	Six parents followed by sibling sub-industry rows
+WAGE-Q39	inherent	Sub-industries are published as their own series
+WAGE-Q40	inherent	Two closing totals; FAMIS does not sum the rows
+WAGE-Q41	inherent	Database total label changes TIPS, PRISM/TIPS, PRISM
+WAGE-Q42	inherent	Manufacturing label changes
+WAGE-Q43	unsure	Labels damaged by doubled text, OCR or truncation
+WAGE-Q44	inherent	Footnote mark inside a label ("see note")
+WAGE-Q45	inherent	Generic labels collide with agency names
+WAGE-Q46	inherent	2022_03 Health and Education components miss their parents by equal and opposite amounts
+WAGE-Q47	inherent	Later industry editions restate prior-year columns
+WAGE-Q48	artifact	Wage tax comment sits above the realty profile
+WAGE-Q49	inherent	Residency reports overlap by calendar year
+WAGE-Q50	inherent	Residency titles list years in either order ("2020, 2019")
+WAGE-Q51	inherent	Residency page title says "by Industry", not residency
+WAGE-Q52	inherent	Residency column count differs by edition
+WAGE-Q53	artifact	Year per column given by right-to-left offsets, not the header
+WAGE-Q54	inherent	2023 edition has no detail page
+WAGE-Q55	inherent	Newest edition supplies each year
+WAGE-Q56	inherent	2020 combined total +112,762, repeated in three editions
+WAGE-Q57	inherent	2019 combined total -448, repeated in two editions
+WAGE-Q58	inherent	2020 edition account totals off by -11,545 and -11,451
+WAGE-Q59	artifact	Per-edition layout profiles repeat five settings to carry acks
+WAGE-Q60	artifact	Acks pinned by row, column and table index, hypothesis name and fingerprints
+WAGE-Q61	unsure	2022_12 detail Total sits at row 53, elsewhere 52
+WAGE-Q62	artifact	Residency catalog says FY2021 to FY2023 and monthly; the data are calendar 2019 to 2023, annual
+WAGE-Q63	artifact	Industry monitoring starts 2026; older completeness unknown

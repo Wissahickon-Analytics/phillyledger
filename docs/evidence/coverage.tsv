@@ -1,0 +1,524 @@
+BIB-Q01	datadesk.core.listings.parse_listing	Stage is read from the visible listing title; adopted and proposed become different EditionKey stages.
+BIB-Q02	datadesk.core.listings.parse_listing	"Approved" and "as Approved by Council" map to Stage.ADOPTED in the title rule.
+BIB-Q03	datadesk.core.listings.parse_listing	Filename is never used for stage; only the title.
+BIB-Q04	datadesk.core.listings.parse_listing	Unstaged titles get skip_reason unstaged and appear in the watch pull request.
+BIB-Q05	datadesk.core.listings.parse_listing	One FY token across title and filename, two or four digits; two different values reject the link.
+BIB-Q07	datadesk.core.domain.Holding	Not indexed until the owner decides on excerpts (decision 1); Holding.EXCERPT is ready.
+BIB-Q08	datadesk.core.domain.Holding	Same as BIB-Q07 for the six proposed books.
+BIB-Q10	checkedtables.pages.find_runs	Page predicates compare casefolded text.
+BIB-Q11	checkedtables.pages.find_runs	Only pages whose top band carries one of the three titles are read; others are never parsed.
+BIB-Q12	datadesk.core.tables.bib_fund_summary.parse	Parser reads the unit banner and fails if it disagrees with the era's MeasureSpec scale.
+BIB-Q13	datadesk.core.tables.bib_fund_summary.parse	Banner text is read from all header lines joined, so a split unit line still matches.
+BIB-Q14	datadesk.core.registry.resolve_fund	Fund banner cells go to resolve_fund; All Funds is a table instance scope, not a fund.
+BIB-Q15	datadesk.core.tables.bib_fund_summary.parse	All Funds caption regex accepts "Summary All" and "Summary All Funds".
+BIB-Q16	datadesk.core.tables.bib_fund_summary.parse	Table id is evidence only; identity comes from the fund name, so a "-" id still parses.
+BIB-Q17	datadesk.core.tables.bib_revenue_schedule.parse	Schedule banner regex tolerates "FUND NO" with or without the period.
+BIB-Q18	datadesk.core.tables.bib_revenue_schedule.parse	Category and schedule id become the table instance key parts.
+BIB-Q19	datadesk.core.tables.bib_revenue_schedule.parse	Pages are grouped by (fund, schedule id) in page order; history is one find_run.
+BIB-Q20	checkedtables.grammar.read_grammar	"Total, General Fund" rule closes the department slot, so it never inherits the last department.
+BIB-Q21	datadesk.core.tables.bib_revenue_schedule.grammar_for	Text-layer books: owner banners are value-less Style.BOLD lines, refiners Style.NOT_BOLD. FY2011 to FY2015 scans: SCAN_SUB_BANNERS refine, any other value-less line owns. A bold rule on a scan page gives style_unavailable and blocks.
+BIB-Q22	checkedtables.grammar.read_grammar	Agency banner opens the agency slot; its Subtotal closes it and becomes the parent of its lines.
+BIB-Q23	checkedtables.pages.slice_body	Repeated banners are header lines above the body start and are dropped.
+BIB-Q24	checkedtables.grammar.read_grammar	Grammar drop patterns remove "(N) ..." note lines.
+BIB-Q25	checkedtables.rows.join_rows	BiB parser joins a label-only line with the next line when the joined label starts the wrapped "Fiscal Year" form.
+BIB-Q26	DATA:Era	LINE NO. is declared as a CODE column in the era, so it never reaches the label.
+BIB-Q29	DATA:Era	Schedule-reference column is a TEXT column bound by caption, never a value.
+BIB-Q30	checkedtables.columns.bind_columns	Percent is an optional ColumnSpec bound by caption; absence shifts nothing.
+BIB-Q31	DATA:MeasureSpec	MeasureSpec scale is 1 for history and 1000 for summaries and schedules.
+BIB-Q32	checkedtables.columns.choose_era	Three history eras (5, 6, 7 columns) chosen by printed captions; date range is a cross-check.
+BIB-Q34	checkedtables.columns.choose_era	History eras carry real caption signatures; an empty header fails era choice.
+BIB-Q36	DATA:WordSourcePlan	FY2011 to FY2015 declare OCR pages; no score picks a source.
+BIB-Q37	DATA:RowSchema	OCR "Obligations I Appropriations" is an edition-bound label in the summary schema.
+BIB-Q38	checkedtables.text.parse_label	Line formulas such as "(19+20)" are split off into Label.marks and kept out of the key.
+BIB-Q39	DATA:RowSchema	Both spellings map to one row key in the fund summary schema.
+BIB-Q40	DATA:RowSchema	Both spellings map to one category key, so the cross check compares like with like.
+BIB-Q41	datadesk.core.tables.bib_cross.cross_checks	ALL_FUNDS_SPLITS, a tuple of pairs, declares which All Funds sibling rows sum to one fund line.
+BIB-Q42	checkedtables.grammar.read_grammar	Each Subtotal key includes its open section slot, so repeats get distinct keys.
+BIB-Q43	datadesk.core.tables.bib_cross.cross_checks	A schedule's grand total, found by its AllSlots key, feeds its fund summary line; two schedules for one line are a finding.
+BIB-Q44	datadesk.core.registry.resolve_fund	normalize_printed_code strips the trailing zero and keeps composite codes.
+BIB-Q45	DATA:Registry	Fund codes carry DatedCode ranges; resolve_fund uses the fiscal year.
+BIB-Q46	DATA:Registry	Misspelled fund names are aliases bound to the editions that print them.
+BIB-Q47	checkedtables.text.parse_label	Trailing "(N)" marks are split into Label.marks before matching.
+BIB-Q48	DATA:Registry	Sub-department lines are registry entities with a parent.
+BIB-Q49	DATA:Registry	Relation MERGED_INTO, effective FY2011.
+BIB-Q50	checkedtables.lex.lex_cell	"--" lexes to Dash with the column's declared meaning (no value).
+BIB-Q51	checkedtables.checks.engine.run_checks	A blank total with valued parts is Outcome.MISSING_TOTAL; acknowledged as source_typo.
+BIB-Q52	DATA:Acknowledgment	FY2009 rounded total pinned with its exact residual.
+BIB-Q53	DATA:Acknowledgment	One root, two editions, each failure pinned by key and residual.
+BIB-Q54	DATA:Acknowledgment	FY2010 change-column failures pinned by key and residual.
+BIB-Q55	DATA:Acknowledgment	FY2022 omission and FY2023 misprint pinned.
+BIB-Q56	datadesk.core.tables.bib_cross.cross_checks	schedule_feeds_summary equations; the 6 misprint records become acknowledgments on them.
+BIB-Q57	datadesk.core.tables.bib_cross.cross_checks	funds_sum_to_all_funds equations; FY2009, FY2025, FY2027 acknowledged.
+BIB-Q62	checkedtables.pages.find_runs	Pages are found by band; every run is reported, so a second obligation run is a finding.
+BSALES-Q01	datadesk.core.vintage.select_canonical	Policy NEWEST_COVERING: every edition kept, canonical flag on the newest upload that prints the tax year.
+BSALES-Q02	datadesk.core.listings.parse_listing	Coverage from title years; filename only when the title has none, and never to widen.
+BSALES-Q03	datadesk.core.listings.parse_listing	Upload stamp from /media/YYYYMMDD/ becomes DocumentVersion.listed_at.
+BSALES-Q08	datadesk.core.tables.sales.parse	One table per titled page of the bundle; no cutting, page number kept.
+BSALES-Q10	datadesk.core.listings.parse_listing	Year range regex accepts hyphen, en dash and em dash in title or filename.
+BSALES-Q11	datadesk.core.tables.sales.parse	Page title year must equal a listed year, each year exactly once, else a finding.
+BSALES-Q12	datadesk.core.watch.plan_watch	A repeated sales year is a new version of one edition; the later listing wins.
+BSALES-Q13	datadesk.core.vintage.select_canonical	Policy CURRENT_COLUMN with the FY2020 prior-year column as the canonical source for FY2019.
+BSALES-Q16	datadesk.core.tables.birt.parse	Title regex accepts BPT and BIRT forms.
+BSALES-Q17	datadesk.core.tables.birt.parse	Both tax years come from the "Period: 12/31/YYYY" line; "(Preliminary)" kept as a status field.
+BSALES-Q18	datadesk.core.tables.birt.parse	Caption line is evidence only and never sets a year, so the repeated caption is harmless.
+BSALES-Q21	datadesk.core.tables.birt.parse	Untitled pages fall outside every band run; any value on them is in no table.
+BSALES-Q22	datadesk.core.tables.sales.parse	Title regex allows "Collections" and "Collections Report".
+BSALES-Q23	datadesk.core.tables.birt.parse	One table per page with two halves; each half becomes its own value_year from the Period line.
+BSALES-Q26	checkedtables.rows.match_rows	Child "Other Services" is eligible only inside the Professional Services block; the sector one only outside it.
+BSALES-Q27	checkedtables.text.parse_label	", subtotal" and "**1"/"**2" are split into marks; marks stay in the published row.
+BSALES-Q28	DATA:RowSchema	Retail SUBTOTAL row with store-type children declared with parent links.
+BSALES-Q29	DATA:RowSchema	FY2020 era row list; match_rows is order-free inside a block, so moved rentals still match.
+BSALES-Q30	DATA:RowSchema	Two new categories have periods; FY2020 restated columns are kept as their own vintage.
+BSALES-Q31	checkedtables.table.Additivity	FAMIS comparator row is RowKind.MEMO, so its additivity is NONE; never an operand in sums.
+BSALES-Q32	datadesk.core.release.rows.to_release_rows	DatasetSpec.withheld names the FAMIS percent memo key; the row is parsed and checked but not written.
+BSALES-Q33	checkedtables.checks.dsl.CheckSet	Count column is simply not named in any sum check.
+BSALES-Q34	checkedtables.pages.slice_body	Body ends at the declared last label; footnote lines inside are dropped, so no box recovery is needed.
+BSALES-Q35	checkedtables.columns.choose_era	3-column and 11-column eras chosen by captions, cross-checked by year.
+BSALES-Q36	checkedtables.lex.split_numeric_runs	Fused percent and money tokens split at numeric boundaries into child words.
+BSALES-Q38	checkedtables.lex.lex_cell	Dash in the count column lexes to Dash(no value).
+BSALES-Q39	checkedtables.checks.dsl.CheckSet	Ratio check uses Total Philadelphia Sales Tax as the declared denominator.
+BSALES-Q40	checkedtables.checks.dsl.Tolerance	Tolerance.per_operand on whole dollars bounds the $2 residual.
+BSALES-Q41	DATA:Acknowledgment	2017 accounts residual pinned on the 2004-2017 page.
+BSALES-Q42	DATA:Acknowledgment	2018 total residual pinned on the 2018-2023 page.
+BSALES-Q46	checkedtables.text.normalize_label	normalize_label also yields a squashed form without spaces; matching uses it.
+BSALES-Q47	checkedtables.text.normalize_label	Spacing around "/" disappears in the squashed form.
+BSALES-Q48	DATA:RowSchema	Each sector table has its own row schema and keys; no shared registry entry.
+BSALES-Q50	datadesk.core.vintage.select_canonical	CURRENT_COLUMN policy for sales; restated prior years publish as their own vintage.
+BSALES-Q51	checkedtables.pages.find_runs	The first corpus run parses FY2020 or reports why.
+BSALES-Q52	datadesk.core.registry.lint_registry	An alias whose years hold no edition is reported by the gate-year lint.
+BSALES-Q54	datadesk.core.tables.birt.parse	One table per page from the Period line; an odd year count gives a half page that fails era choice.
+ENT-Q01	checkedtables.rows.match_rows	Row schemas are per table, so a label can only match inside its own table.
+ENT-Q02	DATA:RowSchema	Two RowDefs with disjoint periods; labels come from each entity in the registry; the lint rejects overlap.
+ENT-Q03	datadesk.core.tables.rtt.split_zones	Property and location zones are separate table instances with separate schemas.
+ENT-Q04	checkedtables.rows.match_rows	Block context separates the two "Other Services" rows; marks are not needed.
+ENT-Q05	DATA:RowSchema	Edition-bound labels (RowDef label with editions) for HOTEL TAX and the 2020-06 PILOT row.
+ENT-Q06	DATA:RowSchema	OCR spellings of table lines are edition-bound labels; OCR spellings of departments are registry aliases with an editions list. Never global.
+ENT-Q07	checkedtables.text.parse_label	Marks split off with parse_label and kept as a field.
+ENT-Q08	checkedtables.text.split_line_prefix	Leading line numbers leave the line before lanes are found, by the table's declared prefix.
+ENT-Q09	checkedtables.rows.Truncation	UNIQUE_PREFIX on the City schema; an ambiguous prefix is a finding.
+ENT-Q10	checkedtables.text.squash	Squashed comparison matches kerning gaps.
+ENT-Q12	checkedtables.rows.match_rows	BREAKDOWN rows are eligible only directly inside their parent block.
+ENT-Q13	DATA:RowSchema	Fused parent-plus-cohort label is an alternate label of the cohort RowDef.
+ENT-Q14	datadesk.core.tables.collections_common.attach_stacked_labels	Inside the 2014 window, a value-less cohort heading followed by a values-only line is joined into one row.
+ENT-Q15	checkedtables.rows.match_rows	Parent row with values opens a block; its cohort rows match inside it.
+ENT-Q16	checkedtables.grammar.read_grammar	An unknown heading clears the slot and raises a finding; fragments are never merged by guess.
+ENT-Q17	datadesk.core.tables.qcmr_personal_services.parse	Row key is (department section, metric); metric labels never identify a row alone.
+ENT-Q18	checkedtables.rows.match_rows	Section-scoped RowDefs (within) separate repeated cash labels.
+ENT-Q19	checkedtables.grammar.read_grammar	Key is (department slot, class); class labels map to registry class entities.
+ENT-Q20	checkedtables.grammar.read_grammar	The class qualifier is a slot in the BiB history grammar, scoped to that table.
+ENT-Q21	DATA:Registry	Sub-department appropriation lines are entities with parent_id.
+ENT-Q24	DATA:Registry	Combined labels are GROUP entities with members; no alias stands for two members.
+ENT-Q27	DATA:Registry	DatedCode ranges per fund.
+ENT-Q28	DATA:Registry	DatedCode ranges for department 66.
+ENT-Q29	datadesk.core.registry.resolve_fund	normalize_printed_code handles padded and composite codes.
+ENT-Q30	datadesk.core.registry.resolve_fund	Name wins; disagreement returns Resolved with a WARN finding that names both.
+ENT-Q31	datadesk.core.registry.resolve_fund	"All Funds" and combined scopes resolve to Scope values, not funds.
+ENT-Q32	checkedtables.grammar.read_grammar	initial seeds the agency slot from a single-agency fund banner, in supp_activity.
+ENT-Q33	datadesk.core.tables.bib_revenue_schedule.grammar_for	Bold banners open the owner slot and plain ones the refine slot on text pages; the scan grammar uses the closed sub-banner list instead of bold.
+ENT-Q34	datadesk.core.tables.bib_history.parse	Fused banners fail the section rule and become unknown_row findings until a label is declared.
+ENT-Q35	checkedtables.grammar.read_grammar	Closing rule for the report-wide total clears the department slot.
+ENT-Q36	DATA:RowSchema	Both category spellings map to one key.
+ENT-Q37	DATA:RowSchema	"of" and "or" spellings map to one key.
+ENT-Q39	DATA:Registry	Retired units keep dated names; grammar rows still resolve to them.
+ENT-Q40	DATA:Registry	Two entities with dated names and codes for FY18.
+ENT-Q41	DATA:Registry	New entities with first_fy; sub-block lists live in the O-3 row schema by era.
+ENT-Q42	datadesk.core.tables.qcmr_personal_services.parse	Division sections are COMPONENT blocks by era list and excluded from citywide sums.
+ENT-Q43	DATA:Registry	Relation MERGED_INTO effective FY2011.
+ENT-Q44	DATA:Registry	Relation REPORTED_UNDER with fund and year scope.
+ENT-Q48	checkedtables.table.Additivity	Database total is TOTAL; FAMIS total is MEMO, additivity NONE.
+ENT-Q49	DATA:RowSchema	New classes carry periods and no relation to the legacy classes.
+ENT-Q50	DATA:RowSchema	Sub-industries are declared BREAKDOWN rows with parents; indentation is never read.
+ENT-Q51	DATA:RowSchema	Separate schemas per tax; no shared sector ids.
+ENT-Q52	DATA:RowSchema	RowDef.entity links a subtotal row to its parent entity.
+ENT-Q53	DATA:Registry	Entity.residual flag marks residual categories.
+ENT-Q54	checkedtables.rows.match_rows	Wrapped-label join is tried when the joined text matches a RowDef and the parts do not.
+ENT-Q61	checkedtables.rows.match_rows	Two rows with one key are duplicate_row findings; MDO-Base and the MDO block cannot collide silently.
+ENT-Q64	checkedtables.rows.match_rows	No Streets RowDef covers FY2014 to FY2017, so any printed form there is unknown_row until declared.
+ENT-Q65	DATA:Registry	The registry is published as its own dataset for gov-budget-data to read.
+ENT-Q67	DATA:RowSchema	RowDef label may be a regex ("re:Collection of \d+-\d+-\d+/Govt\.?").
+MCITY-Q01	datadesk.core.listings.parse_listing	Month and year parsed in either order from the filename.
+MCITY-Q02	datadesk.core.watch.plan_watch	Last link per period wins; the earlier one is kept as a superseded DocumentVersion.
+MCITY-Q03	datadesk.core.listings.parse_listing	One FY token across title and filename; two values reject the link.
+MCITY-Q04	datadesk.core.fetch.confirm_period	Year from the one printed FY, else a unique body "Month YYYY".
+MCITY-Q05	datadesk.core.fetch.confirm_period	Title regexes cover the known forms; unknown forms fail closed.
+MCITY-Q06	datadesk.core.fetch.confirm_period	One-edit month match accepted only when unique.
+MCITY-Q07	datadesk.core.fetch.confirm_period	Footnote month text is outside the title block and is not read.
+MCITY-Q08	datadesk.core.watch.plan_watch	A sha already indexed under another period is rejected as a content alias.
+MCITY-Q09	datadesk.core.fetch.plan_fetch	New bytes replace nothing; a new DocumentVersion is added only after confirm_period passes.
+MCITY-Q11	datadesk.core.tables.collections_city.parse	caption_year_findings checks each page's month caption years against the basis in force on the edition date (calendar before FY2022, fiscal after).
+MCITY-Q12	checkedtables.columns.bind_columns	Lane captions are assembled from every header line over the lane, on every page; cut_pages requires every page to bind the same columns.
+MCITY-Q13	checkedtables.text.squash	Squashed caption comparison joins a glyph seam in a year.
+MCITY-Q14	checkedtables.columns.bind_columns	Current estimate and prior-year budget and final are optional ColumnSpecs.
+MCITY-Q15	checkedtables.columns.bind_columns	Revised budget is an optional ColumnSpec.
+MCITY-Q16	checkedtables.columns.choose_era	CLOSE era chosen by "NET ACCRUALS" caption.
+MCITY-Q17	checkedtables.checks.dsl.CheckSet	Declared July check: month equals FYTD; equal neighbours are never deduplicated by value.
+MCITY-Q18	datadesk.core.tables.collections_common.dedupe_overprint	Removes overlapping same-text and comma-less twins, welded copies whose squashed text equals the squashed join of the words they cover, and amounts inside label spans that repeat a lane value on the line. Never creates a word.
+MCITY-Q19	checkedtables.rows.stray_findings	A twin in a neighbouring lane either lexes Unreadable or leaves a numeric stray, both blocking.
+MCITY-Q20	datadesk.core.tables.collections_common.attach_stacked_labels	Runs only inside STACKED_LABELS, 2014-07 to 2015-11. Outside the window an amount-only line under a heading is an orphan finding.
+MCITY-Q21	checkedtables.rows.Truncation	RowSchema.truncation=UNIQUE_PREFIX: a printed prefix of exactly one label matches, after exact and squashed stages fail, with a WARN finding naming the full label.
+MCITY-Q22	DATA:RowSchema	Renamed labels are alternate labels of one RowDef.
+MCITY-Q23	DATA:RowSchema	Cohort rows and suffix forms are both declared on the cohort RowDef.
+MCITY-Q24	DATA:RowSchema	Compound 2015 headings are edition-period labels of the heading RowDef.
+MCITY-Q25	checkedtables.rows.match_rows	RowDef.within scopes Parking rows to the General Fund or dedicated-fund block.
+MCITY-Q26	checkedtables.checks.dsl.CheckSet	Remaining identity uses revised when the column is bound, else budget.
+MCITY-Q27	datadesk.core.tables.collections_city.checks_for	na_excluded drops the two General Fund Parking and Valet N/A operands from FY2024 on; elsewhere N/A is a missing operand.
+MCITY-Q28	DATA:RowSchema	Edition-bound label "HOTEL TAX" on the TOTAL HOTEL FUND RowDef.
+MCITY-Q29	DATA:EditionNote	DROP_LINE note names the 2023-07 page and exact text; unused notes fail.
+MCITY-Q30	DATA:RowSchema	GFP, LESS PICA and TGF are separate RowDefs; checks declare their relation.
+MCITY-Q31	checkedtables.checks.dsl.CheckSet	less_pica_restates_pica column check.
+MCITY-Q32	checkedtables.checks.engine.run_checks	Children all N/A gives MISSING_OPERAND, not a failure; the subtotal value stays published.
+MCITY-Q33	DATA:DashRule	DashRule per table, column, rows and period sets meaning zero.
+MCITY-Q34	checkedtables.lex.lex_cell	N/A lexes to NotApplicable; never a number.
+MCITY-Q39	DATA:Acknowledgment	One acknowledgment per edition, each expected failure pinned; root field groups the runs.
+MCITY-Q40	DATA:Acknowledgment	Pinned per cell with exact residual.
+MCITY-Q41	DATA:Acknowledgment	Pinned per cell.
+MCITY-Q42	DATA:Acknowledgment	Pinned per cell.
+MCITY-Q43	DATA:Acknowledgment	Increase cell residual and the blank prior total (MISSING_TOTAL) pinned.
+MCITY-Q44	DATA:Acknowledgment	Pinned per cell.
+MCITY-Q45	DATA:Acknowledgment	Pinned per cell.
+MCITY-Q46	checkedtables.checks.dsl.Tolerance	PerOperand(1) on whole dollars: bound 1 x (1 + n) / 2, strict.
+MCITY-Q50	datadesk.core.tables.collections_city.parse	One table across all pages; rows match by schema, not by page.
+MCITY-Q52	checkedtables.columns.bind_columns	Lanes bind by caption, so a stray column is an unclaimed lane finding.
+MCITY-Q53	datadesk.core.fetch.confirm_period	A printed range that contradicts the period rejects the file unless a PRINTED_PERIOD note names it.
+MCITY-Q56	datadesk.core.watch.plan_watch	A 404 listing page for the current year is "not yet published", not a gap.
+MCITY-Q57	datadesk.core.checks.series.cross_edition_checks	Prior-year columns against last year's edition at WARN.
+MCITY-Q58	datadesk.core.registry.resolve	Collection lines are schema rows; tax links resolve or are listed as unknown.
+MSCH-Q01	datadesk.core.watch.plan_watch	Same sha under another period is rejected as a content alias; December 2015 reported as a gap.
+MSCH-Q02	datadesk.core.listings.parse_listing	Calendar year derived from the listing page's fiscal year.
+MSCH-Q03	datadesk.core.fetch.confirm_period	The printed title decides the month; the listing cannot misdate a file.
+MSCH-Q04	datadesk.core.fetch.confirm_period	Same title rules as City.
+MSCH-Q05	datadesk.core.fetch.confirm_period	Only the title block is read for the period.
+MSCH-Q07	datadesk.core.tables.collections_school.parse	One page, one table.
+MSCH-Q08	checkedtables.columns.bind_columns	Month and FYTD increase columns bound by caption.
+MSCH-Q09	checkedtables.columns.bind_columns	Revised and prior-year final are optional ColumnSpecs.
+MSCH-Q10	checkedtables.columns.bind_columns	Revised column bound by caption when printed.
+MSCH-Q11	checkedtables.columns.choose_era	Caption-year basis checked by edition date, as for City.
+MSCH-Q12	checkedtables.columns.choose_era	Caption signatures decide; a 2024 caption change fails era choice until declared.
+MSCH-Q13	checkedtables.columns.choose_era	CLOSE era by "NET ACCRUALS".
+MSCH-Q16	checkedtables.rows.match_rows	Bare cohort rows match only inside their tax block; furniture is a schema drop pattern.
+MSCH-Q17	DATA:RowSchema	Fused parent-cohort labels are alternate cohort labels.
+MSCH-Q18	checkedtables.rows.match_rows	Unknown labels are findings; a cohort row can never attach to the previous tax.
+MSCH-Q19	checkedtables.rows.Truncation	Clipped cohort suffixes match by unique prefix or fail.
+MSCH-Q20	checkedtables.text.squash	Squashed form matches the spaced label.
+MSCH-Q21	checkedtables.rows.Truncation	Clipped totals match by unique prefix or fail.
+MSCH-Q22	checkedtables.rows.match_rows	Wrapped two-line total joined only when the joined label matches.
+MSCH-Q23	datadesk.core.rowschemas.schema_for	The PILOT RowDef carries the June 2020 label bound to that sha, and the misc RowDef lists that sha in absent_editions, so it is neither required nor ambiguous.
+MSCH-Q24	DATA:DashRule	DashRule meaning zero for misc non-tax cells where reviewed.
+MSCH-Q25	DATA:ReviewedReading	ReviewedReading with reading=null accepts the unreadable cells; they publish null.
+MSCH-Q26	DATA:WordSourcePlan	OCR source for 2016-11 page 1; else a ReviewedReading marks the cells unreadable.
+MSCH-Q29	checkedtables.lex.lex_cell	A fused lane lexes Unreadable and blocks until reviewed.
+MSCH-Q30	datadesk.core.tables.collections_common.attach_stacked_labels	Same join as City, inside the School STACKED_LABELS window only; the bounds are confirmed on the first run.
+MSCH-Q32	checkedtables.checks.dsl.FirstPresent	FirstPresent(("revised_budget", "budget")) picks revised when the column is printed, even if the cell is unusable; that gives MISSING_OPERAND.
+MSCH-Q33	checkedtables.checks.engine.run_checks	Ratio checks need numeric operands; result proves only the percent cell.
+MSCH-Q34	checkedtables.lex.lex_cell	Parentheses and leading minus both lex to negative.
+MSCH-Q35	checkedtables.rows.match_rows	School schema is its own table scope.
+MSCH-Q36	DATA:MeasureSpec	MeasureSpec value_year offset -2 on prior-year final.
+MSCH-Q38	datadesk.core.watch.plan_watch	Last link per month wins; earlier versions stay superseded.
+QCASH-Q01	checkedtables.pages.find_runs	Header band predicate after NBSP collapse.
+QCASH-Q02	checkedtables.pages.find_runs	Longest contiguous run; ties are a finding.
+QCASH-Q03	datadesk.core.listings.parse_listing	Infographic titles skipped; revisions handled in plan_watch.
+QCASH-Q04	datadesk.core.listings.parse_listing	admin and www hosts canonicalized in the URL.
+QCASH-Q05	datadesk.core.fetch.confirm_period	PERIOD ENDING text must agree with the listing.
+QCASH-Q07	DATA:EditionNote	PRINTED_PERIOD note records the Q3 print on the Q2 edition.
+QCASH-Q08	datadesk.core.watch.plan_watch	Expected quarters minus indexed quarters are reported as gaps.
+QCASH-Q09	datadesk.core.tables.qcmr_cash.split_grids	Page 1 cut at REVENUES and EXPENSES captions; each grid binds its own columns.
+QCASH-Q13	checkedtables.columns.bind_columns	Lanes come from right edges of values and captions, not a whitespace threshold.
+QCASH-Q14	datadesk.core.tables.qcmr_cash.split_grids	Caption regex accepts E(cid:N)PENSES, "E PENSES" and ANO.
+QCASH-Q16	checkedtables.lines.group_lines	Baseline grouping never chains lines; debris lands outside lanes and is reported.
+QCASH-Q18	checkedtables.rows.stray_findings	A right-margin number outside every lane is a blocking stray.
+QCASH-Q20	checkedtables.checks.dsl.Tolerance	Tolerance.per_operand(0.1) gives the strict 0.05 x (n+1) bound.
+QCASH-Q21	DATA:ReviewedReading	No format inserts a decimal point. The 34 separator repairs become readings keyed by box and seen text; transliteration_ok keeps the digits.
+QCASH-Q22	DATA:WordSourcePlan	FY07 Q4 page declared text layer with compare=ocr; labels resolve through edition-bound labels.
+QCASH-Q23	datadesk.core.words_audit.compare_sources	plan_parse schedules both sources for the page; run_parse_job reports each digit disagreement as a BLOCK until a reading on the text layer settles it.
+QCASH-Q24	DATA:RowSchema	Edition-bound OCR labels for FY07 Q4.
+QCASH-Q25	DATA:RowSchema	OCR spellings are edition-bound labels.
+QCASH-Q26	DATA:Era	Mergers caption regex tolerates "mergere".
+QCASH-Q27	DATA:RowSchema	Kind comes from the schema, not from the word Total. The unlabeled subtotal is a RowDef with label "" and follows= the last expense line, so it matches only the line right after it.
+QCASH-Q28	checkedtables.table.Additivity	Memo breakdowns are BREAKDOWN rows with a parent, so they are COMPONENT.
+QCASH-Q29	DATA:RowSchema	FY10 Q3 abbreviated labels are period-bound alternates.
+QCASH-Q30	checkedtables.checks.dsl.CheckSet	ChildrenSum on the two memo parents.
+QCASH-Q31	DATA:RowSchema	Net wage RowDef has presence=optional.
+QCASH-Q32	checkedtables.columns.choose_era	Three revenue eras by header tokens.
+QCASH-Q33	checkedtables.columns.choose_era	Two expense eras by Mergers caption.
+QCASH-Q34	checkedtables.columns.bind_columns	Modern era requires the Not Accrued caption; 15 lanes cannot bind to it.
+QCASH-Q35	checkedtables.columns.bind_columns	A caption with no values under it binds an empty lane; cells are Blank.
+QCASH-Q37	datadesk.core.measures.measure_for	Two RowMeasure overrides give the 13th column fy_start_balance on Opening Balance and fy_end_balance on CLOSING BALANCE; flows keep the annual sum.
+QCASH-Q38	datadesk.core.tables.qcmr_cash.find_balance_page	Page 2 is the page after the page-1 run, accepted only if it binds the twelve-month era and matches the page-2 row schema; the caption is optional evidence.
+QCASH-Q41	datadesk.core.measures.scope_for	Scope.actual_through is the period end, or a CUTOFF note for 8 editions; month columns are actual or projection by it.
+QCASH-Q42	datadesk.core.vintage.select_canonical	ALL_VINTAGES: every edition kept; no additive use.
+QCASH-Q43	checkedtables.checks.dsl.CheckSet	CLOSING = Opening + Excess + PlusIfPrinted(TRANS); a blank TRANS is dropped, never zero.
+QCASH-Q44	checkedtables.checks.dsl.CheckSet	checks_for(era, period) declares the endpoint identity per era.
+QCASH-Q45	checkedtables.checks.dsl.Tolerance	Strict per-operand bound on one-decimal millions.
+QCASH-Q46	DATA:Acknowledgment	11 records pinned by key and residual.
+QCASH-Q47	checkedtables.checks.acks.match_acknowledgments	Exact residual and key; a failure without a record blocks.
+QCASH-Q51	DATA:MeasureSpec	MeasureSpec unit USD, scale 1,000,000, printed decimals 1.
+QCASH-Q52	checkedtables.lex.lex_cell	Dash and marks lex to Dash or Unreadable; never zero by default.
+QCASH-Q53	checkedtables.lex.lex_cell	Parentheses and minus both negative.
+QCASH-Q54	DATA:RowSchema	Renames are period-bound alternate labels.
+QCASH-Q55	checkedtables.rows.match_rows	Wrapped-label join when the joined text matches a RowDef.
+QCASH-Q56	checkedtables.rows.match_rows	Section rows open blocks through within; no qualifier rule is needed.
+QCASH-Q57	DATA:RowSchema	Fund RowDefs carry periods and presence.
+QCASH-Q58	DATA:ReviewedReading	ReviewedReading readings or unreadable acceptance per cell.
+QCASH-Q60	DATA:ReviewedReading	Each corrected cell is a reading keyed by box and seen text; the count is whatever review finds.
+QCASH-Q61	datadesk.core.watch.plan_watch	Expected editions come from the catalog; differences are gaps.
+QOBL-Q01	checkedtables.pages.find_runs	Header band predicate "TABLE O-2" or "TABLE O-3", exact code.
+QOBL-Q02	checkedtables.text.normalize_space	NBSP collapses before band matching.
+QOBL-Q03	checkedtables.pages.only_run	Every run is returned; the contents page is outside the header band, and two runs are a finding.
+QOBL-Q04	datadesk.core.periods.fiscal_period	Period end to fiscal quarter; Sep and Dec belong to the next FY.
+QOBL-Q05	datadesk.core.listings.parse_listing	Infographics skipped by title.
+QOBL-Q06	datadesk.core.fetch.plan_fetch	Printed and listed period disagree: rejection unless a PRINTED_PERIOD note exists.
+QOBL-Q10	datadesk.core.watch.plan_watch	Missing O-3 quarters are gaps in the watch pull request.
+QOBL-Q12	datadesk.core.tables.qcmr_personal_services.parse	Metric rows are keyed under their section.
+QOBL-Q13	datadesk.core.tables.qcmr_personal_services.citywide_end	Value-less TOTAL GENERAL FUND starts the citywide block of three metric rows.
+QOBL-Q14	datadesk.core.tables.qcmr_personal_services.parse	Sub-department sections listed per era in the O-3 row schema; COMPONENT additivity.
+QOBL-Q15	DATA:RowSchema	Sanitation parent or division by period.
+QOBL-Q16	DATA:RowSchema	OPS parent and OPS-* sub-blocks from FY26.
+QOBL-Q17	DATA:RowSchema	FY26 Sanitation is declared by period once the first run shows it.
+QOBL-Q18	datadesk.core.tables.qcmr_personal_services.drop_footnotes	A known section row ends a footnote run, so Engineering Design is never swallowed.
+QOBL-Q19	datadesk.core.tables.qcmr_personal_services.drop_footnotes	A footnote opens with a mark and runs over its wrapped lines until a valued or known row; its lines become furniture.
+QOBL-Q20	datadesk.core.tables.qcmr_personal_services.citywide_end	The body ends at the third metric line after the value-less TOTAL GENERAL FUND; no box detection.
+QOBL-Q21	checkedtables.pages.slice_body	No drawn rules are needed for the citywide box.
+QOBL-Q22	datadesk.core.tables.qcmr_personal_services.citywide_end	The citywide block is found by its rows, scan or text.
+QOBL-Q23	checkedtables.columns.bind_columns	Lanes come from values and captions; rules are not required.
+QOBL-Q24	checkedtables.text.parse_label	Marks such as "(1)" and "(*)" split off the metric label.
+QOBL-Q26	checkedtables.checks.dsl.Tolerance	EXACT tolerance on position rows; USD rows per row unit.
+QOBL-Q27	datadesk.core.tables.qcmr_personal_services.parse	Row.unit set from the metric RowDef.
+QOBL-Q28	checkedtables.columns.choose_era	Year-end and in-year forms chosen by captions.
+QOBL-Q29	checkedtables.columns.choose_era	Era by caption, not by year pattern.
+QOBL-Q30	DATA:Era	Caption regexes for Unaudited Actual and Year-End Actual (FY-1) bind to the same measure.
+QOBL-Q31	checkedtables.columns.bind_columns	Oldest prior-year columns are optional ColumnSpecs bound by caption.
+QOBL-Q36	DATA:Acknowledgment	Two cells pinned.
+QOBL-Q39	checkedtables.checks.dsl.CheckSet	parent_is_sub_blocks is a ChildrenSum over BREAKDOWN sub-blocks, declared at WARN until a corpus run shows it holds.
+QOBL-Q40	datadesk.core.registry.resolve	Sections resolve through table-scoped aliases in the registry.
+QOBL-Q41	DATA:Registry	GROUP entity City Rep. / Commerce with members.
+QOBL-Q42	DATA:Registry	Table-scoped alias of Human Services, bounded to FY21.
+QOBL-Q43	checkedtables.text.parse_label	Trailing marks split off section headings.
+QOBL-Q45	datadesk.core.tables.qcmr_obligations.parse	Body stops at TOTAL GENERAL FUND; single fund.
+QOBL-Q46	DATA:Registry	Central appropriation lines are entities with parent_id.
+QOBL-Q47	checkedtables.grammar.read_grammar	If O-2 nests italic components, the first run shows unknown or duplicate rows; no style rule is declared until then.
+QOBL-Q48	checkedtables.text.parse_label	Markers "(3)" to "(10)" split off as marks.
+QOBL-Q49	DATA:Registry	Two dated entities.
+QOBL-Q50	DATA:Registry	CPOC parent is the Managing Director.
+QOBL-Q51	checkedtables.rows.match_rows	A wrapped label joins the next row when that gives one candidate.
+QOBL-Q52	checkedtables.checks.engine.run_checks	Blank operand gives MISSING_OPERAND; never zero.
+QOBL-Q53	DATA:Registry	GROUP entity.
+QOBL-Q54	datadesk.core.tables.qcmr_obligations.parse	Row key keeps the printed line label beside the department, so two lines for one department stay distinct.
+QOBL-Q55	checkedtables.text.split_line_prefix	Recap line numbers leave the line by the declared prefix.
+QOBL-Q56	checkedtables.checks.dsl.CheckSet	RowDifference declares budget minus projection.
+QOBL-Q57	DATA:MeasureSpec	MeasureSpec value_year offsets per column.
+QOBL-Q58	datadesk.core.vintage.select_canonical	ALL_VINTAGES plus a LATEST_PER_VALUE_YEAR view flag.
+QOBL-Q59	datadesk.core.fetch.confirm_period	The printed period decides; a Q3 print on a Q2 listing needs a note.
+QPOS-Q01	DATA:Era	Ten COUNT columns declared in one era.
+QPOS-Q02	checkedtables.columns.bind_columns	Columns bind by caption; a wrong guess is a binding finding.
+QPOS-Q03	checkedtables.checks.dsl.Tolerance	EXACT tolerance.
+QPOS-Q05	checkedtables.rows.match_rows	Civilian and Uniform match only inside their parent block.
+QPOS-Q07	checkedtables.rows.match_rows	Children come from the schema, never from indentation.
+QPOS-Q08	checkedtables.text.split_line_prefix	BodyRule.prefix takes "I", "23" and similar words off the line before lanes are found; they become Label.line_no.
+QPOS-Q09	DATA:Registry	OCR department spellings are table-scoped aliases bound to the file's sha.
+QPOS-Q10	checkedtables.text.split_line_prefix	Leading numbers leave the line by the P-1 prefix rule.
+QPOS-Q11	checkedtables.text.parse_label	"(1)" split off as a mark.
+QPOS-Q12	DATA:RowSchema	Two Streets RowDefs with disjoint periods, each linked to its own entity; the group's "Streets" spelling is a P-1 alias for FY2018 to FY2025.
+QPOS-Q13	DATA:RowSchema	Combined row is its own RowDef for the four editions, linked to a GROUP entity.
+QPOS-Q14	DATA:Registry	Department renames are dated official names; merges are registry relations. The schema row carries no labels.
+QPOS-Q15	datadesk.core.tables.qcmr_positions.parse	Rows from every page of the run form one table before checks run.
+QPOS-Q16	DATA:Acknowledgment	Four editions pinned, root shared.
+QPOS-Q17	DATA:Acknowledgment	Pinned.
+QPOS-Q18	DATA:Acknowledgment	Pinned as source_omission.
+QPOS-Q19	checkedtables.checks.acks.match_acknowledgments	The 11 failures block FY2008 Q2 until each is reviewed (decision 5).
+QPOS-Q20	checkedtables.checks.acks.match_acknowledgments	Blocks with FY2008 Q2 until reviewed.
+QPOS-Q21	checkedtables.lex.lex_cell	Blank lane cell lexes to Blank and stays null.
+QPOS-Q22	checkedtables.checks.dsl.CheckSet	Variance is a RowDifference, and over_under is not a column of the all_funds_total ChildrenSum.
+QPOS-Q29	checkedtables.table.Additivity	Civilian and Uniform are BREAKDOWN rows, additivity COMPONENT.
+QPOS-Q30	checkedtables.pages.find_runs	The band rule runs on whole reports; editions held only as cut files wait for decision 1.
+QPOS-Q32	datadesk.core.watch.plan_watch	Later attachment for one quarter supersedes the earlier one.
+QPOS-Q33	datadesk.core.listings.parse_listing	Infographics skipped by title.
+QPOS-Q34	datadesk.core.periods.fiscal_period	Quarter mapping from period end.
+QPOS-Q35	checkedtables.pages.only_run	A three-page run is read as found; a split run is a finding.
+QPOS-Q36	DATA:MeasureSpec	MeasureSpec basis POINT for counts.
+QPOS-Q37	DATA:RowSchema	The subtotal RowDef declares forms "{name} Total" and "{name} - Total"; the name comes from the registry.
+RTT-Q01	DATA:SourceCatalog	Listing URL pattern per year with the 2015 slug exception.
+RTT-Q02	datadesk.core.listings.parse_listing	Links kept only when title plus filename name the tax.
+RTT-Q03	datadesk.core.listings.parse_listing	Title is the witness; filename never decides.
+RTT-Q04	datadesk.core.listings.parse_listing	Title period regexes for quarter, month and month range.
+RTT-Q05	datadesk.core.listings.parse_listing	Fallback to YYYYMM in the filename, then the page year.
+RTT-Q06	datadesk.core.watch.plan_watch	Same-period later link supersedes.
+RTT-Q10	datadesk.core.watch.plan_watch	404 for a future year page is not a gap.
+RTT-Q11	datadesk.core.tables.rtt.split_zones	Split each page at the property, location and FAMIS headings.
+RTT-Q13	datadesk.core.tables.rtt.parse	Seven title patterns map to a Window value.
+RTT-Q14	datadesk.core.tables.rtt.parse	Top transactions pages are recognised and skipped.
+RTT-Q15	checkedtables.table.Additivity	FAMIS zone rows are MEMO with no total.
+RTT-Q19	DATA:Era	Legacy grid era with month 1 to 3 and quarter pairs.
+RTT-Q20	DATA:Era	14-column monthly comparison era.
+RTT-Q21	checkedtables.columns.bind_columns	A lost column is a binding finding; a fused cell is Unreadable.
+RTT-Q22	checkedtables.lex.split_numeric_runs	Two percents in one cell split into two words, then bind by lane.
+RTT-Q23	DATA:RowSchema	Edition-bound label for January 2020.
+RTT-Q24	DATA:EditionNote	PRINTED_PERIOD note on the August 2020 FYTD header.
+RTT-Q25	checkedtables.checks.dsl.Tolerance	Tolerance.absolute(2) on difference checks.
+RTT-Q26	checkedtables.checks.dsl.Tolerance	Same.
+RTT-Q27	DATA:Acknowledgment	Pinned per cell.
+RTT-Q28	DATA:Acknowledgment	Pinned on the later edition.
+RTT-Q29	checkedtables.checks.dsl.CheckSet	Location difference total declared as grand-total difference.
+RTT-Q30	DATA:Acknowledgment	Pinned.
+RTT-Q31	datadesk.core.checks.series.cross_edition_checks	Prior FYTD against the earlier edition at WARN.
+RTT-Q32	checkedtables.rows.match_rows	Section-scoped RowDefs.
+RTT-Q33	datadesk.core.tables.rtt.split_zones	Zone gives the table instance, so schemas differ.
+RTT-Q34	datadesk.core.tables.rtt.split_zones	Zones are split by headings for every window.
+RTT-Q35	DATA:RowSchema	Alternate labels with periods.
+RTT-Q36	DATA:RowSchema	New classes with periods, no relation.
+RTT-Q37	DATA:RowSchema	Typos are alternate labels; truncation handled as edition-bound labels.
+RTT-Q38	checkedtables.text.parse_label	"**1" split off as a mark.
+RTT-Q39	checkedtables.lex.lex_cell	Dash lexes to Dash(no value).
+RTT-Q40	checkedtables.columns.NumberFormat	PercentSign.OPTIONAL where the sign may be absent.
+RTT-Q41	datadesk.core.periods.fiscal_period	Window and year basis per table: calendar for month, quarter and calendar year; fiscal for FYTD and fiscal year.
+RTT-Q48	datadesk.core.vintage.select_canonical	CURRENT_COLUMN policy per window; 2020 quarters are not derived.
+RTT-Q49	datadesk.core.checks.series.cross_edition_checks	Not declared until a cross-family check is wanted; listed as an open question.
+SUPCAP-Q01	DATA:SourceCatalog	Supplemental source in the document-finder feed plus a manual import command that writes the same index line.
+SUPCAP-Q02	datadesk.core.watch.plan_watch	Absent years are gaps; finding them is decision 4.
+SUPCAP-Q04	DATA:SourceCatalog	Expected cadence and lag declared so the gap report does not fire early.
+SUPCAP-Q05	checkedtables.pages.slice_body	Folio "- N -" dropped; release cites the PDF page and keeps the printed folio as text.
+SUPCAP-Q06	datadesk.core.tables.supp_common.split_statements	Statement title is the page type.
+SUPCAP-Q07	datadesk.core.tables.supp_common.split_statements	Title regexes for each variant, case-insensitive.
+SUPCAP-Q09	datadesk.core.tables.supp_common.split_statements	Untitled pages belong to no statement unless they continue one with the same title.
+SUPCAP-Q10	datadesk.core.tables.supp_common.split_statements	Every title starts a zone, so stacked statements stay apart.
+SUPCAP-Q11	datadesk.core.tables.supp_common.split_statements	Header block read from the lines above the column captions in either layout.
+SUPCAP-Q12	datadesk.core.tables.supp_capital.parse	Capital statements take fund context from the title, not a banner.
+SUPCAP-Q13	DATA:MeasureSpec	The unit is declared per column; a page without unit text still publishes the declared unit.
+SUPCAP-Q14	checkedtables.columns.choose_era	Two activity eras, with and without the leading column.
+SUPCAP-Q20	checkedtables.grammar.read_grammar	Reprinted category banner sets the same slot value; one subtotal closes it.
+SUPCAP-Q21	checkedtables.checks.acks.match_acknowledgments	The failure blocks until someone reads the page.
+SUPCAP-Q22	checkedtables.checks.acks.match_acknowledgments	The failure blocks until someone reads the page; letter codes lex as marks or Unreadable.
+SUPCAP-Q23	checkedtables.grammar.read_grammar	Agency, category, project slots with colon subtotal rules.
+SUPCAP-Q24	checkedtables.grammar.read_grammar	No size limits; keys are label based.
+SUPCAP-Q25	checkedtables.grammar.read_grammar	Project label is the key part as printed, normalized.
+SUPCAP-Q26	checkedtables.grammar.read_grammar	Project rows key by label and budget year; a repeat in one block is duplicate_row.
+SUPCAP-Q27	datadesk.core.tables.supp_capital.parse	Project year in a label is kept in the label, never used as the period.
+SUPCAP-Q28	checkedtables.lex.lex_cell	Dash lexes to Dash(no value).
+SUPCAP-Q29	checkedtables.checks.dsl.CheckSet	Summary subtotal parts exclude the reporting-year row by key.
+SUPCAP-Q30	datadesk.core.tables.supp_capital.parse	Reporting year read from the header date and checked against the edition.
+SUPCAP-Q31	DATA:Era	Budget year is a YEAR column, never additive.
+SUPCAP-Q32	checkedtables.rows.RowDef	An unlabeled summary subtotal is a RowDef with follows; nothing is synthesized.
+SUPCAP-Q33	datadesk.core.tables.supp_capital.parse	A one-dash year row is kept; cells in other lanes are Blank.
+SUPCAP-Q34	checkedtables.lex.lex_cell	N/A lexes to NotApplicable; the all-funds check excludes it by declaration.
+SUPCAP-Q35	DATA:Acknowledgment	Pinned.
+SUPCAP-Q41	datadesk.core.tables.catalog.TABLES	The three capital tables are TABLES entries like any other.
+SUPCAP-Q42	datadesk.core.tables.supp_common.split_statements	Unpublished statement titles are recognised and skipped.
+SUPCAP-Q43	DATA:WordSourcePlan	Text layer declared for the family.
+SUPOP-Q01	datadesk.core.tables.supp_common.split_statements	Title is the table identifier.
+SUPOP-Q02	datadesk.core.tables.supp_common.split_statements	Title variants in the regex.
+SUPOP-Q03	datadesk.core.tables.supp_common.split_statements	Every statement title, its own included, starts a zone, so stacked statements stay apart.
+SUPOP-Q04	datadesk.core.tables.supp_common.split_statements	NOTE: block ends the statement body.
+SUPOP-Q05	datadesk.core.tables.supp_common.split_statements	Encumbrance statements recognised and skipped.
+SUPOP-Q06	datadesk.core.tables.supp_common.split_statements	Fund banner read under the city line; summary pages get fund scope "operating".
+SUPOP-Q07	datadesk.core.tables.supp_activity.parse	Single-agency fund seeds the agency slot.
+SUPOP-Q08	datadesk.core.tables.supp_common.split_statements	Both header shapes and "Exhibit" accepted.
+SUPOP-Q09	datadesk.core.tables.supp_common.split_statements	Schedule letters are kept as evidence only, never in keys.
+SUPOP-Q10	checkedtables.grammar.read_grammar	Colon banner and "Subtotal X:" rules.
+SUPOP-Q11	checkedtables.columns.bind_columns	Header words are assigned to lanes, so "Percent of" stays in the header block.
+SUPOP-Q12	checkedtables.lex.lex_cell	percent_sign optional on percent columns; bound by caption, never guessed.
+SUPOP-Q15	checkedtables.columns.bind_columns	FAMIS and adjustments are optional columns bound by caption.
+SUPOP-Q16	checkedtables.grammar.read_grammar	Class 100 detail lines matched by their own rule as COMPONENT rows.
+SUPOP-Q17	checkedtables.grammar.read_grammar	An agency banner line with values is an ITEM keyed by the agency.
+SUPOP-Q18	datadesk.core.tables.supp_common.lift_subtotal_labels	Moves the Sub-Total label words onto the values-only line below.
+SUPOP-Q19	checkedtables.text.squash	Squashed matching reads "PublicHealthSub-Total"; lift_subtotal_labels handles the label.
+SUPOP-Q20	checkedtables.grammar.read_grammar	A banner reprinted with the open slot's label continues the slot; one later Sub-Total closes the whole department.
+SUPOP-Q21	datadesk.core.tables.supp_revenues.GRAMMAR_WATER_FY2010	GRAMMAR_WATER_FY2010 adds a Style.BOLD valued opener that owns its department, for FY2010 Water only. On a page without style it blocks with style_unavailable. Above or below its children is not verified.
+SUPOP-Q23	checkedtables.checks.coverage.check_coverage	An all-dash Sub-Total with no children gives no instance and no coverage finding, because it holds no Amount; with valued children it is MISSING_TOTAL.
+SUPOP-Q24	checkedtables.checks.engine.run_checks	Dash total with valued parts is MISSING_TOTAL.
+SUPOP-Q25	checkedtables.checks.dsl.CheckSet	RowDifference on Increase; failures acknowledged.
+SUPOP-Q26	DATA:Acknowledgment	Pinned in both editions.
+SUPOP-Q27	DATA:Acknowledgment	Pinned.
+SUPOP-Q28	DATA:Acknowledgment	Pinned as MISSING_TOTAL.
+SUPOP-Q29	DATA:Acknowledgment	Pinned.
+SUPOP-Q30	checkedtables.checks.acks.match_acknowledgments	Residuals block until reviewed.
+SUPOP-Q31	DATA:Acknowledgment	Pinned.
+SUPOP-Q32	checkedtables.text.normalize_label	U+2010 and spaced hyphens normalised.
+SUPOP-Q33	checkedtables.grammar.read_grammar	Grand total rule accepts both forms.
+SUPOP-Q34	DATA:Registry	Fund alias with the misspelling, scoped to the supplemental tables and bound to the editions that print it.
+SUPOP-Q35	checkedtables.pages.slice_body	Footer and repeated header lines dropped by pattern.
+SUPOP-Q36	DATA:MeasureSpec	Prior Year Actual has value_year offset -1.
+SUPOP-Q37	checkedtables.pages.slice_body	Release cites the PDF page; printed folio kept as text.
+SUPOP-Q38	DATA:SourceCatalog	Expected editions declared; gaps reported, not failed.
+SUPOP-Q39	DATA:Registry	Dated names and table-scoped aliases.
+SUPOP-Q40	datadesk.core.tables.supp_common.link_departments	Unknown agencies are WARN with entity_status unknown.
+SUPOP-Q44	datadesk.core.tables.supp_common.split_statements	No bridging; stacked pages are zoned by title.
+SUPOP-Q45	datadesk.core.measures.MeasureSpec	Percent of Obligations gets a declared measure or is withheld by DatasetSpec.
+SUPOP-Q46	NOT_HANDLED	Comparison with budget books is budget detail work and stays in gov-budget-data.
+VAL-Q02	DATA:WordSourcePlan	Declared source per page, with compare where a record asks; no arithmetic choice.
+VAL-Q03	DATA:WordSourcePlan	OCR source or reviewed unreadable cells for the two overprinted editions.
+VAL-Q05	datadesk.core.tables.qcmr_cash.split_grids	Caption regex tolerates the cid glyph.
+VAL-Q06	DATA:WordSourcePlan	Scan pages declared with OCR source.
+VAL-Q07	checkedtables.words.WordSource	WordSource.tool records engine, API version and dpi.
+VAL-Q08	checkedtables.lex.split_numeric_runs	Child words carry parent refs and proportional boxes, marked approximate.
+VAL-Q09	checkedtables.lex.lex_cell	Currency symbols stripped inside the cell lexer.
+VAL-Q12	datadesk.core.tables.qcmr_cash.split_grids	Split at captions.
+VAL-Q13	checkedtables.lines.group_lines	Baseline grouping never chains lines.
+VAL-Q14	checkedtables.pages.slice_body	Body runs to the last declared row; no box detection.
+VAL-Q15	checkedtables.columns.lanes_from_rules	Lanes from drawn vertical rules for ruled forms.
+VAL-Q16	DATA:Era	LINE NO. is a CODE column.
+VAL-Q17	datadesk.core.tables.collections_common.attach_stacked_labels	Label-above join, era-scoped to the 2014 window.
+VAL-Q19	checkedtables.checks.engine.run_checks	Checks run on whole tables spanning pages.
+VAL-Q24	DATA:DashRule	Dash meaning declared per table, column, rows and period.
+VAL-Q25	checkedtables.checks.dsl.CheckSet	N/A operands excluded only where the check declares it.
+VAL-Q26	checkedtables.lex.lex_cell	A trailing minus or a plus sign lexes Unreadable.
+VAL-Q27	checkedtables.lex.lex_cell	Percent is its own ValueKind with printed decimals.
+VAL-Q28	checkedtables.lex.lex_cell	Trailing footnote marks, Unicode superscript digits and a small raised trailing digit word split into the cell's marks. No family is known to print them.
+VAL-Q29	DATA:MeasureSpec	MeasureSpec unit and scale per column, RowMeasure where one row differs.
+VAL-Q30	datadesk.core.tables.qcmr_personal_services.parse	Row unit from the metric RowDef.
+VAL-Q31	DATA:Acknowledgment	Pinned.
+VAL-Q33	checkedtables.lex.split_numeric_runs	Two amounts in one word split into child words.
+VAL-Q34	checkedtables.lex.split_numeric_runs	Amount fused to label text split into child words.
+VAL-Q35	checkedtables.records.apply_reading	Separator repairs come only from a ReviewedReading whose digits transliterate the seen text.
+VAL-Q36	checkedtables.records.apply_reading	Letter-for-digit readings need a reviewed record that passes transliteration_ok.
+VAL-Q37	DATA:EditionNote	DROP_LINE note.
+VAL-Q46	DATA:Acknowledgment	root field groups records of one defect; each failure still pinned.
+VAL-Q48	checkedtables.checks.acks.match_acknowledgments	FailureKey is semantic and carries the document sha.
+VAL-Q49	checkedtables.checks.dsl.Tolerance	Strict half-increment bound; EXACT for counts.
+VAL-Q50	checkedtables.checks.dsl.CheckSet	Reporting-year exclusion is part of the declared check.
+WAGE-Q01	DATA:SourceCatalog	Per-year listing URL with the 2016 slug exception.
+WAGE-Q02	datadesk.core.listings.parse_listing	Page year basis read from the slug form.
+WAGE-Q03	datadesk.core.listings.parse_listing	Titled anchor wins; icon anchors with the same URL are merged.
+WAGE-Q04	datadesk.core.listings.parse_listing	Wage_YYYYMM filename parse.
+WAGE-Q05	datadesk.core.listings.parse_listing	Year from the title.
+WAGE-Q06	datadesk.core.listings.parse_listing	Title wins over filename.
+WAGE-Q07	datadesk.core.periods.fiscal_period	FY titles map July to December into the previous calendar year.
+WAGE-Q08	datadesk.core.listings.parse_listing	Unrelated links filtered by title words.
+WAGE-Q09	datadesk.core.watch.plan_watch	Later listing wins; the original stays superseded.
+WAGE-Q10	datadesk.core.watch.plan_watch	Index is keyed by sha; a URL whose bytes change becomes a reuse event with a Wayback lookup step.
+WAGE-Q11	datadesk.core.watch.plan_watch	WaybackLookup plan items; the capture must pass confirm_period.
+WAGE-Q13	datadesk.core.listings.parse_listing	URL stamp is ordering evidence only, never the period.
+WAGE-Q14	datadesk.core.fetch.confirm_period	Bytes must print the listed months and FY.
+WAGE-Q15	DATA:WordSourcePlan	2023_12 is declared OCR; the period reader runs on OCR text.
+WAGE-Q19	datadesk.core.tables.wage_industry.period_kind	Period kind from the title per table.
+WAGE-Q20	datadesk.core.tables.wage_industry.period_kind	The title decides month or quarter; ambiguity is a finding.
+WAGE-Q22	datadesk.core.tables.wage_industry.parse	Pages without a table title are skipped.
+WAGE-Q23	datadesk.core.tables.wage_industry.period_kind	Table number is evidence; period kind comes from title words.
+WAGE-Q24	datadesk.core.tables.wage_industry.period_kind	Header line "FYTD" sets the period kind when the title has none.
+WAGE-Q25	datadesk.core.tables.wage_industry.period_kind	Title regexes cover spacing and wording variants.
+WAGE-Q26	datadesk.core.tables.wage_industry.parse	A bare Table 2 must match a declared type or it is a finding.
+WAGE-Q29	checkedtables.pages.only_run	Two runs of one type are a finding.
+WAGE-Q31	DATA:EditionNote	HEADER_MISPRINT note for 2023_12 Table 2.
+WAGE-Q33	datadesk.core.tables.wage_industry.period_kind	FYTD value year is the fiscal year printed; no special case needed.
+WAGE-Q34	datadesk.core.periods.fiscal_period	Basis per period kind.
+WAGE-Q35	datadesk.core.tables.wage_industry.period_kind	Printed range must agree with the assigned period, else a finding that needs a note.
+WAGE-Q36	checkedtables.pages.slice_body	Body runs to the last total label.
+WAGE-Q37	checkedtables.columns.NumberFormat	PercentSign.OPTIONAL.
+WAGE-Q38	DATA:RowSchema	Parents and sub-industries with parent links.
+WAGE-Q39	checkedtables.table.Additivity	Sub-industries are BREAKDOWN rows, additivity COMPONENT.
+WAGE-Q40	checkedtables.table.Additivity	Database total TOTAL, FAMIS total MEMO.
+WAGE-Q41	DATA:RowSchema	Alternate labels.
+WAGE-Q42	DATA:RowSchema	Alternate labels.
+WAGE-Q43	checkedtables.rows.match_rows	Damaged labels fail matching until an edition-bound label is declared.
+WAGE-Q44	checkedtables.text.parse_label	"see note" split off as a mark.
+WAGE-Q45	checkedtables.rows.match_rows	Wage schema is its own scope.
+WAGE-Q46	DATA:Acknowledgment	Equal and opposite residuals pinned once the parent check runs.
+WAGE-Q47	datadesk.core.checks.series.cross_edition_checks	Prior-year columns compared with earlier editions at WARN.
+WAGE-Q49	datadesk.core.vintage.select_canonical	NEWEST_COVERING per calendar year.
+WAGE-Q50	datadesk.core.listings.parse_listing	Year list parsed in either order.
+WAGE-Q51	datadesk.core.tables.wage_residency.parse	Title regex for the residency pages accepts "by Industry".
+WAGE-Q52	checkedtables.columns.choose_era	Residency eras by captions.
+WAGE-Q54	datadesk.core.tables.wage_residency.parse	Detail table optional for the summary-only era.
+WAGE-Q55	datadesk.core.vintage.select_canonical	NEWEST_COVERING.
+WAGE-Q56	DATA:Acknowledgment	Pinned in each edition, one root.
+WAGE-Q57	DATA:Acknowledgment	Pinned in each edition.
+WAGE-Q58	DATA:Acknowledgment	Pinned.
+WAGE-Q61	checkedtables.rows.match_rows	Rows are matched by label, never by row number.

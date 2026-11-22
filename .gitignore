@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.hypothesis/
+.coverage
+htmlcov/
+
+# Source documents and local caches never go in git
+*.pdf
+.cache/
+cache/
+
+# Codex review reports (summaries go in the pull request)
+.codex-review/
+
+# Secrets and personal settings
+.env
+.env.*
+.claude/settings.local.json
+CLAUDE.local.md
+
+# OS
+.DS_Store
