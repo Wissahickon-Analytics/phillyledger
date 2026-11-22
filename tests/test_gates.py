@@ -52,6 +52,8 @@ jobs:
           version=$(uv run python -c 'import sys; print(*sys.version_info[:2], sep=".")')
           echo "$version"
           test "$version" = "${{ matrix.python-version }}"
+      - name: Kit size report
+        run: uv run python packages/checkedtables/tests/test_library_shape.py
 """
 ALWAYS = "${{ !cancelled() }}"
 SRC_FOLDERS = (
