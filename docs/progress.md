@@ -169,5 +169,12 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   - pytest-socket 0.8.1 replaces only `socket.socket`, `socket.getaddrinfo` and
     `socket.gethostbyname`. In a core test, `_socket.socket()`, `socket.gethostbyname_ex` and
     `socket.getnameinfo` still pass. The probes used numeric loopback input only.
+  - A class that a module defines on `socket.socket` keeps the block for the whole session when
+    the module is first imported after the root `conftest.py` blocks sockets. `ssl` is one:
+    `ssl.SSLSocket` subclasses pytest-socket's guard, so under the marker
+    `ssl.create_default_context().wrap_socket(...)` fails with `SocketBlockedError`. With
+    `import ssl` at the top of the root `conftest.py`, the same probe passes and the isolation
+    tests still pass. Probed at S1-D on an unconnected socket. The first contract test that needs
+    TLS makes that change.
   - Each blocked call also prints pytest-socket's `UserWarning`, so `uv run pytest` reports one
     warning per isolation test that expects a block.
