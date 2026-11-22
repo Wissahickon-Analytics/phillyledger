@@ -24,11 +24,25 @@ def public_modules(module: ModuleType) -> list[ModuleType]:
     return [module, *map(importlib.import_module, public)]
 
 
-def defined_objects(module: ModuleType) -> Iterator[object]:
-    for defining in public_modules(module):
-        for name, value in vars(defining).items():
-            if not name.startswith("_") and getattr(value, "__module__", None) == defining.__name__:
-                yield value
+def in_package(value: object, root: ModuleType) -> bool:
+    module = getattr(value, "__module__", None)
+    return isinstance(module, str) and (
+        module == root.__name__ or module.startswith(f"{root.__name__}.")
+    )
+
+
+def public_objects(root: ModuleType) -> Iterable[object]:
+    return {
+        id(value): value
+        for module in public_modules(root)
+        for name, value in vars(module).items()
+        if not name.startswith("_") and in_package(value, root)
+    }.values()
+
+
+def written_constructor(cls: type) -> Iterator[MethodType]:
+    if "__init__" in vars(cls) and not dataclasses.is_dataclass(cls):
+        yield MethodType(vars(cls)["__init__"], cls)
 
 
 def public_methods_as_called(cls: type) -> Iterator[FunctionType | MethodType]:
@@ -42,10 +56,11 @@ def public_methods_as_called(cls: type) -> Iterator[FunctionType | MethodType]:
 
 
 def public_functions(module: ModuleType) -> Iterator[FunctionType | MethodType]:
-    for value in defined_objects(module):
+    for value in public_objects(module):
         if isinstance(value, FunctionType):
             yield value
         elif isinstance(value, type):
+            yield from written_constructor(value)
             yield from public_methods_as_called(value)
 
 
@@ -63,7 +78,7 @@ def bool_parameters(fn: FunctionType | MethodType) -> list[str]:
 def kit_dataclasses() -> list["type[DataclassInstance]"]:
     return [
         value
-        for value in defined_objects(checkedtables)
+        for value in public_objects(checkedtables)
         if isinstance(value, type) and dataclasses.is_dataclass(value)
     ]
 
