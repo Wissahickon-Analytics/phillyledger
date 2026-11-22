@@ -68,7 +68,9 @@ def run_gate(
     shutil.copytree(REPO / "packages", workspace / "packages")
     shutil.copy(REPO / "pyproject.toml", workspace / "pyproject.toml")
     for path, text in plants.items():
-        with (workspace / path).open("a") as planted:
+        planted_path = workspace / path
+        planted_path.parent.mkdir(parents=True, exist_ok=True)
+        with planted_path.open("a") as planted:
             planted.write(text)
     executable, *args = gate.removeprefix("uv run ").split()
     command = [str(Path(sys.executable).parent / executable), *args, *extra]
@@ -76,7 +78,7 @@ def run_gate(
     return subprocess.run(
         command,
         cwd=workspace,
-        env={**os.environ, "PYTHONPATH": pythonpath},
+        env={**os.environ, "PYTHONPATH": pythonpath, "COLUMNS": "200"},
         capture_output=True,
         text=True,
         check=False,
@@ -101,12 +103,32 @@ def test_ci_runs_every_gate() -> None:
 
 
 def test_planted_boto3_import_fails_lint_imports(tmp_path: Path) -> None:
+    core = "packages/datadesk/src/datadesk/core"
+    plants = (
+        (f"{core}/__init__.py", "import boto3\n"),
+        (f"{core}/tables/birt.py", "import boto3\n"),
+        (f"{core}/tables/birt.py", "from importlib import import_module\n"),
+    )
+    for number, (path, text) in enumerate(plants):
+        result = clean_then_planted(
+            tmp_path / str(number),
+            {},
+            {path: text},
+            "uv run lint-imports",
+            ("--no-cache",),
+        )
+        assert result.returncode != 0, f"{path}: {text}{result.stdout}"
+        assert "datadesk core is pure BROKEN" in result.stdout, f"{path}: {text}{result.stdout}"
+
+
+def test_planted_namespace_folder_fails_ruff_check(tmp_path: Path) -> None:
+    folder = "packages/datadesk/src/datadesk/core/planted"
     result = clean_then_planted(
         tmp_path,
-        {},
-        {"packages/datadesk/src/datadesk/core/__init__.py": "import boto3\n"},
-        "uv run lint-imports",
-        ("--no-cache",),
+        {f"{folder}/__init__.py": "", f"{folder}/module.py": "X = 1\n"},
+        {f"{folder}/module.py": "X = 1\n"},
+        "uv run ruff check .",
+        (),
     )
     assert result.returncode != 0, result.stdout
-    assert "datadesk core is pure BROKEN" in result.stdout, result.stdout
+    assert "INP001" in result.stdout, result.stdout
