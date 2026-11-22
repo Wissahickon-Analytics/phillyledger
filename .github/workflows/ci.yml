@@ -43,3 +43,5 @@ jobs:
         run: uv run prek run --all-files
       - if: ${{ !cancelled() }}
         run: uv run pytest
+      - if: ${{ !cancelled() }}
+        run: uv run lint-imports
