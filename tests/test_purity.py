@@ -3,10 +3,11 @@ import importlib.util
 from pathlib import Path
 
 PURE_PACKAGES = ("checkedtables", "datadesk.core")
-CALLED_BUILTINS = frozenset({"open", "print", "input", "__import__"})
-CLOCK_METHODS = frozenset({"now", "today"})
-READ_MODULES = frozenset({"os", "time", "builtins"})
-IMPORTED_MODULES = frozenset({"random", "builtins"})
+BANNED_CALLS = frozenset({"open", "print", "input", "__import__"})
+BANNED_METHOD_CALLS = frozenset({"now", "today"})
+BANNED_READS_ON = frozenset({"os", "time", "builtins"})
+BANNED_IMPORTS = frozenset({"random", "builtins"})
+BANNED_NAMES = frozenset({"random"})
 MUTABLE_DISPLAYS = (ast.List, ast.Dict, ast.Set, ast.ListComp, ast.DictComp, ast.SetComp)
 MUTABLE_CONSTRUCTORS = frozenset({"list", "dict", "set", "bytearray"})
 BANNED_FORMS = (
@@ -45,18 +46,18 @@ def package_sources(name: str) -> list[Path]:
 
 def effect(node: ast.expr | ast.stmt) -> str | None:
     match node:
-        case ast.Call(func=ast.Name(id=name)) if name in CALLED_BUILTINS:
+        case ast.Call(func=ast.Name(id=name)) if name in BANNED_CALLS:
             return f"{name}()"
-        case ast.Call(func=ast.Attribute(attr=name)) if name in CLOCK_METHODS:
+        case ast.Call(func=ast.Attribute(attr=name)) if name in BANNED_METHOD_CALLS:
             return f".{name}()"
-        case ast.Attribute(value=ast.Name(id=module), attr=name) if module in READ_MODULES:
-            return f"{module}.{name}"
-        case ast.Name(id="random"):
-            return "random"
+        case ast.Attribute(value=ast.Name(id=owner), attr=name) if owner in BANNED_READS_ON:
+            return f"{owner}.{name}"
+        case ast.Name(id=name) if name in BANNED_NAMES:
+            return name
         case ast.Import(names=aliases):
-            banned = ", ".join(alias.name for alias in aliases if alias.name in IMPORTED_MODULES)
+            banned = ", ".join(alias.name for alias in aliases if alias.name in BANNED_IMPORTS)
             return f"import {banned}" if banned else None
-        case ast.ImportFrom(module=module) if module in IMPORTED_MODULES:
+        case ast.ImportFrom(module=module) if module in BANNED_IMPORTS:
             return f"from {module} import"
     return None
 
@@ -91,8 +92,8 @@ def test_pure_packages_have_no_effects() -> None:
 
 def test_scan_reports_each_banned_form() -> None:
     for source in BANNED_FORMS:
-        lines = [line for line, _ in impurities(ast.parse(f"\n{source}"))]
-        assert lines == [2], source
+        tree = ast.parse("\n".join(("NAMES = ()", source)))
+        assert [line for line, _ in impurities(tree)] == [2], source
 
 
 def test_scan_allows_immutable_constants() -> None:
