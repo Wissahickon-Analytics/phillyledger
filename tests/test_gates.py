@@ -1,3 +1,8 @@
+import os
+import shutil
+import subprocess
+import sys
+from collections.abc import Mapping
 from pathlib import Path
 
 GATES = (
@@ -6,9 +11,11 @@ GATES = (
     "uv run ty check",
     "uv run prek run --all-files",
     "uv run pytest",
+    "uv run lint-imports",
 )
 
-CI_WORKFLOW = Path(__file__).parents[1] / ".github" / "workflows" / "ci.yml"
+REPO = Path(__file__).parents[1]
+CI_WORKFLOW = REPO / ".github" / "workflows" / "ci.yml"
 CI_HEADER = """\
 name: CI
 
@@ -47,8 +54,59 @@ jobs:
           test "$version" = "${{ matrix.python-version }}"
 """
 ALWAYS = "${{ !cancelled() }}"
+SRC_FOLDERS = (
+    "packages/checkedtables/src",
+    "packages/phillyledger/src",
+    "packages/datadesk/src",
+)
+
+
+def run_gate(
+    workspace: Path, plants: Mapping[str, str], gate: str, extra: tuple[str, ...]
+) -> subprocess.CompletedProcess[str]:
+    assert gate in GATES, f"{gate!r} is not a gate that CI runs"
+    shutil.copytree(REPO / "packages", workspace / "packages")
+    shutil.copy(REPO / "pyproject.toml", workspace / "pyproject.toml")
+    for path, text in plants.items():
+        with (workspace / path).open("a") as planted:
+            planted.write(text)
+    executable, *args = gate.removeprefix("uv run ").split()
+    command = [str(Path(sys.executable).parent / executable), *args, *extra]
+    pythonpath = os.pathsep.join(str(workspace / folder) for folder in SRC_FOLDERS)
+    return subprocess.run(
+        command,
+        cwd=workspace,
+        env={**os.environ, "PYTHONPATH": pythonpath},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+def clean_then_planted(
+    tmp_path: Path,
+    clean: Mapping[str, str],
+    planted: Mapping[str, str],
+    gate: str,
+    extra: tuple[str, ...],
+) -> subprocess.CompletedProcess[str]:
+    before = run_gate(tmp_path / "clean", clean, gate, extra)
+    assert before.returncode == 0, f"clean copy fails {gate}:\n{before.stdout}{before.stderr}"
+    return run_gate(tmp_path / "planted", planted, gate, extra)
 
 
 def test_ci_runs_every_gate() -> None:
     steps = "".join(f"      - if: {ALWAYS}\n        run: {gate}\n" for gate in GATES)
     assert CI_WORKFLOW.read_bytes().decode() == CI_HEADER + steps
+
+
+def test_planted_boto3_import_fails_lint_imports(tmp_path: Path) -> None:
+    result = clean_then_planted(
+        tmp_path,
+        {},
+        {"packages/datadesk/src/datadesk/core/__init__.py": "import boto3\n"},
+        "uv run lint-imports",
+        ("--no-cache",),
+    )
+    assert result.returncode != 0, result.stdout
+    assert "datadesk core is pure BROKEN" in result.stdout, result.stdout
