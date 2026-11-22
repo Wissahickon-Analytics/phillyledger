@@ -123,6 +123,28 @@ def test_bool_parameters_reads_each_spelling() -> None:
     assert bool_parameters(count) == []
 
 
+def test_public_functions_reaches_reexports_and_constructors() -> None:
+    def parse(flag: bool) -> None: ...
+    def unreached(hidden: bool) -> None: ...
+
+    class Reader:
+        def __init__(self, strict: bool) -> None: ...
+
+    @dataclasses.dataclass(frozen=True, slots=True)
+    class Row:
+        bold: bool | None
+
+    parse.__module__ = unreached.__module__ = "planted._impl"
+    Reader.__module__ = Row.__module__ = "planted"
+    private = ModuleType("planted._impl")
+    vars(private).update(parse=parse, unreached=unreached)
+    package = ModuleType("planted")
+    vars(package).update(_impl=private, parse=parse, parse_again=parse, Reader=Reader, Row=Row)
+
+    found = public_functions(package)
+    assert [list(inspect.signature(fn).parameters) for fn in found] == [["flag"], ["strict"]]
+
+
 def test_kit_dataclass_fields_are_pinned() -> None:
     assert {cls.__name__: field_names(cls) for cls in kit_dataclasses()} == FIELD_SNAPSHOT
 
