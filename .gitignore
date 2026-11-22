@@ -19,6 +19,8 @@ cache/
 # Codex review reports (summaries go in the pull request)
 .codex-review/
 
+.audit/
+
 # Secrets and personal settings
 .env
 .env.*

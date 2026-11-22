@@ -5,7 +5,7 @@ same branch as the work: status, the date the check passed, and anything a later
 
 | Step | What | Status | Branch | Check passed |
 |---|---|---|---|---|
-| 1 | Workspace, tooling, purity and shape tests | not started | | |
+| 1 | Workspace, tooling, purity and shape tests | in progress | `step-01/a-workspace` | |
 | 2 | Kit, words to cells | not started | | |
 | 3 | Archive for the QCMR from FY2022 | not started | | |
 | 4 | Words: PDF adapter with font repair, word cache, codec | not started | | |
@@ -46,3 +46,11 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   it does not say whether `RawRow` counts. Read from the design, not run. Step 1 is unaffected,
   because its expected set is empty. The owner decides whether `RawRow.bold` joins the pinned
   set or `RawRow` stays out of `kit_dataclasses`.
+- **`uv.lock` and `exclude-newer`** (November 22, 2026, step 1). The owner's uv config and
+  `UV_EXCLUDE_NEWER` set `exclude-newer = "1 week"`, and `uv lock` records that span in
+  `uv.lock`. A machine without the setting, such as a CI runner, rejects the lock: `uv lock
+  --check` exits 1 with "removal of global exclude newer". The root `pyproject.toml` sets the
+  same span under `[tool.uv]`, so the lock checks the same everywhere. Change both together.
+- **ruff skips Markdown** (November 22, 2026, step 1). ruff 0.17 includes `*.md` by default and
+  formats the Python blocks in it. `uv run ruff format --check .` failed on `docs/design.md`,
+  whose code blocks align their comments on purpose. The root `pyproject.toml` excludes `*.md`.

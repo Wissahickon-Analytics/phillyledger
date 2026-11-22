@@ -182,7 +182,8 @@ transcript.
 - [ ] Write each member's `pyproject.toml` with its name, `version = "0.0.0"`, `requires-python = ">=3.12"`, no dependencies, and the build backend `uv_build` with `requires = ["uv_build>=0.13.6,<0.14.0"]`.
 - [ ] Create the five `__init__.py` files empty.
 - [ ] Run `uv python pin 3.12`, then `uv lock`. Commit `.python-version` and `uv.lock`.
-- [ ] Configure ruff in the root `pyproject.toml`. Use `line-length = 100`, `target-version = "py312"`, the three `packages/*/src` folders as `src`, and `extend-exclude = ["docs/prototype", ".claude"]`.
+- [ ] Set `exclude-newer = "1 week"` under `[tool.uv]` in the root `pyproject.toml`. The owner's uv config sets the same span, `uv.lock` records it, and a runner without it rejects the lock. Found in the build.
+- [ ] Configure ruff in the root `pyproject.toml`. Use `line-length = 100`, `target-version = "py312"`, the three `packages/*/src` folders as `src`, and `extend-exclude = ["docs/prototype", ".claude", "*.md"]`. ruff 0.17 formats the Python blocks in Markdown and fails on `docs/design.md`. Found in the build.
 - [ ] Set the ruff rules. `select` is the old repo's list with `ANN` and `PYI` added (`../gov-budget-data/pyproject.toml`, `[tool.ruff.lint]`). `ignore` is `ANN401`, `D100` and `D104`. The pydocstyle convention is `numpy`.
 - [ ] Scope the `D` rules with two `per-file-ignores` entries, `"!packages/{checkedtables,phillyledger}/src/**" = ["D"]` and `"**/tests/**" = ["ANN", "D"]`.
 - [ ] Configure pytest with `testpaths = ["tests"]` and `addopts = "--import-mode=importlib"`.
