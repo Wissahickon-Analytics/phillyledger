@@ -63,6 +63,8 @@ SRC_FOLDERS = (
 )
 SHAPE_TEST = "packages/checkedtables/tests/test_library_shape.py"
 PLANTED_BOOL_PARAMETER = "def planted(flag: bool) -> None: ...\n"
+CORE_TESTS = "packages/datadesk/tests/core"
+PLANTED_SOCKET_TEST = f"{CORE_TESTS}/test_planted_socket.py"
 
 
 def run_gate(
@@ -160,3 +162,31 @@ def test_planted_family_helper_parameter_fails_shape_test(tmp_path: Path) -> Non
     )
     assert result.returncode == 1, result.stdout
     assert "AssertionError: planted" in result.stdout, result.stdout
+
+
+def socket_test(imports: str, body: str) -> dict[str, str]:
+    return {PLANTED_SOCKET_TEST: f"{imports}\n\n\ndef test_planted():\n    {body}\n"}
+
+
+def test_planted_socket_call_fails_pytest(tmp_path: Path) -> None:
+    result = clean_then_planted(
+        tmp_path,
+        socket_test("import socket", "assert socket.socket"),
+        socket_test("import socket", "socket.socket()"),
+        "uv run pytest",
+        ("-p", "no:cacheprovider", CORE_TESTS),
+    )
+    assert result.returncode == 1, result.stdout
+    assert "SocketBlockedError" in result.stdout, result.stdout
+
+
+def test_planted_early_bound_socket_fails_pytest(tmp_path: Path) -> None:
+    result = clean_then_planted(
+        tmp_path,
+        socket_test("from socket import socket", "assert socket"),
+        socket_test("from socket import socket", "socket()"),
+        "uv run pytest",
+        ("-p", "no:cacheprovider", CORE_TESTS),
+    )
+    assert result.returncode == 1, result.stdout
+    assert "SocketBlockedError" in result.stdout, result.stdout
