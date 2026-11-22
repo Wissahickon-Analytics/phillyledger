@@ -54,10 +54,12 @@ Three pull requests change `docs/design.md`. Each change is also an entry under 
   `Optional[bool]`.
 - S1-D adds `builtins` and mutable module state to the purity row of section 11.1.
 
-The build added two more after the audit and the Codex review, and the owner has not ruled on
+The build added three more after the audit and the Codex review, and the owner has not ruled on
 them yet. S1-B adds `importlib` to the contracts that guard `checkedtables` and `datadesk.core`,
 and a sentence on `test_source_folders_are_packages` to section 12.5. With them, S1-D also names
-`__import__` in the purity row of section 11.1.
+`__import__` in the purity row of section 11.1. S1-C makes the shape test of section 11.4 also
+read a function that a public name re-exports from a private module, and the `__init__` that a
+public class writes itself.
 
 ## Program checklist
 
@@ -362,13 +364,15 @@ tomllib.loads("")
 **Build.**
 
 - [ ] Write `public_functions(module)` in `packages/checkedtables/tests/test_library_shape.py`. It takes a package or a plain module. For a package it also imports every submodule that `pkgutil.walk_packages` finds, and it skips a dotted name when any part starts with `_`.
-- [ ] Make `public_functions` yield every public function that a module defines, and every public method of every public class that a module defines, class methods and static methods included. A name is public when it does not start with `_`. A module defines an object when the object's `__module__` is the module's name.
+- [ ] Make `public_functions` yield every public function, and every public method of every public class, class methods and static methods included. A name is public when it does not start with `_`. A function or class is public when a public name in a public module of the scanned package reaches it and its `__module__` is the package's name or a module under it, private modules included, so a function that `checkedtables/__init__.py` imports from a private module counts. Yield each object once. For a family helper, which is a plain module, the scanned root is that module, so only what the helper defines counts. Found in the build.
+- [ ] For a public class that is not a dataclass and defines `__init__` itself, make `public_functions` also yield that constructor, bound so `self` does not count. Leave a dataclass's generated constructor out, because `test_kit_dataclass_fields_are_pinned` and `test_bool_fields_are_page_facts_only` pin its fields, and the design allows `Word.bold` and `Column.printed`. Found in the build.
 - [ ] Type the return value of `public_functions` as `Iterator[types.FunctionType | types.MethodType]`. With `Callable[..., object]`, `uv run ty check` rejects `fn.__qualname__` (Appendix A). A method comes back bound, as a `types.MethodType`, so `inspect.signature` leaves out its first parameter and the test body stays as the design gives it. A static method comes back as a plain function. Once unwrapped, a static method and an instance method are both `types.FunctionType`, so that type alone cannot say which first parameter to skip. Found in the build.
 - [ ] Write `bool_parameters(fn)` in the same file. It returns the names of the parameters whose annotation is `bool` or is a union with `bool` as a member, so `bool | None` and `Optional[bool]` count. It reads string annotations through `inspect.signature(fn, eval_str=True)`. A `bool` inside another type, such as `tuple[bool, ...]`, does not count.
 - [ ] Write `test_no_bool_parameters_and_at_most_four` as design section 11.4 gives it, with `bool_parameters(fn)` as the `bool` assertion. For a method, do not count the bound first parameter.
 - [ ] Run the same test over the four family helpers, `qcmr_common`, `collections_common`, `bib_common` and `supp_common` in `datadesk.core.tables`. Design section 11.4 says these modules run the first test too. Name them in a tuple `FAMILY_HELPERS`.
 - [ ] Change the `bool` assertion in the code block of design section 11.4 to match `bool_parameters`, and record the change under Deviations in `docs/progress.md`. The design's predicate passes `flag: bool | None`, which `CLAUDE.md` hard rule 5 bans.
 - [ ] Write `test_bool_parameters_reads_each_spelling`. It checks `flag: bool`, `flag: bool | None`, `flag: Optional[bool]`, a keyword-only `flag: bool = False`, and the first two again as string annotations. It also checks that `flags: tuple[bool, ...]` and `count: int | None` give no name.
+- [ ] Write `test_public_functions_reaches_reexports_and_constructors`, a fast in-process test whose inputs the test builds as modules in memory. A public name re-exports `parse(flag: bool)` from a private module, under two names, and a public class `Reader` defines `__init__(self, strict: bool)`. The test asserts that `public_functions` yields exactly `parse`, once, and `Reader.__init__` without `self`. A dataclass with a `bool | None` field and a private helper that no public name reaches give nothing. Commit it failing, before the change to `public_functions`. Found in the build.
 - [ ] Write `kit_dataclasses()`, `field_names(cls)` and `FIELD_SNAPSHOT = {}`, then `test_kit_dataclass_fields_are_pinned` as the design gives it.
 - [ ] Write `bool_fields(classes)` and `test_bool_fields_are_page_facts_only`. At this step the expected value is `set()`. The design's two members arrive in the pull requests that create `Word` and `Column`.
 - [ ] Write `source_lines(package)`, `public_names(package)` and `report_budget()`. `source_lines` counts the lines of the package's `.py` files that are neither blank nor comments. `public_names` returns the names in the package's namespace that do not start with `_` and are not modules.
@@ -381,13 +385,13 @@ tomllib.loads("")
 
 **You see.**
 
-- [ ] `uv run pytest packages/checkedtables/tests` ends with `4 passed`.
+- [ ] `uv run pytest packages/checkedtables/tests` ends with `5 passed`. Found in the build.
 - [ ] `uv run python packages/checkedtables/tests/test_library_shape.py` prints `checkedtables: 0 lines (budget 3,800), 0 public names (budget 140)`.
-- [ ] `uv run pytest` ends with `10 passed`. Found in the build.
+- [ ] `uv run pytest` ends with `11 passed`. Found in the build.
 
 **Verify, unit.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
-- [ ] `packages/checkedtables/tests/test_library_shape.py` gains `test_no_bool_parameters_and_at_most_four`, `test_bool_parameters_reads_each_spelling`, `test_kit_dataclass_fields_are_pinned` and `test_bool_fields_are_page_facts_only`. Run `uv run pytest packages/checkedtables/tests/test_library_shape.py`.
+- [ ] `packages/checkedtables/tests/test_library_shape.py` gains `test_no_bool_parameters_and_at_most_four`, `test_bool_parameters_reads_each_spelling`, `test_public_functions_reaches_reexports_and_constructors`, `test_kit_dataclass_fields_are_pinned` and `test_bool_fields_are_page_facts_only`. Run `uv run pytest packages/checkedtables/tests/test_library_shape.py`.
 - [ ] `tests/test_gates.py` gains `test_planted_bool_parameter_fails_shape_test` and `test_planted_family_helper_parameter_fails_shape_test`. Run `uv run pytest tests/test_gates.py -k shape_test`.
   - [ ] In a scratch copy, delete the `bool` assertion from `test_no_bool_parameters_and_at_most_four`. Both planted tests fail.
   - [ ] In a scratch copy, remove `FAMILY_HELPERS` from the test. The family helper planted test fails.
@@ -395,7 +399,7 @@ tomllib.loads("")
 
 **Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked. Ten lanes on `opus high` at the PR head, per the boot recipe.
 
-- [ ] Lane 1. Regression lane against trunk. Run the six gates at the base, which is the S1-B head, and at the head. Record that the base has no shape test. Save `gates-clean.log`. Pass when every gate exits 0 on both sides and the head prints `10 passed`. Found in the build.
+- [ ] Lane 1. Regression lane against trunk. Run the six gates at the base, which is the S1-B head, and at the head. Record that the base has no shape test. Save `gates-clean.log`. Pass when every gate exits 0 on both sides and the head prints `11 passed`. Found in the build.
 - [ ] Lane 2. Open a temporary PR from `verify/s1-c-lane-2` with `def planted(flag: bool) -> None: ...` appended to `packages/checkedtables/src/checkedtables/__init__.py`. Save `ci-bool.log`. Pass when the `pull_request` run fails and the `uv run pytest` step fails with `AssertionError: planted`.
 - [ ] Lane 3. Put `from __future__ import annotations` and `def planted(flag: bool) -> None: ...` in `checkedtables/words.py` and run the shape test. Save `submodule-string-annotation.log`. Pass when the test fails and names `planted`.
 - [ ] Lane 4. Plant `def planted(flag: bool | None) -> None: ...` in `checkedtables/lex.py` and run the shape test. Replace the annotation with `Optional[bool]`, then put `from __future__ import annotations` above each form, and run the test after every change. Save `optional-bool.log`. Pass when all four runs fail and name `planted`.
@@ -459,7 +463,7 @@ tomllib.loads("")
 
 **You see.**
 
-- [ ] `uv run pytest` ends with `21 passed`. Found in the build.
+- [ ] `uv run pytest` ends with `22 passed`. Found in the build.
 - [ ] A core test that calls `socket.socket()` fails with `pytest_socket.SocketBlockedError: A test tried to use socket.socket.`
 - [ ] With `print(1)` appended to `packages/checkedtables/src/checkedtables/words.py`, `uv run pytest tests/test_purity.py` fails and names `words.py:1` and `print()`.
 
@@ -619,6 +623,12 @@ These stay unproven until the build.
   `pydoc.locate("subprocess")` and `runpy.run_module("subprocess")` in `core/tables/birt.py`
   pass every gate. A list of loaders cannot be complete, so the contracts name none of them.
   Found in the build.
+- **The shape test reads plain signatures (S1-C).** It passes a parameter annotated
+  `Annotated[bool, ...]` or with a `type` alias of `bool`, and a function that `functools.cache`
+  wraps, because the wrapper is not a plain function. It counts `*args` and `**kwargs` as one
+  parameter each. Planted one at a time in scratch copies of the S1-C head, each of the four
+  passes the shape test. These are known limits. Review catches them, and the test does not chase
+  them.
 - **`../gov-budget-data` already has six uncommitted entries (every PR).** Audit 7 of
   `verify-step` expects an empty status and uses a plain `git status`, which can rewrite the
   reference's index. Lanes run this plan's snapshot commands in its place. The skill itself is
