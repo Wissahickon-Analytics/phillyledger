@@ -190,7 +190,7 @@ transcript.
 - [ ] Configure ty with `python-version = "3.12"`, the three `src` folders as `root`, and `exclude = ["docs/prototype", ".claude"]` under `[tool.ty.src]`.
 - [ ] Write `prek.toml` with the three local hooks of `../gov-budget-data/prek.toml`. They run `uv run ruff check --fix --force-exclude`, `uv run ruff format --force-exclude`, and `uv run ty check` with `pass_filenames = false`.
 - [ ] Write `GATES` in `tests/test_gates.py`. It is a tuple of the five commands that CI runs, `uv run ruff check .`, `uv run ruff format --check .`, `uv run ty check`, `uv run prek run --all-files` and `uv run pytest`.
-- [ ] Write `test_ci_runs_every_gate` in `tests/test_gates.py`. It reads `.github/workflows/ci.yml` and fails, with the reason in the message, unless four things hold. The text holds the line `run: <gate>` for every member of `GATES`. The text holds `pull_request`. The text holds neither `continue-on-error` nor `github.event_name`. Every `if` in the text is `${{ !cancelled() }}`.
+- [ ] Write `test_ci_runs_every_gate` in `tests/test_gates.py`. It reads `.github/workflows/ci.yml` and fails, with the reason in the message, unless four things hold. The text holds the line `run: <gate>` for every member of `GATES`. The `on:` block names the `pull_request:` trigger with no key nested under it, so a `branches`, `branches-ignore`, `paths`, `paths-ignore` or `types` filter fails, and so does a workflow with only `pull_request_target:`. The plan first said only that the text holds `pull_request`, which passed both. Found in the build. The text holds neither `continue-on-error` nor `github.event_name`. Every `if` in the text is `${{ !cancelled() }}`.
 - [ ] Write `test_workspace_packages_import` in `tests/test_workspace.py`. It imports `checkedtables`, `phillyledger`, `datadesk.core` and `datadesk.shell`.
 - [ ] Write `.github/workflows/ci.yml` with one job named `gates`. It runs on `pull_request` and on a push to `main`. The matrix is Python 3.12 and 3.14. Pin `actions/checkout` and `astral-sh/setup-uv` to the commit SHAs in `../gov-budget-data/.github/workflows/ci.yml`, and pass `python-version: ${{ matrix.python-version }}` to `setup-uv`.
 - [ ] Give the `gates` job the step `uv sync --locked`, then a step named `Python version`. That step prints the major and minor version of `uv run python` and fails unless the version equals the matrix value.
@@ -211,6 +211,7 @@ transcript.
 - [ ] `tests/test_gates.py` gains `test_ci_runs_every_gate`. Run `uv run pytest tests/test_gates.py`.
   - [ ] Delete the `uv run ty check` step in a scratch copy of `ci.yml`. The test fails and names that gate.
   - [ ] Add `continue-on-error: true` to one gate step in a scratch copy of `ci.yml`. The test fails.
+  - [ ] In scratch copies of `ci.yml`, nest `branches: [main]` under `pull_request:`, then another filter key, then replace `pull_request:` with `pull_request_target:`. The test fails each time and names the filter or the missing trigger, and passes on the real file. Found in the build.
 - [ ] `tests/test_workspace.py` gains `test_workspace_packages_import`. Run `uv run pytest tests/test_workspace.py`.
 - [ ] The branch log shows both tests committed before the packages and `ci.yml`, and failing at that commit.
 
