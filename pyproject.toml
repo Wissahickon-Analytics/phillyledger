@@ -46,12 +46,19 @@ select = [
   "RUF100",
   "ANN",
   "PYI",
+  "TID251",
 ]
 ignore = ["ANN401", "D100", "D104"]
 
 [tool.ruff.lint.per-file-ignores]
 "!packages/{checkedtables,phillyledger}/src/**" = ["D"]
+"!packages/{checkedtables/src/checkedtables,datadesk/src/datadesk/core}/**" = ["TID251"]
 "**/tests/**" = ["ANN", "D"]
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"datetime.datetime.now".msg = "Pure code reads no clock. Take the time as an argument."
+"datetime.date.today".msg = "Pure code reads no clock. Take the date as an argument."
+"tomllib.load".msg = "Pure code reads no files. Parse the text with tomllib.loads."
 
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
