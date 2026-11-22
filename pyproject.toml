@@ -47,12 +47,14 @@ select = [
   "ANN",
   "PYI",
   "TID251",
+  "INP001",
 ]
 ignore = ["ANN401", "D100", "D104"]
 
 [tool.ruff.lint.per-file-ignores]
 "!packages/{checkedtables,phillyledger}/src/**" = ["D"]
 "!packages/{checkedtables/src/checkedtables,datadesk/src/datadesk/core}/**" = ["TID251"]
+"!packages/{checkedtables,phillyledger,datadesk}/src/**" = ["INP001"]
 "**/tests/**" = ["ANN", "D"]
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
@@ -85,7 +87,7 @@ source_modules = ["checkedtables"]
 forbidden_modules = ["phillyledger", "datadesk", "pdfplumber", "pypdfium2", "fitz", "boto3",
                      "botocore", "httpx", "requests", "urllib", "http", "pyarrow", "logging",
                      "subprocess", "socket", "asyncio", "threading", "os", "pathlib", "time",
-                     "random", "tempfile", "shutil", "pytest", "hypothesis"]
+                     "random", "tempfile", "shutil", "pytest", "hypothesis", "importlib"]
 
 [[tool.importlinter.contracts]]
 name = "arithmetic never sees words"
@@ -119,7 +121,7 @@ source_modules = ["datadesk.core"]
 forbidden_modules = ["datadesk.shell", "pdfplumber", "pypdfium2", "fitz", "boto3", "botocore",
                      "httpx", "requests", "urllib", "http", "logging", "subprocess", "socket",
                      "asyncio", "threading", "os", "pathlib", "time", "random", "tempfile",
-                     "shutil"]
+                     "shutil", "importlib"]
 
 [[tool.importlinter.contracts]]
 name = "shell over core"

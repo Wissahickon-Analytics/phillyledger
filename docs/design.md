@@ -4069,7 +4069,7 @@ source_modules = ["checkedtables"]
 forbidden_modules = ["phillyledger", "datadesk", "pdfplumber", "pypdfium2", "fitz", "boto3",
                      "botocore", "httpx", "requests", "urllib", "http", "pyarrow", "logging",
                      "subprocess", "socket", "asyncio", "threading", "os", "pathlib", "time",
-                     "random", "tempfile", "shutil", "pytest", "hypothesis"]
+                     "random", "tempfile", "shutil", "pytest", "hypothesis", "importlib"]
 
 [[tool.importlinter.contracts]]
 name = "arithmetic never sees words"
@@ -4103,7 +4103,7 @@ source_modules = ["datadesk.core"]
 forbidden_modules = ["datadesk.shell", "pdfplumber", "pypdfium2", "fitz", "boto3", "botocore",
                      "httpx", "requests", "urllib", "http", "logging", "subprocess", "socket",
                      "asyncio", "threading", "os", "pathlib", "time", "random", "tempfile",
-                     "shutil"]
+                     "shutil", "importlib"]
 
 [[tool.importlinter.contracts]]
 name = "shell over core"
@@ -4148,7 +4148,9 @@ The QSMR table modules join the independence list and the forbidden list of the 
 in build step 14, and `qsmr_common` joins the helper contract's sources. Ruff's
 `flake8-tidy-imports.banned-api` bans `datetime.datetime.now`, `datetime.date.today` and
 `tomllib.load` (only `tomllib.loads` on text) under `checkedtables/` and `datadesk/core/`. The
-purity test of section 11.1 catches builtins that neither tool can ban.
+purity test of section 11.1 catches builtins that neither tool can ban. import-linter skips a
+folder with no `__init__.py`, and ruff's `INP001` fails such a folder under the three
+`packages/*/src` trees.
 
 import-linter 2.16 treats a listed standard-library module as an external package and fails the
 contract. Build step 1 planted `import os`, `from pathlib import Path`, `import logging`,
