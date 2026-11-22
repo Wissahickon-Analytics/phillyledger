@@ -39,3 +39,10 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   - Open question for the model, not verified: `created_at` goes into the manifest (section 10).
     If the manifest is one of the create-only files, a retry with the same release id and a new
     `now` may fail in `put_immutable` instead of resuming.
+- **`RawRow.bold` and the pinned `bool` fields, a finding for the step 2 plan** (November 22,
+  2026). Design section 11.4 pins the kit's `bool` fields to `Word.bold` and `Column.printed`.
+  `RawRow.bold` in `checkedtables/rows.py` is also `bool | None` (section 2.1), the same
+  annotation as `Word.bold`. The design does not define `bool_fields` or `kit_dataclasses`, so
+  it does not say whether `RawRow` counts. Read from the design, not run. Step 1 is unaffected,
+  because its expected set is empty. The owner decides whether `RawRow.bold` joins the pinned
+  set or `RawRow` stays out of `kit_dataclasses`.
