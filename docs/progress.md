@@ -57,6 +57,18 @@ Each entry: step, what changed, why, and the design section updated.
   `checkedtables/lex.py`, both forms fail the test, with and without
   `from __future__ import annotations`, and `tuple[bool, ...]` and `int | None` pass. Design
   section 11.4.
+- **Step 1: the shape test reads private re-exports and written constructors** (November 22,
+  2026, S1-C, found in the build). `public_functions` kept an object only when its `__module__`
+  was the public module being read, and it skipped every name that starts with `_`. So a public
+  name could reach a `bool` parameter the test never read. At `39abf253`, `uv run pytest
+  packages/checkedtables/tests/test_library_shape.py` printed `4 passed` with
+  `def parse(flag: bool)` in a new `checkedtables/_impl.py` and
+  `from checkedtables._impl import parse` in `checkedtables/__init__.py`. It printed `4 passed`
+  again for a public class in `words.py` whose `__init__` takes `strict: bool`, and for one whose
+  `__init__` takes five parameters. Now an object counts when a public name in a public module
+  reaches it and its `__module__` is the scanned module or a module under it, and a public class
+  that is not a dataclass has its own `__init__` checked without `self`. All three plants fail,
+  and a dataclass with five pinned fields passes. Design section 11.4.
 
 ## Notes for later sessions
 
@@ -105,8 +117,9 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   `packages/checkedtables/tests/test_library_shape.py`, `FIELD_SNAPSHOT` is `{}` and
   `test_bool_fields_are_page_facts_only` expects `set()`. The pull request that adds a kit
   dataclass adds its fields to `FIELD_SNAPSHOT`. The ones that create `Word` and `Column` add
-  `("Word", "bold")` and `("Column", "printed")`. `kit_dataclasses` counts every public dataclass
-  that a public module of `checkedtables` defines, so `RawRow` counts when step 2 creates it. The
+  `("Word", "bold")` and `("Column", "printed")`. `kit_dataclasses` counts every dataclass of
+  `checkedtables` that a public name in a public module reaches, so `RawRow` counts when step 2
+  creates it. The
   `RawRow.bold` note above is still the owner's call.
 - **`test_closed_lists_are_pinned` is not written yet** (November 22, 2026, step 1, S1-C). None
   of the lists it pins exists at step 1. Each list's pin lands in the pull request that creates

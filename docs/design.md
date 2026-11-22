@@ -3857,7 +3857,11 @@ def report_budget() -> None:                    # printed in CI and in the PR; n
 member, so `flag: bool | None` and `flag: Optional[bool]` fail as `flag: bool` does. It reads
 string annotations through `inspect.signature(fn, eval_str=True)`. A `bool` inside another type,
 such as `tuple[bool, ...]`, does not count. A method's bound first parameter does not count
-toward the four.
+toward the four. `public_functions` reads each function and class, once, that a public name in a
+public module reaches, when its `__module__` is the scanned module or a module under it, private
+modules included. A public class that is not a dataclass and writes its own `__init__` has that
+constructor checked too, without `self`. A dataclass's generated constructor stays out, because
+the two field tests pin its fields and allow the `bool` fields `Word.bold` and `Column.printed`.
 
 `NoteKind` lives in `datadesk`, but its list is pinned in the same test file. A new kind of
 per-edition switch is then as visible as a new kit field (R1). The six vocabulary lists are pinned
