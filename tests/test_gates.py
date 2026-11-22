@@ -73,6 +73,7 @@ def run_gate(
     assert gate in GATES, f"{gate!r} is not a gate that CI runs"
     shutil.copytree(REPO / "packages", workspace / "packages")
     shutil.copy(REPO / "pyproject.toml", workspace / "pyproject.toml")
+    shutil.copy(REPO / "conftest.py", workspace / "conftest.py")
     for path, text in plants.items():
         planted_path = workspace / path
         planted_path.parent.mkdir(parents=True, exist_ok=True)
