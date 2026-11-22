@@ -3820,7 +3820,7 @@ def test_no_bool_parameters_and_at_most_four() -> None:
     for fn in public_functions(checkedtables):
         params = list(inspect.signature(fn).parameters.values())
         assert len(params) <= 4, fn.__qualname__
-        assert not any(p.annotation in (bool, "bool") for p in params), fn.__qualname__
+        assert not bool_parameters(fn), fn.__qualname__
 
 
 def test_kit_dataclass_fields_are_pinned() -> None:
@@ -3852,6 +3852,12 @@ def report_budget() -> None:                    # printed in CI and in the PR; n
     print(f"checkedtables: {source_lines(checkedtables)} lines (budget 3,800), "
           f"{len(public_names(checkedtables))} public names (budget 140)")
 ```
+
+`bool_parameters` names each parameter whose annotation is `bool` or a union with `bool` as a
+member, so `flag: bool | None` and `flag: Optional[bool]` fail as `flag: bool` does. It reads
+string annotations through `inspect.signature(fn, eval_str=True)`. A `bool` inside another type,
+such as `tuple[bool, ...]`, does not count. A method's bound first parameter does not count
+toward the four.
 
 `NoteKind` lives in `datadesk`, but its list is pinned in the same test file. A new kind of
 per-edition switch is then as visible as a new kit field (R1). The six vocabulary lists are pinned
