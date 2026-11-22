@@ -53,6 +53,14 @@ Each entry: step, what changed, why, and the design section updated.
   pure` now forbid `importlib`, and the same plant breaks `datadesk core is pure`. The design
   never uses `importlib`, `import_module` or `__import__`. The purity test that S1-D writes
   reports a call to the builtin `__import__`. Design section 12.5.
+- **Step 1: the shape test fails on `bool | None` and `Optional[bool]`** (November 22, 2026,
+  S1-C). The design's assertion, `p.annotation in (bool, "bool")`, passed `flag: bool | None` and
+  `flag: Optional[bool]`, which `CLAUDE.md` hard rule 5 bans. Section 11.4 now asserts
+  `not bool_parameters(fn)`. `bool_parameters` names a parameter whose annotation is `bool` or a
+  union with `bool` as a member, read through `inspect.signature(fn, eval_str=True)`. Planted in
+  `checkedtables/lex.py`, both forms fail the test, with and without
+  `from __future__ import annotations`, and `tuple[bool, ...]` and `int | None` pass. Design
+  section 11.4.
 
 ## Notes for later sessions
 
@@ -95,4 +103,15 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   `tests/test_gates.py` fails unless `.github/workflows/ci.yml` equals, byte for byte, a header
   constant plus one step per member of `GATES`. A workflow change edits both files in the same
   pull request. A new gate joins `GATES` and gets its step at the end of `ci.yml`. A scan for
-  forbidden strings, tried first, let eight broken workflows pass.
+  forbidden strings, tried first, let eight broken workflows pass. The `Kit size report` step is
+  not a gate, so it sits in the pinned header, after `Python version`.
+- **The shape pins start empty** (November 22, 2026, step 1, S1-C). In
+  `packages/checkedtables/tests/test_library_shape.py`, `FIELD_SNAPSHOT` is `{}` and
+  `test_bool_fields_are_page_facts_only` expects `set()`. The pull request that adds a kit
+  dataclass adds its fields to `FIELD_SNAPSHOT`. The ones that create `Word` and `Column` add
+  `("Word", "bold")` and `("Column", "printed")`. `kit_dataclasses` counts every public dataclass
+  that a public module of `checkedtables` defines, so `RawRow` counts when step 2 creates it. The
+  `RawRow.bold` note above is still the owner's call.
+- **`test_closed_lists_are_pinned` is not written yet** (November 22, 2026, step 1, S1-C). None
+  of the lists it pins exists at step 1. Each list's pin lands in the pull request that creates
+  the list, in the same test file (`CLAUDE.md`, hard rule 6).
