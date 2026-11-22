@@ -87,6 +87,16 @@ Each entry: step, what changed, why, and the design section updated.
   copies, the inherited method, the inherited `__init__` and an inherited method with five
   parameters each fail, and a subclass of `json.JSONEncoder`, whose `__init__` takes eight
   parameters, passes. Design section 11.4.
+- **Step 1: the purity scan reports `builtins`, `__import__` and mutable module state**
+  (November 22, 2026, S1-D, found in the Codex review and the build). The design's scan lists
+  eight names. With `impurities` cut back to those eight, `uv run pytest tests/test_purity.py`
+  passed with `builtins.open("x")`, `__import__("boto3")` and `CACHE: dict[str, str] = {}`
+  appended to `checkedtables/words.py`. `CLAUDE.md` hard rule 3 says the purity test enforces the
+  ban on mutable module state, and `__import__` gets past the `importlib` ban of S1-B with no
+  import. The scan now also reports any import of `builtins` or read on it, a call to
+  `__import__`, and a module-level assignment of a list, dict or set display, a comprehension of
+  one, or a call to `list`, `dict`, `set` or `bytearray`. `__all__` gets no exemption, so a
+  package writes it as a tuple. The same three lines now fail the test. Design section 11.1.
 
 ## Notes for later sessions
 
@@ -149,3 +159,15 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
 - **`test_closed_lists_are_pinned` is not written yet** (November 22, 2026, step 1, S1-C). None
   of the lists it pins exists at step 1. Each list's pin lands in the pull request that creates
   the list, in the same test file (`CLAUDE.md`, hard rule 6).
+- **Every test runs with sockets blocked** (November 22, 2026, step 1, S1-D). `--disable-socket`
+  applies to every test, so a later adapter contract test that needs the network opts in with
+  the `enable_socket` marker of pytest-socket. The marker reopens calls to `socket.socket()`. A
+  name that a module binds with `from socket import socket` stays blocked under the marker,
+  because the root `conftest.py` installs the block before that import runs. Probed at S1-D:
+  under the marker `socket.socket().close()` passes and the early-bound `socket().close()` fails
+  with `SocketBlockedError`.
+  - pytest-socket 0.8.1 replaces only `socket.socket`, `socket.getaddrinfo` and
+    `socket.gethostbyname`. In a core test, `_socket.socket()`, `socket.gethostbyname_ex` and
+    `socket.getnameinfo` still pass. The probes used numeric loopback input only.
+  - Each blocked call also prints pytest-socket's `UserWarning`, so `uv run pytest` reports one
+    warning per isolation test that expects a block.
