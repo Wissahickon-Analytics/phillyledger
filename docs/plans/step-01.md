@@ -54,6 +54,11 @@ Three pull requests change `docs/design.md`. Each change is also an entry under 
   `Optional[bool]`.
 - S1-D adds `builtins` and mutable module state to the purity row of section 11.1.
 
+The build added two more after the audit and the Codex review, and the owner has not ruled on
+them yet. S1-B adds `importlib` to the contracts that guard `checkedtables` and `datadesk.core`,
+and a sentence on ruff's `INP001` to section 12.5. With them, S1-D also names `__import__` in the
+purity row of section 11.1.
+
 ## Program checklist
 
 ### Arm the program
@@ -263,15 +268,20 @@ transcript.
 
 - [ ] Add `import-linter>=2.16` to the `dev` group and run `uv lock`.
 - [ ] In design section 12.5, add the 20 table modules of the independence contract to `forbidden_modules` of the contract "family helpers do not import table modules". As the design gives it, the contract forbids only `datadesk.core.tables.catalog`, so a helper can import a table module directly (Appendix A). Record the change under Deviations in `docs/progress.md`.
-- [ ] Copy the TOML block of design section 12.5, as it reads after that change, into `pyproject.toml` word for word. The evidence is an empty `diff` between the two blocks at the PR head.
+- [ ] In design section 12.5, add `"importlib"` to `forbidden_modules` of the contracts "checkedtables holds no I/O and no Philadelphia" and "datadesk core is pure". `from importlib import import_module` and `import_module("boto3")` in `datadesk/core/tables/birt.py` kept all eight contracts. Record the change under Deviations in `docs/progress.md`. Found in the build.
+- [ ] Copy the TOML block of design section 12.5, as it reads after those changes, into `pyproject.toml` word for word. The evidence is an empty `diff` between the two blocks at the PR head.
 - [ ] Create the 46 empty files that the contracts name. import-linter refuses a contract that names a module that does not exist (Appendix A). The evidence is that `git ls-files 'packages/*/src/*.py' | wc -l` prints 51 and every one of those files has size 0.
 - [ ] Add `TID251` to the ruff `select` list, and add the `banned-api` table with `datetime.datetime.now`, `datetime.date.today` and `tomllib.load`.
 - [ ] Scope the ban with one `per-file-ignores` entry, `"!packages/{checkedtables/src/checkedtables,datadesk/src/datadesk/core}/**" = ["TID251"]`.
+- [ ] Add `INP001` to the ruff `select` list, and scope it with one `per-file-ignores` entry, `"!packages/{checkedtables,phillyledger,datadesk}/src/**" = ["INP001"]`. import-linter does not scan a folder with no `__init__.py`, so `import subprocess` in a new `datadesk/core/sneaky/mod.py` kept all eight contracts and passed `uv run ruff check .`. Add a sentence on it to design section 12.5, and record the change under Deviations in `docs/progress.md`. Found in the build.
 - [ ] Add `uv run lint-imports` to `GATES` in `tests/test_gates.py`, and add the step `run: uv run lint-imports` to `ci.yml` with the same `if` as the other gates.
-- [ ] Write `run_gate(workspace, plants, gate, extra)` in `tests/test_gates.py`. It copies `packages/` and `pyproject.toml` into `workspace`, appends each plant to its file, and runs the gate with the copy as the working directory. `extra` holds the arguments that follow the gate's own.
+- [ ] Write `run_gate(workspace, plants, gate, extra)` in `tests/test_gates.py`. It copies `packages/` and `pyproject.toml` into `workspace`, appends each plant to its file, creating the file's folder when it is missing, and runs the gate with the copy as the working directory. `extra` holds the arguments that follow the gate's own.
+- [ ] Make `run_gate` pass a fixed `COLUMNS` of 200 to the gate. import-linter wraps a long contract name to the terminal width, and under `COLUMNS=20` the planted test failed. Found in the build.
 - [ ] Make `run_gate` take a member of `GATES`, drop the `uv run` prefix, and run that executable from the folder of `sys.executable`. It sets `PYTHONPATH` to the three `src` folders of the copy, so the gate reads the copy and not the installed packages.
 - [ ] Write `clean_then_planted(tmp_path, clean, planted, gate, extra)` in `tests/test_gates.py`. It runs the gate on a clean copy, asserts exit code 0, then returns the result of the planted copy.
 - [ ] Write `test_planted_boto3_import_fails_lint_imports`. It plants `import boto3` at the end of `packages/datadesk/src/datadesk/core/__init__.py`, runs the `uv run lint-imports` gate with `--no-cache`, and asserts a non-zero exit code and the text `datadesk core is pure BROKEN`.
+- [ ] Make the same test plant, each in its own clean copy, `import boto3` and then `from importlib import import_module` at the end of `packages/datadesk/src/datadesk/core/tables/birt.py`, with the same assertions. With `as_packages = false` on the core contract, the `__init__.py` plant alone still broke it. Keep it one test function. Found in the build.
+- [ ] Write `test_planted_namespace_folder_fails_ruff_check`. Its clean copy gets `packages/datadesk/src/datadesk/core/planted/__init__.py` and `planted/module.py` holding `X = 1`. Its planted copy gets only the module. It runs the `uv run ruff check .` gate and asserts a non-zero exit code and the text `INP001`. Found in the build.
 - [ ] Add `.import_linter_cache/` to `.gitignore`.
 - [ ] Replace the "Not verified" note on standard-library modules in design sections 12.5 and 17.4 with the observed result. import-linter 2.16 treats `os`, `pathlib`, `logging` and `time` as external packages and fails the contract.
 - [ ] Add a note to `docs/progress.md`. The 46 empty modules exist because import-linter refuses a contract that names a missing module, and later steps fill them.
@@ -280,15 +290,21 @@ transcript.
 
 - [ ] `uv run lint-imports` ends with `Contracts: 8 kept, 0 broken.`
 - [ ] With `import boto3` appended to `packages/datadesk/src/datadesk/core/__init__.py`, the same command exits 1 and prints `datadesk core is pure BROKEN` and `Contracts: 7 kept, 1 broken.`
-- [ ] `uv run pytest` ends with `3 passed`.
+- [ ] `uv run pytest` ends with `4 passed`. Found in the build.
 
 **Verify, unit.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
 - [ ] `tests/test_gates.py` gains `test_planted_boto3_import_fails_lint_imports`. Run `uv run pytest tests/test_gates.py::test_planted_boto3_import_fails_lint_imports`.
   - [ ] In a scratch copy, delete the contract named `datadesk core is pure`. The test fails.
   - [ ] In a scratch copy, drop `PYTHONPATH` from `run_gate`. The test fails, because the gate then reads the installed packages.
+  - [ ] In a scratch copy, add `as_packages = false` to the contract `datadesk core is pure`. The test fails on the `birt.py` plant. Found in the build.
+  - [ ] In a scratch copy, drop `"importlib"` from the contract `datadesk core is pure`. The test fails on the `import_module` plant. Found in the build.
+  - [ ] Run `COLUMNS=20 uv run pytest`. It ends with `4 passed`. Found in the build.
+- [ ] `tests/test_gates.py` gains `test_planted_namespace_folder_fails_ruff_check`. Run `uv run pytest tests/test_gates.py::test_planted_namespace_folder_fails_ruff_check`.
+  - [ ] In a scratch copy, drop `INP001` from the ruff `select` list. The test fails. Found in the build.
 - [ ] `test_ci_runs_every_gate` now covers `uv run lint-imports`. In a scratch copy, delete that step from `ci.yml`. The test fails.
 - [ ] The branch log shows the planted test committed before the contracts, and failing at that commit.
+- [ ] The branch log shows the `birt.py` plants and the namespace test committed before `importlib` and `INP001`, with the `import_module` plant and the namespace test failing at that commit. Found in the build.
 
 **Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked. Ten lanes on `opus high` at the PR head, per the boot recipe.
 
@@ -364,7 +380,7 @@ tomllib.loads("")
 
 - [ ] `uv run pytest packages/checkedtables/tests` ends with `4 passed`.
 - [ ] `uv run python packages/checkedtables/tests/test_library_shape.py` prints `checkedtables: 0 lines (budget 3,800), 0 public names (budget 140)`.
-- [ ] `uv run pytest` ends with `9 passed`.
+- [ ] `uv run pytest` ends with `10 passed`. Found in the build.
 
 **Verify, unit.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
@@ -376,7 +392,7 @@ tomllib.loads("")
 
 **Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked. Ten lanes on `opus high` at the PR head, per the boot recipe.
 
-- [ ] Lane 1. Regression lane against trunk. Run the six gates at the base, which is the S1-B head, and at the head. Record that the base has no shape test. Save `gates-clean.log`. Pass when every gate exits 0 on both sides and the head prints `9 passed`.
+- [ ] Lane 1. Regression lane against trunk. Run the six gates at the base, which is the S1-B head, and at the head. Record that the base has no shape test. Save `gates-clean.log`. Pass when every gate exits 0 on both sides and the head prints `10 passed`. Found in the build.
 - [ ] Lane 2. Open a temporary PR from `verify/s1-c-lane-2` with `def planted(flag: bool) -> None: ...` appended to `packages/checkedtables/src/checkedtables/__init__.py`. Save `ci-bool.log`. Pass when the `pull_request` run fails and the `uv run pytest` step fails with `AssertionError: planted`.
 - [ ] Lane 3. Put `from __future__ import annotations` and `def planted(flag: bool) -> None: ...` in `checkedtables/words.py` and run the shape test. Save `submodule-string-annotation.log`. Pass when the test fails and names `planted`.
 - [ ] Lane 4. Plant `def planted(flag: bool | None) -> None: ...` in `checkedtables/lex.py` and run the shape test. Replace the annotation with `Optional[bool]`, then put `from __future__ import annotations` above each form, and run the test after every change. Save `optional-bool.log`. Pass when all four runs fail and name `planted`.
@@ -427,10 +443,11 @@ tomllib.loads("")
 - [ ] Write `package_sources(name)` in `tests/test_purity.py`, with `PURE_PACKAGES = ("checkedtables", "datadesk.core")`. It finds each package's folder through `importlib.util.find_spec(name).submodule_search_locations`, so the scan does not depend on the working directory.
 - [ ] Write `impurities(tree)` in `tests/test_purity.py` for the eight names of design section 11.1. It reports a call to `open`, `print` or `input`, a call to `.now()` or `.today()`, an attribute read on `os` or `time`, and any use or import of `random`.
 - [ ] Make `impurities` also report any import of `builtins` and any attribute read on it.
+- [ ] Make `impurities` also report a call to the builtin `__import__`. S1-B forbids `importlib` in the pure packages, and `__import__` needs no import, so import-linter cannot see it. Found in the build.
 - [ ] Make `impurities` also report mutable module state. That is an assignment at module level whose value is a list, dict or set display, a comprehension of one of those, or a call to `list`, `dict`, `set` or `bytearray`. `__all__` gets no exemption, so a package writes it as a tuple. Design section 3 allows tuples, frozen dataclasses and `MappingProxyType` as module constants.
-- [ ] Add `builtins` and mutable module state to the purity row of design section 11.1, and record the change under Deviations in `docs/progress.md`. `CLAUDE.md` hard rule 3 says the purity test enforces the ban on mutable module state.
+- [ ] Add `builtins`, `__import__` and mutable module state to the purity row of design section 11.1, and record the change under Deviations in `docs/progress.md`. `CLAUDE.md` hard rule 3 says the purity test enforces the ban on mutable module state.
 - [ ] Write `test_pure_packages_have_no_effects` in `tests/test_purity.py`. It fails with one `path:line` entry per hit.
-- [ ] Write `test_scan_reports_each_banned_form` in `tests/test_purity.py`. It parses one source string per banned form and asserts one hit for each. The forms are the eight names, `import builtins`, `builtins.open("x")`, `CACHE: dict[str, str] = {}`, `ITEMS = []` and `SEEN = set()`.
+- [ ] Write `test_scan_reports_each_banned_form` in `tests/test_purity.py`. It parses one source string per banned form and asserts one hit for each. The forms are the eight names, `import builtins`, `builtins.open("x")`, `__import__("boto3")`, `CACHE: dict[str, str] = {}`, `ITEMS = []` and `SEEN = set()`. `__import__` was found in the build.
 - [ ] Write `test_scan_allows_immutable_constants` in `tests/test_purity.py`. It asserts no hit for `NAMES = ("a", "b")`, for `LOOKUP = MappingProxyType({"a": 1})`, and for a list assigned inside a function.
 - [ ] Add `test_planted_socket_call_fails_pytest` to `tests/test_gates.py`. The clean copy gets a core test, `packages/datadesk/tests/core/test_planted_socket.py`, that only names `socket.socket`. The planted copy gets the same test with the call `socket.socket()`. It runs the `uv run pytest` gate with the extra arguments `-p no:cacheprovider` and `packages/datadesk/tests/core`, and asserts exit code 1 and the text `SocketBlockedError` for the planted copy.
 - [ ] Add `test_planted_early_bound_socket_fails_pytest` to `tests/test_gates.py`. It is the same test with `from socket import socket` at the top of the planted module and the call `socket()`.
@@ -439,7 +456,7 @@ tomllib.loads("")
 
 **You see.**
 
-- [ ] `uv run pytest` ends with `20 passed`.
+- [ ] `uv run pytest` ends with `21 passed`. Found in the build.
 - [ ] A core test that calls `socket.socket()` fails with `pytest_socket.SocketBlockedError: A test tried to use socket.socket.`
 - [ ] With `print(1)` appended to `packages/checkedtables/src/checkedtables/words.py`, `uv run pytest tests/test_purity.py` fails and names `words.py:1` and `print()`.
 

@@ -35,6 +35,20 @@ Each entry: step, what changed, why, and the design section updated.
   `from pathlib import Path`, `import logging`, `import time` and `import random` each broke
   `datadesk core is pure` under import-linter 2.16. Section 12.5 now states the result, and the
   item leaves the list in section 17.4.
+- **Step 1: ruff fails a source folder with no `__init__.py`** (November 22, 2026, S1-B, found
+  in the Codex review). import-linter does not scan a folder with no `__init__.py`, and Python
+  still imports the modules in it. With `import subprocess` in a new
+  `datadesk/core/sneaky/mod.py`, `uv run lint-imports --no-cache` printed `Contracts: 8 kept, 0
+  broken.` and `uv run ruff check .` passed. ruff's `INP001` now runs under the three
+  `packages/*/src` trees, scoped by one negated `per-file-ignores` entry, and
+  `test_planted_namespace_folder_fails_ruff_check` plants such a folder. Design section 12.5.
+- **Step 1: the pure packages forbid `importlib`** (November 22, 2026, S1-B, found in the Codex
+  review). With `from importlib import import_module` and `import_module("boto3")` in
+  `datadesk/core/tables/birt.py`, `uv run lint-imports --no-cache` printed `Contracts: 8 kept, 0
+  broken.` The contracts `checkedtables holds no I/O and no Philadelphia` and `datadesk core is
+  pure` now forbid `importlib`, and the same plant breaks `datadesk core is pure`. The design
+  never uses `importlib`, `import_module` or `__import__`. The purity test that S1-D writes
+  reports a call to the builtin `__import__`. Design section 12.5.
 
 ## Notes for later sessions
 
@@ -61,9 +75,10 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   `uv.lock`. A machine without the setting, such as a CI runner, rejects the lock: `uv lock
   --check` exits 1 with "removal of global exclude newer". The root `pyproject.toml` sets the
   same span under `[tool.uv]`, so the lock checks the same everywhere. Change both together.
-  `UV_NO_CONFIG=1` and `UV_CONFIG_FILE` also drop that `[tool.uv]` table, so `uv lock --check`
-  under either fails even where CI passes. To test the lock without the owner's config, read the
-  CI run's `uv sync --locked` step.
+  `UV_NO_CONFIG=1` and `UV_CONFIG_FILE` also drop that `[tool.uv]` table. Under either,
+  `uv lock --check` fails when `UV_EXCLUDE_NEWER` is not set in the environment, and exits 0
+  when it is. To test the lock without the owner's config, read the CI run's `uv sync --locked`
+  step.
 - **46 empty modules** (November 22, 2026, step 1, S1-B). import-linter refuses a contract that
   names a module that does not exist (`Module 'checkedtables.checks' does not exist.`, exit 1),
   and a wildcard that matches nothing keeps its contract with no warning. So the modules that the
