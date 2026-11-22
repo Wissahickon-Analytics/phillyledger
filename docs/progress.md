@@ -54,3 +54,8 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
 - **ruff skips Markdown** (November 22, 2026, step 1). ruff 0.17 includes `*.md` by default and
   formats the Python blocks in it. `uv run ruff format --check .` failed on `docs/design.md`,
   whose code blocks align their comments on purpose. The root `pyproject.toml` excludes `*.md`.
+- **`ci.yml` is pinned** (November 22, 2026, step 1). `test_ci_runs_every_gate` in
+  `tests/test_gates.py` fails unless `.github/workflows/ci.yml` equals, byte for byte, a header
+  constant plus one step per member of `GATES`. A workflow change edits both files in the same
+  pull request. A new gate joins `GATES` and gets its step at the end of `ci.yml`. A scan for
+  forbidden strings, tried first, let eight broken workflows pass.

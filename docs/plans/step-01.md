@@ -37,9 +37,12 @@ Each clause of the step 1 check has one owner.
 | C3 | a planted `bool` parameter in `checkedtables` fails CI | S1-C | `test_planted_bool_parameter_fails_shape_test` |
 | C4 | a planted socket call in a core test fails CI | S1-D | `test_planted_socket_call_fails_pytest` |
 
-A planted test proves that one gate fails on the plant. `test_ci_runs_every_gate` proves that CI
-runs that gate on every pull request and cannot ignore its failure. One live lane per clause then
-shows a real `pull_request` run fail on the plant.
+A planted test proves that one gate fails on the plant. `test_ci_runs_every_gate` pins `ci.yml`
+to a reviewed text with one step per gate, so CI runs that gate on every pull request and cannot
+ignore its failure. Any edit to the workflow fails the test until the pinned text changes in the
+same pull request, a visible and reviewed act (design section 11.4). The plan first scanned the
+text for forbidden strings, and workflows that skipped or ignored a gate still passed. Found in
+the build. One live lane per clause then shows a real `pull_request` run fail on the plant.
 
 Three pull requests change `docs/design.md`. Each change is also an entry under Deviations in
 `docs/progress.md`, in the same pull request. The owner kept all four on November 22, 2026.
@@ -190,7 +193,7 @@ transcript.
 - [ ] Configure ty with `python-version = "3.12"`, the three `src` folders as `root`, and `exclude = ["docs/prototype", ".claude"]` under `[tool.ty.src]`.
 - [ ] Write `prek.toml` with the three local hooks of `../gov-budget-data/prek.toml`. They run `uv run ruff check --fix --force-exclude`, `uv run ruff format --force-exclude`, and `uv run ty check` with `pass_filenames = false`.
 - [ ] Write `GATES` in `tests/test_gates.py`. It is a tuple of the five commands that CI runs, `uv run ruff check .`, `uv run ruff format --check .`, `uv run ty check`, `uv run prek run --all-files` and `uv run pytest`.
-- [ ] Write `test_ci_runs_every_gate` in `tests/test_gates.py`. It reads `.github/workflows/ci.yml` and fails, with the reason in the message, unless four things hold. The text holds the line `run: <gate>` for every member of `GATES`. The `on:` block names the `pull_request:` trigger with no key nested under it, so a `branches`, `branches-ignore`, `paths`, `paths-ignore` or `types` filter fails, and so does a workflow with only `pull_request_target:`. The plan first said only that the text holds `pull_request`, which passed both. Found in the build. The text holds neither `continue-on-error` nor `github.event_name`. Every `if` in the text is `${{ !cancelled() }}`.
+- [ ] Write `test_ci_runs_every_gate` in `tests/test_gates.py`. It fails unless the text of `.github/workflows/ci.yml` equals, byte for byte, an expected text. The test renders that text from a pinned header constant, everything up to the gate steps, followed by one step `if: ${{ !cancelled() }}` and `run: <gate>` per member of `GATES`, in order. pytest's diff of the two strings shows the lines that differ. Adding a gate to `GATES` and its step to the end of `ci.yml` keeps the test green with no other edit. Any other workflow change edits the header in the same pull request. The plan first scanned the text for the `run` lines, a bare `pull_request:` trigger, `continue-on-error`, `github.event_name` and every `if`. An audit lane built eight workflows that skipped or ignored a gate and still passed the scan, such as a custom `shell`, `PYTEST_ADDOPTS: --collect-only` and a quoted `if` key. Found in the build.
 - [ ] Write `test_workspace_packages_import` in `tests/test_workspace.py`. It imports `checkedtables`, `phillyledger`, `datadesk.core` and `datadesk.shell`.
 - [ ] Write `.github/workflows/ci.yml` with one job named `gates`. It runs on `pull_request` and on a push to `main`. The matrix is Python 3.12 and 3.14. Pin `actions/checkout` and `astral-sh/setup-uv` to the commit SHAs in `../gov-budget-data/.github/workflows/ci.yml`, and pass `python-version: ${{ matrix.python-version }}` to `setup-uv`.
 - [ ] Give the `gates` job the step `uv sync --locked`, then a step named `Python version`. That step prints the major and minor version of `uv run python` and fails unless the version equals the matrix value.
@@ -209,9 +212,9 @@ transcript.
 **Verify, unit.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
 - [ ] `tests/test_gates.py` gains `test_ci_runs_every_gate`. Run `uv run pytest tests/test_gates.py`.
-  - [ ] Delete the `uv run ty check` step in a scratch copy of `ci.yml`. The test fails and names that gate.
+  - [ ] Delete the `uv run ty check` step in a scratch copy of `ci.yml`. The test fails, and its diff shows the `uv run ty check` line as missing.
   - [ ] Add `continue-on-error: true` to one gate step in a scratch copy of `ci.yml`. The test fails.
-  - [ ] In scratch copies of `ci.yml`, nest `branches: [main]` under `pull_request:`, then another filter key, then replace `pull_request:` with `pull_request_target:`. The test fails each time and names the filter or the missing trigger, and passes on the real file. Found in the build.
+  - [ ] Run the test against scratch copies of `ci.yml` that nest a filter under `pull_request:`, use only `pull_request_target:`, quote the `if` key, set a custom `shell`, set `PYTEST_ADDOPTS: --collect-only`, give a gate a `working-directory`, put a gate line in a heredoc, rewrite a test file in an earlier step, drop Python 3.14 from the matrix, or add a harmless job `if: always()`. The test fails on each and passes on the real file. Found in the build.
 - [ ] `tests/test_workspace.py` gains `test_workspace_packages_import`. Run `uv run pytest tests/test_workspace.py`.
 - [ ] The branch log shows both tests committed before the packages and `ci.yml`, and failing at that commit.
 
@@ -355,7 +358,7 @@ tomllib.loads("")
 - [ ] Add `packages/checkedtables/tests` to `testpaths` in `pyproject.toml`.
 - [ ] Add `test_planted_bool_parameter_fails_shape_test` to `tests/test_gates.py`. It plants `def planted(flag: bool) -> None: ...` at the end of `packages/checkedtables/src/checkedtables/__init__.py`. It runs the `uv run pytest` gate with the extra arguments `-p no:cacheprovider` and the path of the shape test file, and asserts exit code 1 and the text `AssertionError: planted`.
 - [ ] Add `test_planted_family_helper_parameter_fails_shape_test` to `tests/test_gates.py`. It plants the same function at the end of `packages/datadesk/src/datadesk/core/tables/qcmr_common.py` and makes the same assertions.
-- [ ] Add a CI step named `Kit size report` that runs `uv run python packages/checkedtables/tests/test_library_shape.py`. Keep it out of `GATES`, because the report never fails the build (design section 18.2).
+- [ ] Add a CI step named `Kit size report` that runs `uv run python packages/checkedtables/tests/test_library_shape.py`. Keep it out of `GATES`, because the report never fails the build (design section 18.2). The step also joins the pinned text of `ci.yml` in `tests/test_gates.py`, in the same pull request, or `test_ci_runs_every_gate` fails.
 
 **You see.**
 
@@ -629,7 +632,7 @@ rerun or by a read of the quoted lines. All 14 held, and none was dropped.
 
 | # | Severity | Finding | How the root checked it | Revision |
 |---|---|---|---|---|
-| 1 | blocks | The live plants ran on a push, and a workflow can ignore a failure on `pull_request` and keep every `run` line. | Read the quoted plan lines. | Lanes open temporary PRs. `test_ci_runs_every_gate` bans `continue-on-error` and `github.event_name` and fixes every `if`. |
+| 1 | blocks | The live plants ran on a push, and a workflow can ignore a failure on `pull_request` and keep every `run` line. | Read the quoted plan lines. | Lanes open temporary PRs. `test_ci_runs_every_gate` bans `continue-on-error` and `github.event_name` and fixes every `if`. The build replaced those rules with a pin of the whole `ci.yml` text. |
 | 2 | blocks | A core test that runs `from socket import socket` opens a socket under `--disable-socket`. | Rerun. `1 passed`. | S1-D adds a root `conftest.py`, a second planted test and a third isolation test. |
 | 3 | blocks | A plain `git status` can rewrite the reference's index, the status text hides later edits, and lanes could not find the baseline. | Read the git documentation, and ran the status with `--no-optional-locks`. | The snapshot uses `--no-optional-locks`, hashes the diffs and the untracked files, and lives at an absolute path. |
 | 4 | blocks | `prek install` in a worktree installs the hook for every worktree. | Read the git documentation on the shared hooks folder. | S1-A lane 7 runs in its own clone, and the boot recipe bans `prek install` in a worktree. |
