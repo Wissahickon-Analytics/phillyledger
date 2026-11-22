@@ -452,7 +452,7 @@ tomllib.loads("")
 - [ ] Write `pytest_configure` in the root `conftest.py`. It calls `pytest_socket.disable_socket()`, so the guard is in place before pytest imports any test module. With `--disable-socket` alone, a test module that runs `from socket import socket` keeps the real constructor and its test passes (Appendix A).
 - [ ] Make `run_gate` in `tests/test_gates.py` copy the root `conftest.py` into the workspace too.
 - [ ] Write the autouse fixture `_empty_working_directory` in both package `conftest.py` files. It takes `tmp_path` and `monkeypatch` and calls `monkeypatch.chdir(tmp_path)`.
-- [ ] Write three tests in both `test_isolation.py` files. `test_working_directory_is_empty` asserts that `Path.cwd()` holds no entry. `test_sockets_are_blocked` expects `pytest_socket.SocketBlockedError` from `socket.socket()`. `test_early_bound_socket_is_blocked` expects the same error from a `socket` name that the module imports at its top with `from socket import socket`.
+- [ ] Write three tests in both `test_isolation.py` files. `test_working_directory_is_empty` asserts that `Path.cwd()` holds no entry. `test_sockets_are_blocked` expects `pytest_socket.SocketBlockedError` from `socket.socket()`. `test_early_bound_socket_is_blocked` expects the same error from a `socket` name that the module imports at its top with `from socket import socket`. The module also runs `import socket`, so the name is bound as `early_bound_socket`. Found in the build.
 - [ ] Write `package_sources(name)` in `tests/test_purity.py`, with `PURE_PACKAGES = ("checkedtables", "datadesk.core")`. It finds each package's folder through `importlib.util.find_spec(name).submodule_search_locations`, so the scan does not depend on the working directory.
 - [ ] Write `impurities(tree)` in `tests/test_purity.py` for the eight names of design section 11.1. It reports a call to `open`, `print` or `input`, a call to `.now()` or `.today()`, an attribute read on `os` or `time`, and any use or import of `random`.
 - [ ] Make `impurities` also report any import of `builtins` and any attribute read on it.
@@ -469,17 +469,17 @@ tomllib.loads("")
 
 **You see.**
 
-- [ ] `uv run pytest` ends with `22 passed`. Found in the build.
+- [ ] `uv run pytest` ends with `22 passed, 4 warnings`. Found in the build. Each warning is the `UserWarning` that pytest-socket prints when an isolation test triggers a block on purpose.
 - [ ] A core test that calls `socket.socket()` fails with `pytest_socket.SocketBlockedError: A test tried to use socket.socket.`
 - [ ] With `print(1)` appended to `packages/checkedtables/src/checkedtables/words.py`, `uv run pytest tests/test_purity.py` fails and names `words.py:1` and `print()`.
 
 **Verify, unit.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
 - [ ] `tests/test_gates.py` gains `test_planted_socket_call_fails_pytest` and `test_planted_early_bound_socket_fails_pytest`. Run `uv run pytest tests/test_gates.py -k socket`.
-  - [ ] In a scratch copy, remove `--disable-socket` from `addopts` and delete the root `conftest.py`. Both planted tests fail, and so do the socket tests in `test_isolation.py`.
-  - [ ] In a scratch copy, delete only the root `conftest.py`. `test_planted_early_bound_socket_fails_pytest` and `test_early_bound_socket_is_blocked` fail.
+  - [ ] In a scratch copy, remove `--disable-socket` from `addopts` and empty the root `conftest.py`. Both planted tests fail, and so do the socket tests in `test_isolation.py`. `run_gate` copies the root `conftest.py`, so deleting it fails both planted tests with `FileNotFoundError` instead. Found in the build.
+  - [ ] In a scratch copy, empty only the root `conftest.py`. Both `test_early_bound_socket_is_blocked` tests fail. Both planted tests fail too, because the clean copy runs the core `test_isolation.py`. Then also delete the core `test_isolation.py`. Only `test_planted_early_bound_socket_fails_pytest` fails, and its planted copy passes. Found in the build.
 - [ ] Both `test_isolation.py` files gain their three tests. Run `uv run pytest packages/checkedtables/tests packages/datadesk/tests/core`.
-  - [ ] In a scratch copy, delete one package `conftest.py`. `test_working_directory_is_empty` fails in that folder.
+  - [ ] In a scratch copy, delete one package `conftest.py`. `test_working_directory_is_empty` fails in that folder. Run it without `-k socket`, which deselects that test. Deleting the core one also fails both planted tests, because their clean copy runs that folder. Found in the build.
 - [ ] `tests/test_purity.py` gains `test_pure_packages_have_no_effects`, `test_scan_reports_each_banned_form` and `test_scan_allows_immutable_constants`. Run `uv run pytest tests/test_purity.py`.
 - [ ] The branch log shows the planted tests and the isolation tests committed before `--disable-socket`, the root `conftest.py` and the fixtures, and failing at that commit.
 
@@ -488,7 +488,7 @@ tomllib.loads("")
 - [ ] Lane 1. Regression lane against trunk. Run the six gates at the base, which is the S1-C head, and at the head. Then add `packages/datadesk/tests/core/test_planted_socket.py`, whose one test `test_planted` calls `socket.socket()`, on both sides, and run that node ID with `uv run pytest packages/datadesk/tests/core/test_planted_socket.py::test_planted`. Save `gates-clean.log`. Pass when the gates exit 0 on both sides, the node prints `1 passed` at the base, which is recorded against the base, and the node fails with `SocketBlockedError` at the head.
 - [ ] Lane 2. Open a temporary PR from `verify/s1-d-lane-2` with a new `packages/datadesk/tests/core/test_planted_socket.py` that calls `socket.socket()`. Save `ci-socket.log`. Pass when the `pull_request` run fails and the `uv run pytest` step fails with `SocketBlockedError`.
 - [ ] Lane 3. Plant three core tests that call `socket.create_connection(("example.com", 80))`, `urllib.request.urlopen("http://example.com")` and `asyncio.run(asyncio.open_connection("example.com", 80))`. Save `socket-routes.log`. Pass when each test fails with `SocketBlockedError`.
-- [ ] Lane 4. Plant, in each core test folder, a test module that starts with `from socket import socket` and whose test calls `socket()`. Run `uv run pytest`. Save `early-binding.log`. Pass when both planted tests fail with `SocketBlockedError`.
+- [ ] Lane 4. Plant, in each core test folder, a test module that starts with `from socket import socket` and whose test calls `socket()`. Run `uv run pytest`. Save `early-binding.log`. Pass when both planted tests fail with `SocketBlockedError`. The two planted gate tests also fail, because `run_gate` copies the lane's plants into its clean copy. Found in the build.
 - [ ] Lane 5. Plant a test in each core test folder that writes `out.txt` to the working directory. Run `uv run pytest`, then `git status --porcelain`. Save `empty-cwd.log`. Pass when both tests pass and `git status` lists only the two planted test files.
 - [ ] Lane 6. Append `open("x")`, `print(1)` and `input()` to `checkedtables/words.py`, one at a time, and run `uv run pytest tests/test_purity.py` after each. Save `purity-kit.log`. Pass when each run fails and names the file, the line and the call.
 - [ ] Lane 7. Append `datetime.now()`, `date.today()`, `time.time()`, `os.getcwd()`, `import random` and `from random import choice` to `datadesk/core/tables/birt.py`, one at a time, and run `uv run pytest tests/test_purity.py` after each. Save `purity-core.log`. Pass when each run fails and names the file and the line.
