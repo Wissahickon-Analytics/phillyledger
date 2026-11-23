@@ -599,7 +599,14 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
     its label (QPOS-Q11). `group_lines` is the design's rule as written. FY2026 Q4 is one of the
     20 editions step 5 parses, so the step 5 plan tests this page with the real adapter's words
     and decides the rule. The same rule would keep a raised footnote digit out of its cell, and
-    the lexer's rule for VAL-Q28 expects to find that digit in the cell.
+    the lexer's rule for VAL-Q28 expects to find that digit in the cell. The S2-D fix round
+    reran the Codex command at the S2-D head on the words of
+    `test_a_raised_digit_after_a_small_dollar_sign_is_a_mark`. Through `group_lines` they make
+    two lines, and in a money column the run printed `'1' Amount 1` and `'$ 2.8' Amount 2.8`,
+    so the row loses its mark and gains a value of 1. Given the three words as one cell,
+    `lex_cell` returns `Amount 2.8` with the mark `1` and three refs, which is right for the
+    words it gets, so the line rule and the raised-mark rule cannot both hold when a mark rises
+    more than the line tolerance.
   - Margin debris joins a cash row, for the step 8 plan.
     `test_debris_between_two_rows_joins_neither` (QCASH-Q16, VAL-Q13) uses made-up boxes. On
     page 1 of the FY2008 Q4 QCMR cash report (`qcmr/cash/FY08_Q4.pdf`), the run printed the
@@ -614,7 +621,13 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
     rules of the S2-D section of `docs/plans/step-02.md`, read and not run, the cell would be
     `Unreadable`, which blocks and publishes nothing. The old reader took the marker in any case
     (`tables/amounts.py:26`). Whether a lower-case `n/a` means not applicable is the owner's
-    decision.
+    decision. Page 1 of the August 2020 realty transfer report
+    (`collections/realty-transfer-tax/2020_08.pdf`) prints it too. Read with `pdftotext -bbox`
+    in the S2-D fix round, the "Unclassified" row holds `n/a` in both local-tax cells of the
+    percent-change columns, for 2020 against 2019 and 2020 against 2018, and the page repeats the
+    row in its second table. At the S2-D head `lex_cell` reads `n/a` as
+    `Unreadable not_a_number`, as `test_not_applicable_cells_are_never_numbers` asserts, and a
+    copy of the old `is_null_amount_marker("n/a")` returns True.
   - Line formulas other than `(19+20)` stay in the label, for the step 11 plan. On the same
     page, the run printed `Subtotal (12 thru 17) ()` and `Operating Surplus (Deficit) for Fiscal
     Year (8-21) ()`. So rows 19 and 22 keep their line formulas in `Label.text`, because
