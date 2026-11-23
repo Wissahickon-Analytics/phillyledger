@@ -54,16 +54,16 @@ Three pull requests change `docs/design.md`. Each change is also an entry under 
   `Optional[bool]`.
 - S1-D adds `builtins` and mutable module state to the purity row of section 11.1.
 
-The build added four more after the audit and the Codex reviews, and the owner has not ruled on
-them yet. S1-B adds `importlib` to the contracts that guard `checkedtables` and `datadesk.core`,
-and a sentence on `test_source_folders_are_packages` to section 12.5. With them, S1-D also names
-`__import__` in the purity row of section 11.1. S1-C makes the shape test of section 11.4 also
-read a function that a public name re-exports from a private module, the methods and the
-`__init__` that a public class writes or inherits from a base class in the package, and a `bool`
-quoted inside `Optional[...]`. It reads past a name imported only under `TYPE_CHECKING` instead
-of raising. S1-D adds two sentences after the table of section 11.1. An audit hook refuses socket
-and resolver events outside a test marked `enable_socket`, and each core test module starts in
-its own empty folder. Found in the build.
+The build added four more after the audit and the Codex reviews, and the owner kept them on November
+23, 2026. S1-B adds `importlib` to the contracts that guard `checkedtables` and `datadesk.core`, and
+a sentence on `test_source_folders_are_packages` to section 12.5. With them, S1-D also names
+`__import__` in the purity row of section 11.1. S1-C makes the shape test of section 11.4 also read
+a function that a public name re-exports from a private module, the methods and the `__init__` that
+a public class writes or inherits from a base class in the package, and a `bool` quoted inside
+`Optional[...]`. It reads past a name imported only under `TYPE_CHECKING` instead of raising. S1-D
+adds two sentences after the table of section 11.1. An audit hook refuses socket and resolver events
+outside a test marked `enable_socket`, and each core test module starts in its own empty folder.
+Found in the build.
 
 ## Program checklist
 
