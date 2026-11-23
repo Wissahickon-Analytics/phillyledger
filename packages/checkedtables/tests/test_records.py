@@ -245,6 +245,55 @@ def test_a_reading_places_the_decimal_point_it_reads() -> None:
         assert (result.printed, result.printed.as_tuple().exponent) == (expected, exponent), reading
 
 
+def test_a_reviewed_cell_names_the_record_that_was_applied() -> None:
+    # VAL-Q35
+    _, cell_words = cash_row("2918")
+    cell = lex_cell(cell_words, CASH, OCR)
+    refs = tuple(word.ref for word in cell_words)
+    for review in ("cash-fy07-q3", "cash-fy08-q1"):
+        read = apply_reading(cell, record("2918", "291.8", cell_words, review))
+        accepted = apply_reading(cell, record("2918", None, cell_words, review))
+        assert read == Amount(Decimal("291.8"), "2918", refs, OCR, Reading.REVIEWED, review)
+        assert accepted == replace(cell, accepted_by=review)
+
+
+def test_a_reviewed_amount_names_the_record_that_was_applied() -> None:
+    _, cell_words = cash_row("291.8")
+    cell = lex_cell(cell_words, CASH, OCR)
+    assert isinstance(cell, Amount), cell
+    read = apply_reading(cell, record("291.8", "291.8", cell_words, "second-record"))
+    accepted = apply_reading(cell, record("291.8", None, cell_words, "second-record"))
+    assert read == Amount(
+        Decimal("291.8"), "291.8", cell.words, OCR, Reading.REVIEWED, "second-record"
+    )
+    assert accepted == Unreadable("291.8", cell.words, "reviewed_null", "second-record")
+
+
+def test_a_cell_takes_the_record_boxed_on_it_and_not_the_first_record() -> None:
+    page = page_from_text("#ocr\nTaxes 2918 2918", SHA, PAGE)
+    left, right = page.words[1:]
+    left_record = record("2918", "29.18", (left,), "left")
+    right_record = record("2918", "291.8", (right,), "right")
+    readings = (left_record, right_record)
+    for word, expected, value in (
+        (right, right_record, Decimal("291.8")),
+        (left, left_record, Decimal("29.18")),
+    ):
+        found = reading_for((word,), page.words, OCR, readings)
+        assert found == expected, (word, found)
+        cell = lex_cell((word,), CASH, OCR)
+        assert apply_reading(cell, found) == Amount(
+            value, "2918", (word.ref,), OCR, Reading.REVIEWED, expected.id
+        )
+
+
+def test_a_reviewed_zero_keeps_its_sign() -> None:
+    # QCASH-Q53
+    result = reviewed("(0.0)", "(0.0)")
+    assert isinstance(result, Amount), result
+    assert result.printed.as_tuple() == Decimal("-0.0").as_tuple()
+
+
 def test_a_null_reading_on_an_amount_gives_reviewed_null() -> None:
     _, cell_words = cash_row("65.8")
     cell = lex_cell(cell_words, CASH, OCR)
@@ -500,6 +549,7 @@ def test_a_reading_joins_the_cell_words_as_given_and_not_by_left_edge() -> None:
 @example([("", "67"), (": ", "3")], 2, "", "-{}")
 @example([("", "1o4.o")], 3, "", "{}")
 @example([("", "0o7")], 3, ",", "$({})")
+@example([("", "0"), (".", "0")], 1, "", "({})")
 def test_a_reviewed_amount_keeps_the_digits_seen(
     parts: list[tuple[str, str]], point: int, grouping: str, sign: str
 ) -> None:
@@ -517,7 +567,7 @@ def test_a_reviewed_amount_keeps_the_digits_seen(
     assert transliterated(format(result.printed.copy_abs(), "f")) == seen_digits, (seen, reading)
     minus = "" if sign in ("{}", "${}") else "-"
     expected = Decimal(minus + seen_digits[:whole] + (f".{fraction}" if fraction else ""))
-    assert (result.printed, result.printed.as_tuple().exponent) == (
-        expected,
-        expected.as_tuple().exponent,
-    ), (seen, reading)
+    assert (result.printed, result.printed.as_tuple()) == (expected, expected.as_tuple()), (
+        seen,
+        reading,
+    )
