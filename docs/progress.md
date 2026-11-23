@@ -505,7 +505,10 @@ Each entry: step, what changed, why, and the design section updated.
 - **Decisions 13 to 17 change five rules of section 3.1, to be built at step 5** (November 23,
   2026, after the step 2 run). The run left five questions for the owner, and he adopted its
   recommendations with the words "follow your recommendations". Design section 16 records them
-  as decisions 13 to 17, and section 16.2 states the reading rule in full. This entry changes no
+  as decisions 13 to 17, each as he saw it. The recommendations were a few sentences each. What
+  the run worked out afterward goes further, and in one place against a recommendation: section
+  16.2 proposes the exact reading rule, and section 16.3 sets each proposal beside what he
+  adopted. The proposals wait for his confirmation. This entry changes no
   code. Section 3.1 keeps each rule as built, with a pointer to its decision, and the step 5
   plan schedules the five changes with their tests.
   - Decision 13, the reading rule. A reading may restore what extraction lost and nothing else.
@@ -521,8 +524,9 @@ Each entry: step, what changed, why, and the design section updated.
     the size and gap test of decision 16 also covers the lexer's second join shape.
   - Decision 14, a raised footnote mark joins the line it sits on. Where two lines hold it, it
     joins the one whose bottom edge is nearer, and a tie leaves it a line of its own.
-  - Decision 15, `N/A` in any case and `#DIV/0!` are value words, and U+2010 is a minus glyph
-    that is a dash when it stands alone. The Codex review of this entry found the minus sign:
+  - Decision 15, `N/A` in any case and `#DIV/0!` are value words, and U+2010 alone is a dash.
+    The run proposes that U+2010 is also a minus glyph, which the owner has not confirmed. The
+    Codex review of this entry found the minus sign:
     the FY2021 supplemental report prints U+2010 before 2.75 on page 15 and before 435.43% on
     page 18 (`pdftotext`, rerun). VAL section 3.2.1 pins `N/A` in upper case at row 28 and holds
     no row with `n/a`, U+2010 or `#DIV/0!` (a search of the table at `2638173a`).
@@ -1043,7 +1047,8 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
 - **What a reviewed reading can still do, for the owner and the step 5 plan** (November 23,
   2026, step 2, S2-E fix round, found in the Codex review of `ce55ea9a`). Each case below was
   run in a scratch copy of `f479ede`, and the fix round changed none of them. The owner decided
-  the rule on November 23, 2026: design section 16, decision 13, with the rule in section 16.2.
+  the direction of the rule on November 23, 2026 (design section 16, decision 13). The exact
+  rule in section 16.2 is the run's proposal and waits for his confirmation (section 16.3).
   - `apply_reading` alone accepts a reading of another cell that prints the same text on the
     same page (Codex finding 4). On a row of `2918 2918`, a reading whose box holds the first
     cell gives `None` from `reading_for` for the second cell, and `apply_reading` of it to the

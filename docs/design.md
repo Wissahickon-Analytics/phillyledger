@@ -4648,10 +4648,15 @@ codes, and six open with a commentary page that also prints the `TABLE P-1` band
 
 The owner answered these on November 22, 2026. Decision 6 followed the Codex review the same day. Two setup questions were settled the same day: the repository and its folder are
 named `phillyledger`, and both buckets use Cloudflare R2. Decision 12 came on November 23, 2026.
-Decisions 13 to 17 came the same day, after the step 2 build run. The owner adopted that run's
-recommendations with the words "follow your recommendations". Each one names the step that
-builds it. Until then the code keeps the rule that section 3.1 states, and section 3.1 points
-at the decision from each function it touches.
+Decisions 13 to 17 came the same day, after the step 2 build run. The run put five
+recommendations to the owner in chat, each a few sentences long, and he adopted them with the
+words "follow your recommendations". The rows below give each recommendation as he saw it.
+The run then checked them against real pages and the old repository's readings. That work
+went further than the recommendations, and in one place against one. Section 16.3 lists,
+decision by decision, what was worked out after he answered. Those parts are proposals, and
+so is the whole of section 16.2. The owner confirms or changes them before the step 5 plan
+builds on them. Until step 5 the code keeps the rule that section 3.1 states, and section 3.1
+points at the decision from each function it touches.
 
 | # | Question | Answer |
 |---|---|---|
@@ -4667,11 +4672,11 @@ at the decision from each function it touches.
 | 10 | Keep `verify_cell_provenance` | Keep. |
 | 11 | Six captions where the kind of number is a judgment | As filed in section 2.2. The owner confirmed that Budget in Brief "Current Estimate" and collections "Current Estimates" are projections. |
 | 12 | Which 55 inputs does the probe clause of step 2 mean? | The 55 of VAL section 3.2.1. The original inputs are in no file. The owner decided on November 23, 2026, with the words "[u]se your list, but make row 4 unreadable." |
-| 13 | What may a reviewed reading change? | It may restore a decimal point or a sign that extraction lost and, on an OCR page, read a pinned confusable glyph as its digit inside a word that starts as a number. Nothing else. It may not take a digit from a word that holds no ASCII digit or that opens with a letter, move a printed point or drop one that has a digit after it, drop a printed sign, or join two printed numbers. Section 16.2 states the rule. `transliteration_ok` keeps its signature. Built at step 5, with `load_records`. |
-| 14 | A raised footnote mark that falls outside its row | `group_lines` lets a small word join a line whose vertical span holds its bottom edge: the line's top is above that edge and the line's bottom is at or below it. Small means under 0.7 of that line's median word height, the ratio of the lexer's raised-digit rule. Where two lines hold it, it joins the one whose bottom edge is nearer to its own, and on a tie it stays a line of its own. Built at step 5 and proven on a word fixture of the page that holds "Human Services (1)", where the raised `(1)` opens a line of its own today. That is page 2 of the held FY2026 Q4 positions excerpt. The old repository's splitter audit puts positions on pages 32 to 34 of the publisher's 92-page report, which makes it page 33 of the publisher's file. |
-| 15 | Which printed forms are a value with no number? | `N/A` and `NA` in any case are not applicable (`n/a` on page 19 of the FY2009 Budget in Brief). U+2010 is a minus glyph, and alone in a cell it is a dash. The FY2021 supplemental report prints both: `‐2.75` on page 15, `‐435.43%` on page 18, and a lone U+2010 on page 17. `#DIV/0!` is a value word and lexes as `NotApplicable` with its text kept (page 1 of the July 2020 School report). VAL section 3.2.1 pins `N/A` in upper case at row 28 and holds no row with `n/a`, U+2010 or `#DIV/0!`, so no acceptance row changes. Built at step 5. |
+| 13 | What may a reviewed reading change? | Tighten the rule, and fix its exact form before step 5, after a run on the old repository's reviewed readings. Every word of the cell must look like a number, or the cell takes only a null reading. A reading may add a decimal point or a sign that extraction lost, and may not move or drop one the cell prints. The pinned confusable list stays as it is. Section 16.2 holds the exact form the run proposes, and section 16.3 sets it beside this row. `transliteration_ok` keeps its signature. Built at step 5, with `load_records`. |
+| 14 | A raised footnote mark that falls outside its row | `group_lines` lets a small word join a line when its bottom edge falls inside that line's vertical span, with the 0.7 ratio of the lexer's raised-digit rule. Built at step 5 and proven on a word fixture of the page that holds "Human Services (1)", where the raised `(1)` opens a line of its own today. That is page 2 of the held FY2026 Q4 positions excerpt. The old repository's splitter audit puts positions on pages 32 to 34 of the publisher's 92-page report, which makes it page 33 of the publisher's file. Section 16.3 holds two details the run proposes. |
+| 15 | Which printed forms are a value with no number? | `N/A` and `NA` in any case are not applicable (`n/a` on page 19 of the FY2009 Budget in Brief). A cell that holds only U+2010 is a dash (page 17 of the FY2021 supplemental report). `#DIV/0!` is a value word and lexes as `NotApplicable` with its text kept (page 1 of the July 2020 School report). VAL section 3.2.1 pins `N/A` in upper case at row 28 and holds no row with `n/a`, U+2010 or `#DIV/0!`, so no acceptance row changes. Built at step 5. The recommendation said U+2010 is not a minus sign until a page prints it as one. A page does, and section 16.3 holds the change the run proposes. |
 | 16 | When may a leading digit join a grouped number? | Only when the two words have the same size and the gap between them is under a limit. Step 5 sizes the limit on word fixtures. It must keep every row of VAL section 3.2.1 as documented, and it must leave `6` and `30,223` as two cells, which page 1 of the held FY2006 obligation-history excerpt prints 51.55 points apart. |
-| 17 | Is a bare digit at the end of a label a footnote mark? | Only when it is small and raised, or when the table's row schema says its pages use digit footnotes ("Sheriff 2", ENT-Q07). Otherwise it stays in the label, so the project label that ends in "PHASE 2" on page 107 of the FY2023 supplemental report keeps its 2. Built at step 5 with the row schemas. |
+| 17 | Is a bare digit at the end of a label a footnote mark? | Off by default. It is a mark only when it is small and raised, or when the table's row schema says its pages use digit footnotes ("Sheriff 2", ENT-Q07). Otherwise it stays in the label, so the project label that ends in "PHASE 2" on page 107 of the FY2023 supplemental report keeps its 2. The recommendation asked for this to be settled before step 12. Section 16.3 proposes building it at step 5, with the row schemas. |
 
 ### 16.1 Supplemental reports the City posts
 
@@ -4695,11 +4700,16 @@ before the series was thought to start. FY2007 to FY2009 were not found.
 
 ### 16.2 The reading rule (decision 13)
 
+This section is a proposal. The owner adopted decision 13 as its row above states it. The
+exact rule below was worked out after he answered, through three verifications and three
+Codex reviews, and section 16.3 says where it goes beyond or against what he saw.
+
 `transliteration_ok(seen, reading)` is true when `reading` reads as one signed number through the
 private reader of `lex_cell`, and clauses 1 to 5 hold. `seen` is the cell's text less its mark
 words, which `apply_reading` removes today for an `Amount`. Its words are the pieces between
 single spaces. A digit glyph is an ASCII digit or a pinned confusable glyph, which reads as its
-digit. The minus glyphs are the four of section 3.1 and U+2010 (decision 15).
+digit. The minus glyphs are the four of section 3.1 and U+2010, as section 16.3 proposes for
+decision 15.
 
 1. Digits. The digits of `reading`, in order, equal the digit glyphs of `seen`. This is the rule
    of section 3.1, unchanged, with its refusal of a font code and of a decimal digit that is
@@ -4855,6 +4865,20 @@ The step 5 plan carries what the run could not settle.
 - A cell that prints `.5` takes only a null reading. A reading of `0.5` adds a digit the cell
   does not print, the reader does not read `.5`, and row 14 of VAL section 3.2.1 keeps `.5`
   unreadable.
+
+### 16.3 What was worked out after the owner answered
+
+The owner saw five short recommendations and adopted them. The middle column gives each as he
+saw it. The last column gives what sections 16 and 16.2 hold beyond it. Everything in the last
+column waits for his confirmation.
+
+| # | As recommended and adopted | Worked out after, not yet confirmed |
+|---|---|---|
+| 13 | Every word of the cell must look like a number. A reading may add a point or a sign that extraction lost, and may not move or drop one the cell prints. The confusable list stays. The recommendation also said that confusables would not be limited to OCR pages. | The five clauses and three tests of section 16.2. They add a limit of two number words with the point at their break, a comma or a colon between digits as a point unless the comma groups thousands, a `j` for a closing parenthesis, a first digit glyph that is an ASCII digit, a gap test on two words, and a confirmation of an `Amount`. One of them goes against the recommendation: clause 6 reads a confusable as a digit only on an OCR page, because `15030B` on a publisher's text layer would otherwise read as 150308. |
+| 14 | A small word joins a line when its bottom falls inside that line's vertical span, at the lexer's 0.7 ratio, proven on the FY2026 Q4 positions page as a word fixture. | The span holds the edge when the line's top is above it and the line's bottom is at or below it. Small is measured against that line's median word height. Where two lines hold the word, it joins the one whose bottom edge is nearer to its own, and on a tie it stays a line of its own. |
+| 15 | `N/A` and `NA` in any case. U+2010 as a dash placeholder only, and not a minus sign until a page shows it as one. `#DIV/0!` as a value word that lexes as `NotApplicable`. | U+2010 is also a minus glyph. The FY2021 supplemental report prints it before 2.75 on page 15 and before 435.43% on page 18. The owner was told this in chat and has not answered it. |
+| 16 | Keep the join, only at equal size and a small gap, with the limit sized on real fixtures at step 5. | Nothing. One question is open and is the owner's: whether the same test covers the lexer's second join shape (the list at the end of section 16.2). |
+| 17 | Off by default. A mark when small and raised, or where the row schema says the pages use digit footnotes. To be decided before step 12. | It is built at step 5, with the row schemas. |
 
 ## 17. Known gaps
 
