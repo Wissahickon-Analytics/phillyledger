@@ -584,3 +584,12 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
     and `AssertionError: from collections import defaultdict` on Python 3.12.15. Both pins are
     empty, so no pin names one today. A later pull request that pins a name that one of the banned
     forms imports, such as `collections.defaultdict`, must also edit that form.
+  - `page_from_text` splits lines at `\n` only and words at an ASCII space only. So a block with
+    `\r\n` line ends keeps `\r` in its words and in the `#ocr` line, which then reads as text
+    layer, and a non-breaking space stays inside a word. The Codex review of S2-C found both at
+    `8846f05c`, and a rerun of its command at `7c1eb0b` printed `text_layer ['#ocr\r', 'Taxes',
+    '1,234\r']` for `#ocr\r\nTaxes 1,234\r\n` and `['Taxes\xa01,234'] False` for
+    `Taxes\u00a01,234`. The second is what a page test of `normalize_space` needs.
+    `test_page_lines_carry_the_source_and_the_text` builds `CASH\xa0FLOW` so that `Line.text`
+    must collapse the space. With words split at any whitespace in a scratch copy, the 80 kit
+    tests still passed, and that space never reached `Line.text`.
