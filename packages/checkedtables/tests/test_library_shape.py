@@ -26,7 +26,26 @@ if TYPE_CHECKING:
     from _typeshed import DataclassInstance, SupportsRead
 
 FAMILY_HELPERS = (qcmr_common, collections_common, bib_common, supp_common)
-FIELD_SNAPSHOT: dict[str, tuple[str, ...]] = {}
+FIELD_SNAPSHOT: dict[str, tuple[str, ...]] = {
+    "Box": ("x0", "top", "x1", "bottom"),
+    "WordRef": ("doc_sha256", "page", "index", "child"),
+    "WordSource": ("kind", "tool"),
+    "Word": ("ref", "text", "box", "bold", "size", "confidence"),
+    "Rule": ("box",),
+    "Page": ("doc_sha256", "number", "width", "height", "rotation", "source", "words", "rules"),
+    "Document": ("sha256", "pages"),
+    "Label": ("printed", "text", "norm", "squash", "marks", "line_no"),
+    "Amount": ("printed", "text", "words", "source", "reading", "review_id", "marks"),
+    "Dash": ("text", "words", "meaning", "rule_id"),
+    "NotApplicable": ("text", "words"),
+    "Blank": (),
+    "Unreadable": ("text", "words", "reason", "accepted_by"),
+    "Text": ("text", "words"),
+    "NumberFormat": ("decimals", "percent"),
+    "ColumnSpec": ("name", "caption", "kind", "fmt", "presence", "dash"),
+    "RowKey": ("parts",),
+    "Finding": ("severity", "code", "subject", "message", "page"),
+}
 
 
 def public_modules(module: ModuleType) -> list[ModuleType]:
@@ -251,7 +270,7 @@ def test_kit_dataclass_fields_are_pinned() -> None:
 
 
 def test_bool_fields_are_page_facts_only() -> None:
-    assert bool_fields(kit_dataclasses()) == set()
+    assert bool_fields(kit_dataclasses()) == {("Word", "bold")}
 
 
 def report_budget() -> None:

@@ -65,6 +65,28 @@ SHAPE_TEST = "packages/checkedtables/tests/test_library_shape.py"
 PLANTED_BOOL_PARAMETER = "def planted(flag: bool) -> None: ...\n"
 PURITY_TEST = "tests/test_purity.py"
 PLANTED_IMPORT = "from io import FileIO"
+PLANTED_HYPOTHESIS_TEST = "packages/checkedtables/tests/test_planted_hypothesis.py"
+PROPERTY_AND_EMPTY_FOLDER_TEST = """\
+from pathlib import Path
+
+import pytest
+from hypothesis import given, strategies
+
+
+@given(strategies.integers())
+def test_planted_property(number):
+    assert isinstance(number, int)
+
+
+@pytest.fixture(scope="module")
+def module_setup_listing():
+    return list(Path.cwd().iterdir())
+
+
+def test_working_directory_is_empty(module_setup_listing):
+    assert list(Path.cwd().iterdir()) == []
+    assert module_setup_listing == []
+"""
 DATADESK_CORE_TESTS = "packages/datadesk/tests/core"
 PLANTED_SOCKET_TEST = f"{DATADESK_CORE_TESTS}/test_planted_socket.py"
 PLANTED_SOCKET_SUMMARY = (f"FAILED {PLANTED_SOCKET_TEST}::", f"ERROR {PLANTED_SOCKET_TEST}::")
@@ -224,6 +246,18 @@ def test_planted_import_fails_purity_test(tmp_path: Path) -> None:
     assert result.returncode == 1, result.stdout
     lines = result.stdout.splitlines()
     assert any("birt.py:" in line and PLANTED_IMPORT in line for line in lines), result.stdout
+
+
+def test_hypothesis_writes_nothing_in_the_workspace(tmp_path: Path) -> None:
+    result = run_gate(
+        tmp_path,
+        {PLANTED_HYPOTHESIS_TEST: PROPERTY_AND_EMPTY_FOLDER_TEST},
+        "uv run pytest",
+        ("-p", "no:cacheprovider", PLANTED_HYPOTHESIS_TEST),
+    )
+    assert result.returncode == 0, result.stdout
+    assert "2 passed" in result.stdout, result.stdout
+    assert sorted(tmp_path.rglob(".hypothesis")) == []
 
 
 def run_socket_plant(

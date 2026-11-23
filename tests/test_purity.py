@@ -9,7 +9,12 @@ import pytest
 
 PURE_PACKAGES = ("checkedtables", "datadesk.core")
 PURE_IMPORTS: dict[str, tuple[str, ...]] = {
-    "checkedtables": (),
+    "checkedtables": (
+        "collections.abc.Iterable",
+        "dataclasses.dataclass",
+        "decimal.Decimal",
+        "enum.StrEnum",
+    ),
     "datadesk.core": (),
 }
 INSIDE = {

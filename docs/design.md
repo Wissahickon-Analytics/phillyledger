@@ -80,6 +80,14 @@ in section 11.4 enforces both rules.
 
 ### 2.1 `checkedtables` types
 
+The checks a kit type makes at construction are the ones its block below shows, and no others.
+They guard what enters the kit from outside: an adapter's words, pages and documents, a record
+file's ids, and a table module's columns. Each raises `ValueError`. A relation between two fields
+that one kit function computes has no check at construction. `parse_label` keeps `Label.norm`,
+`Label.squash` and `Label.text`, and `lex_cell` and `apply_reading` keep `Amount.printed` and
+each cell's `text`, and their tests prove it. A pull request that adds a check shows it in the
+block.
+
 ```python
 # checkedtables/refs.py: Box and WordRef. Cells and checks import this module, never words.
 @dataclass(frozen=True, slots=True)
@@ -99,12 +107,18 @@ class Box:
     def contains(self, other: "Box", slack: float) -> bool: ...
 
 
-@dataclass(frozen=True, slots=True, order=True)
+@dataclass(frozen=True, slots=True)
 class WordRef:
     doc_sha256: str
     page: int                  # 1-based page in the publisher file, never a cut file
     index: int                 # extraction order on that page; evidence only, never a record key
     child: int | None = None   # set when split_numeric_runs made this word; its box is approximate
+
+    def __post_init__(self) -> None: ...    # ValueError: an empty doc_sha256, a page below 1,
+                                            # or an index or a child below 0
+
+    # __lt__, __le__, __gt__, __ge__: by the four fields, a None child before every int child.
+    # order=True would raise TypeError comparing a word with its child (None against int).
 
 
 # checkedtables/kinds.py
@@ -155,6 +169,8 @@ class Word:
     size: float | None
     confidence: float | None   # OCR only, 0 to 100
 
+    def __post_init__(self) -> None: ...    # ValueError: a confidence outside 0 to 100 or NaN
+
 
 @dataclass(frozen=True, slots=True)
 class Rule:
@@ -173,15 +189,29 @@ class Page:
     rules: tuple[Rule, ...] = ()
 
     def __post_init__(self) -> None:
+        if not self.doc_sha256:
+            raise ValueError(f"page {self.number} names no file")
+        if self.number < 1:
+            raise ValueError(f"a page has a number below 1: {self.number}")
+        seen: set[WordRef] = set()
         for w in self.words:
             if w.ref.doc_sha256 != self.doc_sha256 or w.ref.page != self.number:
                 raise ValueError(f"word {w.ref} does not belong to page {self.number}")
+            if w.ref in seen:
+                raise ValueError(f"two words on page {self.number} share the ref {w.ref}")
+            seen.add(w.ref)
+            if self.source.kind is SourceKind.TEXT_LAYER and w.confidence is not None:
+                raise ValueError(f"word {w.ref} has an OCR confidence on a text layer page")
 
 
 @dataclass(frozen=True, slots=True)
 class Document:
     sha256: str
     pages: tuple[Page, ...]    # pages extracted, ascending; need not be contiguous
+
+    def __post_init__(self) -> None: ...    # ValueError: an empty sha256, a page whose
+                                            # doc_sha256 is not sha256, or page numbers that are
+                                            # not strictly ascending
 
     def page(self, number: int) -> Page: ...
 ```
@@ -260,6 +290,8 @@ class ColumnSpec:
     fmt: NumberFormat = NumberFormat()
     presence: Presence = Presence.REQUIRED
     dash: DashMeaning = DashMeaning.NO_VALUE
+
+    def __post_init__(self) -> None: ...     # ValueError: an empty name or an empty caption
 
 
 @dataclass(frozen=True, slots=True)
@@ -351,6 +383,8 @@ class Amount:
     def __post_init__(self) -> None:
         if not self.words:
             raise ValueError("an Amount needs the words it was read from")
+        if self.review_id == "":
+            raise ValueError("an Amount names an empty review id")
         if (self.reading is Reading.REVIEWED) != (self.review_id is not None):
             raise ValueError("a reviewed Amount names its review, and only then")
 
@@ -361,6 +395,10 @@ class Dash:
     words: tuple[WordRef, ...]
     meaning: DashMeaning
     rule_id: str | None = None     # the DashRule that set ZERO, if any
+
+    def __post_init__(self) -> None:
+        if not self.words:
+            raise ValueError("a Dash needs the words it was read from")
 
 
 @dataclass(frozen=True, slots=True)
@@ -423,13 +461,17 @@ def additivity_of(kind: RowKind) -> Additivity: ...
 class RowKey:
     parts: tuple[tuple[str, str], ...]      # sorted by name: (("breakdown", "civilian"), ("dept", ...))
 
+    def __post_init__(self) -> None: ...    # ValueError: no parts, names not strictly ascending,
+                                            # an empty name, or "|" or "=" in a name or value
+
     def __str__(self) -> str: ...           # "breakdown=civilian|dept=phl_dept_police"
 
     @staticmethod
-    def of(**parts: str) -> "RowKey": ...
+    def of(**parts: str) -> "RowKey": ...   # sorts the parts by name
 
     @staticmethod
-    def parse(text: str) -> "RowKey": ...   # for TOML records only; code uses RowKey.of
+    def parse(text: str) -> "RowKey": ...   # inverse of str; TOML records only; code uses RowKey.of
+                                            # ValueError: a part with no "="
 
     @property
     def has_occurrence(self) -> bool: ...   # an "occurrence" part from a list table
@@ -440,13 +482,16 @@ class Severity(StrEnum):
     WARN = "warn"
 
 
-@dataclass(frozen=True, slots=True, order=True)
+@dataclass(frozen=True, slots=True)
 class Finding:
     severity: Severity
     code: str                  # "unknown_row", "style_unavailable", "check_not_evaluated", ...
     subject: str               # "<doc sha8>:<table>:<row key or label>"
     message: str
     page: int | None = None
+
+    # __lt__, __le__, __gt__, __ge__: by the five fields, a None page before every int page,
+    # as WordRef does for child.
 
 
 @dataclass(frozen=True, slots=True, order=True)
@@ -3730,7 +3775,7 @@ outside the list changes the list and the pin together.
 
 | Package | Outside modules it imports from |
 |---|---|
-| `checkedtables` | none |
+| `checkedtables` | `collections.abc`, `dataclasses`, `decimal`, `enum` |
 | `datadesk.core` | none |
 
 ### 11.2 Property tests
@@ -4408,7 +4453,8 @@ codes, and six open with a commentary page that also prints the `TABLE P-1` band
    *Check:* CI is green. A planted `import boto3` in `datadesk.core`, a planted `bool` parameter
    in `checkedtables`, and a planted socket call in a core test each fail CI.
 2. **Kit, words to cells.** `refs`, `kinds`, `words`, `labels`, `text`, `lines`, `cells`, `lex`,
-   `records`, `testing.page_from_text`, with unit and property tests.
+   `records`, `testing.page_from_text`, the `NumberFormat` and `ColumnSpec` types of `columns`,
+   and the `RowKey`, `Severity` and `Finding` types of `table`, with unit and property tests.
    *Check:* Hypothesis suites pass. The 55 probe inputs of VAL section 3.2 give the documented new
    results. `transliteration_ok` refuses "65.8" to "85.8" and "77,500,000" to "7,500,000".
 3. **Archive for the QCMR from FY2022.** Index format, `confirm_period`, `plan_fetch`, the S3
@@ -4421,7 +4467,7 @@ codes, and six open with a commentary page that also prints the `TABLE P-1` band
    *Check:* word fixtures regenerate byte-identical. A cache hit returns an equal `Document`. On
    all 20 grid pages with font codes, no `(cid:` remains, and a rendered crop of each page's
    first and last department rows matches the repaired digits.
-5. **QCMR positions parser.** Kit `pages`, `columns`, `pipeline`, `rows`, `assemble`; the
+5. **QCMR positions parser.** Kit `pages`, `columns`, `pipeline`, `table`, `rows`, `assemble`; the
    department part of the registry; `rowschemas`; `vocab`, `measures` and the catalog test;
    `qcmr_positions`.
    The run starts at the first page whose header carries the era's captions; a page with the
