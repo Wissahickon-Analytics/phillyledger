@@ -97,7 +97,28 @@ Each entry: step, what changed, why, and the design section updated.
   import. The scan now also reports any import of `builtins` or read on it, a call to
   `__import__`, and a module-level assignment of a list, dict or set display, a comprehension of
   one, or a call to `list`, `dict`, `set` or `bytearray`. `__all__` gets no exemption, so a
-  package writes it as a tuple. The same three lines now fail the test. Design section 11.1.
+  package writes it as a tuple. The same three lines now fail the test. The Codex review of the
+  stack found that the scan read only the direct children of the module body. With
+  `if __debug__:` and `CACHE = {}` under it, a `try:` block that holds `CACHE = {}`, or
+  `CACHE, SEEN = {}, set()` appended to `checkedtables/words.py`,
+  `test_pure_packages_have_no_effects` passed. An `if` opens no scope, so each makes mutable
+  module state. The scan now reads every assignment at module scope, inside any nesting of `if`,
+  `try`, `with`, `for`, `while` and `match` blocks but not in a function or class body, and it
+  counts a tuple that holds a mutable display or call. Each of the three forms now fails the
+  test, and a list assigned inside a function passes. Design section 11.1.
+- **Step 1: an audit hook refuses socket events, and each core test module starts in an empty
+  folder** (November 22, 2026, S1-D, found in the Codex review of the stack). pytest-socket
+  replaces only the names `socket.socket`, `socket.getaddrinfo` and `socket.gethostbyname`, and
+  its teardown hook lifts the block before fixture finalizers run. In
+  `packages/datadesk/tests/core`, a test that called `socket.SocketType()` passed, and so did one
+  that called `_socket.socket()` and a module-scoped fixture that called `socket.socket()` after
+  its `yield`. A module-scoped fixture there also found `pyproject.toml` in the working
+  directory, because `_empty_working_directory` has function scope. The root `conftest.py` now
+  installs an audit hook that raises `SocketBlockedError` for `socket.__new__`,
+  `socket.getaddrinfo`, `socket.gethostbyname`, `socket.gethostbyaddr` and `socket.getnameinfo`
+  unless the running test carries the `enable_socket` marker. Both package `conftest.py` files add
+  a module-scoped fixture that moves each test module into an empty folder. The three plants now
+  fail with `SocketBlockedError`, and the fixture finds no `pyproject.toml`. Design section 11.1.
 
 ## Notes for later sessions
 
@@ -161,21 +182,44 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   of the lists it pins exists at step 1. Each list's pin lands in the pull request that creates
   the list, in the same test file (`CLAUDE.md`, hard rule 6).
 - **Every test runs with sockets blocked** (November 22, 2026, step 1, S1-D). `--disable-socket`
-  applies to every test, so a later adapter contract test that needs the network opts in with
-  the `enable_socket` marker of pytest-socket. The marker reopens calls to `socket.socket()`. A
-  name that a module binds with `from socket import socket` stays blocked under the marker,
-  because the root `conftest.py` installs the block before that import runs. Probed at S1-D:
+  and the audit hook in the root `conftest.py` apply to every test, so a later adapter contract
+  test that needs the network opts in with the `enable_socket` marker of pytest-socket. The
+  marker reopens calls to `socket.socket()`, and an unmarked test after a marked one is blocked
+  again. The marker is the only way in. The audit hook reads the marker alone, so a test that
+  asks for pytest-socket's `socket_enabled` fixture still fails with `SocketBlockedError`. A name
+  that a module binds with `from socket import socket` stays blocked under the marker, because
+  the root `conftest.py` installs pytest-socket's block before that import runs. Probed at S1-D,
   under the marker `socket.socket().close()` passes and the early-bound `socket().close()` fails
   with `SocketBlockedError`.
-  - pytest-socket 0.8.1 replaces only `socket.socket`, `socket.getaddrinfo` and
-    `socket.gethostbyname`. In a core test, `_socket.socket()`, `socket.gethostbyname_ex` and
-    `socket.getnameinfo` still pass. The probes used numeric loopback input only.
+  - pytest-socket 0.8.1 replaces only the names `socket.socket`, `socket.getaddrinfo` and
+    `socket.gethostbyname`, and lifts its block before fixture finalizers run. The audit hook
+    covers the rest. In a core test, `socket.SocketType()`, `_socket.socket()`,
+    `pytest_socket._true_socket()`, a reloaded `socket` module, `_socket.getaddrinfo`,
+    `_socket.gethostbyname`, `socket.gethostbyname_ex`, `socket.getnameinfo`, the
+    `socket.gethostbyaddr` audit event, and a socket opened after the `yield` of a function- or
+    module-scoped fixture each fail with `SocketBlockedError`. `socket.gethostname()` and
+    `platform.node()` still work. The probes used unconnected sockets, numeric loopback input
+    with numeric flags, and `sys.audit` for `gethostbyaddr`.
+  - Two routes still pass. CPython raises no audit event for `_socket.socketpair()`, which makes
+    a pair of local sockets, and a subprocess that a test starts opens sockets freely.
   - A class that a module defines on `socket.socket` keeps the block for the whole session when
-    the module is first imported after the root `conftest.py` blocks sockets. `ssl` is one:
+    the module is first imported after the root `conftest.py` blocks sockets. `ssl` is one.
     `ssl.SSLSocket` subclasses pytest-socket's guard, so under the marker
     `ssl.create_default_context().wrap_socket(...)` fails with `SocketBlockedError`. With
     `import ssl` at the top of the root `conftest.py`, the same probe passes and the isolation
-    tests still pass. Probed at S1-D on an unconnected socket. The first contract test that needs
-    TLS makes that change.
-  - Each blocked call also prints pytest-socket's `UserWarning`, so `uv run pytest` reports one
-    warning per isolation test that expects a block.
+    tests still pass. Probed at S1-D with the audit hook in place, on an unconnected socket. The
+    first contract test that needs TLS makes that change.
+  - Each blocked call also prints the `UserWarning` that `SocketBlockedError` issues when it is
+    created, so `uv run pytest` reports six warnings, one per blocked call in the isolation
+    tests.
+- **The pure packages can still reach effects the gates do not name** (November 22, 2026, step
+  1, S1-D, found in the Codex review of the stack and the build). Planted one at a time in
+  `datadesk/core/tables/birt.py`, each of these passes every gate: `from io import FileIO`
+  reading a file, `sys.stdout.write("x")`, `uuid.uuid4()`, `write = print` then `write(1)`,
+  `exec("print(1)")`, `sys.modules["os"].getcwd()`, `import posix` with `posix.getcwd()`,
+  `import _socket` with `_socket.socket()`, `defaultdict(list)` assigned at module level, and a
+  mutable class attribute. A core test that starts a subprocess, which opens a socket, also
+  passes every gate. The forbidden lists and the purity scan name specific modules and calls,
+  and every review finds more, so naming more modules does not converge. An allow-list of the
+  modules the pure packages may import would close the import forms. That is a new closed list
+  in the design, so it is an open decision for the owner.
