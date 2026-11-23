@@ -1808,7 +1808,10 @@ def render_chain(suggestions: Sequence[Suggestion]) -> str: ...
 def page_from_text(text: str, sha: str, page: int) -> Page: ...
     # lays out a monospace block as Words: one character is 6 pt wide, one line is 12 pt;
     # "**text**" marks bold words; returns style None when the block starts with "#ocr".
-    # Only a pair of ** marks bold, so a lone "**1" stays a word.
+    # A ** that starts a word opens a bold span when the word's next character is not *, and
+    # a ** that ends a word closes one when the character before it is not *. Each closer
+    # pairs with the nearest unpaired opener to its left on the same line. Every other **
+    # stays in the text, so "**1  **1,234**" gives "**1" and a bold "1,234" (RTT-Q38).
 def doc_of(*pages: Page) -> Document: ...
     # pages sorted by number; ValueError for no pages, two files or a repeated page number
 ```

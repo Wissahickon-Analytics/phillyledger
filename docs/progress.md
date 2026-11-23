@@ -198,10 +198,17 @@ Each entry: step, what changed, why, and the design section updated.
   "Sheriff 2" test fails and the "Human Services (1)" test passes. The comments also say three
   smaller things. `normalize_label` turns punctuation into a space where the design said "drop",
   as `entities.py:95` did, so "Delivery/couriers" gives "delivery couriers" (BSALES-Q47).
-  `normalize_space` trims the ends. `page_from_text` reads only a pair of `**` as bold, so the
-  label "Total RTT records **1" (RTT-Q38) can be built with it. `text`, `lines` and `testing`
-  import from `re`, `statistics` and `typing`, which join the list in section 11.1. Design
-  sections 3.1 and 11.1.
+  `normalize_space` trims the ends. `page_from_text` keeps a `**` that opens no bold span, so
+  the label "Total RTT records **1" (RTT-Q38) can be built with it. A `**` that starts a word
+  opens a span when the word's next character is not `*`, and a `**` that ends a word closes
+  one when the character before it is not `*`. Each closer pairs with the nearest unpaired
+  opener to its left on the same line, and every other `**` stays in the text. The first build
+  paired the first two `**` on a line, so "Total RTT records **1  **1,234**" gave the words
+  `1`, bold, and `1,234**` (found in the Codex review). It now gives `**1` and a bold `1,234`.
+  The comment of `doc_of` also says that it sorts the pages by number and raises `ValueError`
+  for no pages, for pages of two files and for a repeated page number. `text`, `lines`
+  and `testing` import from `re`, `statistics` and `typing`, which join the list in section
+  11.1. Design sections 3.1 and 11.1.
 
 ## Notes for later sessions
 
@@ -392,3 +399,44 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   modules run as far past theirs, the kit passes its 3,800 line budget, an inference that no run
   has checked. The report never fails the build, so the owner decides whether the budget counts
   docstrings.
+- **What the step 2 line and label rules do on four real pages, for the plans of steps 5, 8 and
+  11** (November 23, 2026, step 2, S2-C, found in the Codex review). Codex read three PDFs of
+  `../gov-budget-data/data/phila/` with `pdftotext -bbox` and ran `group_lines`, `has_values` and
+  `parse_label` on their word boxes at `8846f05`. The S2-C fix round reran the command (the
+  block "PDF reproduction for findings 1-4" of `.codex-review/step-02-pr-8846f05c.md`) and
+  printed the same eight lines. Real pages enter this repository's tests only as word fixtures
+  that `datadesk fixture` writes, from step 4 on (`CLAUDE.md`, Tests), so S2-C changed none of
+  the three functions for them. The boxes are those of `pdftotext`, not those of the adapter
+  that step 4 builds.
+  - A raised footnote mark leaves its row, for the step 5 plan and the owner. On page 2 of the
+    FY2026 Q4 QCMR positions report (`qcmr/positions/FY26_Q4.pdf`), the mark of "Human Services
+    (1)" is raised. The word `(1)` has top 357.95 and bottom 363.44, "Human" has bottom 367.62,
+    and the tolerance of `group_lines` is 2.906, 0.35 of the median word height of 8.303. The
+    mark's bottom is 4.18 above the row's, so `group_lines` makes `(1)` a line of its own. The
+    run printed `(1) True` and `Human Services 438 1,059 1,497 532 1,323 1,855 448 1,045 1,493
+    362 True`. So `has_values` is true for the lone mark, and `parse_label` never sees it with
+    its label (QPOS-Q11). `group_lines` is the design's rule as written. FY2026 Q4 is one of the
+    20 editions step 5 parses, so the step 5 plan tests this page with the real adapter's words
+    and decides the rule. The same rule would keep a raised footnote digit out of its cell, and
+    the lexer's rule for VAL-Q28 expects to find that digit in the cell.
+  - Margin debris joins a cash row, for the step 8 plan.
+    `test_debris_between_two_rows_joins_neither` (QCASH-Q16, VAL-Q13) uses made-up boxes. On
+    page 1 of the FY2008 Q4 QCMR cash report (`qcmr/cash/FY08_Q4.pdf`), the run printed the
+    words left of x 115 on three lines as `['~']`, `['Debt', 'Service-Long', 'Term']` and
+    `['co', 'lnterfund', 'Charges']`. So the debris `~` is a line of its own, and the debris
+    `co`, bottom 323.32, lands on the line of "lnterfund Charges", bottom 323.89, inside the
+    page's tolerance of 1.859. The step that parses cash tests the real page.
+  - A lower-case `n/a` hides a row, for the owner and the step 11 plan. Page 19 of the adopted
+    FY2009 Budget in Brief (`budget-in-brief/adopted/FY09.pdf`) prints `n/a` in the last
+    column of row 7. The run printed `7 Other Sources 57,353 69,000 0 0 0 n/a False`. The
+    design names `N/A` and `NA` only, so `has_values` is false for that row. Under the lexer
+    rules of the S2-D section of `docs/plans/step-02.md`, read and not run, the cell would be
+    `Unreadable`, which blocks and publishes nothing. The old reader took the marker in any case
+    (`tables/amounts.py:26`). Whether a lower-case `n/a` means not applicable is the owner's
+    decision.
+  - Line formulas other than `(19+20)` stay in the label, for the step 11 plan. On the same
+    page, the run printed `Subtotal (12 thru 17) ()` and `Operating Surplus (Deficit) for Fiscal
+    Year (8-21) ()`. So rows 19 and 22 keep their line formulas in `Label.text`, because
+    `parse_label` reads only the `(19+20)` form (BIB-Q38). The RTT reports print a class code in
+    the same shape, "General Commercial (88-2)" (RTT dossier, "Legacy property labels"), so the
+    kit cannot take `(8-21)` as a mark unless a table tells it to.
