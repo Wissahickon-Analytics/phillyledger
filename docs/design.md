@@ -698,16 +698,16 @@ What these make impossible:
 # checkedtables/records.py: the two record types the kit applies to cells
 @dataclass(frozen=True, slots=True)
 class ReviewedReading:
-    id: str                    # never empty: a reviewed Amount names it
+    id: str                    # never blank: a reviewed Amount names it
     doc_sha256: str
     page: int
     box: Box                   # where the reviewer looked
     source: SourceKind         # the word layer being read
     seen: str                  # what extraction returns inside the box, joined: "2918" or "1o4.o"
     reading: str | None        # what a person reads on the rendered page; None accepts null
-    reason: str                # never empty: a human reading is a record with a page and a reason
+    reason: str                # never blank: a human reading is a record with a page and a reason
 
-    def __post_init__(self) -> None: ...   # ValueError: an empty id or an empty reason
+    def __post_init__(self) -> None: ...   # ValueError: an id or a reason empty after strip()
 
 
 @dataclass(frozen=True, slots=True)
@@ -717,14 +717,14 @@ class EveryRow:
 
 @dataclass(frozen=True, slots=True)
 class DashRule:
-    id: str                    # never empty: a Dash the rule sets to ZERO names it
+    id: str                    # never blank: a Dash the rule sets to ZERO names it
     table: str
     columns: tuple[str, ...]
     rows: tuple[RowKey, ...] | EveryRow
     meaning: DashMeaning
     evidence: str              # "maintainer confirmed 2026-10-01 against page 2"
 
-    def __post_init__(self) -> None: ...   # ValueError: an empty id
+    def __post_init__(self) -> None: ...   # ValueError: an id empty after strip()
 
 
 @dataclass(frozen=True, slots=True)
@@ -733,8 +733,9 @@ class CellRecords:
     dash_rules: tuple[DashRule, ...]        # already narrowed to this edition's period
     confidence_floor: float                 # OCR words below it need a reading (change 4)
 
-    def __post_init__(self) -> None: ...    # ValueError: two readings, or two dash rules, with
-                                            # one id
+    def __post_init__(self) -> None: ...    # ValueError: an id that two records share, two
+                                            # readings, two dash rules, or one of each, since
+                                            # Assembly.used names a record by its id alone
 ```
 
 A reading is keyed by file hash, page, box and the text the extraction returned. It is never

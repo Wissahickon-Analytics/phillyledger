@@ -21,7 +21,7 @@ class ReviewedReading:
     Attributes
     ----------
     id : str
-        The id of the record. Never empty, since a reviewed `Amount` names it.
+        The id of the record. Never blank, since a reviewed `Amount` names it.
     doc_sha256 : str
         The sha256 of the publisher file.
     page : int
@@ -37,12 +37,12 @@ class ReviewedReading:
         What a person reads on the rendered page, such as "291.8". None accepts publishing the
         cell as null.
     reason : str
-        Why the reading was written. Never empty.
+        Why the reading was written. Never blank.
 
     Raises
     ------
     ValueError
-        When `id` or `reason` is empty.
+        When `id` or `reason` is empty or only whitespace.
     """
 
     id: str
@@ -55,10 +55,10 @@ class ReviewedReading:
     reason: str
 
     def __post_init__(self) -> None:
-        """Refuse an empty id or an empty reason."""
-        if not self.id:
+        """Refuse a blank id or a blank reason."""
+        if not self.id.strip():
             raise ValueError("a reviewed reading needs an id")
-        if not self.reason:
+        if not self.reason.strip():
             raise ValueError(f"reviewed reading {self.id} needs a reason")
 
 
@@ -74,7 +74,7 @@ class DashRule:
     Attributes
     ----------
     id : str
-        The id of the record. Never empty.
+        The id of the record. Never blank.
     table : str
         The table the rule applies to.
     columns : tuple[str, ...]
@@ -90,7 +90,7 @@ class DashRule:
     Raises
     ------
     ValueError
-        When `id` is empty.
+        When `id` is empty or only whitespace.
     """
 
     id: str
@@ -101,8 +101,8 @@ class DashRule:
     evidence: str
 
     def __post_init__(self) -> None:
-        """Refuse an empty id."""
-        if not self.id:
+        """Refuse a blank id."""
+        if not self.id.strip():
             raise ValueError("a dash rule needs an id")
 
 
@@ -122,7 +122,8 @@ class CellRecords:
     Raises
     ------
     ValueError
-        When two readings, or two dash rules, have one id.
+        When two records share an id, whether readings, dash rules, or a reading and a dash
+        rule.
     """
 
     readings: tuple[ReviewedReading, ...]
@@ -130,14 +131,11 @@ class CellRecords:
     confidence_floor: float
 
     def __post_init__(self) -> None:
-        """Refuse two readings, or two dash rules, with one id."""
-        for kind, ids in (
-            ("readings", tuple(reading.id for reading in self.readings)),
-            ("dash rules", tuple(rule.id for rule in self.dash_rules)),
-        ):
-            repeated = sorted({id_ for id_ in ids if ids.count(id_) > 1})
-            if repeated:
-                raise ValueError(f"ids that name two or more {kind}: {', '.join(repeated)}")
+        """Refuse an id that two of the records share."""
+        ids = (*(reading.id for reading in self.readings), *(rule.id for rule in self.dash_rules))
+        repeated = sorted({id_ for id_ in ids if ids.count(id_) > 1})
+        if repeated:
+            raise ValueError(f"ids that name two or more records: {', '.join(repeated)}")
 
 
 def _holds(reading: ReviewedReading, word: Word) -> bool:
