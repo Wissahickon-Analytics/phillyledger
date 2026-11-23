@@ -40,22 +40,31 @@ can run. The line grouping property is C1a, and the two lexer properties are C1b
 |---|---|---|---|
 | C1a | Hypothesis suites pass, line grouping | S2-C | `test_every_word_lands_in_exactly_one_line` |
 | C1b | Hypothesis suites pass, lexer | S2-D | `test_lexer_round_trip` and `test_amount_digits_are_the_digits_of_its_words` |
-| C2 | The 55 probe inputs of VAL section 3.2 give the documented new results | S2-D | `test_val_probe_inputs_give_documented_results` and `test_val_probe_table_is_the_dossier_table` |
+| C2 | The 55 probe inputs of VAL section 3.2 give the documented new results | S2-D, once the owner decides which 55 | `test_val_probe_inputs_give_documented_results` and `test_val_probe_table_is_the_dossier_table` |
 | C3 | `transliteration_ok` refuses "65.8" to "85.8" and "77,500,000" to "7,500,000" | S2-D | `test_transliteration_refuses_a_digit_swap` |
 
 S2-A, S2-B and S2-E own no clause. S2-A delivers the owner's decision to pin the imports of the
 pure packages (`docs/progress.md`, "The pure packages can still reach effects the gates do not
 name"). S2-B and S2-E build modules that the step lists and the check does not name.
 
-Clause C2 cannot be proven as the design writes it. VAL section 3.2 says the probe ran on 55
+Clause C2 is open, and this plan cannot close it. VAL section 3.2 says the probe ran on 55
 inputs and prints 16 of them, with the old results only. No file in this repository or in
-`../gov-budget-data` holds the other 39 inputs or any new result (Appendix A). The plan does not
-reword the check (`CLAUDE.md`, hard rule 2). Appendix E proposes the full table. It holds the 16
-printed inputs and 39 more that the dossier prints as examples in sections 1.3, 2 and 3.1, and it
-gives each input a new result with the design line or the quirk that decides it. S2-D writes
-that table into VAL section 3.2, where the check says the results are documented. What a
-printed token means is the owner's call (hard rule 7), so the owner approves or edits Appendix E
-before S2-D starts.
+`../gov-budget-data` holds the other 39 inputs or any new result (Appendix A). An agent does not
+reword a check (`CLAUDE.md`, hard rule 2), and a set that an agent picks is not the set the check
+names. The owner closes C2 in one of two ways before S2-D starts.
+
+- The owner supplies the original 55 inputs. S2-D uses them in place of rows 17 to 55 of
+  Appendix E and gives each a new result by the rules of that appendix.
+- The owner decides that Appendix E is the acceptance set. S2-D records that decision in the
+  owner's words as decision 12 of design section 16, and adds "(decision 12)" after the clause in
+  section 15. It makes neither edit without the decision.
+
+Until the owner does one of the two, S2-D does not start and step 2 cannot pass. S2-A, S2-B and
+S2-C do not depend on the answer. Appendix E is the proposal. It holds the 16 printed inputs and
+39 more that the dossier prints as examples in sections 1.3, 2 and 3.1, and it gives each input a
+new result with the design line or the quirk that decides it. S2-D adds the table to VAL as a
+new section 3.2.1, which says that the 39 inputs were chosen and not recovered. The dossier's own
+table in section 3.2 stays as it is.
 
 Five pull requests change `docs/design.md`. Each change is also an entry under Deviations in
 `docs/progress.md`, in the same pull request. The owner can refuse any of them at the go.
@@ -69,10 +78,12 @@ Five pull requests change `docs/design.md`. Each change is also an entry under D
   design's `order=True` raises `TypeError` when one side holds `None` and the other an `int`
   (Appendix A).
 - S2-C states four rules in section 3.1 that the design leaves open. They are the order
-  `group_lines` takes words in, what a value word is, what `split_line_prefix` does to the last
-  word, and what `lines_text` returns.
+  `group_lines` takes words in, what a value word is, what `split_line_prefix` returns for a line
+  of only prefix words, and what `lines_text` returns. It also adds one mark form to
+  `parse_label`, a bare digit after a word, which ENT-Q07 documents and the design's list omits.
 - S2-D replaces the one-sentence kerning rule of `lex_cell` in section 3.1 with the three join
-  shapes of Appendix E, and S2-E states the finding codes of `reading_for` and `apply_reading`.
+  shapes of Appendix E, and S2-E gives `reading_for` the page's words in place of the page number and states its finding
+  codes.
 
 Every design line number in this plan is a line of `docs/design.md` at commit `18cb167`, the
 `main` this plan was written on. S2-A and S2-B add lines to the design, so a later owner finds a
@@ -85,7 +96,7 @@ block by its file comment, such as `# checkedtables/lex.py`.
 The evidence for each box in this section is a row in the decision trail.
 
 - [ ] State the protocol and this plan to the operator, then stop. Start execution only on the operator's explicit go.
-- [ ] Record the operator's ruling on Appendix E. S2-A, S2-B and S2-C can start without it. S2-D starts only after the operator approves the table or edits it.
+- [ ] Record the operator's decision on clause C2, in the operator's words. S2-A, S2-B and S2-C can start without it. S2-D starts only after the operator supplies the original 55 inputs or decides that Appendix E, as written or as edited, is the acceptance set.
 - [ ] Confirm the operator's preconditions before any owner starts. Agents never push to `main` (`CLAUDE.md`, hard rule 9).
   - [ ] `git rev-parse --abbrev-ref HEAD` prints `main`, and `git status --porcelain` prints nothing.
   - [ ] `git ls-remote origin main` prints the SHA that `git rev-parse main` prints.
@@ -141,9 +152,9 @@ Step 2 needs no R2 and no Textract credentials. It reads no PDF and spends no mo
 - [ ] Start a child only after its parent reports a code-ready head.
 - [ ] Hold the file boundaries. Paths under `src/` are in `packages/checkedtables/src/checkedtables/`, and paths under `tests/kit/` stand for `packages/checkedtables/tests/`.
   - [ ] S2-A touches only `tests/test_purity.py`, `tests/test_gates.py`, and section 11.1 of `docs/design.md`.
-  - [ ] S2-B touches only `refs.py`, `kinds.py`, `words.py`, `labels.py`, `cells.py`, `table.py` and `columns.py` under `src/`, the four new test files under `tests/kit/`, `tests/kit/test_library_shape.py`, `tests/test_purity.py`, `tests/test_workspace.py`, the root `conftest.py`, `pyproject.toml`, `uv.lock`, and sections 2.1, 11.1 and 15 of `docs/design.md`.
+  - [ ] S2-B touches only `refs.py`, `kinds.py`, `words.py`, `labels.py`, `cells.py`, `table.py` and `columns.py` under `src/`, the four new test files under `tests/kit/`, `tests/kit/test_library_shape.py`, `tests/test_purity.py`, `tests/test_workspace.py`, `tests/test_gates.py`, the root `conftest.py`, `pyproject.toml`, `uv.lock`, and sections 2.1, 11.1 and 15 of `docs/design.md`.
   - [ ] S2-C touches only `testing.py`, `text.py` and `lines.py` under `src/`, the three new test files under `tests/kit/`, `tests/kit/test_library_shape.py`, `tests/test_purity.py`, and sections 3.1 and 11.1 of `docs/design.md`.
-  - [ ] S2-D touches only `lex.py` under `src/`, the two new test files under `tests/kit/`, `tests/test_evidence.py`, `tests/test_purity.py`, sections 3.1 and 11.1 of `docs/design.md`, and section 3.2 of `docs/evidence/dossiers/VAL.md`.
+  - [ ] S2-D touches only `lex.py` under `src/`, the two new test files under `tests/kit/`, `tests/test_evidence.py`, `tests/test_purity.py`, sections 3.1 and 11.1 of `docs/design.md`, and a new section 3.2.1 of `docs/evidence/dossiers/VAL.md`. On the operator's decision for Appendix E it also touches sections 15 and 16 of the design.
   - [ ] S2-E touches only `records.py` under `src/`, one new test file under `tests/kit/`, `tests/kit/test_library_shape.py`, `tests/test_purity.py`, and sections 3.1 and 11.1 of `docs/design.md`.
   - [ ] Every PR may also edit `docs/progress.md`. A PR edits `docs/plans/step-02.md` when the build shows this plan wrong.
   - [ ] No PR touches `packages/checkedtables/src/checkedtables/__init__.py`, `docs/evidence/coverage.tsv`, `docs/prototype/`, `.claude/`, `CLAUDE.md`, `.github/workflows/ci.yml` or anything under `../gov-budget-data`.
@@ -154,7 +165,7 @@ Step 2 needs no R2 and no Textract credentials. It reads no PDF and spends no mo
 - [ ] Resolve the forge once. Run `command -v origin`. When it fails, use `gh` for every PR operation and record the fallback. Never require `gt`.
 - [ ] Open the PR ready, never draft, with `gh pr create --base <base-branch>`. S2-A targets `main`. A stack child targets its parent branch. Write the title as `type(scope): subject`.
 - [ ] Write the PR body per `opening-a-pr.md`. Open `## Why` with the user's goal. Put the Codex summary and the line that the `Kit size report` step prints under `## Verification`.
-- [ ] Write a numpy docstring on every public class, method and function under `packages/checkedtables/src`. Ruff's `D` rules fail the build without them. Write no other comment, except one that cites a dossier quirk id.
+- [ ] Write a numpy docstring on every public class, method and function under `packages/checkedtables/src`. Ruff's `D` rules fail the build without them, and `D105` asks for one on `__post_init__`, `__str__` and each comparison method too (Appendix A). Write no other comment, except one that cites a dossier quirk id.
 - [ ] Run the repo's lint and typecheck once before the PR-facing push, with all six gates of `tests/test_gates.py`. Push with hooks on.
 - [ ] Run `/deslop` from `.claude/skills/deslop/` before each commit and `/no-comments` before review.
 - [ ] Rebase before the code-ready report. S2-A rebases onto current `main`. A child rebases onto the tip of its parent branch. Keep that merge base in fix rounds. Rebase again only on a `git merge-tree` conflict with the base, on a CI failure that comes from the base, or when the parent gets a new head.
@@ -173,7 +184,11 @@ This repository has no Bugbot. The Codex review in the next section takes its pl
   - [ ] Every lane reports `PASS`, `ISSUES` or `BLOCKED`, with the head SHA and its transcript paths.
 - [ ] The root audits the receipts in the merge-ready report before the verdict.
 - [ ] Judge every finding by the blocking rule in `autopilot-full.md` step 4. The verdict is clean when none blocks. A failure on base behavior in a lane marked `Regression lane against trunk.` is recorded against the base and does not block the PR. A new head gets a fresh verdict, except for results that stay valid under the patch-id rule in `shipping.md`.
-- [ ] After a clean swarm verdict, run the Codex review. Run `.claude/skills/codex-review/run.sh pr 2 <base-branch>` in the background on the committed head, from the root's checkout and never from a worktree under `.claude/worktrees/`. Confirm or drop each finding by a rerun of its command or a read of its quoted lines. Give each kept `blocks` or `should fix` finding to a fresh owner with the finding, its evidence and the original brief. Then run one `verify-step` verifier and the Codex review on the new head.
+- [ ] After a clean swarm verdict, run the Codex review in a clean checkout held at the PR head. The script reviews the `HEAD` of the checkout it runs in and finds the reference beside that checkout.
+  - [ ] Run `git worktree add --detach ../phillyledger-review-<pr-id> <head SHA>` from the root's checkout. The new folder sits beside the root's checkout, so `../gov-budget-data` resolves from it.
+  - [ ] Run `.claude/skills/codex-review/run.sh pr 2 <base-branch>` in that folder, in the background. Change nothing in the folder until the run ends.
+  - [ ] Check that the report's file name carries the first eight characters of the PR head SHA. Copy the report into the root's `.codex-review/`, then run `git worktree remove ../phillyledger-review-<pr-id>`.
+- [ ] Confirm or drop each finding by a rerun of its command or a read of its quoted lines. Give each kept `blocks` or `should fix` finding to a fresh owner with the finding, its evidence and the original brief. Then run one `verify-step` verifier and the Codex review on the new head.
 - [ ] The root reads the whole diff and writes its own summary. It does not pass through an owner's report.
 - [ ] Stop at verified. Report each PR with its verdict and its head SHA. After the handoff, nobody pushes without the operator's go. The operator lands the stack bottom-up, or tells an agent to merge one named PR in that session (`CLAUDE.md`, hard rule 9). When a parent lands, its child moves onto `main` per `shipping.md` step 4, and the child's verdict stands when `git patch-id` is unchanged.
 
@@ -205,37 +220,38 @@ transcript.
 **Build.**
 
 - [ ] Add `PURE_IMPORTS` to `tests/test_purity.py`. It maps each name in `PURE_PACKAGES` to a sorted tuple of `module.name` strings, one for each name the package imports from outside. Both tuples are empty at this head, because every file in both packages is empty (Appendix A).
-- [ ] Add `INSIDE`. `checkedtables` counts `checkedtables` as inside. `datadesk.core` counts `datadesk.core` and `checkedtables` as inside. An import of a module at or under an inside name is never pinned, and neither is a relative import.
-- [ ] Write `outside_imports(tree, package)`. It returns the `module.name` string of every name that a `from module import name` statement takes from an outside module. It walks every node, so it reads function bodies and `if TYPE_CHECKING` blocks.
-- [ ] Give `impurities` a `package` parameter. Make it also report an `import` statement that names an outside module, in any spelling, a star import from an outside module, and an outside pair that `PURE_IMPORTS[package]` does not hold.
+- [ ] Add `INSIDE`. `checkedtables` counts `checkedtables` as inside. `datadesk.core` counts `datadesk.core` and `checkedtables` as inside. An import of a module at or under an inside name is never pinned. Resolve a relative import against the package of the module that holds it, then judge it the same way. `from . import refs` in `checkedtables/words.py` is inside. `from ... import shell` in `datadesk/core/tables/birt.py` names `datadesk.shell` and is outside.
+- [ ] Write `outside_imports(tree, module)`, where `module` is the dotted name of the file being read. It returns the `module.name` string of every name that a `from module import name` statement takes from an outside module. It walks every node, so it reads function bodies and `if TYPE_CHECKING` blocks.
+- [ ] Give `impurities` the same `module` parameter. Make it also report an `import` statement that names an outside module, in any spelling, a star import from an outside module, and an outside pair that `PURE_IMPORTS[package]` does not hold.
 - [ ] Delete `BANNED_IMPORTS` and its two cases in `effect`. The pin refuses `random` and `builtins` with every other module.
 - [ ] Write `test_pure_imports_are_pinned`. For each pure package, the sorted pairs that `outside_imports` finds over `package_sources` equal `PURE_IMPORTS[package]`. A pinned pair that no file imports fails the test too.
 - [ ] Write `module_valued(pairs)` and `test_pinned_imports_are_not_modules`. `module_valued` returns each pair that does not resolve, or that resolves to a module. The test first asserts that `module_valued` returns `dataclasses.sys` and `statistics.random` and does not return `dataclasses.dataclass`. Then it asserts that no pinned pair is module valued.
-- [ ] Add these single-statement forms to `BANNED_FORMS`. `import sys`, `import os.path as p`, `import dataclasses`, `from io import FileIO`, `from collections import defaultdict`, `from dataclasses import sys`, `from re import *`, an `import uuid` inside a function body, and a `from pathlib import Path` under `if TYPE_CHECKING`.
+- [ ] Add these single-statement forms to `BANNED_FORMS`. `import sys`, `import os.path as p`, `import dataclasses`, `from io import FileIO`, `from collections import defaultdict`, `from dataclasses import sys`, `from re import *`, a `from uuid import uuid4` inside a function body, and a `from pathlib import Path` under `if TYPE_CHECKING`. Add `from ... import shell` and `from ...shell import run`, read as `datadesk.core.tables.birt`.
 - [ ] Change the `try` form in `BANNED_FORMS` so that `pass` stands where `import tomllib` stood. The form tests mutable state under `try`, and the import would now be a second hit.
-- [ ] Add to `ALLOWED_FORMS`, read as `checkedtables`, the forms `from checkedtables.refs import Box`, `import checkedtables.lines` and `from . import refs`.
-- [ ] Add `test_planted_import_fails_purity_test` to `tests/test_gates.py`. It plants `from io import FileIO` at the end of `packages/datadesk/src/datadesk/core/tables/birt.py`, puts a copy of `tests/test_purity.py` in the workspace, runs the `uv run pytest` gate on that copy through `clean_then_planted`, and asserts exit code 1 and the text `birt.py:1 from io import FileIO`.
+- [ ] Add to `ALLOWED_FORMS`, read as `checkedtables.words`, the forms `from checkedtables.refs import Box`, `import checkedtables.lines` and `from . import refs`. Add `from . import catalog`, read as `datadesk.core.tables.birt`.
+- [ ] Add `test_planted_import_fails_purity_test` to `tests/test_gates.py`. It plants `from io import FileIO` at the end of `packages/datadesk/src/datadesk/core/tables/birt.py`, puts a copy of `tests/test_purity.py` in the workspace, runs the `uv run pytest` gate on that copy through `clean_then_planted`, and asserts exit code 1 and one output line that holds both `birt.py:` and `from io import FileIO`. The helper appends the plant, so the assertion names no line number.
 - [ ] Add the import rule to the Purity row of design section 11.1, and the paragraph that Appendix D quotes. The closed list of modules is empty for both packages at this head.
 - [ ] Add a Deviations entry to `docs/progress.md`. Rewrite the note "The pure packages can still reach effects the gates do not name" to say which of its ten plants now fail and which three still pass.
 
 **You see.**
 
 - [ ] `uv run pytest tests/test_purity.py` ends with `5 passed`.
-- [ ] With `from io import FileIO` appended to `datadesk/core/tables/birt.py`, the same command fails and prints `birt.py:1 from io import FileIO`.
+- [ ] With `from io import FileIO` appended to `datadesk/core/tables/birt.py`, the same command fails and prints a line that holds `birt.py:` and `from io import FileIO`.
 - [ ] `uv run pytest` exits 0, and `uv run lint-imports` prints `Contracts: 8 kept, 0 broken.`
 
 **Verify, unit.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
 - [ ] `tests/test_purity.py` gains `test_pure_imports_are_pinned` and `test_pinned_imports_are_not_modules`, and `test_scan_reports_each_banned_form` and `test_scan_allows_immutable_constants` read the new forms. Run `uv run pytest tests/test_purity.py`.
   - [ ] In a scratch copy, add `"dataclasses.dataclass"` to `PURE_IMPORTS["checkedtables"]` with no import behind it. `test_pure_imports_are_pinned` fails.
-  - [ ] In a scratch copy, make `outside_imports` skip function bodies. `test_scan_reports_each_banned_form` fails on the function form.
+  - [ ] In a scratch copy, make `outside_imports` skip function bodies. `test_scan_reports_each_banned_form` fails on the `from uuid import uuid4` form, which only that function collects.
+  - [ ] In a scratch copy, make the scan treat every relative import as inside. `test_scan_reports_each_banned_form` fails on `from ... import shell`.
 - [ ] `tests/test_gates.py` gains `test_planted_import_fails_purity_test`. Run `uv run pytest tests/test_gates.py -k purity`.
 - [ ] The branch log shows the new forms and the planted test committed before the scan changes, and failing at that commit.
 
 **Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked. Ten lanes on `opus high` at the PR head, per the boot recipe.
 
 - [ ] Lane 1. Regression lane against trunk. Plant the ten forms of the note in `docs/progress.md`, one at a time, in `datadesk/core/tables/birt.py`, and run the six gates at `main` and at the head. Save `ten-plants.log`. Pass when all ten pass every gate at `main`, and at the head `uv run pytest` fails for the seven that import (`io`, `sys` twice, `uuid`, `posix`, `_socket` and `collections`) and passes for `write = print`, `exec` and the mutable class attribute.
-- [ ] Lane 2. Plant, one at a time in `checkedtables/words.py`, `import dataclasses` with `dataclasses.sys.stdout.write("x")`, `import enum` with `enum.bltns.open("x")`, `from dataclasses import sys`, `from statistics import random`, and `from functools import cache`. Run `uv run pytest tests/test_purity.py` after each. Save `reexports.log`. Pass when all five runs fail and name the planted line.
+- [ ] Lane 2. Plant, one at a time in `checkedtables/words.py`, `import dataclasses` with `dataclasses.sys.stdout.write("x")`, `import enum` with `enum.bltns.open("x")`, `from dataclasses import sys`, `from statistics import random`, and `from functools import cache`. Then plant `from ... import shell` in `datadesk/core/tables/birt.py`. Run `uv run pytest tests/test_purity.py` after each. Save `reexports.log`. Pass when all six runs fail and name the planted line.
 - [ ] Lane 3. Not used. Save `none`. Pass when no agent runs for this lane.
 - [ ] Lane 4. Not used. Save `none`. Pass when no agent runs for this lane.
 - [ ] Lane 5. Not used. Save `none`. Pass when no agent runs for this lane.
@@ -270,14 +286,15 @@ transcript.
 - [ ] Create `refs.py`, `kinds.py`, `labels.py`, `cells.py` and `table.py` in `packages/checkedtables/src/checkedtables/`.
 - [ ] Edit `words.py` and `columns.py` in that folder. Both are empty files today.
 - [ ] Create `test_refs.py`, `test_words.py`, `test_cells.py` and `test_table.py` in `packages/checkedtables/tests/`.
-- [ ] Edit `packages/checkedtables/tests/test_library_shape.py`, `tests/test_purity.py`, `tests/test_workspace.py` and the root `conftest.py`.
+- [ ] Edit `packages/checkedtables/tests/test_library_shape.py`, `tests/test_purity.py`, `tests/test_workspace.py`, `tests/test_gates.py` and the root `conftest.py`.
 - [ ] Edit `pyproject.toml` and `uv.lock`.
 - [ ] Edit `docs/design.md` sections 2.1, 11.1 and 15, and `docs/progress.md`.
 
 **Build.**
 
 - [ ] Add `hypothesis` to the `dev` group in `pyproject.toml` and run `uv lock`. Design section 12.5 already forbids `checkedtables` to import it, so strategies live in test files.
-- [ ] Register one Hypothesis profile in the root `conftest.py` with `database=None`, `derandomize=True` and `deadline=None`, and load it. The core tests run in an empty folder and write nothing, and a derandomized run gives the same examples on every machine.
+- [ ] Register one Hypothesis profile in the root `conftest.py` with `database=None`, `derandomize=True` and `deadline=None`, and load it. A derandomized run gives the same examples on every machine.
+- [ ] In the same file, point Hypothesis at a temporary folder with `hypothesis.configuration.set_hypothesis_home_dir` before any test runs, and remove the folder when the session ends. With the profile alone, Hypothesis 6.170.15 still writes `.hypothesis/constants` into the working folder (Appendix A), and the core tests must leave their folder empty.
 - [ ] Write `Box` and `WordRef` in `refs.py` from design lines 84 to 107. `Box.around` raises `ValueError` for no boxes.
 - [ ] Order `WordRef` by its four fields with `None` before every `int` in `child`, through written comparison methods. Change line 102 of the design to say so.
 - [ ] Write the five `StrEnum` classes of `kinds.py` from design lines 110 to 138.
@@ -303,7 +320,9 @@ transcript.
 - [ ] `test_words.py` gains `test_page_refuses_a_word_from_another_page`, `test_page_refuses_a_word_from_another_document`, `test_document_page_returns_the_page` and `test_word_source_keeps_the_tool_string` for VAL-Q07. Run `uv run pytest packages/checkedtables/tests/test_words.py`.
 - [ ] `test_cells.py` gains `test_amount_needs_words` and `test_reviewed_amount_names_its_review_and_only_then`. Run `uv run pytest packages/checkedtables/tests/test_cells.py`.
 - [ ] `test_table.py` gains `test_row_key_parse_inverts_str` and `test_findings_sort_with_and_without_page` as Hypothesis properties, and `test_row_key_refuses_unsorted_names` and `test_row_key_has_occurrence`. Run `uv run pytest packages/checkedtables/tests/test_table.py`.
-- [ ] `tests/test_workspace.py` gains `test_hypothesis_profile_is_deterministic_and_writes_nothing`. It asserts that the loaded settings have `database is None` and `derandomize`. Run `uv run pytest tests/test_workspace.py`.
+- [ ] `tests/test_workspace.py` gains `test_hypothesis_profile_is_derandomized`. It asserts that the loaded settings have `derandomize` and `database is None`. Run `uv run pytest tests/test_workspace.py`.
+- [ ] `tests/test_gates.py` gains `test_hypothesis_writes_nothing_in_the_workspace`. It plants a property test and a copy of `test_working_directory_is_empty` in one new file under `packages/checkedtables/tests/` of a workspace copy, runs the `uv run pytest` gate on that file, and asserts exit code 0 and that no `.hypothesis` folder exists anywhere under the workspace. Run `uv run pytest tests/test_gates.py -k hypothesis`.
+  - [ ] In a scratch copy, remove the `set_hypothesis_home_dir` call. The test fails.
 - [ ] The shape and purity tests pass with the new pins. Run `uv run pytest packages/checkedtables/tests/test_library_shape.py tests/test_purity.py`.
   - [ ] In a scratch copy, put `order=True` back on `WordRef`. `test_word_refs_sort_with_and_without_child` fails with `TypeError`.
 - [ ] The branch log shows each test file committed before its module, and failing at that commit.
@@ -311,7 +330,7 @@ transcript.
 **Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked. Ten lanes on `opus high` at the PR head, per the boot recipe.
 
 - [ ] Lane 1. Regression lane against trunk. Run the six gates at the base, which is the S2-A head, and at the head. Record that the base has no kit types. Then run a lane script that builds each state the design lists under "What these make impossible" at lines 189 to 194 and 394 to 399 and that a constructor can refuse. They are an inverted `Box`, a `Page` with a word of another page, an `Amount` with no words, and a reviewed `Amount` with no review id. Save `illegal-states.log`. Pass when every gate exits 0 on both sides and each of the four raises `ValueError`.
-- [ ] Lane 2. Run `uv run pytest --basetemp=<lane folder>/tmp -p no:cacheprovider`, then search the worktree and the lane folder for a `.hypothesis` folder. Save `hypothesis-writes-nothing.log`. Pass when pytest exits 0 and the search prints nothing.
+- [ ] Lane 2. Delete any `.hypothesis` folder in the worktree. Run `uv run pytest --basetemp=<lane folder>/tmp -p no:cacheprovider`, then search the worktree and the lane folder for a `.hypothesis` folder, and print the Hypothesis version from `uv.lock`. Save `hypothesis-writes-nothing.log`. Pass when pytest exits 0 and the search prints nothing.
 - [ ] Lane 3. Not used. Save `none`. Pass when no agent runs for this lane.
 - [ ] Lane 4. Not used. Save `none`. Pass when no agent runs for this lane.
 - [ ] Lane 5. Not used. Save `none`. Pass when no agent runs for this lane.
@@ -354,13 +373,13 @@ transcript.
 - [ ] Make a block whose first line is `#ocr` drop that line and give every word `bold=None`, `size=None`, `confidence=100.0` and a `WordSource` of kind `OCR`.
 - [ ] Write `doc_of` in `testing.py` from design line 1787. It sorts the pages by number and raises `ValueError` for no pages, for two hashes and for a repeated page number. Design section 12.1 puts it in this module and no step names it.
 - [ ] Write `normalize_space`, `normalize_label` and `squash` in `text.py` from design lines 1611 to 1616. `normalize_space` turns every Unicode space into a plain space and U+2010 and U+2011 into `-`, removes the spaces around a hyphen that sits between two letters, and collapses runs. `normalize_label` replaces punctuation with a space, as `entities.py:95` of the old code does, and keeps a comma or a point that sits between two digits.
-- [ ] Write `parse_label` from design lines 1617 to 1619. It takes marks off the end of the label until none is left and keeps them in print order.
-- [ ] Write `split_line_prefix` from design lines 1620 to 1622. It takes the leading words that fullmatch the pattern and never the line's last word, so the line it returns always has a word and a box. Name `Line` in `text.py` only under `TYPE_CHECKING`, and build the new line with `dataclasses.replace`, because `lines.py` imports `normalize_space` from `text.py` (Appendix A).
+- [ ] Write `parse_label` from design lines 1617 to 1619. It takes marks off the end of the label until none is left and keeps them in print order. The mark forms are the nine of the label table in Appendix F. Eight are the design's, and the ninth, a bare digit after a word, comes from ENT-Q07 and `entities.py:54-61` of the old code.
+- [ ] Write `split_line_prefix` from design lines 1620 to 1622. It takes every leading word that fullmatches the pattern. When every word matches, the line it returns has no words and keeps its box. The prefix words stay as evidence, and no value word is left to seed a lane. Name `Line` in `text.py` only under `TYPE_CHECKING`, and build the new line with `dataclasses.replace`, because `lines.py` imports `normalize_space` from `text.py` (Appendix A).
 - [ ] Write `Line` and `PageLines` in `lines.py` from design lines 197 to 212.
 - [ ] Write `group_lines` from design lines 1626 to 1628. Take the words in order of bottom, then `x0`, then `ref`. The first word opens a line. A later word joins the open line when its bottom is within 0.35 of the page's median word height of the bottom of the word that opened the line, and it opens a new line otherwise. Sort a line's words by `x0` and the lines by top.
 - [ ] Write `page_lines` and `lines_text`. `lines_text` joins the lines' `text` with a newline.
-- [ ] Write `has_values`. A line has values when its rightmost word is a value word. A value word is `N/A`, `NA`, a dash placeholder (`-`, `--`, an en dash or an em dash), or a text that holds a digit and otherwise only `,`, `.`, `$`, `%`, parentheses, a minus glyph and trailing marks. Keep the predicate private to `lines.py`.
-- [ ] State the four rules in the comments of design section 3.1, and record them under Deviations in `docs/progress.md`.
+- [ ] Write `has_values`. A line has values when its last word that is not a mark word is a value word. A mark word is one or more of `*`, `†`, `‡`, `§`, `#`, a backtick and the Unicode superscript digits, with nothing else. A value word is `N/A`, `NA`, a dash placeholder (`-`, `--`, an en dash or an em dash), or a text that holds a digit and otherwise only `,`, `.`, `$`, `%`, parentheses, a minus glyph and trailing marks. Keep the predicate private to `lines.py`.
+- [ ] State the four rules and the ninth mark form in the comments of design section 3.1, and record them under Deviations in `docs/progress.md`.
 - [ ] Add `Line` and `PageLines` to `FIELD_SNAPSHOT`, pin the new import pairs, and list any new module in design section 11.1.
 
 **You see.**
@@ -374,9 +393,12 @@ transcript.
 - [ ] `test_lines.py` gains the Hypothesis properties `test_every_word_lands_in_exactly_one_line`, `test_a_line_never_spans_more_than_the_tolerance` and `test_group_lines_ignores_word_order`. Each draws pages of words with free boxes. Run `uv run pytest packages/checkedtables/tests/test_lines.py`.
   - [ ] In a scratch copy, make `group_lines` compare a word with the word before it. `test_a_line_never_spans_more_than_the_tolerance` fails.
   - [ ] In a scratch copy, make `group_lines` drop a word that fits no open line. `test_every_word_lands_in_exactly_one_line` fails.
-- [ ] `test_lines.py` gains `test_debris_between_two_rows_joins_neither` for QCASH-Q16 and VAL-Q13, `test_a_label_that_ends_in_text_has_no_values` with "Class 100 Total", and `test_a_row_that_ends_in_a_dash_has_values`.
-- [ ] `test_text.py` gains one test for each of the 22 quirks that Appendix F gives `text.py`. Each test name or comment carries the quirk id, and each input is the printed text that the quirk's dossier row quotes. Run `uv run pytest packages/checkedtables/tests/test_text.py`.
-- [ ] `test_text.py` gains `test_split_line_prefix_keeps_the_last_word` and the Hypothesis property `test_split_line_prefix_loses_no_word`.
+- [ ] `test_lines.py` gains `test_debris_between_two_rows_joins_neither` for QCASH-Q16 and VAL-Q13, `test_a_label_that_ends_in_text_has_no_values` with "Class 100 Total", `test_a_row_that_ends_in_a_dash_has_values`, and `test_a_row_that_ends_in_a_mark_word_has_values` with `2.8` and a backtick word, row 34 of Appendix E.
+- [ ] `test_text.py` gains one `parse_label` test for each row of the label table in Appendix F, the four controls included. Each asserts `printed`, `text` and `marks`, and carries the row's quirk ids. Run `uv run pytest packages/checkedtables/tests/test_text.py`.
+  - [ ] In a scratch copy, remove the bare digit form. The "Sheriff 2" test fails while the "Human Services (1)" test passes, so one quirk id cannot hide the other form of ENT-Q07.
+- [ ] `test_text.py` gains one test for each of the 12 other quirks that Appendix F gives `text.py`, with the quirk id in the test name or a comment. The input is the text that the quirk's dossier row quotes. Where the row quotes none, the test uses the text at the old file and line that the row cites, and its comment names that file and line.
+- [ ] `test_text.py` gains `test_a_line_of_only_prefix_words_keeps_no_value_word` and the Hypothesis property `test_split_line_prefix_loses_no_word`. The first splits three lines that hold only `23`, `24` and `26`. Each prefix holds the word, each returned line has no words, and `has_values` is false for each.
+  - [ ] In a scratch copy, make `split_line_prefix` keep the line's last word. `test_a_line_of_only_prefix_words_keeps_no_value_word` fails.
 - [ ] `test_testing.py` gains `test_page_from_text_lays_out_six_by_twelve`, `test_double_asterisks_mark_bold_words`, `test_ocr_block_has_no_style` and `test_doc_of_refuses_two_hashes`. Run `uv run pytest packages/checkedtables/tests/test_testing.py`.
 - [ ] The branch log shows each test file committed before its module, and failing at that commit.
 
@@ -411,7 +433,7 @@ transcript.
 
 ## Lex cells and check readings (S2-D)
 
-**Depends on.** S2-C, and the operator's ruling on Appendix E. The base is `step-02/c-words-to-lines`. S2-D owns clauses C1b, C2 and C3. It builds `lex`.
+**Depends on.** S2-C, and the operator's decision on clause C2. The base is `step-02/c-words-to-lines`. S2-D owns clauses C1b, C2 and C3. It builds `lex`.
 
 **Files.**
 
@@ -419,27 +441,28 @@ transcript.
 - [ ] Create `test_lex.py` and `test_val_probe.py` in `packages/checkedtables/tests/`.
 - [ ] Create `tests/test_evidence.py`.
 - [ ] Edit `tests/test_purity.py`.
-- [ ] Edit `docs/evidence/dossiers/VAL.md` section 3.2.
-- [ ] Edit `docs/design.md` sections 3.1 and 11.1, and `docs/progress.md`.
+- [ ] Edit `docs/evidence/dossiers/VAL.md`, adding section 3.2.1 and changing no other line.
+- [ ] Edit `docs/design.md` sections 3.1 and 11.1, and `docs/progress.md`. Edit sections 15 and 16 only on the operator's decision that Appendix E is the acceptance set.
 
 **Build.**
 
-- [ ] Write `PROBES` in `test_val_probe.py`, the 55 rows of Appendix E as the operator approved them. A row holds the input, the column key, the two old results as text, and the new result as text.
+- [ ] Write `PROBES` in `test_val_probe.py`, the 55 rows that the operator's decision names. A row holds the input, the column key, the two old results as text, and the new result as text.
 - [ ] Write `describe(cell)` in `test_val_probe.py`. It prints a cell the way Appendix E writes a new result, such as `Amount -3.0`, `Amount 242096 marks *`, `Dash no_value`, `NotApplicable` and `Unreadable two_tokens`.
-- [ ] Write the Appendix E table into VAL section 3.2 below the dossier's own table, with one sentence that says 16 inputs are the dossier's and 39 were chosen on the operator's ruling from the examples of sections 1.3, 2 and 3.1.
-- [ ] Write one private number reader in `lex.py`. A number is `\d{1,3}(,\d{3})*` or `\d+`, then an optional `\.\d+`. A leading zero is legal only as the whole integer part. It returns a `Decimal` built from the text, so it never inserts a decimal point and never uses `float`.
+- [ ] Add the table to VAL as section 3.2.1, "Acceptance inputs for the new lexer", below the dossier's own table and without a change to it. Open the section with where its inputs come from. For Appendix E that is 16 inputs from section 3.2 and 39 that the operator chose on the day of the decision from the examples of sections 1.3, 2 and 3.1. They are not the 39 the original probe ran.
+- [ ] When the operator decides that Appendix E is the acceptance set, add decision 12 to the table of design section 16 in the operator's words, and add "(decision 12)" after the probe clause of step 2 in section 15. Skip this box when the operator supplies the original inputs.
+- [ ] Write one private number reader in `lex.py`. It reads one signed token. Paired parentheses or one leading minus glyph make the number negative, and a `$` may stand before the digits on either side of the minus glyph or the opening parenthesis. The minus glyphs are `-`, U+2212, the en dash and the em dash (`tables/amounts.py:13`). The digits are `\d{1,3}(,\d{3})*` or `\d+`, then an optional `\.\d+`, and a leading zero is legal only as the whole integer part. The reader returns a `Decimal` built from the text, so it never inserts a decimal point and never uses `float`. `lex_cell` and `apply_reading` of S2-E both call it, so a reading of `(29.1)` reads as a cell of `(29.1)` does.
 - [ ] Write `lex_cell` from design lines 1685 to 1693 as these rules, in order.
   - [ ] No words gives `Blank`. A `YEAR`, `CODE` or `TEXT` column gives `Text`.
   - [ ] The text `N/A` or `NA` gives `NotApplicable`. The text `-`, `--`, an en dash or an em dash gives `Dash(col.dash)`.
-  - [ ] Marks leave the end of the cell and go to `Amount.marks`. A mark is one of `*`, `†`, `‡`, `§`, `#` and a backtick (`tables/amounts.py:25`), a Unicode superscript digit, or a last digit word whose size is under 0.7 of the first word's size and whose bottom is above the first word's bottom (VAL-Q28).
-  - [ ] A `$` leaves the token wherever it stands before the digits. Paired parentheses or one leading minus glyph make the number negative. The minus glyphs are `-`, U+2212, the en dash and the em dash (`tables/amounts.py:13`).
-  - [ ] Two or more tokens join only in the three shapes of Appendix E. Any other cell of two or more tokens is `Unreadable`.
+  - [ ] Marks leave the end of the cell and go to `Amount.marks`. A mark is one of `*`, `†`, `‡`, `§`, `#` and a backtick (`tables/amounts.py:25`), a Unicode superscript digit, or a last digit word whose size is under 0.7 of the size of the number word before it and whose bottom is above that word's bottom (VAL-Q28). The design measures against the cell's type size, which is the number's and not that of a small `$` in front.
+  - [ ] A `$` word of its own leaves the cell's tokens. The number reader takes the `$`, the parentheses and the minus glyph of each token.
+  - [ ] Two or more tokens join only in the three shapes of Appendix E, with their token limits, and only in a `MONEY` or `PERCENT` column on a text layer. Any other cell of two or more tokens is `Unreadable`, a detached minus glyph or `%` included.
   - [ ] A `%` is legal as `col.fmt.percent` says. When `col.fmt.decimals` is a number, the printed decimals must equal it.
-  - [ ] An `Amount` keeps the verbatim joined text and the refs of every word of the cell, the `$` and mark words included.
+  - [ ] An `Amount` and an `Unreadable` keep the cell's word texts joined by one space, and the refs of every word of the cell, the `$` and mark words included.
   - [ ] Every other cell is `Unreadable` with the first reason that applies, in the order `not_a_number`, `two_tokens`, `sign`, `percent_sign`, `grouping`, `decimals`, as Appendix E defines them.
 - [ ] Write `split_numeric_runs` from design lines 1682 to 1684. A boundary falls between a letter and a comma-grouped number on either side, as `tables/text_cleaning.py:14-20` requires, so `FY2016` stays one word. A boundary also falls after a `%` or a `)` that a digit, a `(` or a `$` follows. Children get `WordRef.child` from 0 and boxes cut in proportion to characters. A word with one run comes back unchanged.
 - [ ] Write `transliteration_ok` from design lines 1694 to 1697. Pin the confusable glyphs as one tuple in `lex.py`. They are `B` and `b` for 8, `D`, `d`, `O`, `o`, `Q` and `q` for 0, and `&` for 6 (`tables/value_recovery.py:46-58`).
-- [ ] Write `tests/test_evidence.py` with `test_val_probe_table_is_the_dossier_table`. It loads `test_val_probe.py` by path, renders each row of `PROBES` as a table row, and asserts that VAL section 3.2 holds exactly those 55 rows in order.
+- [ ] Write `tests/test_evidence.py` with `test_val_probe_table_is_the_dossier_table`. It loads `test_val_probe.py` by path, renders each row of `PROBES` as a table row, and asserts that the table of VAL section 3.2.1 holds exactly those 55 rows in order.
 - [ ] Rewrite the `lex_cell` comment of design section 3.1 to state the three join shapes, the minus glyphs and the six reasons. Record it under Deviations in `docs/progress.md`. Pin the new import pairs and list any new module in design section 11.1.
 
 **You see.**
@@ -451,27 +474,32 @@ transcript.
 
 **Verify, unit.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
-- [ ] C1b. `test_lex.py` gains the Hypothesis property `test_lexer_round_trip`. It draws a `Decimal` with 0 to 4 decimals and prints it grouped or plain, with parentheses or a minus glyph when negative, and with or without a `$`. The cell that `lex_cell` returns is an `Amount` whose `printed` has the same sign, digits and exponent.
+- [ ] C1b. `test_lex.py` gains the Hypothesis property `test_lexer_round_trip`. It draws a `Decimal` with 0 to 12 decimals and prints it grouped or plain, with parentheses or a minus glyph when negative, and with or without a `$`. It names `0.00001` and `1234.567890` as explicit examples. The cell that `lex_cell` returns in a column with decimals as printed is an `Amount` whose `printed` has the same sign, digits and exponent.
   - [ ] In a scratch copy, make the number reader drop a trailing zero of the fraction. The property fails.
+  - [ ] In a scratch copy, make the number reader refuse a fraction of more than four digits. The property fails.
 - [ ] C1b. `test_lex.py` gains the Hypothesis property `test_amount_digits_are_the_digits_of_its_words`. It draws word texts from digits, separators, signs, letters, spaces and marks. Whenever the cell is an `Amount`, the decimal digits of `printed` are the decimal digits of the words that are not marks, in order, and the exponent is minus the count of digits after the last point.
   - [ ] In a scratch copy, make `lex_cell` join two bare integers. The property still passes, because a join keeps the digits, so `test_bare_integers_never_join` is the test that fails. Record both results.
   - [ ] In a scratch copy, make the number reader accept `007` as 7. The property fails.
 - [ ] C2. `test_val_probe.py` gains `test_val_probe_inputs_give_documented_results`. It asserts `len(PROBES) == 55`. For each row it builds the words with `page_from_text`, lexes them in the row's column, and asserts that `describe` of the cell equals the row's new result. Row 39 also asserts the two children of `split_numeric_runs`.
-  - [ ] In a scratch copy, change one new result in VAL section 3.2. `test_val_probe_table_is_the_dossier_table` fails.
+  - [ ] In a scratch copy, change one new result in VAL section 3.2.1. `test_val_probe_table_is_the_dossier_table` fails.
   - [ ] In a scratch copy, change one new result in `PROBES`. Both C2 tests fail.
 - [ ] C3. `test_lex.py` gains `test_transliteration_refuses_a_digit_swap` with the four assertions of design lines 3755 to 3759, and `test_confusable_glyphs_are_pinned` with the nine pairs as a literal.
   - [ ] In a scratch copy, make `transliteration_ok` compare digit counts only. `test_transliteration_refuses_a_digit_swap` fails on "65.8" to "85.8".
-- [ ] `test_lex.py` gains `test_bare_integers_never_join` as design lines 3750 to 3752 give it, and `test_two_amounts_in_one_cell_never_join` with `4727 402.5`, `12 3,456`, `204,935 3,344` and `746,066,499 726,847,660`.
-- [ ] `test_lex.py` gains one test for each of the 21 quirks that Appendix F gives `lex.py`, with the quirk id in the test name or a comment. The VAL-Q28 test builds its raised digit word by hand.
-- [ ] `test_lex.py` gains the Hypothesis property `test_a_lexed_value_is_a_value_word`. Every word that `lex_cell` reads alone as `Amount`, `Dash` or `NotApplicable` in a `PERCENT` column with an optional percent sign makes `has_values` true for a line that ends in it.
+- [ ] `test_lex.py` gains `test_bare_integers_never_join` as design lines 3750 to 3752 give it, and `test_two_amounts_in_one_cell_never_join` with `4727 402.5`, `1234.5 6`, `12 3,456`, `204,935 3,344` and `746,066,499 726,847,660`.
+- [ ] `test_lex.py` gains `test_count_and_ocr_cells_never_join`. `1 23,456` in a `COUNT` column is `Unreadable`, and so are `67,215,504.0 0` on a page that starts with `#ocr`, and `-1 37,332,523` and `$1 37,332,523` in a `MONEY` column on a text layer. The same two inputs in a `MONEY` column on a text layer are the amounts 123456 and 67215504.00.
+  - [ ] In a scratch copy, let join shape 2 take any number with a decimal point. `test_two_amounts_in_one_cell_never_join` fails on `1234.5 6`.
+- [ ] `test_lex.py` gains one test for each of the 21 quirks that Appendix F gives `lex.py`, with the quirk id in the test name or a comment.
+- [ ] `test_lex.py` gains `test_a_raised_digit_after_a_small_dollar_sign_is_a_mark` for VAL-Q28. It builds by hand a 6-point `$`, a 12-point `2.8` and a raised 6-point `1`. The cell is `Amount 2.8` with the mark `1` and three word refs.
+  - [ ] In a scratch copy, measure the raised digit against the first word. The test fails, because the cell becomes 2.81 through join shape 2.
+- [ ] `test_lex.py` gains the Hypothesis property `test_a_lexed_value_is_a_value_word`. Every cell of one or more words that `lex_cell` reads as `Amount`, `Dash` or `NotApplicable` in a `PERCENT` column with an optional percent sign makes `has_values` true for a line that ends in those words. The strategy draws cells with a mark word and cells with a `$` word.
 - [ ] The branch log shows the tests committed before `lex.py`, and failing at that commit.
 
 **Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked. Ten lanes on `opus high` at the PR head, per the boot recipe.
 
-- [ ] Lane 1. Regression lane against trunk. Run the six gates at the base, which is the S2-C head, and at the head. Record that the base has no lexer. Then run a lane script that reads the 55 rows from VAL section 3.2, runs each input through a copy of the old `parse_amount` and `parse_decimal`, and through `page_from_text` and `lex_cell`, and prints the three results beside the three the dossier documents. This lane proves C2. Save `probe-55.log`. Pass when every gate exits 0 on both sides and all 165 results equal the dossier's.
+- [ ] Lane 1. Regression lane against trunk. Run the six gates at the base, which is the S2-C head, and at the head. Record that the base has no lexer. Then run a lane script that reads the 55 rows from VAL section 3.2.1, runs each input through a copy of the old `parse_amount` and `parse_decimal`, and through `page_from_text` and `lex_cell`, and prints the three results beside the three the dossier documents. This lane proves C2. Save `probe-55.log`. Pass when every gate exits 0 on both sides and all 165 results equal the dossier's.
 - [ ] Lane 2. This lane proves C1b. Run `uv run pytest packages/checkedtables/tests/test_lex.py -k "round_trip or digits_of_its_words" --hypothesis-show-statistics`, then run a lane script that prints 200 amounts of its own choosing in each of the eight printed forms and lexes them. Save `lexer-suite.log`. Pass when pytest reports two passed tests, the statistics show at least 100 passing examples for each, and the script reads back every amount it printed.
 - [ ] Lane 3. This lane proves C3. Run a lane script that calls `transliteration_ok` on the four pairs of the check and on every one-digit change of "77,500,000" and "291.8". Save `transliteration.log`. Pass when "1o4.o" to "104.0" and "2918" to "291.8" are accepted, "65.8" to "85.8" and "77,500,000" to "7,500,000" are refused, and every one-digit change is refused.
-- [ ] Lane 4. Run a lane script that lexes `4727 402.5`, `12 3,456`, `204,935 3,344`, `2100` in a one-decimal column, and `69,2`, and prints each cell. Save `no-repair.log`. Pass when all five are `Unreadable` and no `Amount` holds a digit or a point that its words do not print.
+- [ ] Lane 4. Run a lane script that lexes `4727 402.5`, `1234.5 6`, `12 3,456`, `204,935 3,344`, `1 23,456` in a count column, `2100` in a one-decimal column, and `69,2`, and prints each cell. Then build 40 cells of two or three tokens from the three join shapes, with and without a `$`, a minus glyph and parentheses, and with one token changed so the shape no longer fits. Lex each in a money column on a text layer and run each through a copy of the old `parse_decimal`. Save `no-repair.log`. Pass when all seven are `Unreadable`, no `Amount` holds a digit or a point that its words do not print, and the new lexer gives an `Amount` for none of the 40 cells that the old reader refuses.
 - [ ] Lane 5. Not used. Save `none`. Pass when no agent runs for this lane.
 - [ ] Lane 6. Not used. Save `none`. Pass when no agent runs for this lane.
 - [ ] Lane 7. Not used. Save `none`. Pass when no agent runs for this lane.
@@ -509,13 +537,18 @@ transcript.
 **Build.**
 
 - [ ] Write `ReviewedReading`, `EveryRow`, `DashRule` and `CellRecords` in `records.py` from design lines 653 to 686.
-- [ ] Write `reading_for` from design lines 1701 to 1704. A reading is a candidate for a cell when its document, page and source match and its box holds at least one of the cell's words, with 1.0 point of slack. No candidate gives `None`. Two candidates give a `duplicate_reading` finding. One candidate must hold every word of the cell, and the cell's word texts joined by a space must equal `seen`, or the result is a `stale_reading` finding.
-- [ ] Write `apply_reading` from design lines 1705 to 1707. A reading of `None` gives `Unreadable` with `accepted_by` set and the cell's own reason kept. Any other reading must pass `transliteration_ok(seen, reading)` and must read as one number through the number reader of `lex.py`, or the result is a `reading_refused` finding. A `Blank` cell gives `reading_refused`.
+- [ ] Write `reading_for` from design lines 1701 to 1704 with the signature `reading_for(cell_words, page_words, source, readings)`. `page_words` takes the place of the design's `page` number, which every word's ref already carries. Design lines 689 to 690 make a reading stale when the words inside its box stop joining to `seen`, and the function cannot see those words unless the caller passes them.
+- [ ] A reading is a candidate for a cell when its document, page and source match and its box holds at least one of the cell's words, with 1.0 point of slack. No candidate gives `None`. Two candidates give a `duplicate_reading` finding.
+- [ ] For the one candidate, take every word of `page_words` that the box holds. Those words must be exactly the cell's words, and their texts joined by one space, left to right, must equal `seen`. Otherwise the result is a `stale_reading` finding. A box that holds two cells is stale for both.
+- [ ] Write `apply_reading` from design lines 1705 to 1707. Only an `Amount` or an `Unreadable` cell takes a reading, and any other cell gives a `reading_refused` finding. The cell's `text` must equal the reading's `seen`, or the result is `stale_reading`. Both arguments of `transliteration_ok` come from the record, so without this test a reading could put its value on another cell's words.
+- [ ] A reading of `None` gives `Unreadable` with `accepted_by` set. An `Unreadable` cell keeps its reason, and an `Amount` gets the reason `reviewed_null`.
+- [ ] Any other reading must pass `transliteration_ok(seen, reading)` and must read as one signed number through the number reader of `lex.py`, or the result is `reading_refused`.
 - [ ] Build the reviewed `Amount` from the cell's text and words, the reading's source, `Reading.REVIEWED` and the reading's id.
 - [ ] Give all three findings `Severity.BLOCK`, the reading's page, and the subject `<first eight of the hash>:reading:<reading id>`. `reading_for` has no table name, so the subject cannot take the form of design line 447.
-- [ ] State the three codes, the subject and the slack in the comments of design section 3.1, and record them under Deviations in `docs/progress.md`.
+- [ ] Change the signature of `reading_for` in design section 3.1, and state the three codes, the subject, the slack and the two tests of `apply_reading` in its comments. Record them under Deviations in `docs/progress.md`, with a note for the step 5 plan that `assemble` passes the words of the cut page.
 - [ ] Add the four dataclasses to `FIELD_SNAPSHOT`, pin the new import pairs, and list any new module in design section 11.1.
-- [ ] After the verdict, set the step 2 row of `docs/progress.md` to `check passed`, with the date, the five branch names and the `CI` run ID of the S2-E head. Do it in a commit of its own.
+- [ ] After the verdict, set the step 2 row of `docs/progress.md` to `check passed`, with the date, the five branch names, the SHA of the verified code head and the ID of that head's `CI` run. Do it in a commit of its own.
+- [ ] That commit is a new head. Wait for its `CI` run, run one `verify-step` verifier on it, and report its SHA as the head to land.
 
 **You see.**
 
@@ -529,12 +562,17 @@ transcript.
 - [ ] `test_records.py` gains `test_a_reading_cannot_change_a_digit` with "65.8" to "85.8" for QCASH-Q22 and "77,500,000" to "7,500,000" for MSCH-Q26. Both give `reading_refused`.
   - [ ] In a scratch copy, remove the `transliteration_ok` call from `apply_reading`. The test fails.
 - [ ] `test_records.py` gains `test_moved_text_makes_a_reading_stale`, `test_a_box_that_holds_part_of_a_cell_is_stale`, `test_two_readings_for_one_cell_is_a_finding`, `test_a_reading_on_another_page_or_source_is_no_candidate` and `test_a_null_reading_accepts_an_unreadable_cell`.
+- [ ] `test_records.py` gains `test_a_box_that_holds_two_cells_is_stale`. Two one-word cells of `7` sit in one box whose reading has `seen` "7". `reading_for` gives `stale_reading` for each cell.
+  - [ ] In a scratch copy, make `reading_for` ignore `page_words`. The test fails.
+- [ ] `test_records.py` gains `test_a_reading_never_lends_its_value_to_another_cell`. A cell of `65.8` and a record with `seen` "85.8" and `reading` "85.8" give `stale_reading` from `apply_reading`.
+  - [ ] In a scratch copy, remove the comparison of the cell's text with `seen`. The test fails.
+- [ ] `test_records.py` gains `test_a_negative_reading_is_read` with a cell of `(29 1)` and a reading of "(29.1)", the form of `config/layouts/qcmr-cash.yml:165` in the old repository, and `test_a_null_reading_on_an_amount_gives_reviewed_null`.
 - [ ] `test_records.py` gains the Hypothesis property `test_a_reviewed_amount_keeps_the_digits_seen`. For any digits and any separators a reading adds, the `Amount` that `apply_reading` returns has the digits of `seen`.
 - [ ] The branch log shows the tests committed before `records.py`, and failing at that commit.
 
 **Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked. Ten lanes on `opus high` at the PR head, per the boot recipe.
 
-- [ ] Lane 1. Regression lane against trunk. Run the six gates at the base, which is the S2-D head, and at the head. Record that the base has no `records`. Then run a lane script that lays out a one-decimal cash row with `page_from_text`, lexes `2918` and `1o4.o` as `Unreadable`, and applies readings of "291.8", "104.0", "85.8" over a seen "65.8", and `None`. Then it moves the reading's box off the cell and asks `reading_for` again. Save `readings.log`. Pass when every gate exits 0 on both sides, the first two give reviewed amounts of 291.8 and 104.0, the third gives `reading_refused`, the fourth gives an accepted `Unreadable`, and the moved box gives `None`.
+- [ ] Lane 1. Regression lane against trunk. Run the six gates at the base, which is the S2-D head, and at the head. Record that the base has no `records`. Then run a lane script that lays out a one-decimal cash row with `page_from_text`, lexes `2918` and `1o4.o` as `Unreadable`, and applies readings of "291.8", "104.0", "85.8" over a seen "65.8", and `None`. It applies a record with `seen` "85.8" to the cell that prints `65.8`. Then it moves the reading's box off the cell and asks `reading_for` again. Save `readings.log`. Pass when every gate exits 0 on both sides, the first two give reviewed amounts of 291.8 and 104.0, the third gives `reading_refused`, the fourth gives an accepted `Unreadable`, the record for another cell gives `stale_reading`, and the moved box gives `None`.
 - [ ] Lane 2. Not used. Save `none`. Pass when no agent runs for this lane.
 - [ ] Lane 3. Not used. Save `none`. Pass when no agent runs for this lane.
 - [ ] Lane 4. Not used. Save `none`. Pass when no agent runs for this lane.
@@ -565,7 +603,7 @@ transcript.
 
 - [ ] Every box above is checked with its evidence.
 - [ ] At the S2-E head, `uv run pytest -k "exactly_one_line or round_trip or digits_of_its_words or val_probe or digit_swap"` runs the six named proofs of the clause table and all pass.
-- [ ] The step 2 row of `docs/progress.md` at the S2-E head shows `check passed`, the date, the five branch names and the `CI` run ID.
+- [ ] The step 2 row of `docs/progress.md` at the final S2-E head shows `check passed`, the date, the five branch names, the SHA of the verified code head and that head's `CI` run ID. The `CI` run of the final head is green too.
 - [ ] The reference snapshot commands still print what `<root>/.audit/reference-baseline.txt` holds.
 - [ ] Reply to the operator with the report that `autopilot-stack.md` names, each PR with its verdict.
 
@@ -590,10 +628,15 @@ records what each run printed. None of the prototype code is for reuse.
 | Does `order=True` sort a `WordRef` and its child? | No. `TypeError: '<' not supported between instances of 'NoneType' and 'int'`. `Finding.page` has the same shape. | Run by the root. |
 | Does the old label code delete punctuation or replace it with a space? | It replaces it with a space. | Read by the root at `entities.py:95`. |
 | Is Hypothesis installed? | No. `uv.lock` does not name it, and the old repository never used it. | Read by the root and by an explorer. |
+| Does a profile with `database=None` stop Hypothesis writing files? | No. Hypothesis 6.170.15 writes `.hypothesis/constants` into the working folder. With `set_hypothesis_home_dir` on a temporary folder, or with `HYPOTHESIS_STORAGE_DIRECTORY` set, the working folder stays as it was. | Run by the root after the Codex review, with one property test in three scratch folders. |
+| Does ruff ask for docstrings on magic methods? | Yes. `D105` fires on `__post_init__` and `__lt__` under the repository's rule set, and `from re import compile` passes it. | Run by the root with `ruff check --isolated` and the selected rules. |
+| Does a relative import leave `datadesk.core`? | Yes. `importlib.util.resolve_name("..", "datadesk.core")` returns `datadesk`. | Run by the root after the Codex review. |
+| Does the old lexer join `1234.5 6`? | No. It returns `None`, and it joins `1,234.5 6`, `123.5 6`, `1 23,456` and `2.8 1`. | Run by the root after the Codex review. |
+| Which signed forms of the three join shapes does the old lexer join? | Shape 1 only with a bare first digit or inside parentheses. `-1 37,332,523` and `$1 37,332,523` give `None`. Shapes 2 and 3 with a `$`, a minus or parentheses. | Run by the root on 21 cells after the Codex review. |
 
 These stay unproven until the build.
 
-- Hypothesis under the socket block and the empty working folder of the core tests. Nothing has run it here.
+- Hypothesis under the socket block and the audit hook of the root `conftest.py`. The root ran it in scratch folders only.
 - Every lexer rule on a real page. Step 2 reads no PDF. Step 5 runs the lexer on the word fixtures of 20 editions.
 - The 39 inputs of Appendix E that the dossier did not print in section 3.2. They are a choice, not a recovery.
 - Whether any family prints a superscript digit, a trailing minus or a plus sign (VAL section 12).
@@ -608,19 +651,21 @@ These stay unproven until the build.
 - **Give `lex_cell` the kind, the format and the dash meaning as three parameters.** The design gives it a `ColumnSpec`, and five parameters would fail the shape test.
 - **Move `split_line_prefix` into `lines.py`.** It would end the cycle with no `TYPE_CHECKING` import. It would also change section 12.1, section 3.1 and four rows of `coverage.tsv` for a function whose signature already works.
 - **Make `has_values` call the lexer.** `lines` would import `lex`, `lex` imports `columns` for `ColumnSpec`, and at step 5 `columns` imports `lines`. The plan keeps a loose predicate in `lines.py` and ties it to the lexer with the property `test_a_lexed_value_is_a_value_word`.
-- **Use the design's one-sentence kerning rule as written.** A join that only needs one separator and a legal result turns `4727 402.5` into 4727402.5 and `12 3,456` into 123,456. The old code names both as two values (`tables/amounts.py:63-97`). The plan ports its two narrow shapes and adds the comma shape that VAL section 3.1 prints.
+- **Use the design's one-sentence kerning rule as written.** A join that only needs one separator and a legal result turns `4727 402.5` into 4727402.5 and `12 3,456` into 123,456. The old code names both as two values (`tables/amounts.py:63-97`). The plan ports its two narrow shapes with their token limits, and the comma shape that the old code read by removing spaces.
 - **Read the reading's number in `records.py` with its own pattern.** Two number grammars drift. `apply_reading` imports the one private reader of `lex.py`. A public name for it would add to the kit's shape for one caller.
-- **Split the dossier's 55 inputs into a fixture file.** The check says the results are documented in VAL section 3.2. `test_val_probe_table_is_the_dossier_table` pins the dossier to the test, as `test_ci_runs_every_gate` pins `ci.yml`.
+- **Keep the 55 inputs in a fixture file alone.** The check says the results are documented in VAL. `test_val_probe_table_is_the_dossier_table` pins the dossier to the test, as `test_ci_runs_every_gate` pins `ci.yml`.
 - **Let Hypothesis draw new examples on every run.** A gate that fails on one run in fifty blocks an unrelated pull request. The profile is derandomized, and a wider search is a command a person runs.
 - **Build `lex` and `text` as sibling pull requests.** Both would edit `tests/test_purity.py` and `docs/progress.md`, and the lexer's tests use `page_from_text`.
 - **Leave `doc_of` for a later step.** Design section 12.1 puts it in `testing.py`, no step names it, and it is three lines beside the function that needs the same checks.
 
 ## Appendix C. Risks
 
-- **The owner has not ruled on Appendix E (S2-D).** 39 inputs and all 55 new results are this plan's proposal. Four rows carry a choice the dossier and the design do not settle, and Appendix E marks them. The owner watches those four.
-- **No lexer rule has met a page (S2-D).** The rules come from the design, the dossiers and the old code. Step 5 parses 20 editions and compares every cell with the pinned release at step 6. A rule that is wrong for a real page shows there as an `Unreadable` cell or a difference, never as a silent number, because every rule this plan adds refuses more than the old code did.
-- **`split_line_prefix` can take a value (S2-C).** With a prefix pattern that a short count also matches, a line of values with no label loses its first value to the prefix. The plan keeps the line's last word and goes no further. The step that first declares a prefix on real pages owns the test. That is step 7 for QPOS-Q08, step 11 for the Budget in Brief line numbers, and step 14 for the QSMR.
-- **Join shape 1 can join two cells (S2-D).** A one-digit cell and a comma-grouped cell that fall in one lane read as one number, as `1 37,332,523` does. The old code joined them too (`tables/amounts.py:79-91`). Lanes come from geometry, so the test of the cut belongs to step 5 and its fixtures.
+- **Clause C2 is open (S2-D).** The original 55 inputs are in no file. 39 inputs and all 55 new results of Appendix E are this plan's proposal, and only the owner can make them the acceptance set. Four rows carry a choice the dossier and the design do not settle, and Appendix E marks them. Step 2 cannot pass until the owner decides.
+- **No lexer rule has met a page (S2-D).** The rules come from the design, the dossiers and the old code. Step 5 parses 20 editions and compares every cell with the pinned release at step 6. The join shapes join nothing the old lexer refused to join. Rows 5, 15 and 52 of Appendix E are amounts that the old page lexer refused, for a `-$` order, a `$` before a parenthesis and a superscript mark. Step 6 compares positions only, so the cash and collections steps carry the test of those three on real pages.
+- **`split_line_prefix` can take a value (S2-C).** With a prefix pattern that a short count also matches, a line of values with no label goes into the prefix, whole or in part. The words stay on the row as its prefix, so `match_rows` sees a row with no label. The positions parser of step 5 is the first to declare a prefix (`prefix=_LINE_NO`, design line 2484), so the step 5 plan owns the test on real pages. The Budget in Brief line numbers are a `CODE` column (design line 3270) and never reach this rule.
+- **A footnote mark reads as a value word (S2-C).** `(1)` at the end of "Human Services (1)" is a number in parentheses to `has_values`, as it is to the lexer. The design's rule seeds a lane from it. Step 5 builds `lanes_from_values` and owns that test.
+- **A bare digit after a word becomes a mark (S2-C).** "Sheriff 2" loses its digit to `Label.marks`, as the old code did (`entities.py:54-61`). A label that ends in a real one-digit number would lose it too. `Label.printed` keeps every word, and two labels that differ only in that digit collide as a `duplicate_row` finding. The owner can refuse this form at the go.
+- **Join shape 1 can join two cells (S2-D).** In a money column on a text layer, a one-digit cell and a comma-grouped cell that fall in one lane read as one number, as `1 37,332,523` does. The old code joined them too (`tables/amounts.py:79-91`). A count column and an OCR page never join. Lanes come from geometry, so the test of the cut belongs to step 5 and its fixtures.
 - **A value word is defined twice (S2-C, S2-D).** `lines.py` has a loose predicate and `lex.py` a strict reader. The property `test_a_lexed_value_is_a_value_word` fails when the loose one stops covering the strict one. Step 5 decides whether `lanes_from_values` needs the predicate as a public name.
 - **The design's rule gives a sentence that ends in a number values (S2-C).** `has_values` is true for a note line that ends in "2025". The design's own uses at lines 3297 to 3318 pair it with a second test. The plan implements the rule as written.
 - **The import pin reads static imports (S2-A).** Pure code can still reach an effect with no import. `write = print`, `exec`, `getattr(__builtins__, "open")`, `dataclass.__globals__["sys"]` and a mutable class attribute all pass. A subprocess that a core test starts also passes. Review reads for these.
@@ -629,7 +674,7 @@ These stay unproven until the build.
 - **Design section 13 and `coverage.tsv` disagree on two counts (S2-C, S2-D).** Section 13 gives `lex_cell` 14 quirks and `parse_label` 9. `coverage.tsv` gives 16 and 10. Appendix F follows `coverage.tsv`. The plan changes neither file.
 - **`../gov-budget-data` has six uncommitted entries (every PR).** Lanes run this plan's snapshot commands in place of the plain `git status` of `verify-step` audit 7.
 - **Claude Code has no control skill for a command line (every PR).** Lanes drive the kit with shell commands and their own scripts, and return transcripts. The root reads the transcripts, not the lane's summary.
-- **`codex-review/run.sh` cannot find the reference from a worktree (every PR).** It takes the reference's path from the parent of the checkout. The root runs it from its own checkout.
+- **`codex-review/run.sh` reviews the checkout it runs in (every PR).** It takes the head from that checkout and the reference's path from the checkout's parent. The root's checkout stays on `main`, and a worktree under `.claude/worktrees/` has no reference beside it. Each review runs in a detached worktree beside the root's checkout, held at the PR head until the run ends.
 
 ## Appendix D. Links and reading list
 
@@ -640,7 +685,7 @@ Read these before any edit.
 - `docs/evidence/dossiers/VAL.md` sections 3 and 9, and the dossier row of each quirk in Appendix F.
 - `docs/principles.md` section 7, the purity checklist.
 - `.claude/skills/verify-step/SKILL.md` and `.claude/skills/codex-review/SKILL.md`.
-- In `../gov-budget-data/packages/gov-budget-etl/src/gov_budget_etl/`, read-only, `tables/amounts.py`, `tables/text_cleaning.py` lines 1 to 22 and 183 to 274, `entities.py` lines 78 to 98, and `tables/value_recovery.py` lines 46 to 58.
+- In `../gov-budget-data/packages/gov-budget-etl/src/gov_budget_etl/`, read-only, `tables/amounts.py`, `tables/text_cleaning.py` lines 1 to 22 and 183 to 274, `entities.py` lines 50 to 98, and `tables/value_recovery.py` lines 46 to 58. For S2-C, also `packages/gov-budget-etl/tests/test_entities.py` lines 1207 to 1232 and the `config/entities.yml` lines that Appendix F cites.
 
 S2-A adds this paragraph to design section 11.1, after the paragraph on the audit hook.
 
@@ -650,7 +695,8 @@ each pure package, every module.name pair that it imports, and the test fails wh
 the source differ from the pin in either direction. An import statement that binds an outside
 module, a star import, and a pinned name that is itself a module all fail, so pure code never
 holds a module object from outside. checkedtables counts its own modules as inside.
-datadesk.core counts its own modules and checkedtables as inside. The modules each package
+datadesk.core counts its own modules and checkedtables as inside. A relative import is resolved
+to its full module name first and then judged the same way. The modules each package
 imports from are a closed list, given below. A pull request that imports from a module outside
 the list changes the list and the pin together.
 ```
@@ -660,9 +706,10 @@ No pull request in this plan needs `<pstack>/skills/how/SKILL.md`. Run
 contests them. The decision trail is `.audit/step-02.tsv`, kept out of git, per
 `<pstack>/skills/show-me-your-work/SKILL.md`.
 
-## Appendix E. The probe table for VAL section 3.2
+## Appendix E. The proposed acceptance inputs for VAL section 3.2.1
 
-The owner approves or edits this table before S2-D starts. Rows 1 to 16 are the inputs that VAL
+This table is a proposal. Clause C2 stays open until the owner supplies the original inputs or
+decides that this table, as written or as edited, is the acceptance set. Rows 1 to 16 are the inputs that VAL
 section 3.2 prints. Rows 17 to 52 are the examples of the table in VAL section 3.1, in its
 order. Rows 53 to 55 are examples from VAL sections 1.3 and 2. The old results are from the
 root's run of the old lexer (Appendix A). The four rows marked "owner" carry a choice that the
@@ -677,12 +724,20 @@ Each input becomes words by a split on spaces, and `lex_cell` reads them in one 
 | C | `COUNT`, no decimals |
 | P | `PERCENT`, decimals as printed, the sign optional |
 
-Two or more tokens join in three shapes only, and the joined text must then read as one number.
-The shapes are read after the `$`, the sign and the parentheses leave the tokens.
+Tokens join only in a `MONEY` or `PERCENT` column whose words come from a text layer, and only in
+three shapes. VAL section 3.1 reports kerning splits and spaces after commas on text layers
+alone, and VAL section 11 asks for one word in each cell of a count table. The shapes are read
+after the marks and a pair of parentheses around the whole cell leave, and the joined text must
+then read as one number. In shape 1 the first token is a bare digit, with no `$` and no minus
+glyph. In shapes 2 and 3 the first token may carry both.
 
-1. One digit, then a comma-grouped number, as in `1 37,332,523` (`tables/amounts.py:88-91`).
-2. A number with a decimal point, then one digit, as in `67,215,504.0 0` (`tables/amounts.py:92-95`).
-3. Tokens that each end in a comma, then a last token, as in `10, 936, 234` (VAL section 3.1, "Spaces after commas").
+1. One digit, then one or two digits and one or more comma groups, as in `1 37,332,523` (`tables/amounts.py:88-91`).
+2. A number with a decimal point whose integer part is comma-grouped or at most three digits, then one digit, as in `67,215,504.0 0` (`tables/amounts.py:92-95`).
+3. Tokens that each end in a comma, then a last token, as in `10, 936, 234`. The old lexer read this form by removing every space (`tables/amounts.py:132`).
+
+No shape joins a cell that both old readers, `parse_amount` and `parse_decimal`, refuse to join.
+Both return `None` for `1234.5 6`, `12 3,456`, `1234, 567`, `-1 37,332,523` and `$1 37,332,523`,
+and no shape joins any of the five (Appendix A).
 
 An `Unreadable` cell carries the first reason that applies.
 
@@ -775,6 +830,53 @@ test in the pull request that builds its function.
 | S2-D | `lex.split_numeric_runs` | BSALES-Q36, RTT-Q22, VAL-Q08, VAL-Q33, VAL-Q34 |
 | S2-E | `records.apply_reading` | VAL-Q35, VAL-Q36 |
 
+`parse_label` reads nine mark forms. Each row is one test. The last form is not in the design's
+list at lines 1618 to 1619, and the row says where it comes from.
+
+| Form | `printed` | `text` | `marks` | Quirks | Evidence in the old repository |
+|---|---|---|---|---|---|
+| a number in parentheses | `Human Services (1)` | `Human Services` | `(1)` | QPOS-Q11, ENT-Q07, BIB-Q47 | `config/entities.yml:935`, `entities.py:54-61` |
+| the same with two digits | `Office of Prison Oversight (10)` | `Office of Prison Oversight` | `(10)` | QOBL-Q43, QOBL-Q48 | `tests/test_entities.py`, lines 1215 to 1225 |
+| an asterisk in parentheses | `Full-Time Positions (*)` | `Full-Time Positions` | `(*)` | QOBL-Q24 | none. The row of `coverage.tsv` names the form, and the label is made up |
+| a line formula | `Adjusted Fund Balance (23+29)` | `Adjusted Fund Balance` | `(23+29)` | BIB-Q38 | `config/resolved_assertions.yml:270` holds the normalized "23 29". The label is rebuilt from it |
+| two asterisks and a digit | `Total RTT records **1` | `Total RTT records` | `**1` | RTT-Q38, BSALES-Q27, ENT-Q07 | `config/entities.yml:4226` |
+| one asterisk | `TOTAL TAX REVENUE *` | `TOTAL TAX REVENUE` | `*` | VAL-Q28 | VAL section 3.1, the footnote mark row |
+| a comma and "subtotal" | `Manufacturing, subtotal` | `Manufacturing` | `, subtotal` | BSALES-Q27 | `config/entities.yml:4248` |
+| "see note", with or without its space | `Federal Gov't (includes US Post Office) see note` | `Federal Gov't (includes US Post Office)` | `see note` | WAGE-Q44 | `config/entities.yml:3679-3680`. The second line prints `seenote` |
+| one bare digit after a word | `Sheriff 2` | `Sheriff` | `2` | ENT-Q07 | `entities.py:54-61`, and `tests/test_entities.py`, lines 1215 to 1225 |
+
+Four controls keep every word and give no mark. They are `CLASS 100`, `10 COMMUNITY DEVELOPMENT`,
+`(Over) Under`, and `5 Sheriff`, whose leading digit is a prefix that a table declares
+(QPOS-Q08).
+
 Four more quirks have no row for a step 2 function and still get a step 2 test. QPOS-Q27 and
 VAL-Q21 are the bare-integer join that `test_bare_integers_never_join` refuses. MSCH-Q26 and
 QCASH-Q22 are the two digit swaps of clause C3.
+
+## Appendix G. Codex review
+
+Codex reviewed this plan at commit `a85529ea` on November 23, 2026, with `gpt-6.2-astra` at
+`xhigh`. The report is `.codex-review/step-02-plan-a85529ea.md`, which git
+ignores. It found that each clause has one named owner, and it raised 14 findings. The root
+checked each one by a rerun or by a read of the quoted lines. All 14 held, and none was dropped.
+Codex has not reviewed the revisions below.
+
+| # | Severity | Finding | How the root checked it | Revision |
+|---|---|---|---|---|
+| 1 | blocks | C2 could pass against 55 inputs that an agent chose. | Read the plan, design lines 4388 to 4391 and VAL lines 123 to 139. | C2 stays open until the owner supplies the original inputs or decides that Appendix E is the acceptance set. The decision goes into design section 16, and the table into a new VAL section 3.2.1 beside the dossier's own. |
+| 2 | blocks | Join shape 2 took `1234.5 6`, which the old lexer refuses, and the shapes applied to count columns. | Rerun. The old lexer returns `None` for `1234.5 6` and joins `1,234.5 6`. Read VAL section 11, item 4. | The shapes carry the old token limits and apply only to money and percent columns on a text layer. Two tests and S2-D lane 4 hold the counterexamples. Appendix C no longer says that every rule refuses more than the old code. |
+| 3 | blocks | A reviewed amount could carry another cell's words, and a box that holds two cells matched both. | Read design lines 688 to 691 and 1701 to 1707 against the S2-E boxes. | `apply_reading` compares the cell's text with `seen`. `reading_for` takes the page's words and requires the words inside the box to be exactly the cell's. Two tests hold the counterexamples. |
+| 4 | should fix | A signed reading could not be read, and a null reading on an `Amount` had no reason. | Read `config/layouts/qcmr-cash.yml:165` in the reference, which holds `(29 1)`. | One signed reader serves `lex_cell` and `apply_reading`. A null reading on an `Amount` gets the reason `reviewed_null`. |
+| 5 | should fix | A mark word hid a valued row from `has_values`, and a small `$` hid a raised digit from the mark rule. | Read the plan boxes. Rerun. The old lexer joins `2.8 1` into 2.81. | `has_values` skips mark words. The raised digit is measured against the number word. A test builds the three-word cell by hand. |
+| 6 | should fix | The round trip drew at most four decimals. | Read the plan and design lines 3714 to 3719. | The property draws 0 to 12 decimals, names two examples, and has a scratch mutation that caps the fraction. |
+| 7 | should fix | Keeping the last word left a lane of bare prefixes, and the first prefix on real pages is at step 5. | Read design lines 1620 to 1622, 2484 and 3270. | A line of only prefix words returns no words. A test holds `23`, `24` and `26`. Appendix C names step 5 and drops Budget in Brief. |
+| 8 | should fix | Hypothesis writes `.hypothesis/constants` under the planned profile. | Rerun on Hypothesis 6.170.15 in three scratch folders. | The root `conftest.py` points Hypothesis at a temporary folder, and a gate test asserts that a workspace stays clean. |
+| 9 | should fix | A relative import could leave `datadesk.core` unpinned. | Rerun. `resolve_name("..", "datadesk.core")` gives `datadesk`. | The scan resolves a relative import before it judges it. Forms on both sides and S2-A lane 2 cover it. |
+| 10 | should fix | The function-body mutation tested the wrong collector, and the planted gate asserted line 1. | Read. `import uuid` parses as `ast.Import`, and `run_gate` appends its plant. | The form is `from uuid import uuid4`, and the assertion names no line number. |
+| 11 | should fix | One quirk id could hide a second label form, and some dossier rows quote no text. | Read ENT-Q07, BIB-Q47 and the old tests at lines 1215 to 1225. | Appendix F names nine forms with `printed`, `text` and `marks`, four controls, and the evidence for each. The bare digit form is new to the design. |
+| 12 | should fix | The Codex review of a pull request would read the root's `main`. | Read `run.sh` lines 28 to 49. | Each review runs in a detached worktree beside the root's checkout, held at the PR head. |
+| 13 | minor | The progress commit makes a head that no CI run covers. | Read the plan and `docs/progress.md` lines 23 to 27. | The row records the verified code SHA and its run. The final head gets its own CI run and one verifier. |
+| 14 | minor | The checklist named an Appendix G that did not exist. | Read. | This appendix. |
+
+The root found one more thing while it checked finding 8. Ruff's `D105` asks for a docstring on
+each magic method of the kit (Appendix A), and "PR mechanics" now says so.
