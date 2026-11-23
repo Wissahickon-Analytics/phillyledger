@@ -165,8 +165,8 @@ Each entry: step, what changed, why, and the design section updated.
   `Finding`. Step 2 listed neither `columns` nor `table`, and no step listed `table`. S2-B builds
   `NumberFormat` and `ColumnSpec` in `columns.py` and `RowKey`, `Severity` and `Finding` in
   `table.py`, and nothing else of either module. Step 2 now names the five types, and step 5 now
-  names `table`, which builds `RowKind`, `Additivity`, `TableId`, `Column`, `Row` and `Table`
-  with `rows` and `assemble`. Design section 15.
+  names `table`, which builds `RowKind`, `Additivity`, `additivity_of`, `TableId`, `Column`, `Row`
+  and `Table` with `rows` and `assemble`. Design section 15.
 - **Step 2: `WordRef` and `Finding` sort a `None` first** (November 23, 2026, S2-B). The design
   gave both classes `order=True`. That raises `TypeError` when one side holds `None` and the other
   an `int`, so a word and a child that `split_numeric_runs` made from it could not be sorted
@@ -380,12 +380,14 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   in a workspace copy and fails when a `.hypothesis` folder appears there.
 - **Docstrings put `refs` past its estimate** (November 23, 2026, step 2, S2-B). The kit size
   report counts every line that is not blank or a comment, docstrings included. At the S2-B head
-  it prints 518 lines. Against design section 12.1: `refs` 107 (estimate 60), `kinds` 29 (40),
-  `words` 109 (90), `labels` 25 (30), `cells` 97 (90). `columns` holds 38 lines for two of its
-  ten names (330), and `table` 113 for three of its eight (190). Without docstrings `refs` is 53
-  lines and `table` 58. The numpy docstring on each public class and method, magic methods
-  included, is about half of each module, and `refs` also writes four comparison methods for
-  `WordRef`. The five whole modules hold 367 lines against an estimate of 310. If the other
+  it prints 548 lines. Against design section 12.1: `refs` 121 (estimate 60), `kinds` 29 (40),
+  `words` 125 (90), `labels` 25 (30), `cells` 97 (90). `columns` holds 38 lines for two of its
+  ten names (330). `table` holds 113 lines (190) for two of the eight names its row lists,
+  `RowKey` and `Finding`, and for `Severity`, which the row does not list. Without docstrings
+  `refs` is 62 lines, `words` 50 and `table` 58. The numpy docstrings on each public class and
+  method, magic methods included, are 289 of the 548 lines. By module their share runs from 28
+  percent in `kinds` to 64 percent in `labels`. `refs` also writes four comparison methods for
+  `WordRef`. The five whole modules hold 397 lines against an estimate of 310. If the other
   modules run as far past theirs, the kit passes its 3,800 line budget, an inference that no run
   has checked. The report never fails the build, so the owner decides whether the budget counts
   docstrings.
