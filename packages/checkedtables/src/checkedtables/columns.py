@@ -26,9 +26,10 @@ class ColumnSpec:
     Attributes
     ----------
     name : str
-        The stable name that checks and keys use.
+        The stable name that checks and keys use. Never empty.
     caption : str
-        A regex searched in the lane's stacked caption.
+        A regex searched in the lane's stacked caption. Never empty, since the empty regex
+        matches every caption.
     kind : ValueKind
         What the column holds.
     fmt : NumberFormat
@@ -37,6 +38,11 @@ class ColumnSpec:
         Whether the column must be printed.
     dash : DashMeaning
         What a dash in the column means.
+
+    Raises
+    ------
+    ValueError
+        When `name` or `caption` is empty.
     """
 
     name: str
@@ -45,3 +51,10 @@ class ColumnSpec:
     fmt: NumberFormat = NumberFormat()
     presence: Presence = Presence.REQUIRED
     dash: DashMeaning = DashMeaning.NO_VALUE
+
+    def __post_init__(self) -> None:
+        """Refuse a column with an empty name or an empty caption."""
+        if not self.name:
+            raise ValueError(f"a column has an empty name: {self}")
+        if not self.caption:
+            raise ValueError(f"column {self.name} has an empty caption")
