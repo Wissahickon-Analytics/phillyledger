@@ -13,6 +13,7 @@ _MINUS = "-\u2212\u2013\u2014"
 _MARKS = "*\u2020\u2021\xa7#`\u2070\xb9\xb2\xb3\u2074\u2075\u2076\u2077\u2078\u2079"
 _GLYPHS = f"{_DIGITS},.$%()+{_MINUS}{_MARKS}"
 _DASHES = ("-", "--", "\u2013", "\u2014")
+_DOLLAR_DASHES = ("$ -", "$ --", "$ \u2013", "$ \u2014")
 _NOT_APPLICABLE = ("N/A", "NA")
 _TEXT_KINDS = (ValueKind.YEAR, ValueKind.CODE, ValueKind.TEXT)
 _JOIN_KINDS = (ValueKind.MONEY, ValueKind.PERCENT)
@@ -142,8 +143,8 @@ def split_numeric_runs(word: Word) -> tuple[Word, ...]:
     stays one word. Before the number a ``(`` or ``$`` may follow the letter, as in
     "TAX$434,605", and after it a decimal part and a ``)`` may come before the letter, as in
     "(408,491.2)NET". A cut also falls after a ``%`` or a ``)`` that a digit, a ``(`` or a
-    ``$`` follows. A word that still holds a font code, ``(cid:`` followed by a number and
-    ``)``, is never cut.
+    ``$`` follows. A word that holds ``(cid:``, the start of a font code that repair left, is
+    never cut.
 
     Parameters
     ----------
@@ -240,8 +241,7 @@ def lex_cell(words: Sequence[Word], col: ColumnSpec, source: SourceKind) -> Cell
         return Text(text, refs)
     if text in _NOT_APPLICABLE:
         return NotApplicable(text, refs)
-    # RTT-Q39, VAL-Q09: an accounting format prints a "$" word and a dash in an empty cell.
-    if text in _DASHES or (len(words) == 2 and words[0].text == "$" and words[1].text in _DASHES):
+    if text in _DASHES or text in _DOLLAR_DASHES:
         return Dash(text, refs, col.dash)
     tokens, marks = _tokens_and_marks(words)
     number = _read_cell(tokens, col, source)
