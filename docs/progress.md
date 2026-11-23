@@ -142,10 +142,10 @@ Each entry: step, what changed, why, and the design section updated.
   gates do not name"). `PURE_IMPORTS` in `tests/test_purity.py` maps `checkedtables` and
   `datadesk.core` to the sorted `module.name` pairs that each imports from outside. Both are
   empty, because every file in both packages is empty. The scan parses each file's bytes, so it
-  reads a coding cookie as the importer does. It resolves a relative import first, and it reads
-  imports in function bodies and under `if TYPE_CHECKING`. It fails an `import` statement that
-  binds an outside module, a from-import of a pair the pin does not hold, and a star import from
-  outside whatever the pin holds. `checkedtables` counts itself as inside, and `datadesk.core`
+  reads a coding cookie as the importer does. It reads imports in function bodies and under
+  `if TYPE_CHECKING`. It fails every relative import, an `import` statement that binds an outside
+  module, a from-import of a pair the pin does not hold, and a star import from outside whatever
+  the pin holds. `checkedtables` counts itself as inside, and `datadesk.core`
   counts itself and `checkedtables`. A name taken from an outside module counts as inside when
   its full name is at or under an inside name, so in `datadesk.core` the import
   `from datadesk import core` passes and `from datadesk import shell` fails.
@@ -163,8 +163,18 @@ Each entry: step, what changed, why, and the design section updated.
   fails. The build judges the module that the statement binds, as section 11.1 says.
   `import datadesk.core.tables` names an inside module and binds `datadesk`, and once any code has
   imported `datadesk.shell`, the shell is an attribute of that binding. So that import fails, and
-  `import datadesk.core.tables as tables` passes. A pull request that imports a new name adds its
-  pair to `PURE_IMPORTS`. One that imports from a new module also adds the module to the list in
+  `import datadesk.core.tables as tables` passes. The plan resolved a relative import from the
+  file's dotted name, and the build refuses every relative import instead. The second Codex
+  review of S2-A, at `c103b016`, read `__package__ = "email.mime"` and then `from . import text`
+  as `checkedtables.words`. Its command passed that source to `outside_imports` and `impurities`
+  and ran it with `exec` in a copy of the module's globals. On Python 3.12.15 it printed
+  `outside pairs: []`, `purity findings: []` and `bound module: email.mime.text`. Python resolves
+  a relative import through the module global `__package__`, which source can rebind, and a
+  static scan cannot know what it holds when the statement runs. A ban on assigning it would miss
+  `globals()["__package__"]`. An absolute import does not read `__package__`, and all 64 imports
+  from `checkedtables` and `datadesk` in the design's code samples are absolute. The same source
+  now fails with `relative import from .`. A pull request that imports a new name adds its pair
+  to `PURE_IMPORTS`. One that imports from a new module also adds the module to the list in
   section 11.1. Design section 11.1.
 
 ## Notes for later sessions
@@ -287,18 +297,24 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   passes all six gates. At `ad866a9`, before the pin, all ten passed `uv run pytest`. The pin reads
   static imports only. A list of the builtin names pure code may use would be a second closed list
   and a separate decision for the owner (Appendices B and C of `docs/plans/step-02.md`).
-  - The S2-A verification lanes found six more routes. Each was planted alone in
-    `checkedtables/words.py` in a scratch copy of the S2-A fix commit `b5bf049`, with a docstring.
-    Each read `pyproject.toml` at run time and passed all six gates. Three use the bare module
-    globals: `getattr(__loader__, method)(path)` and
-    `getattr(getattr(__spec__, loader), method)(path)`, with the names held in variables, and
-    `__builtins__["open"]`. Three take the same objects from the package:
-    `from . import __builtins__`, `from . import __loader__` and `from . import __spec__`. Written
-    as `__loader__.get_data(path)` or `__spec__.loader.get_data(path)`, the line fails `ty check`,
-    which types `__loader__` as `LoaderProtocol | None` and `__spec__` as `ModuleSpec | None`. The
-    routes stay open because they are module globals that need no outside import, so no import
-    pin sees them. A list of the builtin names pure code may use is a separate decision for the
-    owner (Appendix B of the step 2 plan).
+  - The S2-A verification lanes found six more routes. Three use the bare module globals:
+    `getattr(__loader__, method)(path)` and `getattr(getattr(__spec__, loader), method)(path)`,
+    with the names held in variables, and `__builtins__["open"]`. Three took the same objects
+    with `from . import __builtins__`, `from . import __loader__` and `from . import __spec__`.
+    Each was run again planted alone in `checkedtables/words.py`, with a docstring, in a scratch
+    copy of `a4bac18`, the S2-A commit that refuses relative imports. Each plant read
+    `pyproject.toml` at run time. The three bare globals still pass all six gates. The three
+    relative spellings now fail `test_pure_packages_have_no_effects` with
+    `words.py:1 relative import from .`, so `uv run pytest` fails, and the other five gates pass.
+    The absolute spellings `from checkedtables import __builtins__`,
+    `from checkedtables import __loader__` and `from checkedtables import __spec__`, used the same
+    way, pass all six gates, because each full name is inside the kit. Written as
+    `__loader__.get_data(path)` or `__spec__.loader.get_data(path)`, with the bare globals or the
+    absolute spellings, the line fails `ty check`, which types `__loader__` as
+    `LoaderProtocol | None` and `__spec__` as `ModuleSpec | None`. The routes that pass stay open
+    because they are module globals that need no outside import, so no import pin sees them. A
+    list of the builtin names pure code may use is a separate decision for the owner (Appendix B
+    of the step 2 plan).
   - `datadesk.core` can import a name that the kit pins from a `checkedtables` module, with no pin
     of its own. With `dataclasses.dataclass` pinned for `checkedtables` and imported in
     `words.py`, `from checkedtables.words import dataclass` in `birt.py` passed all six gates in
