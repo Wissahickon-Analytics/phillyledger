@@ -172,8 +172,8 @@ def test_value_words_end_a_row_with_values() -> None:
         "\u20147",
         "242,096*",
         "1,234\xb9",
-        "1,234⁰",
-        "1,234⁹",
+        "1,234\u2070",
+        "1,234\u2079",
     )
     for value in values:
         assert has_values(line(f"Taxes {value}")), value

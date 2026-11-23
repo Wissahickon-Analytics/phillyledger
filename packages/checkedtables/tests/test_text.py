@@ -229,7 +229,7 @@ def test_normalize_label_reads_a_spaced_unicode_hyphen() -> None:
 
 
 def test_normalize_label_casefolds_and_drops_underscores() -> None:
-    assert normalize_label("Straße") == normalize_label("STRASSE") == "strasse"
+    assert normalize_label("Stra\xdfe") == normalize_label("STRASSE") == "strasse"
     assert normalize_label("Fund_Balance") == "fund balance"
 
 
