@@ -62,14 +62,14 @@ Each pull request gets one Build session on Opus (`CLAUDE.md`, "How work runs he
 7. The session hands the pull request to the owner with its verdict and its follow-ups.
 
 No Claude agent verifies the pull request, reviews its comments or reviews a decision trail.
-The owner applies the `no-comments` and `deslop` skills to its own diff.
+The Opus owner applies the `no-comments` and `deslop` skills to its own diff.
 
 Codex's sandbox has no network. A clause that needs a run outside it, such as a CI run on a
-planted change or a call to R2, is proven by the owner, who records the run in the pull request,
-and the session checks that record.
+planted change or a call to R2, is proven by the Opus owner, who records the run in the pull
+request, and the session checks that record.
 
 A timing or size check exists only where the design or the step's check names a budget. The
-owner writes it as a test.
+Opus owner writes it as a test.
 
 ## What blocks a pull request
 
@@ -106,7 +106,8 @@ playbook, step 4).
 ## Why verification is this size
 
 The Build runs of steps 1 and 2, on November 22 and 23, 2026, gave each pull request a swarm of
-Opus verifiers, ran a whole step in one Fable session, and sent every new head back to Codex.
+Opus verifiers and ran a whole step in one Fable session. Step 2 also sent a pull request back
+to Codex after its fix rounds.
 The counts below come from the session transcripts and from the decision trails
 `.audit/step-01.tsv` and `.audit/step-02.tsv`, which are kept out of git, so they are recorded
 here.
@@ -140,9 +141,10 @@ What it found:
   the eighteen and ran before the last fix round, so Codex did not review those fixes. That is
   why Codex reads every fix diff.
 - In step 2, `docs/deviations/step-02.md` credits a Codex review in 11 of its 17 entries, across
-  all five pull requests, and credits the verifiers in 4. The entries count 18 mutants that
-  survived the tests. A surviving mutant is a gap in the tests, and by the rule above it is a
-  follow-up unless it leaves a clause unproven.
+  all five pull requests. It credits verifiers in 6: 5 entries of the build, and the entry on
+  decisions 13 to 17. The entries count 18 mutants that survived the tests. A surviving mutant
+  is a gap in the tests, and by the rule above it is a follow-up unless it leaves a clause
+  unproven.
 
 What Codex can do in place of the verifiers, run on November 23, 2026: `codex exec --sandbox
 workspace-write`, in a throwaway worktree with a synced environment, ran the 217 tests with

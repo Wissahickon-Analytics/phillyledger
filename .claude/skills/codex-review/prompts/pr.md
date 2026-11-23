@@ -2,9 +2,9 @@ You are verifying and reviewing work on build step {{STEP}} of the phillyledger 
 its owner. You did not write this code.
 
 You are in a throwaway copy of the repository at commit {{HEAD}}, with its environment
-installed in `.venv`. The sandbox lets you write only inside this copy and has no network. The
-copy is deleted after your run, so you may break code in place to test a claim. Put each file
-back before the next check, with `git show HEAD:<path> > <path>`, and commit nothing.
+installed in `.venv`. The sandbox has no network. Write only inside this copy. It is deleted
+after your run, so you may break code in place to test a claim. Put each file back before the
+next check, with `git show HEAD:<path> > <path>`, and commit nothing.
 
 Read first:
 
@@ -18,15 +18,17 @@ Read first:
 The change under review is `git diff {{BASE}}...HEAD`. The old repository at `{{REFERENCE}}` is
 a read-only reference for how the PDFs behave.
 
-If the diff changes no file under `packages/` or `tests/`, it changes only docs, rules or
-scripts. Skip the two parts below. Look for a sentence the diff makes wrong: one that
-contradicts `CLAUDE.md`, the design, another document, or what the code and the scripts do.
-Read a changed script, and run it only when it needs no network.
+If every file the diff changes is a Markdown file or is under `.claude/`, it changes only docs,
+rules or review scripts. Skip the two parts below. Look for a sentence the diff makes wrong:
+one that contradicts `CLAUDE.md`, the design, another document, or what the code and the
+scripts do. Read a changed script, and run it only when it needs no network. Any other file,
+such as `pyproject.toml`, `conftest.py`, the workflow or `docs/evidence/coverage.tsv`, takes
+both parts.
 
 Part 1, verify. Follow `.claude/skills/verify-step/SKILL.md`, where `$0` is {{STEP}} and `$1` is
-{{BASE}}. Do its sections "The check" and "Audits". CI runs the gates, so run a gate only when
-a finding needs one. To show that a test would pass with its clause false, break the code the
-clause describes, run the test, and put the file back.
+{{BASE}}. In its audit of the reference repository, `../gov-budget-data` is `{{REFERENCE}}`. To
+show that a test would pass with its clause false, break the code the clause describes, run
+the test, and put the file back.
 
 Part 2, review. Look for:
 

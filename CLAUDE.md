@@ -35,10 +35,10 @@ step is finished when its check passes.
   round needs the owner's go. `docs/plans/README.md` says which confirmed findings block. Every
   other one is a follow-up, listed in the pull request's text.
 - **Codex verifies, and no Claude agent does.** No Claude agent verifies a pull request, reviews
-  its comments or reviews a decision trail, and no swarm runs. The owner applies `no-comments`
-  and `deslop` to its own diff. The plan and the design give the shapes, the names and the
-  signatures, so the session marks the Feature playbook's `how` and `architect` steps `skip`
-  and runs no `arena`. This differs from pstack, and the project rule wins.
+  its comments or reviews a decision trail, and no swarm runs. The Opus owner applies
+  `no-comments` and `deslop` to its own diff. The plan and the design give the shapes, the names
+  and the signatures, so the session marks the Feature playbook's `how` and `architect` steps
+  `skip` and runs no `arena`. This differs from pstack, and the project rule wins.
   `docs/plans/README.md` has the measurements behind it.
 - Pull requests stack only where one builds on another. From step 3 on, a step's stacked pull
   requests are one GitHub stack, built and kept linear with `gh stack` (`docs/plans/README.md`).
@@ -151,9 +151,9 @@ Step 1 creates these. Keep this list true as tooling changes.
 - Real pages enter tests only as word fixtures that `datadesk fixture <sha> <pages>` writes to
   `tests/fixtures/words/` as Python literals. Regenerate a fixture only on purpose, and say so
   in the commit.
-- The `verify-step` skill is this repo's verification: the gates, the check clause by clause,
-  and the audits pstack's Prove It Works asks for. Codex runs it for every pull request, through
-  the `codex-review` skill.
+- The `verify-step` skill is this repo's verification beside the gates: the check clause by
+  clause, and the audits pstack's Prove It Works asks for. Codex runs it for every pull request,
+  through the `codex-review` skill.
 
 ## Writing
 

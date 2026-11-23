@@ -42,8 +42,9 @@ session runs on Fable (`docs/plans/README.md`, "Why verification is this size").
    ```
    The `codex-review` skill runs `codex exec --profile phillyledger-review`. A plan review runs
    in a read-only sandbox. A pull request or fix review runs in a throwaway worktree that the
-   script syncs with `uv sync --locked`, in a sandbox that can write only there and has no
-   network. Without the profile file it uses Codex's default model and says so.
+   script syncs with `uv sync --locked`, in a sandbox that has no network and refused a write
+   to the main checkout when tested. Without the profile file it uses Codex's default model and
+   says so.
 6. Install GitHub's stack extension, which owners use to build a step's pull requests as one
    stack (`docs/plans/README.md`):
    ```text
@@ -55,10 +56,10 @@ session runs on Fable (`docs/plans/README.md`, "Why verification is this size").
    git config --local user.email <an email on your GitHub account>
    ```
    Agents never change the git author name or email (hard rule 10 in `CLAUDE.md`).
-8. Optional: install `just` (`brew install just`). The `Justfile` wraps the gate commands:
-   `just check` for lint, format, types and import contracts, `just test` for pytest,
-   `just fix` for ruff's fixes, and `just gates` for everything CI runs. CI calls the
-   commands itself and does not need `just`.
+8. Install `just` (`brew install just`). The Build session runs `just gates`, which is
+   everything CI runs. The `Justfile` also has `just check` for lint, format, types and import
+   contracts, `just test` for pytest, and `just fix` for ruff's fixes. CI calls the commands
+   itself and does not need `just`.
 
 ## Each build step
 

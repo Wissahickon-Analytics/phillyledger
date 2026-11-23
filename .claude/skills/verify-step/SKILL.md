@@ -1,6 +1,6 @@
 ---
 name: verify-step
-description: Verify a phillyledger pull request or build step against the design. Runs the gates, proves each clause of the step's check with a named test, and audits the diff for weakened checks, purity breaks and altered numbers. Codex runs it for every pull request, through the codex-review skill. A Claude agent runs it only when the owner asks.
+description: Verify a phillyledger pull request or build step against the design. Proves each clause of the step's check with a named test, and audits the diff for weakened checks, purity breaks and altered numbers. Codex runs it for every pull request, through the codex-review skill.
 argument-hint: "[step-number] [base-branch]"
 ---
 
@@ -17,9 +17,9 @@ when no base is given. Report findings. Do not fix anything.
 
 ## Gates
 
-Run each and record the command and its result: `uv run pytest`, `uv run ruff check .`,
-`uv run ruff format --check .`, `uv run ty check`, `uv run lint-imports`. A gate that does not
-exist yet (before step 1 builds it) is reported as missing, not as passing.
+The Build session runs `just gates` at the head, and CI runs the same six gates. Do not rerun
+them all. Run one only when a finding needs it, from `.venv/bin`: `pytest`, `ruff check .`,
+`ruff format --check .`, `ty check` or `lint-imports`.
 
 ## The check
 
@@ -43,12 +43,14 @@ breaking the code the clause describes in a scratch copy and showing the test st
    without the pin test and the design changing together.
 6. **Quirks.** Each quirk the diff marks in `docs/evidence/coverage.tsv` has a test that
    exercises it.
-7. **Reference repo.** `git -C ../gov-budget-data status --porcelain` is empty.
+7. **Reference repo.** No file that `git -C ../gov-budget-data status --porcelain` lists was
+   written after this branch's first commit. Use the path the caller gives when the checkout
+   is not beside that repository. The owner's own pending changes there are older, and do not
+   count.
 
 ## Report
 
-The gates with their results. Then each clause of the check: proven by which test, or not
-proven and why. Then findings ranked most serious first, each with file and line, what is wrong,
+Each clause of the check: proven by which test, or not proven and why. Then findings ranked most serious first, each with file and line, what is wrong,
 and the command and output that show it. Mark each finding `blocks` or `follow-up` by the rule
 in `docs/plans/README.md`. A finding without a run behind it is left out. Say plainly when
 there are none.

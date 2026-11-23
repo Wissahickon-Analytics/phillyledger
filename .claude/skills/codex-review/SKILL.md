@@ -17,8 +17,9 @@ ones a run or a quote confirms.
    - `plan N` reads the plan of step N in a read-only sandbox.
    - `pr N <base>` runs the check and the audits of the `verify-step` skill, then the review,
      on `git diff <base>...HEAD`. Codex works in a throwaway worktree with its own environment,
-     in a sandbox that can write only there, so it runs tests and breaks code to test a claim.
-   - `fix N <reviewed-head>` reads only the fix round, `git diff <reviewed-head>..HEAD`.
+     in a sandbox with no network, so it runs tests and breaks code there to test a claim.
+   - `fix N <reviewed-head>` reads only the fix round, `git diff <reviewed-head>..HEAD`. It
+     needs the report of the `pr` review of that head, and stops without it.
 3. If the script stops because `codex` is missing or the tree is dirty, report that in one line
    and go on. Never install Codex or change its configuration.
 
@@ -41,7 +42,9 @@ Every other one is a follow-up. Codex labels each finding, and its label is a le
   findings with the revised plan before the build starts.
 - **Pull request review.** Give the findings that block to one fresh `pstack:poteto-agent` on
   the feature model, with each finding, its evidence, and the original brief. That is the pull
-  request's one fix round. Then run `just gates` and `fix N <reviewed-head>` on the new head.
+  request's one fix round. The message of its last commit lists each finding of the review by
+  its title as fixed, follow-up or dropped, with the reason for a drop, so the fix review can
+  account for each. Then run `just gates` and `fix N <reviewed-head>` on the new head.
 - **Fix review.** A finding that blocks in the fix diff goes to the owner. So does any second
   round. Do not start one without his go.
 - List the follow-ups under `## Follow-ups` in the pull request's text.
