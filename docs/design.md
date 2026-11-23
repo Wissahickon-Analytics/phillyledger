@@ -3698,7 +3698,7 @@ Determinism rules:
 | Adapter contracts | each port's fake and real adapter pass the same tests | network or MinIO for the real ones | nightly and before release |
 | Corpus | every archived edition parses and its gate passes | the archive | before release |
 | Canary | one full run from bytes to a staged release | fakes plus two archived PDFs | every commit |
-| Purity | AST scan of `checkedtables` and `datadesk.core` for `open`, `print`, `input`, `.now()`, `.today()`, `os.`, `random`, `time.`, `builtins`, `__import__`, and mutable module state: a module-level assignment of a list, dict or set display, a comprehension of one, or a call to `list`, `dict`, `set` or `bytearray` | nothing | every commit |
+| Purity | AST scan of `checkedtables` and `datadesk.core` for `open`, `print`, `input`, `.now()`, `.today()`, `os.`, `random`, `time.`, `builtins`, `__import__`, and mutable module state: a module-level assignment of a list, dict or set display, a comprehension of one, or a call to `list`, `dict`, `set` or `bytearray`. The scan also fails every relative import, and every import from outside the package that the import pin below does not hold | nothing | every commit |
 
 The core suites run under `pytest-socket` with sockets disabled and an empty temporary directory
 as the working directory (from A). Word fixtures of real pages are generated once by
@@ -3710,6 +3710,28 @@ pytest-socket replaces only the names `socket.socket`, `socket.getaddrinfo` and
 root `conftest.py` also refuses the `socket.__new__` and resolver audit events unless the running
 test carries the `enable_socket` marker. Each core test module also starts in its own empty
 folder, so a module-scoped fixture never sees the checkout.
+
+The pure packages import from outside themselves only by name. `tests/test_purity.py` pins, for
+each pure package, every `module.name` pair that it imports, and the test fails when the pairs in
+the source differ from the pin in either direction. The scan reads each file as the importer
+does, coding cookie included. An import statement that binds an outside module, a star import
+from outside, and a pinned name that is itself a module all fail, so no import, read as written,
+gives pure code a module object from outside. A star import from outside fails whatever the pin
+holds. `checkedtables` counts its own modules as inside. `datadesk.core` counts its own modules and
+`checkedtables` as inside. A name taken from an outside module counts as inside when its full name
+is at or under an inside name, as `from datadesk import core` is. A relative import fails, inside or
+out. Python resolves it through the module global `__package__`, which source can rebind, so pure
+code imports by absolute name. The scan reads source as written. Source that changes a module global
+at run time, such as `__path__`, can still make an absolute import bind another module, and a static
+scan cannot see that change. The note "The pure packages can still reach effects the gates do not
+name" in `docs/progress.md` lists the routes found, and review reads for them. The modules each
+package imports from are a closed list, given below. A pull request that imports from a module
+outside the list changes the list and the pin together.
+
+| Package | Outside modules it imports from |
+|---|---|
+| `checkedtables` | none |
+| `datadesk.core` | none |
 
 ### 11.2 Property tests
 

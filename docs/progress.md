@@ -6,7 +6,7 @@ same branch as the work: status, the date the check passed, and anything a later
 | Step | What | Status | Branch | Check passed |
 |---|---|---|---|---|
 | 1 | Workspace, tooling, purity and shape tests | check passed | `step-01/a-workspace`, `step-01/b-import-contracts`, `step-01/c-kit-shape`, `step-01/d-test-isolation` | November 22, 2026, runs 45093444380, 45094817250, 45094829990 and 45092206629 |
-| 2 | Kit, words to cells | not started | | |
+| 2 | Kit, words to cells | in progress | `step-02/a-import-pin` | |
 | 3 | Archive for the QCMR from FY2022 | not started | | |
 | 4 | Words: PDF adapter with font repair, word cache, codec | not started | | |
 | 5 | QCMR positions parser, registry, row schemas, column vocabulary | not started | | |
@@ -137,6 +137,48 @@ Each entry: step, what changed, why, and the design section updated.
   unless the running test carries the `enable_socket` marker. Both package `conftest.py` files add
   a module-scoped fixture that moves each test module into an empty folder. The three plants now
   fail with `SocketBlockedError`, and the fixture finds no `pyproject.toml`. Design section 11.1.
+- **Step 2: the purity test pins the imports of the pure packages** (November 23, 2026, S2-A).
+  This is the owner's allow-list (see the note "The pure packages can still reach effects the
+  gates do not name"). `PURE_IMPORTS` in `tests/test_purity.py` maps `checkedtables` and
+  `datadesk.core` to the sorted `module.name` pairs that each imports from outside. Both are
+  empty, because every file in both packages is empty. The scan parses each file's bytes, so it
+  reads a coding cookie as the importer does. It reads imports in function bodies and under
+  `if TYPE_CHECKING`. It fails every relative import, an `import` statement that binds an outside
+  module, a from-import of a pair the pin does not hold, and a star import from outside whatever
+  the pin holds. `checkedtables` counts itself as inside, and `datadesk.core`
+  counts itself and `checkedtables`. A name taken from an outside module counts as inside when
+  its full name is at or under an inside name, so in `datadesk.core` the import
+  `from datadesk import core` passes and `from datadesk import shell` fails.
+  `test_pure_imports_are_pinned` fails when the pairs in the source and the pin differ in either
+  direction. `test_pinned_imports_are_not_modules` fails on a pinned pair that does not resolve,
+  that resolves to a module, such as `dataclasses.sys`, or whose name is `*`. The verification
+  lanes and the Codex review of S2-A found that the scan read each file as UTF-8, passed a pinned
+  star import and reported `from datadesk import core`. The same pull request fixed each, with a
+  test. `BANNED_IMPORTS` is gone, because the
+  pin refuses `random` and `builtins` with every other module. Before the change, with
+  `from io import FileIO` appended to `datadesk/core/tables/birt.py`,
+  `uv run pytest tests/test_purity.py` printed `3 passed`. Now it fails and prints
+  `birt.py:1 from io import FileIO`, and `test_planted_import_fails_purity_test` in
+  `tests/test_gates.py` holds that plant. The plan said an `import` that names an outside module
+  fails. The build judges the module that the statement binds, as section 11.1 says.
+  `import datadesk.core.tables` names an inside module and binds `datadesk`, and once any code has
+  imported `datadesk.shell`, the shell is an attribute of that binding. So that import fails, and
+  `import datadesk.core.tables as tables` passes. The plan resolved a relative import from the
+  file's dotted name, and the build refuses every relative import instead. The second Codex
+  review of S2-A, at `c103b016`, read `__package__ = "email.mime"` and then `from . import text`
+  as `checkedtables.words`. Its command passed that source to `outside_imports` and `impurities`
+  and ran it with `exec` in a copy of the module's globals. On Python 3.12.15 it printed
+  `outside pairs: []`, `purity findings: []` and `bound module: email.mime.text`. Python resolves
+  a relative import through the module global `__package__`, which source can rebind, and a
+  static scan cannot know what it holds when the statement runs. A ban on assigning it would miss
+  `globals()["__package__"]`. An absolute import does not read `__package__`, and all 64 imports
+  from `checkedtables` and `datadesk` in the design's code samples are absolute. The same source
+  now fails with `relative import from .`. An absolute import still finds a submodule through its
+  package's `__path__`, which source can also change at run time. So the scan shows only that no
+  import, read as written, gives pure code a module object from outside, as section 11.1 now says
+  (see the note "The pure packages can still reach effects the gates do not name"). A pull
+  request that imports a new name adds its pair to `PURE_IMPORTS`. One that imports from a new
+  module also adds the module to the list in section 11.1. Design section 11.1.
 
 ## Notes for later sessions
 
@@ -244,18 +286,63 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   still runs in the checkout. Probed at S1-D, fixtures of session and package scope found
   `pyproject.toml` in the working directory, and one of module scope did not.
 - **The pure packages can still reach effects the gates do not name** (November 22, 2026, step 1,
-  S1-D, found in the Codex review of the stack and the build). Planted one at a time in
-  `datadesk/core/tables/birt.py`, each of these passes every gate: `from io import FileIO` reading a
-  file, `sys.stdout.write("x")`, `uuid.uuid4()`, `write = print` then `write(1)`,
-  `exec("print(1)")`, `sys.modules["os"].getcwd()`, `import posix` with `posix.getcwd()`,
-  `import _socket` with `_socket.socket()`, `defaultdict(list)` assigned at module level, and a
-  mutable class attribute. A core test that starts a subprocess, which opens a socket, also passes
-  every gate. The forbidden lists and the purity scan name specific modules and calls, and every
-  review finds more, so naming more modules does not converge. An allow-list of the modules the pure
-  packages may import would close the import forms. That is a new closed list in the design. The
-  owner chose the allow-list on November 23, 2026. It lands as the first pull request of the step 2
-  plan, which pins the list and changes design section 11.1 in the same pull request (`CLAUDE.md`,
-  hard rule 6).
+  S1-D, found in the Codex review of the stack and the build. Rewritten November 23, 2026, S2-A).
+  At step 1, ten plants each passed every gate when planted alone in
+  `datadesk/core/tables/birt.py`. The forbidden lists and the purity scan named specific modules
+  and calls, and every review found more. The owner chose an allow-list on November 23, 2026, and
+  S2-A pins it (see Deviations). Each plant was run again in a scratch copy of the S2-A head. The
+  seven that import now fail `test_pure_packages_have_no_effects`, so `uv run pytest` fails. They
+  are `from io import FileIO` reading a file, `sys.stdout.write("x")`, `uuid.uuid4()`,
+  `sys.modules["os"].getcwd()`, `import posix` with `posix.getcwd()`, `import _socket` with
+  `_socket.socket()`, and `defaultdict(list)` assigned at module level. The three that import
+  nothing still pass all six gates: `write = print` then `write(1)`, `exec("print(1)")`, and a
+  mutable class attribute. A core test that starts a subprocess, which opens a socket, also still
+  passes all six gates. At `ad866a9`, before the pin, all ten passed `uv run pytest`. The pin reads
+  static imports only. A list of the builtin names pure code may use would be a second closed list
+  and a separate decision for the owner (Appendices B and C of `docs/plans/step-02.md`).
+  - The S2-A verification lanes found six more routes. Three use the bare module globals:
+    `getattr(__loader__, method)(path)` and `getattr(getattr(__spec__, loader), method)(path)`,
+    with the names held in variables, and `__builtins__["open"]`. Three took the same objects
+    with `from . import __builtins__`, `from . import __loader__` and `from . import __spec__`.
+    Each was run again planted alone in `checkedtables/words.py`, with a docstring, in a scratch
+    copy of `a4bac18`, the S2-A commit that refuses relative imports. Each plant read
+    `pyproject.toml` at run time. The three bare globals still pass all six gates. The three
+    relative spellings now fail `test_pure_packages_have_no_effects` with
+    `words.py:1 relative import from .`, so `uv run pytest` fails, and the other five gates pass.
+    The absolute spellings `from checkedtables import __builtins__`,
+    `from checkedtables import __loader__` and `from checkedtables import __spec__`, used the same
+    way, pass all six gates, because each full name is inside the kit. Written as
+    `__loader__.get_data(path)` or `__spec__.loader.get_data(path)`, with the bare globals or the
+    absolute spellings, the line fails `ty check`, which types `__loader__` as
+    `LoaderProtocol | None` and `__spec__` as `ModuleSpec | None`. The routes that pass stay open
+    because they are module globals that need no outside import, so no import pin sees them. A
+    list of the builtin names pure code may use is a separate decision for the owner (Appendix B
+    of the step 2 plan).
+  - `datadesk.core` can import a name that the kit pins from a `checkedtables` module, with no pin
+    of its own. With `dataclasses.dataclass` pinned for `checkedtables` and imported in
+    `words.py`, `from checkedtables.words import dataclass` in `birt.py` passed all six gates in
+    the same scratch copy. This is by design. Every pinned name is reviewed as legal in pure code,
+    and no module object passes that way, because a pinned name that is a module fails.
+  - An S2-A verification lane found that source which changes `__path__` at run time makes an
+    absolute import bind a module from outside. It was run again in a scratch copy of `cd433543`
+    on Python 3.12.15. `datadesk/core/__init__.py` held a function that declares
+    `global __path__`, sets `__path__ = [*__path__, "<stdlib>"]` and is called at import, where
+    `<stdlib>` is the folder of the standard library. `datadesk/core/tables/birt.py` held
+    `from datadesk.core import subprocess` and a function that calls `subprocess.run` on `echo`.
+    Importing `birt` bound `datadesk.core.subprocess` to the standard library's `subprocess.py`,
+    and the function ran `echo`. With a stub `datadesk/core/subprocess.pyi` that holds
+    `from subprocess import run as run`, all six gates exit 0. Without the stub, `ty check` exits
+    1 with ``Module `datadesk.core` has no member `subprocess` ``, `prek` exits 1 on its `ty`
+    hook, and the other four gates exit 0. The same plant in `checkedtables/__init__.py` and
+    `checkedtables/words.py` binds the standard library's `subprocess` the same way, and
+    `uv run pytest` exits 1 with or without the stub. The library shape test walks `__path__` and
+    imports `asyncio/windows_events.py` from the standard library folder. That import raises
+    `ImportError: win32 only`, so three tests in `test_library_shape.py` and the two planted shape
+    tests in `tests/test_gates.py` fail. With the stub the other five gates exit 0, and without it
+    `ty check` and `prek` also exit 1. The route stays open. `__path__` is a module
+    global that source changes at run time, the family that Appendix B of the step 2 plan leaves
+    to a separate decision for the owner. A rule against assigning `__path__` would also miss
+    `__path__.append(...)`. Review reads for it, as design section 11.1 says.
 - **Follow-ups after step 1** (November 22, 2026). The step 1 run found these and did not fix
   them.
   - Nothing tests a gate's own settings. In scratch copies of the S1-D head, each of
@@ -300,3 +387,23 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   that session and for that pull request, at the verified head with CI passing. The clauses on
   pushing to `main` and on force-pushing are unchanged, so the force-pushes in the note above
   still cross the rule.
+- **Follow-ups after step 2** (November 23, 2026). The step 2 run found these and did not fix
+  them.
+  - Nothing ties the module table of design section 11.1 to `PURE_IMPORTS`. A pin can hold a pair
+    from a module that the table does not list, and every test still passes. The Codex review of
+    S2-A showed it with `from decimal import Decimal` in `words.py` and `decimal.Decimal` pinned,
+    while the table said `none`. Until a test reads the table, the audit of each pull request
+    checks it by hand against the modules in `PURE_IMPORTS`.
+  - `package_sources` in `tests/test_purity.py` finds each pure package with `find_spec`, as it
+    has since step 1. With a foreign `PYTHONPATH`, or an editable install that points at another
+    checkout, it reads that checkout's sources. Every test imports the kit by name, so under that
+    path the whole suite reads the other checkout, and the purity test agrees with the rest. The
+    Codex review of S2-A at `c103b016` showed it with `PYTHONPATH` set to a sibling worktree's
+    kit, where `test_pure_imports_are_pinned` failed on that worktree's imports.
+  - `test_scan_reports_each_banned_form` checks each banned form against the live `PURE_IMPORTS`.
+    Once a pin holds a name that a banned form imports, the scan accepts the form and the test
+    fails. The third Codex review of S2-A, at `cd433543`, showed it with
+    `collections.defaultdict` pinned for `checkedtables` in memory. Its command printed `scan: []`
+    and `AssertionError: from collections import defaultdict` on Python 3.12.15. Both pins are
+    empty, so no pin names one today. A later pull request that pins a name that one of the banned
+    forms imports, such as `collections.defaultdict`, must also edit that form.
