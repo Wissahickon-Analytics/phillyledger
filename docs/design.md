@@ -3820,7 +3820,7 @@ def test_no_bool_parameters_and_at_most_four() -> None:
     for fn in public_functions(checkedtables):
         params = list(inspect.signature(fn).parameters.values())
         assert len(params) <= 4, fn.__qualname__
-        assert not any(p.annotation in (bool, "bool") for p in params), fn.__qualname__
+        assert not bool_parameters(fn), fn.__qualname__
 
 
 def test_kit_dataclass_fields_are_pinned() -> None:
@@ -3852,6 +3852,21 @@ def report_budget() -> None:                    # printed in CI and in the PR; n
     print(f"checkedtables: {source_lines(checkedtables)} lines (budget 3,800), "
           f"{len(public_names(checkedtables))} public names (budget 140)")
 ```
+
+`bool_parameters` names each parameter whose annotation is `bool` or a union with `bool` as a
+member, so `flag: bool | None` and `flag: Optional[bool]` fail as `flag: bool` does. It
+evaluates each parameter's annotation in the function's module, a quoted one and a quoted member
+such as `Optional["bool"]` included, and never the return type. A name that does not resolve at
+run time, such as one imported only under `TYPE_CHECKING`, stands for an unknown type, so it
+raises nothing and a `bool` beside it in a union still counts. A `bool` inside another type, such
+as `tuple[bool, ...]`, does not count. A method's bound first parameter does not count toward the
+four. `public_functions` reads each function and class, once, that a public name in a public
+module reaches, when its `__module__` is the scanned module or a module under it, private modules
+included. A public class's methods, and its `__init__` when it is not a dataclass, include those
+it inherits from a base class in the scanned package, private or not, each read once as the class
+resolves it, without `self`. A base outside the package, such as `object`, `Enum` or `Exception`,
+adds nothing. A dataclass's generated constructor stays out, because the two field tests pin its
+fields and allow the `bool` fields `Word.bold` and `Column.printed`.
 
 `NoteKind` lives in `datadesk`, but its list is pinned in the same test file. A new kind of
 per-edition switch is then as visible as a new kit field (R1). The six vocabulary lists are pinned

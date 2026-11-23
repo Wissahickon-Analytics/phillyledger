@@ -52,6 +52,8 @@ jobs:
           version=$(uv run python -c 'import sys; print(*sys.version_info[:2], sep=".")')
           echo "$version"
           test "$version" = "${{ matrix.python-version }}"
+      - name: Kit size report
+        run: uv run python packages/checkedtables/tests/test_library_shape.py
 """
 ALWAYS = "${{ !cancelled() }}"
 SRC_FOLDERS = (
@@ -59,6 +61,8 @@ SRC_FOLDERS = (
     "packages/phillyledger/src",
     "packages/datadesk/src",
 )
+SHAPE_TEST = "packages/checkedtables/tests/test_library_shape.py"
+PLANTED_BOOL_PARAMETER = "def planted(flag: bool) -> None: ...\n"
 
 
 def run_gate(
@@ -159,3 +163,27 @@ def test_source_folders_are_packages(tmp_path: Path) -> None:
 
     missing = [folder for src in SRC_FOLDERS for folder in folders_missing_init(REPO / src)]
     assert missing == [], f"import-linter skips these folders, add __init__.py: {missing}"
+
+
+def test_planted_bool_parameter_fails_shape_test(tmp_path: Path) -> None:
+    result = clean_then_planted(
+        tmp_path,
+        {},
+        {"packages/checkedtables/src/checkedtables/__init__.py": PLANTED_BOOL_PARAMETER},
+        "uv run pytest",
+        ("-p", "no:cacheprovider", SHAPE_TEST),
+    )
+    assert result.returncode == 1, result.stdout
+    assert "AssertionError: planted" in result.stdout, result.stdout
+
+
+def test_planted_family_helper_parameter_fails_shape_test(tmp_path: Path) -> None:
+    result = clean_then_planted(
+        tmp_path,
+        {},
+        {"packages/datadesk/src/datadesk/core/tables/qcmr_common.py": PLANTED_BOOL_PARAMETER},
+        "uv run pytest",
+        ("-p", "no:cacheprovider", SHAPE_TEST),
+    )
+    assert result.returncode == 1, result.stdout
+    assert "AssertionError: planted" in result.stdout, result.stdout
