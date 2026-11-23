@@ -11,6 +11,7 @@ PURE_IMPORTS: dict[str, tuple[str, ...]] = {
         "dataclasses.dataclass",
         "decimal.Decimal",
         "enum.StrEnum",
+        "re.compile",
     ),
     "datadesk.core": (),
 }

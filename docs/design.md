@@ -3732,7 +3732,7 @@ the list changes the list and the pin together.
 
 | Package | Outside modules it imports from |
 |---|---|
-| `checkedtables` | `collections.abc`, `dataclasses`, `decimal`, `enum` |
+| `checkedtables` | `collections.abc`, `dataclasses`, `decimal`, `enum`, `re` |
 | `datadesk.core` | none |
 
 ### 11.2 Property tests
