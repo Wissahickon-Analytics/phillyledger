@@ -60,18 +60,17 @@ def test_box_around_nothing_raises() -> None:
 
 def test_box_contains_with_slack() -> None:
     cell = Box(10.0, 10.0, 20.0, 20.0)
-    for word, contained in (
-        (Box(12.0, 12.0, 18.0, 18.0), True),
-        (Box(9.75, 12.0, 18.0, 18.0), True),
-        (Box(12.0, 9.75, 18.0, 18.0), True),
-        (Box(12.0, 12.0, 20.25, 18.0), True),
-        (Box(12.0, 12.0, 18.0, 20.25), True),
-        (Box(9.0, 12.0, 18.0, 18.0), False),
-        (Box(12.0, 9.0, 18.0, 18.0), False),
-        (Box(12.0, 12.0, 21.0, 18.0), False),
-        (Box(12.0, 12.0, 18.0, 21.0), False),
-    ):
-        assert cell.contains(word, 0.5) is contained, word
+    for slack in (0.0, 0.5):
+        assert cell.contains(Box(12.0, 12.0, 18.0, 18.0), slack)
+    for reach in (0.25, 1.0):
+        for word in (
+            Box(10.0 - reach, 12.0, 18.0, 18.0),
+            Box(12.0, 10.0 - reach, 18.0, 18.0),
+            Box(12.0, 12.0, 20.0 + reach, 18.0),
+            Box(12.0, 12.0, 18.0, 20.0 + reach),
+        ):
+            for slack, contained in ((0.0, False), (reach / 2, False), (reach, True)):
+                assert cell.contains(word, slack) is contained, (word, slack)
 
 
 def test_word_ref_cites_a_file_and_a_page() -> None:
