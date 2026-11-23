@@ -25,7 +25,9 @@ step is finished when its check passes.
      reviews it (`codex-review pr N <base>`), and the Fable session confirms or drops each Codex
      finding, sends confirmed ones back to a fresh Opus owner, and gives the final review.
      Contested design goes to `/pstack:interrogate`. Pull requests stack only where one builds
-     on another. The owner decides each landing (hard rule 9).
+     on another. From step 3 on, a step's stacked pull requests are one GitHub stack, built and
+     kept linear with `gh stack` (`docs/plans/README.md`). The owner decides each landing (hard
+     rule 9).
 - **Verification is sized by what there is to prove.** A pull request's swarm is the three
   parts of `verify-step` (the gates, the check and the audits), each as its own lane, plus one
   live lane for each clause the pull request owns and each risk its plan names. It gets a
@@ -108,7 +110,12 @@ Step 1 creates these. Keep this list true as tooling changes.
    a pull request only when the owner tells it to, in that session and for that pull request, and
    only at the verified head with CI passing. That instruction does not carry over to a later
    pull request or session. Agents never push to `main` and never force-push a branch they did
-   not create.
+   not create. The one exception is a branch of the step's own GitHub stack: the owner of a pull
+   request in that stack, a fix-round owner included, may force-push it after a rebase, with a
+   lease on the head it last fetched.
+10. A commit message names no model and no tool as an author: no `Co-Authored-By` line of any
+    kind and no "Generated with" line. A squash merge takes the pull request title and a blank
+    body. Agents never change the git author name or email.
 
 ## Code
 
