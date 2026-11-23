@@ -26,7 +26,10 @@ if TYPE_CHECKING:
     from _typeshed import DataclassInstance, SupportsRead
 
 FAMILY_HELPERS = (qcmr_common, collections_common, bib_common, supp_common)
-FIELD_SNAPSHOT: dict[str, tuple[str, ...]] = {}
+FIELD_SNAPSHOT: dict[str, tuple[str, ...]] = {
+    "Box": ("x0", "top", "x1", "bottom"),
+    "WordRef": ("doc_sha256", "page", "index", "child"),
+}
 
 
 def public_modules(module: ModuleType) -> list[ModuleType]:

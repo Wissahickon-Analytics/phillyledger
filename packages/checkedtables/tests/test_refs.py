@@ -3,9 +3,10 @@ import operator
 from itertools import product
 
 import pytest
-from checkedtables.refs import Box, WordRef
 from hypothesis import given
 from hypothesis import strategies as st
+
+from checkedtables.refs import Box, WordRef
 
 COMPARISONS = (operator.lt, operator.le, operator.gt, operator.ge)
 coordinates = st.floats(min_value=-1e6, max_value=1e6, allow_nan=False)
