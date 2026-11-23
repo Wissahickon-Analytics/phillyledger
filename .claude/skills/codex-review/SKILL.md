@@ -19,7 +19,7 @@ ones a run or a quote confirms.
      on `git diff <base>...HEAD`. Codex works in a throwaway worktree with its own environment,
      in a sandbox with no network, so it runs tests and breaks code there to test a claim.
    - `fix N <reviewed-head>` reads only the fix round, `git diff <reviewed-head>..HEAD`. It
-     needs the report of the `pr` review of that head, and stops without it.
+     needs the report of the `pr` or `fix` review of that head, and stops without it.
 3. If the script stops because `codex` is missing or the tree is dirty, report that in one line
    and go on. Never install Codex or change its configuration.
 

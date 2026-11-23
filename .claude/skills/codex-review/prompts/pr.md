@@ -18,12 +18,12 @@ Read first:
 The change under review is `git diff {{BASE}}...HEAD`. The old repository at `{{REFERENCE}}` is
 a read-only reference for how the PDFs behave.
 
-If every file the diff changes is a Markdown file or is under `.claude/`, it changes only docs,
-rules or review scripts. Skip the two parts below. Look for a sentence the diff makes wrong:
-one that contradicts `CLAUDE.md`, the design, another document, or what the code and the
-scripts do. Read a changed script, and run it only when it needs no network. Any other file,
-such as `pyproject.toml`, `conftest.py`, the workflow or `docs/evidence/coverage.tsv`, takes
-both parts.
+If every file the diff changes is a Markdown file outside `docs/evidence/` or a file under
+`.claude/skills/`, it changes only docs, rules or review scripts. Skip the two parts below.
+Look for a sentence the diff makes wrong: one that contradicts `CLAUDE.md`, the design, another
+document, or what the code and the scripts do. Read a changed script, and run it only when it
+needs no network. Any other file takes both parts: `pyproject.toml`, `conftest.py`, the
+workflow, a hook under `.claude/hooks/`, and everything under `docs/evidence/`.
 
 Part 1, verify. Follow `.claude/skills/verify-step/SKILL.md`, where `$0` is {{STEP}} and `$1` is
 {{BASE}}. In its audit of the reference repository, `../gov-budget-data` is `{{REFERENCE}}`. To

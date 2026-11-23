@@ -56,8 +56,8 @@ session runs on Fable (`docs/plans/README.md`, "Why verification is this size").
    git config --local user.email <an email on your GitHub account>
    ```
    Agents never change the git author name or email (hard rule 10 in `CLAUDE.md`).
-8. Install `just` (`brew install just`). The Build session runs `just gates`, which is
-   everything CI runs. The `Justfile` also has `just check` for lint, format, types and import
+8. Install `just` (`brew install just`). The Build session runs `just gates`, the six gates
+   that CI runs. The `Justfile` also has `just check` for lint, format, types and import
    contracts, `just test` for pytest, and `just fix` for ruff's fixes. CI calls the commands
    itself and does not need `just`.
 

@@ -55,9 +55,11 @@ here=$(cd "$(dirname "$0")" && pwd)
 outdir=$root/.codex-review
 prompt=$outdir/step-$nn-$kind-$sha.prompt.md
 out=$outdir/step-$nn-$kind-$sha.md
-prior=$outdir/step-$nn-pr-$(git -C "$root" rev-parse --short=8 "$base_sha").md
-if [ "$kind" = fix ] && [ ! -f "$prior" ]; then
-    echo "No report at $prior. A fix review answers the pr review of that head, so run it first." >&2
+base8=$(git -C "$root" rev-parse --short=8 "$base_sha")
+prior=$outdir/step-$nn-pr-$base8.md
+[ -s "$prior" ] || prior=$outdir/step-$nn-fix-$base8.md
+if [ "$kind" = fix ] && [ ! -s "$prior" ]; then
+    echo "No report of a pr or fix review of $base8 in $outdir. A fix review answers one, so run it first." >&2
     exit 6
 fi
 mkdir -p "$outdir"

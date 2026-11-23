@@ -18,8 +18,8 @@ when no base is given. Report findings. Do not fix anything.
 ## Gates
 
 The Build session runs `just gates` at the head, and CI runs the same six gates. Do not rerun
-them all. Run one only when a finding needs it, from `.venv/bin`: `pytest`, `ruff check .`,
-`ruff format --check .`, `ty check` or `lint-imports`.
+them all. Run one only when a finding needs it. The `Justfile` gives each gate's command, and
+the tools are in `.venv/bin`.
 
 ## The check
 
@@ -51,6 +51,6 @@ breaking the code the clause describes in a scratch copy and showing the test st
 ## Report
 
 Each clause of the check: proven by which test, or not proven and why. Then findings ranked most serious first, each with file and line, what is wrong,
-and the command and output that show it. Mark each finding `blocks` or `follow-up` by the rule
-in `docs/plans/README.md`. A finding without a run behind it is left out. Say plainly when
-there are none.
+and the command and output, or the two quoted lines, that show it. Mark each finding `blocks` or `follow-up` by the rule
+in `docs/plans/README.md`. A finding with neither a run nor quoted lines
+behind it is left out. Say plainly when there are none.
