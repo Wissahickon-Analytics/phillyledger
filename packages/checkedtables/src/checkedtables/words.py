@@ -73,14 +73,16 @@ class Page:
     source : WordSource
         The tool that read every word on the page.
     words : tuple[Word, ...]
-        The words, each from this file and page.
+        The words, each from this file and page, and none with an OCR confidence on a text
+        layer page.
     rules : tuple[Rule, ...]
         The drawn lines.
 
     Raises
     ------
     ValueError
-        When a word's ref names another file or another page.
+        When a word's ref names another file or another page, or a word on a text layer page
+        carries an OCR confidence.
     """
 
     doc_sha256: str
@@ -93,10 +95,12 @@ class Page:
     rules: tuple[Rule, ...] = ()
 
     def __post_init__(self) -> None:
-        """Refuse a word of another file or another page."""
+        """Refuse a word of another file or page, and an OCR confidence on a text layer."""
         for word in self.words:
             if word.ref.doc_sha256 != self.doc_sha256 or word.ref.page != self.number:
                 raise ValueError(f"word {word.ref} does not belong to page {self.number}")
+            if self.source.kind is SourceKind.TEXT_LAYER and word.confidence is not None:
+                raise ValueError(f"word {word.ref} has an OCR confidence on a text layer page")
 
 
 @dataclass(frozen=True, slots=True)
@@ -108,12 +112,26 @@ class Document:
     sha256 : str
         The sha256 of the publisher file.
     pages : tuple[Page, ...]
-        The extracted pages. The caller passes them in ascending order, and they need not be
+        The extracted pages of this file, in strictly ascending order. They need not be
         contiguous.
+
+    Raises
+    ------
+    ValueError
+        When a page is of another file, or the page numbers are not strictly ascending.
     """
 
     sha256: str
     pages: tuple[Page, ...]
+
+    def __post_init__(self) -> None:
+        """Refuse a page of another file, and page numbers that are not strictly ascending."""
+        for page in self.pages:
+            if page.doc_sha256 != self.sha256:
+                raise ValueError(f"page {page.number} does not belong to document {self.sha256}")
+        numbers = [page.number for page in self.pages]
+        if numbers != sorted(set(numbers)):
+            raise ValueError(f"page numbers are not strictly ascending: {numbers}")
 
     def page(self, number: int) -> Page:
         """Return the page with this number.

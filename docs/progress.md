@@ -184,6 +184,20 @@ Each entry: step, what changed, why, and the design section updated.
   `RowKey.of` sorts its parts by name. The plan named every rule except the one on no parts.
   `str` of a key with no parts is the empty text, which names no row, and no use in the design
   builds such a key. Design section 2.1.
+- **Step 2: a text layer page refuses an OCR confidence** (November 23, 2026, S2-B, found in the
+  Codex review). The design calls `Word.confidence` OCR only and lists "a page with two word
+  sources" among the states its types make impossible. `Page` checked only each word's file and
+  page, so a text layer page took a word with a Textract confidence, and an OCR reading such as
+  the 65.8 of QCASH-Q22 could pass as a text layer number. `Page.__post_init__` now raises
+  `ValueError` for a word with a confidence on a page whose source kind is `TEXT_LAYER`. The
+  converse rules wait for step 4 (the note "What an OCR word carries"). Design section 2.1.
+- **Step 2: `Document` and `WordRef` check what they cite** (November 23, 2026, S2-B, found in
+  the Codex review). `Document` took a page of another file, so `Document.page` could return it,
+  and `WordRef("", 0, 0)` cited no file and page 0. `Document.__post_init__` now raises
+  `ValueError` for a page whose `doc_sha256` is not the document's `sha256`, and for page numbers
+  that are not strictly ascending, as the design's comment on `pages` already said.
+  `WordRef.__post_init__` raises `ValueError` for an empty `doc_sha256`, for a page below 1, which
+  the design calls 1-based, and for an index or a child below 0. Design section 2.1.
 
 ## Notes for later sessions
 
@@ -374,3 +388,9 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   modules run as far past theirs, the kit passes its 3,800 line budget, an inference that no run
   has checked. The report never fails the build, so the owner decides whether the budget counts
   docstrings.
+- **What an OCR word carries, a note for the step 4 plan** (November 23, 2026, step 2, S2-B).
+  `Page` refuses a word with an OCR confidence on a text layer page. It does not refuse the
+  converse states: a word on an OCR page with no confidence, or with a style, which the design
+  says no OCR word has. Step 4 builds the adapters and learns what pdfplumber and Textract return
+  for every word, so its plan decides whether `Page` refuses those states too, and records the
+  choice in design section 2.1.

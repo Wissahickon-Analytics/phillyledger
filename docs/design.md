@@ -106,6 +106,9 @@ class WordRef:
     index: int                 # extraction order on that page; evidence only, never a record key
     child: int | None = None   # set when split_numeric_runs made this word; its box is approximate
 
+    def __post_init__(self) -> None: ...    # ValueError: an empty doc_sha256, a page below 1,
+                                            # or an index or a child below 0
+
     # __lt__, __le__, __gt__, __ge__: by the four fields, a None child before every int child.
     # order=True would raise TypeError comparing a word with its child (None against int).
 
@@ -179,12 +182,17 @@ class Page:
         for w in self.words:
             if w.ref.doc_sha256 != self.doc_sha256 or w.ref.page != self.number:
                 raise ValueError(f"word {w.ref} does not belong to page {self.number}")
+            if self.source.kind is SourceKind.TEXT_LAYER and w.confidence is not None:
+                raise ValueError(f"word {w.ref} has an OCR confidence on a text layer page")
 
 
 @dataclass(frozen=True, slots=True)
 class Document:
     sha256: str
     pages: tuple[Page, ...]    # pages extracted, ascending; need not be contiguous
+
+    def __post_init__(self) -> None: ...    # ValueError: a page whose doc_sha256 is not sha256,
+                                            # or page numbers that are not strictly ascending
 
     def page(self, number: int) -> Page: ...
 ```
