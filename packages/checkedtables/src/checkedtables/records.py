@@ -37,8 +37,7 @@ class ReviewedReading:
         What a person reads on the rendered page, such as "291.8". None accepts publishing the
         cell as null.
     reason : str
-        Why the reading was written. Never empty, since a human reading is a record with a page
-        and a reason.
+        Why the reading was written. Never empty.
 
     Raises
     ------
@@ -75,7 +74,7 @@ class DashRule:
     Attributes
     ----------
     id : str
-        The id of the record. Never empty, so a dash that the rule turns into zero can name it.
+        The id of the record. Never empty.
     table : str
         The table the rule applies to.
     columns : tuple[str, ...]
@@ -123,7 +122,7 @@ class CellRecords:
     Raises
     ------
     ValueError
-        When two readings, or two dash rules, have one id, so that an id names one record.
+        When two readings, or two dash rules, have one id.
     """
 
     readings: tuple[ReviewedReading, ...]
@@ -166,8 +165,8 @@ def reading_for(
     every side, holds a word of the cell on the reading's file and page. The words of
     `page_words` that the box holds must be exactly the words of the cell, each as many times,
     and the texts of the cell's words, joined by one space in the order given, must equal the
-    reading's `seen`. That is the order in which `lex_cell` joins a cell's text. So a box that
-    holds part of a cell, or two cells, is stale for each of them.
+    reading's `seen`. So a box that holds part of a cell, or two cells, is stale for each of
+    them.
 
     Parameters
     ----------
@@ -187,8 +186,8 @@ def reading_for(
         exactly the cell's words, which join to `seen`. Otherwise a BLOCK finding on the
         reading's page with the subject ``"<doc sha8>:reading:<reading id>"``:
         "duplicate_reading" for two or more candidates, named by the least id, or
-        "stale_reading" for one whose box holds other words than the cell's or whose cell does
-        not join to `seen`.
+        "stale_reading" for one whose box does not hold exactly the cell's words, each as many
+        times, or whose cell does not join to `seen`.
     """
     candidates = sorted(
         (

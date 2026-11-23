@@ -382,8 +382,9 @@ Each entry: step, what changed, why, and the design section updated.
     and a reason (`CLAUDE.md`, hard rule 4). Before, a reading with no reason changed `2918` to
     `291.8`. `DashRule` refuses an empty `id`, so a `Dash` that a rule sets to zero can name the
     rule. `CellRecords` refuses two readings with one id and two dash rules with one id, because
-    `Assembly.used` holds ids and each must name one record. The opening of design section 2.1
-    now names a record file's reasons beside its ids. The record types make no other check.
+    `Assembly.used` holds ids and a used id must name the record that was used. A reading and a
+    dash rule may still share an id, since the fix round added no other check. The opening of
+    design section 2.1 now names a record file's reasons beside its ids.
   - `reading_for` counts the words the box holds against the cell's words, and joins the cell's
     words in the order given, which is the order `lex_cell` joins a cell's text in. Before, it
     compared sets, so one word given twice passed as the cell, and it joined the held words by
@@ -634,8 +635,8 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   in a workspace copy and fails when a `.hypothesis` folder appears there.
 - **Docstrings put `refs` past its estimate** (November 23, 2026, step 2, S2-B). The kit size
   report counts every line that is not blank or a comment, docstrings included. At the S2-B head
-  it prints 592 lines. At the S2-E head after its fix round it prints 1,416, and `records`
-  counts 242 lines against its estimate of 140, and 118 without docstrings. Against design
+  it prints 592 lines. At the S2-E head after its fix round it prints 1,415, and `records`
+  counts 241 lines against its estimate of 140, and 118 without docstrings. Against design
   section 12.1: `refs` 121 (estimate 60), `kinds` 29 (40),
   `words` 147 (90), `labels` 25 (30), `cells` 108 (90). `columns` holds 49 lines for two of its
   ten names (330). `table` holds 113 lines (190) for two of the eight names its row lists,

@@ -734,7 +734,7 @@ class CellRecords:
     confidence_floor: float                 # OCR words below it need a reading (change 4)
 
     def __post_init__(self) -> None: ...    # ValueError: two readings, or two dash rules, with
-                                            # one id, so each id in Assembly.used names one record
+                                            # one id
 ```
 
 A reading is keyed by file hash, page, box and the text the extraction returned. It is never
