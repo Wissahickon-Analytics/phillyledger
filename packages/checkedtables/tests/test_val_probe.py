@@ -94,7 +94,11 @@ def test_val_probe_inputs_give_documented_results() -> None:
     assert len(PROBES) == 55
     for text, key, _, _, new in PROBES:
         page = page_from_text(text, SHA, 1)
-        assert describe(lex_cell(page.words, COLUMNS[key], page.source.kind)) == new, text
+        cell = lex_cell(page.words, COLUMNS[key], page.source.kind)
+        assert describe(cell) == new, text
+        if isinstance(cell, Amount | Unreadable):
+            assert cell.text == " ".join(word.text for word in page.words), (text, cell)
+            assert cell.words == tuple(word.ref for word in page.words), (text, cell)
     fused, *_ = PROBES[38]
     (word,) = page_from_text(fused, SHA, 1).words
     assert [child.text for child in split_numeric_runs(word)] == ["TAX", "434,605,553"]
