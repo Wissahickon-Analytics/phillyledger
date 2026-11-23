@@ -4430,7 +4430,8 @@ codes, and six open with a commentary page that also prints the `TABLE P-1` band
    `records`, `testing.page_from_text`, the `NumberFormat` and `ColumnSpec` types of `columns`,
    and the `RowKey`, `Severity` and `Finding` types of `table`, with unit and property tests.
    *Check:* Hypothesis suites pass. The 55 probe inputs of VAL section 3.2 give the documented new
-   results. `transliteration_ok` refuses "65.8" to "85.8" and "77,500,000" to "7,500,000".
+   results (decision 12). `transliteration_ok` refuses "65.8" to "85.8" and "77,500,000" to
+   "7,500,000".
 3. **Archive for the QCMR from FY2022.** Index format, `confirm_period`, `plan_fetch`, the S3
    adapter, the QCMR catalog entry, and a one-time import of held FY2022 to FY2026 reports by sha.
    *Check:* each of the 20 reports is indexed once, by the sha in an inventory checked by hand.
@@ -4522,7 +4523,7 @@ codes, and six open with a commentary page that also prints the `TABLE P-1` band
 ## 16. Decisions
 
 The owner answered these on November 22, 2026. Decision 6 followed the Codex review the same day. Two setup questions were settled the same day: the repository and its folder are
-named `phillyledger`, and both buckets use Cloudflare R2.
+named `phillyledger`, and both buckets use Cloudflare R2. Decision 12 came on November 23, 2026.
 
 | # | Question | Answer |
 |---|---|---|
@@ -4537,6 +4538,7 @@ named `phillyledger`, and both buckets use Cloudflare R2.
 | 9 | A wrapped supplemental source label | WARN on each join. |
 | 10 | Keep `verify_cell_provenance` | Keep. |
 | 11 | Six captions where the kind of number is a judgment | As filed in section 2.2. The owner confirmed that Budget in Brief "Current Estimate" and collections "Current Estimates" are projections. |
+| 12 | Which 55 inputs does the probe clause of step 2 mean? | The 55 of VAL section 3.2.1. The original inputs are in no file. The owner decided on November 23, 2026, with the words "[u]se your list, but make row 4 unreadable." |
 
 ### 16.1 Supplemental reports the City posts
 
