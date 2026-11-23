@@ -371,3 +371,9 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
     S2-A showed it with `from decimal import Decimal` in `words.py` and `decimal.Decimal` pinned,
     while the table said `none`. Until a test reads the table, the audit of each pull request
     checks it by hand against the modules in `PURE_IMPORTS`.
+  - `package_sources` in `tests/test_purity.py` finds each pure package with `find_spec`, as it
+    has since step 1. With a foreign `PYTHONPATH`, or an editable install that points at another
+    checkout, it reads that checkout's sources. Every test imports the kit by name, so under that
+    path the whole suite reads the other checkout, and the purity test agrees with the rest. The
+    Codex review of S2-A at `c103b016` showed it with `PYTHONPATH` set to a sibling worktree's
+    kit, where `test_pure_imports_are_pinned` failed on that worktree's imports.
