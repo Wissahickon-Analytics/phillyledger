@@ -4,7 +4,7 @@ from checkedtables.kinds import SourceKind
 from checkedtables.refs import Box, WordRef
 from checkedtables.words import Document, Page, Word, WordSource
 
-_MARKER = compile(r"(?P<open>(?<!\S)\*\*(?=[^\s*]))|(?<=[^\s*])\*\*(?!\S)")
+_MARKER = compile(r"(?P<open>(?<![^ ])\*\*(?=[^ *]))|(?<=[^ *])\*\*(?![^ ])")
 _WORD = compile(r"[^ ]+")
 _TOOL = "checkedtables.testing.page_from_text"
 _COLUMN = 6.0
@@ -28,13 +28,14 @@ def _unmark(row: str) -> tuple[str, tuple[bool, ...]]:
 def page_from_text(text: str, sha: str, page: int) -> Page:
     """Lay out a monospace block of text as the words of one page.
 
-    A word is a run of characters with no space. Character column ``c`` of line ``r`` starts at
-    ``x0 = 6c`` and ``top = 12r``, and every word is 12 points tall. A ``**`` that starts a word
-    opens a bold span when the next character of the word is not ``*``. A ``**`` that ends a
-    word closes one when the character before it in the word is not ``*``, and it pairs with
-    the nearest unpaired opening ``**`` to its left on the same line. A pair marks the words
-    between it as bold and leaves the layout before columns are counted. Every other ``**``
-    stays in the text, so ``**1`` with no closer, ``**ab**cd`` and ``***`` are words.
+    A word is a run of characters with no ASCII space, so a tab or a non-breaking space stays
+    inside a word. Character column ``c`` of line ``r`` starts at ``x0 = 6c`` and ``top = 12r``,
+    and every word is 12 points tall. A ``**`` that starts a word opens a bold span when the
+    next character of the word is not ``*``. A ``**`` that ends a word closes one when the
+    character before it in the word is not ``*``, and it pairs with the nearest unpaired
+    opening ``**`` to its left on the same line. A pair marks the words between it as bold and
+    leaves the layout before columns are counted. Every other ``**`` stays in the text, so
+    ``**1`` with no closer, ``**ab**cd``, ``x**ab**`` and ``***`` are words.
 
     Parameters
     ----------

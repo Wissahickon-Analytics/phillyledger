@@ -80,9 +80,13 @@ in section 11.4 enforces both rules.
 
 ### 2.1 `checkedtables` types
 
-A kit type refuses at construction, with `ValueError`, a value that breaks a fact its own block
-below states in a field comment or in a "What these make impossible" list. A check that no block
-states is not built.
+The checks a kit type makes at construction are the ones its block below shows, and no others.
+They guard what enters the kit from outside: an adapter's words, pages and documents, a record
+file's ids, and a table module's columns. Each raises `ValueError`. A relation between two fields
+that one kit function computes has no check at construction. `parse_label` keeps `Label.norm`,
+`Label.squash` and `Label.text`, and `lex_cell` and `apply_reading` keep `Amount.printed` and
+each cell's `text`, and their tests prove it. A pull request that adds a check shows it in the
+block.
 
 ```python
 # checkedtables/refs.py: Box and WordRef. Cells and checks import this module, never words.
@@ -467,6 +471,7 @@ class RowKey:
 
     @staticmethod
     def parse(text: str) -> "RowKey": ...   # inverse of str; TOML records only; code uses RowKey.of
+                                            # ValueError: a part with no "="
 
     @property
     def has_occurrence(self) -> bool: ...   # an "occurrence" part from a list table
@@ -1659,9 +1664,9 @@ def squash(norm: str) -> str: ...
     # remove spaces; matches kerning gaps such as "truc k" and "LI QUOR"
 def parse_label(prefix: Sequence[Word], words: Sequence[Word]) -> Label: ...
     # splits trailing marks until none is left, kept in print order: "(N)", "(*)", "**N", "*",
-    # "see note" or "seenote", ", subtotal", "(19+20)" forms, and one bare digit after a word
-    # ("Sheriff 2", ENT-Q07; "CLASS 100" keeps its number); prefix words become line_no;
-    # printed keeps every word
+    # "see note" with any one space or none between its words, ", subtotal", "(19+20)" forms,
+    # and one bare digit after a word ("Sheriff 2", ENT-Q07; "CLASS 100" keeps its number);
+    # prefix words become line_no; printed keeps every word
 def split_line_prefix(line: Line, pattern: str) -> tuple[tuple[Word, ...], Line]: ...
     # leading words that fullmatch `pattern` leave the line before lanes are found, so a column
     # of "23", "24", "26" prefixes can never form a lane (QPOS-Q08, ENT-Q08, QSMR-Q04).
@@ -1863,10 +1868,12 @@ def render_chain(suggestions: Sequence[Suggestion]) -> str: ...
 def page_from_text(text: str, sha: str, page: int) -> Page: ...
     # lays out a monospace block as Words: one character is 6 pt wide, one line is 12 pt;
     # "**text**" marks bold words; returns style None when the block starts with "#ocr".
-    # A ** that starts a word opens a bold span when the word's next character is not *, and
-    # a ** that ends a word closes one when the character before it is not *. Each closer
-    # pairs with the nearest unpaired opener to its left on the same line. Every other **
-    # stays in the text, so "**1  **1,234**" gives "**1" and a bold "1,234" (RTT-Q38).
+    # A word is a run of characters with no ASCII space, so a tab or a non-breaking space
+    # stays inside it. A ** that starts a word opens a bold span when the word's next
+    # character is not *, and a ** that ends a word closes one when the character before it
+    # is not *. Each closer pairs with the nearest unpaired opener to its left on the same
+    # line. Every other ** stays in the text, so "**1  **1,234**" gives "**1" and a bold
+    # "1,234" (RTT-Q38).
 def doc_of(*pages: Page) -> Document: ...
     # pages sorted by number; ValueError for no pages, two files or a repeated page number
 ```

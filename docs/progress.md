@@ -217,14 +217,18 @@ Each entry: step, what changed, why, and the design section updated.
   that are not strictly ascending, as the design's comment on `pages` already said.
   `WordRef.__post_init__` raises `ValueError` for an empty `doc_sha256`, for a page below 1, which
   the design calls 1-based, and for an index or a child below 0. Design section 2.1.
-- **Step 2: a kit type refuses what its own design block rules out** (November 23, 2026, S2-B,
-  found in the second Codex review and by a verifier). Each Codex round asked for a few more
-  constructor checks, and the list had no natural end. Design section 2.1 now opens with one
-  closed rule. A kit type refuses at construction, with `ValueError`, a value that breaks a fact
-  its own block states in a field comment or in a "What these make impossible" list, and a check
-  that no block states is not built. The round added six checks. Each is stated in its block of
-  section 2.1, and each has a test of the refused value and of its nearest legal value. No field
-  changed, so `FIELD_SNAPSHOT` is unchanged.
+- **Step 2: the constructor checks are the ones the design blocks show** (November 23, 2026,
+  S2-B, found in the second and third Codex reviews and by verifiers). Each Codex round asked for
+  a few more constructor checks, and the list had no natural end. Design section 2.1 now opens
+  with a closed statement. The checks a kit type makes at construction are the ones its block
+  shows, and no others. They guard what enters the kit from outside, and a relation between two
+  fields that one kit function computes has no check at construction (the note "Constructor
+  checks the kit does not make"). Fix round 3 replaced a wider rule of fix round 2, which promised
+  a check for every fact a block states. The blocks state many facts that no constructor checks.
+  One check in the code had no line in its block, the refusal of a part with no `=` in
+  `RowKey.parse`, and fix round 3 added it to the `table` block. Fix round 2 added six checks.
+  Each is shown in its block of section 2.1, and each has a test of the refused value and of its
+  nearest legal value. No field changed, so `FIELD_SNAPSHOT` is unchanged.
   - `Amount` refuses an empty `review_id` in either reading. The `cells` block says "a reviewed
     Amount names its review, and only then", and the empty text names no review.
     `Amount(..., Reading.REVIEWED, "")` was accepted.
@@ -260,9 +264,12 @@ Each entry: step, what changed, why, and the design section updated.
   also takes one bare digit after a word as a mark, as `entities.py:54-61` of the old code did
   (ENT-Q07). So "Sheriff 2" gives the text "Sheriff" and the mark "2", and "CLASS 100" and
   "10 COMMUNITY DEVELOPMENT" keep every word. With that form removed in a scratch copy, the
-  "Sheriff 2" test fails and the "Human Services (1)" test passes. The comments also say three
-  smaller things. `normalize_label` turns punctuation into a space where the design said "drop",
-  as `entities.py:95` did, so "Delivery/couriers" gives "delivery couriers" (BSALES-Q47).
+  "Sheriff 2" test fails and the "Human Services (1)" test passes. The mark "see note" takes any
+  one space between its words, or none, where the design named only "see note" and "seenote".
+  With a non-breaking space the mark stayed in the label, so two labels that print the same got
+  different `norm` values (WAGE-Q44, found in the second Codex review). The comments also say
+  three smaller things. `normalize_label` turns punctuation into a space where the design said
+  "drop", as `entities.py:95` did, so "Delivery/couriers" gives "delivery couriers" (BSALES-Q47).
   `normalize_space` trims the ends. `page_from_text` keeps a `**` that opens no bold span, so
   the label "Total RTT records **1" (RTT-Q38) can be built with it. A `**` that starts a word
   opens a span when the word's next character is not `*`, and a `**` that ends a word closes
@@ -270,6 +277,10 @@ Each entry: step, what changed, why, and the design section updated.
   opener to its left on the same line, and every other `**` stays in the text. The first build
   paired the first two `**` on a line, so "Total RTT records **1  **1,234**" gave the words
   `1`, bold, and `1,234**` (found in the Codex review). It now gives `**1` and a bold `1,234`.
+  A word is a run of characters with no ASCII space, and a `**` opens or closes a span only at
+  an ASCII space or a line end. The second Codex review found that a `**` after a non-breaking
+  space opened a span inside a word, so `Tax`, a non-breaking space and `**1,234**` lost the
+  asterisks and 24 points of the word's box. That word now keeps them and is not bold.
   The comment of `doc_of` also says that it sorts the pages by number and raises `ValueError`
   for no pages, for pages of two files and for a repeated page number. `text`, `lines`
   and `testing` import from `re`, `statistics` and `typing`, which join the list in section
@@ -580,8 +591,8 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   of step 4 computes each hash from a file's bytes, and the record lint of step 5 reads the hashes
   that records cite, so those two own the form of a hash. Their plans say where the form is
   checked.
-- **What the step 2 line and label rules do on four real pages, for the plans of steps 5, 8 and
-  11** (November 23, 2026, step 2, S2-C, found in the Codex review). Codex read three PDFs of
+- **What the step 2 line and label rules do on four real pages, for the plans of steps 5, 8, 11
+  and 12** (November 23, 2026, step 2, S2-C, found in the Codex reviews). Codex read three PDFs of
   `../gov-budget-data/data/phila/` with `pdftotext -bbox` and ran `group_lines`, `has_values` and
   `parse_label` on their word boxes at `8846f05`. The S2-C fix round reran the command (the
   block "PDF reproduction for findings 1-4" of `.codex-review/step-02-pr-8846f05c.md`) and
@@ -599,14 +610,16 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
     its label (QPOS-Q11). `group_lines` is the design's rule as written. FY2026 Q4 is one of the
     20 editions step 5 parses, so the step 5 plan tests this page with the real adapter's words
     and decides the rule. The same rule would keep a raised footnote digit out of its cell, and
-    the lexer's rule for VAL-Q28 expects to find that digit in the cell. The S2-D fix round
-    reran the Codex command at the S2-D head on the words of
-    `test_a_raised_digit_after_a_small_dollar_sign_is_a_mark`. Through `group_lines` they make
-    two lines, and in a money column the run printed `'1' Amount 1` and `'$ 2.8' Amount 2.8`,
-    so the row loses its mark and gains a value of 1. Given the three words as one cell,
-    `lex_cell` returns `Amount 2.8` with the mark `1` and three refs, which is right for the
-    words it gets, so the line rule and the raised-mark rule cannot both hold when a mark rises
-    more than the line tolerance.
+    the lexer's rule for VAL-Q28 expects to find that digit in the cell. The second Codex review
+    says that it reproduced this raised `(1)` and the lower-case `n/a` row below with `pdfplumber`
+    word boxes as well (`.codex-review/step-02-pr-6442b4eb.md`, "What I checked"), which is Codex's
+    statement and not a run of ours, because `pdfplumber` is not installed in this repository until
+    step 4. The S2-D fix round reran the Codex command at the S2-D head on the words of
+    `test_a_raised_digit_after_a_small_dollar_sign_is_a_mark`. Through `group_lines` they make two
+    lines, and in a money column the run printed `'1' Amount 1` and `'$ 2.8' Amount 2.8`, so the row
+    loses its mark and gains a value of 1. Given the three words as one cell, `lex_cell` returns
+    `Amount 2.8` with the mark `1` and three refs, which is right for the words it gets, so the line
+    rule and the raised-mark rule cannot both hold when a mark rises more than the line tolerance.
   - Margin debris joins a cash row, for the step 8 plan.
     `test_debris_between_two_rows_joins_neither` (QCASH-Q16, VAL-Q13) uses made-up boxes. On
     page 1 of the FY2008 Q4 QCMR cash report (`qcmr/cash/FY08_Q4.pdf`), the run printed the
@@ -634,6 +647,62 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
     `parse_label` reads only the `(19+20)` form (BIB-Q38). The RTT reports print a class code in
     the same shape, "General Commercial (88-2)" (RTT dossier, "Legacy property labels"), so the
     kit cannot take `(8-21)` as a mark unless a table tells it to.
+  - A bare digit after a word leaves a capital project's name, for the owner and the step 12
+    plan. Page 107 of the FY2023 supplemental report (`supplemental-report/FY23.pdf`) prints the
+    project heading `12-CENTER CITY TRAFFIC SIGNALS - PHASE 2` (finding 2 of
+    `.codex-review/step-02-pr-6442b4eb.md`). The S2-C fix round 2 reran that command at
+    `b6013a6`, in a scratch worktree, with `pdftotext -layout` 26.07.0 and a label built by
+    `page_from_text`. It printed `12-CENTER CITY TRAFFIC SIGNALS - PHASE 2` as `Label.printed`,
+    `12-CENTER CITY TRAFFIC SIGNALS - PHASE` as `Label.text` and `('2',)` as `Label.marks`. This
+    is the bare-digit form that S2-C took from ENT-Q07 for "Sheriff 2", and the risk "A bare
+    digit after a word becomes a mark" of Appendix C of `docs/plans/step-02.md` now has a real
+    page. `Label.printed` keeps every word, and S2-C keeps the bare-digit form as it is. The
+    supplemental capital tables of step 12 key a project by its label as printed (design section
+    7.1), and `Label.text` and `Label.norm` drop the phase number that the label prints. The
+    owner decides whether the bare-digit form stays in the kit or becomes a rule that a table
+    declares.
+- **Constructor checks the kit does not make** (November 23, 2026, step 2, S2-B). Design section
+  2.1 says that the checks a kit type makes at construction are the ones its block shows, and no
+  others. Those checks guard what enters the kit from outside: an adapter's words, pages and
+  documents, a record file's ids, and a table module's columns. A relation between two fields
+  that one kit function computes belongs to that function and its tests. A constructor that
+  checked `Label.squash` or `Amount.printed` would copy the label reader and the lexer into the
+  types, and the type modules would import them in a cycle. The blocks state the facts below, and
+  no constructor checks them. The verifier's log of fix round 2 and the third Codex review of S2-B
+  found them. Each value was built again in a scratch copy of `aec4c6c` on Python 3.12.15, and
+  each constructor accepted it.
+  - The adapters of step 4 meet the word facts. On an OCR page, `Page` accepts a word with
+    `bold=True` and a word with no confidence (the note "What an OCR word carries"). `WordRef`,
+    `Page` and `Document` accept the hash `"unknown"` (the note "The kit checks a hash for
+    presence only", which also names the record lint of step 5). A subclass of `WordRef` with the
+    same four fields as a ref on the page compares unequal to that ref, so `Page` holds both
+    words.
+  - The record lint of step 5 meets the record ids. `Dash` accepts an empty `rule_id`, and
+    `Unreadable` accepts an empty `accepted_by`.
+  - The catalog test of step 5 meets the column declarations. `NumberFormat` accepts
+    `decimals=-1`. `ColumnSpec` accepts the caption `"Adopted ("`, which `re.compile` refuses
+    with `missing ), unterminated subpattern at position 8`.
+  - `parse_label` of S2-C and its tests keep the label facts. `Label` accepts a `squash` that is
+    not its `norm` without spaces, a `line_no` that is not in `printed`, and a `text` that is not
+    drawn from `printed`.
+  - `lex_cell` of S2-D, `apply_reading` of S2-E and their tests keep the cell facts. The cell
+    constructors accept a direct `Amount` of 65.8 from the text `85.8`, a `ZERO` `Dash` from
+    `85.8` and a `NotApplicable` from `85.8`, the digit disagreement of QCASH-Q22. `Amount` also
+    accepts `Decimal("NaN")`. The step 2 plan has the number reader of S2-D build a `Decimal`
+    from digit text, so it cannot return NaN.
+  - `Dash` accepts `NO_VALUE` with a `rule_id`, where the block says the rule set `ZERO`. The
+    design names no function yet that applies a `DashRule`, so the step that builds one keeps
+    this fact.
+  - `Finding` accepts a `subject` with no colon, where the block gives the form
+    `<doc sha8>:<table>:<row key or label>`. Each function that makes a finding builds its
+    subject, and no step checks the form.
+
+  One idea is for the owner to decide, and no plan holds it. A direct `Amount` could refuse, at
+  construction, a `printed` whose ASCII digits differ from the digits of its `text` less the
+  digits of its `marks`. Clause C1b of step 2 says "An `Amount`'s digits are the digits of its
+  words, always". The check would make that clause a fact of the type, and not only of the
+  lexer's tests. A reviewed `Amount` could not make the same check, because its text may hold a
+  confusable letter, such as the `o` of `1o4.o`.
 - **Follow-ups after step 2** (November 23, 2026). The step 2 run found these and did not fix
   them.
   - Nothing ties the module table of design section 11.1 to `PURE_IMPORTS`. A pin can hold a pair
@@ -663,3 +732,14 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
     `test_page_lines_carry_the_source_and_the_text` builds `CASH\xa0FLOW` so that `Line.text`
     must collapse the space. With words split at any whitespace in a scratch copy, the 80 kit
     tests still passed, and that space never reached `Line.text`.
+  - `test_hypothesis_profile_is_derandomized` in `tests/test_workspace.py` asserts the name of the
+    active Hypothesis profile. Hypothesis renames the active profile when a run sets
+    `--hypothesis-verbosity=verbose`, so that one diagnostic flag fails the test. The third Codex
+    review of S2-B found it at `aec4c6c8`. In a scratch copy of that head, pytest with the flag
+    failed the test on the name `phillyledger-with-verbose-verbosity`, and the same run without
+    the flag passed.
+  - `pytest_unconfigure` in the root `conftest.py` removes the Hypothesis home with
+    `shutil.rmtree(home, ignore_errors=True)`, so a failed cleanup is silent. The third Codex
+    review of S2-B found it at `aec4c6c8`. Its command, which patches `os.lstat` to raise
+    `PermissionError`, printed `cleanup failed: True teardown returned normally` in a scratch copy
+    of that head.

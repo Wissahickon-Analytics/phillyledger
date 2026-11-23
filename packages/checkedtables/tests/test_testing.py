@@ -79,6 +79,15 @@ def test_a_literal_mark_after_a_bold_span_stays_in_the_text() -> None:
 def test_double_asterisks_inside_a_word_open_and_close_nothing() -> None:
     page = page_from_text("**ab**cd ef", SHA, 1)
     assert [(word.text, word.bold) for word in page.words] == [("**ab**cd", False), ("ef", False)]
+    page = page_from_text("x**ab** cd", SHA, 1)
+    assert [(word.text, word.bold) for word in page.words] == [("x**ab**", False), ("cd", False)]
+
+
+def test_double_asterisks_after_a_tab_or_a_nonbreaking_space_stay_in_the_word() -> None:
+    for text, x1 in (("Tax\xa0**1,234**", 78.0), ("a\t**b**", 42.0), ("**1,234**\xa0Tax", 78.0)):
+        (word,) = page_from_text(text, SHA, 1).words
+        expected = (text, False, Box(0.0, 0.0, x1, 12.0))
+        assert (word.text, word.bold, word.box) == expected, ascii(text)
 
 
 def test_a_word_of_only_asterisks_stays_in_the_text() -> None:
