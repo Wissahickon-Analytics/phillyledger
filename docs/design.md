@@ -1812,8 +1812,8 @@ def apply_reading(cell: Cell, reading: ReviewedReading) -> Cell | Finding: ...
     # 4. Any other reading must pass transliteration_ok(kept, reading), where kept is the
     #    cell's text less the mark words that end an Amount (the whole-word marks, such as a
     #    small raised digit, are the last words of the text, VAL-Q28), and read as one signed
-    #    number through the private reader of lex_cell, else reading_refused. So a footnote
-    #    digit never enters the number: "$ 2.8 1" with the mark "1" reads as "2.8", not "2.81".
+    #    number through the private reader of lex_cell, else reading_refused. So the mark "1"
+    #    of "$ 2.8 1" never enters the number, which reads as "2.8" and not "2.81".
     #    No column format applies, so "29.18" reads in a one-decimal column. Then Amount(the
     #    reading's number, the cell's text and words, the reading's source, REVIEWED, the
     #    reading's id, the cell's marks); an Unreadable has none.

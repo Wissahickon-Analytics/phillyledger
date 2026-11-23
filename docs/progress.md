@@ -365,6 +365,44 @@ Each entry: step, what changed, why, and the design section updated.
   `review_id` and `apply_reading` must not raise for a record that a file can hold. `records`
   imports no new outside name, so `PURE_IMPORTS` and the list in section 11.1 are unchanged.
   Design sections 2.1 and 3.1.
+- **Step 2: a reading keeps footnote digits out, and one id names one record** (November 23,
+  2026, S2-E fix round, found in the Codex review of `ce55ea9a` and the verification lanes).
+  Each change has a test that failed before it, except the reworded page message of
+  `apply_reading`. Design sections 2.1 and 3.1 and the S2-E boxes of `docs/plans/step-02.md` say
+  the same.
+  - `apply_reading` checks a reading against the cell's text less the mark words that end an
+    `Amount`, and the reviewed `Amount` keeps the cell's marks. The whole-word marks of an
+    `Amount`, such as a small raised digit, a backtick or `*`, are the last words of its text,
+    in order. Before, a review of `$ 2.8` with a small raised `1` refused `2.8` and accepted
+    `2.81`, so a footnote digit entered the number (VAL-Q28), and every reviewed `Amount` had no
+    marks. A mark inside a word, such as the `*` of `242,096*`, holds no digit, and a reading
+    still drops it. An `Unreadable` has no marks, so a reading keeps its whole text (the note
+    "What a reviewed reading can still do").
+  - `ReviewedReading` refuses an empty `reason`, because a human reading is a record with a page
+    and a reason (`CLAUDE.md`, hard rule 4). Before, a reading with no reason changed `2918` to
+    `291.8`. `DashRule` refuses an empty `id`, so a `Dash` that a rule sets to zero can name the
+    rule. `CellRecords` refuses two readings with one id and two dash rules with one id, because
+    `Assembly.used` holds ids and each must name one record. The opening of design section 2.1
+    now names a record file's reasons beside its ids. The record types make no other check.
+  - `reading_for` counts the words the box holds against the cell's words, and joins the cell's
+    words in the order given, which is the order `lex_cell` joins a cell's text in. Before, it
+    compared sets, so one word given twice passed as the cell, and it joined the held words by
+    left edge, then ref. `group_lines` orders two words with one left edge by their bottoms, so
+    a cell printed `8 7`, `reading_for` joined `7 8`, and no reading of that cell could pass.
+  - The `stale_reading` message of `reading_for` names the words in the box and the cell's
+    words, or the cell's text and `seen`. Before, for a box over two cells of `7`, it said that
+    the second cell's words read the first cell's `seen`. The page message of `apply_reading`
+    says that a word of the cell is not on the reading's file and page.
+  - Two rules that the design's comments state and this file did not. With two or more
+    candidates, `duplicate_reading` takes the subject of the least id and its message names
+    every id. No column format applies to a reading, so the reading `29.18` of `2918` gives a
+    reviewed `Amount` of 29.18 in a one-decimal column.
+  - New tests fail seven mutants of `records.py` that passed the tests of `ce55ea9a`: the null
+    reading checked before the stale tests, the page checked without the file, one word of the
+    cell on the reading's page taken as enough, the cell's words joined by ref or by left edge,
+    and a slack of 0.6 or 1.9. Three tests show that a reading cannot drop or add a decimal
+    digit of another script, such as a fullwidth one before `,234` read as `234`, which S2-D
+    fixed in `transliteration_ok`.
 
 ## Notes for later sessions
 
@@ -596,8 +634,8 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   in a workspace copy and fails when a `.hypothesis` folder appears there.
 - **Docstrings put `refs` past its estimate** (November 23, 2026, step 2, S2-B). The kit size
   report counts every line that is not blank or a comment, docstrings included. At the S2-B head
-  it prints 592 lines. At the S2-E head, with S2-D merged in, it prints 1,376, and `records`
-  counts 202 lines against its estimate of 140, and 91 without docstrings. Against design
+  it prints 592 lines. At the S2-E head after its fix round it prints 1,416, and `records`
+  counts 242 lines against its estimate of 140, and 118 without docstrings. Against design
   section 12.1: `refs` 121 (estimate 60), `kinds` 29 (40),
   `words` 147 (90), `labels` 25 (30), `cells` 108 (90). `columns` holds 49 lines for two of its
   ten names (330). `table` holds 113 lines (190) for two of the eight names its row lists,
@@ -734,6 +772,28 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   words, always". The check would make that clause a fact of the type, and not only of the
   lexer's tests. A reviewed `Amount` could not make the same check, because its text may hold a
   confusable letter, such as the `o` of `1o4.o`.
+- **What a reviewed reading can still do, for the owner and the step 5 plan** (November 23,
+  2026, step 2, S2-E fix round, found in the Codex review of `ce55ea9a`). Each case below was
+  run in a scratch copy of `f479ede`, and the fix round changed none of them.
+  - `apply_reading` alone accepts a reading of another cell that prints the same text on the
+    same page (Codex finding 4). On a row of `2918 2918`, a reading whose box holds the first
+    cell gives `None` from `reading_for` for the second cell, and `apply_reading` of it to the
+    second cell gives a reviewed `Amount` of 291.8 on the second cell's word. A cell holds word
+    refs with no boxes, so `apply_reading` cannot see the reading's box. `reading_for` binds a
+    reading to its box, so step 5's `assemble` calls it first, with the words of the cut page,
+    and gives `apply_reading` only the reading it returns.
+  - The reading check compares digits only. So a reading can move a printed decimal point. The
+    cell `29.18`, a direct `Amount` of 29.18 in a money column, read as `291.8` gives 291.8. It
+    can drop a printed sign, since `(29.1)` read as `29.1` gives 29.1, and add one, since `29.1`
+    read as `(29.1)` or `-29.1` gives -29.1. Design section 3.1 allows a reading to place a
+    separator and a sign that extraction lost. Whether a reading may change one that the cell
+    already prints is the owner's decision.
+  - An `Unreadable` cell that also holds a small raised footnote digit keeps that digit in its
+    text, so a reading must carry it. On a text layer, `2918` then a raised `1` in a one-decimal
+    column gives `Unreadable` `2918 1` with the reason `decimals`. The readings `291.8` and
+    `2918` give `reading_refused`, and `2918.1` and `291.81` give reviewed amounts, so the cell
+    reads only as a number that ends in 1. `Unreadable` has no marks field. The step 5 plan
+    decides whether the cut stage keeps a raised mark out of an unreadable cell.
 - **Follow-ups after step 2** (November 23, 2026). The step 2 run found these and did not fix
   them.
   - Nothing ties the module table of design section 11.1 to `PURE_IMPORTS`. A pin can hold a pair
