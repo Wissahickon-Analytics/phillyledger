@@ -47,6 +47,10 @@ FIELD_SNAPSHOT: dict[str, tuple[str, ...]] = {
     "ColumnSpec": ("name", "caption", "kind", "fmt", "presence", "dash"),
     "RowKey": ("parts",),
     "Finding": ("severity", "code", "subject", "message", "page"),
+    "ReviewedReading": ("id", "doc_sha256", "page", "box", "source", "seen", "reading", "reason"),
+    "EveryRow": (),
+    "DashRule": ("id", "table", "columns", "rows", "meaning", "evidence"),
+    "CellRecords": ("readings", "dash_rules", "confidence_floor"),
 }
 
 
