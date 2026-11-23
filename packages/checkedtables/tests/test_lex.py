@@ -653,6 +653,15 @@ def test_a_style_free_ocr_word_below_full_confidence_keeps_its_decimals() -> Non
     assert (cell.printed.as_tuple(), cell.source) == (Decimal("5.6").as_tuple(), SourceKind.OCR)
 
 
+def test_an_ocr_word_under_the_confidence_floor_keeps_its_decimals() -> None:
+    # QCASH-Q22
+    box = Box(0.0, 0.0, 24.0, 12.0)
+    word = Word(WordRef(SHA, 1, 0), "65.8", box, None, None, 60.890262603759766)
+    cell = lex_cell((word,), CASH, SourceKind.OCR)
+    assert isinstance(cell, Amount), cell
+    assert (cell.printed.as_tuple(), cell.source) == (Decimal("65.8").as_tuple(), SourceKind.OCR)
+
+
 def test_a_blank_lane_cell_is_blank() -> None:
     # QPOS-Q21
     assert lex_cell((), COUNT_COLUMN, SourceKind.TEXT_LAYER) == Blank()
@@ -678,6 +687,13 @@ def test_a_bare_percent_keeps_the_decimals_its_column_declares() -> None:
     for sign in (PercentSign.OPTIONAL, PercentSign.ABSENT):
         rate = ColumnSpec("rate", "Rate", ValueKind.PERCENT, NumberFormat(2, sign))
         assert amount("74.98", rate).printed.as_tuple() == Decimal("74.98").as_tuple(), sign
+
+
+def test_a_bare_percent_above_one_hundred_is_read() -> None:
+    # SUPOP-Q12
+    for sign in (PercentSign.OPTIONAL, PercentSign.ABSENT):
+        rate = ColumnSpec("rate", "Rate", ValueKind.PERCENT, NumberFormat(2, sign))
+        assert amount("116.17", rate).printed.as_tuple() == Decimal("116.17").as_tuple(), sign
 
 
 def test_a_dollar_sign_leaves_the_number() -> None:

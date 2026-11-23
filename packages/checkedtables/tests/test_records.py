@@ -258,16 +258,33 @@ def test_a_reviewed_cell_names_the_record_that_was_applied() -> None:
 
 
 def test_a_reviewed_amount_names_the_record_that_was_applied() -> None:
-    # QCASH-Q22
-    _, cell_words = cash_row("65.8")
+    _, cell_words = cash_row("291.8")
     cell = lex_cell(cell_words, CASH, OCR)
     assert isinstance(cell, Amount), cell
-    read = apply_reading(cell, record("65.8", "65.8", cell_words, "cash-fy07-q4"))
-    accepted = apply_reading(cell, record("65.8", None, cell_words, "cash-fy07-q4"))
+    read = apply_reading(cell, record("291.8", "291.8", cell_words, "second-record"))
+    accepted = apply_reading(cell, record("291.8", None, cell_words, "second-record"))
     assert read == Amount(
-        Decimal("65.8"), "65.8", cell.words, OCR, Reading.REVIEWED, "cash-fy07-q4"
+        Decimal("291.8"), "291.8", cell.words, OCR, Reading.REVIEWED, "second-record"
     )
-    assert accepted == Unreadable("65.8", cell.words, "reviewed_null", "cash-fy07-q4")
+    assert accepted == Unreadable("291.8", cell.words, "reviewed_null", "second-record")
+
+
+def test_a_cell_takes_the_record_boxed_on_it_and_not_the_first_record() -> None:
+    page = page_from_text("#ocr\nTaxes 2918 2918", SHA, PAGE)
+    left, right = page.words[1:]
+    left_record = record("2918", "29.18", (left,), "left")
+    right_record = record("2918", "291.8", (right,), "right")
+    readings = (left_record, right_record)
+    for word, expected, value in (
+        (right, right_record, Decimal("291.8")),
+        (left, left_record, Decimal("29.18")),
+    ):
+        found = reading_for((word,), page.words, OCR, readings)
+        assert found == expected, (word, found)
+        cell = lex_cell((word,), CASH, OCR)
+        assert apply_reading(cell, found) == Amount(
+            value, "2918", (word.ref,), OCR, Reading.REVIEWED, expected.id
+        )
 
 
 def test_a_reviewed_zero_keeps_its_sign() -> None:
