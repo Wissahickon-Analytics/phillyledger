@@ -31,7 +31,7 @@ boxes = st.builds(
     sizes,
     sizes,
 )
-splits = st.sampled_from(((None,), (0, 1), (0, 1, 2)))
+splits = st.sampled_from(((None,), (0, 1), (0, 1, 2), (None, 0, 1), (None, 0, 1, 2)))
 texts = st.sampled_from(
     ("Taxes", "1,234", "-", "*", "x", "", "$", "%", "(1,234)", "N/A")
 ) | st.text(max_size=5)
@@ -69,6 +69,11 @@ OUT_OF_ORDER = page_of(
 SPLIT_WORD = page_of(
     placed(0, "12.3%", 0.0, 0.0, 12.0, child=0),
     placed(0, "45,678", 30.0, 0.0, 12.0, child=1),
+)
+PARENT_WITH_CHILDREN = page_of(
+    placed(0, "TAX434,605,553", 0.0, 0.0, 12.0),
+    placed(0, "TAX", 0.0, 0.0, 12.0, child=0),
+    placed(0, "434,605,553", 18.0, 0.0, 12.0, child=1),
 )
 LOW_CONFIDENCE = page_of(
     Word(WordRef(SHA, 1, 0), "Taxes", Box(0.0, 0.0, 30.0, 12.0), None, None, 100.0),
@@ -112,6 +117,7 @@ def line(text: str) -> Line:
 @example(STAIRCASE)
 @example(UNEVEN_HEIGHTS)
 @example(SPLIT_WORD)
+@example(PARENT_WITH_CHILDREN)
 @example(LOW_CONFIDENCE)
 @example(PAGE_2_OF_ANOTHER_FILE)
 def test_every_word_lands_in_exactly_one_line(page: Page) -> None:
