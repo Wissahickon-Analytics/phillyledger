@@ -1618,26 +1618,41 @@ returning it.
 ```python
 # checkedtables/text.py
 def normalize_space(s: str) -> str: ...
-    # NBSP, thin spaces, U+2010 and U+2011 hyphens, spaced hyphens -> one form; collapse runs
+    # NBSP, thin spaces, U+2010 and U+2011 hyphens, spaced hyphens -> one form; collapse runs.
+    # Every Unicode space is a plain space, U+2010 and U+2011 are "-", a hyphen between two
+    # letters loses the spaces around it, and the ends are trimmed.
 def normalize_label(s: str) -> str: ...
-    # casefold, & -> and, drop punctuation except digit separators, normalize_space
+    # casefold, & -> and, punctuation -> a space except a comma or point between two digits,
+    # normalize_space ("Delivery/couriers" -> "delivery couriers", as entities.py:95 did)
 def squash(norm: str) -> str: ...
     # remove spaces; matches kerning gaps such as "truc k" and "LI QUOR"
 def parse_label(prefix: Sequence[Word], words: Sequence[Word]) -> Label: ...
-    # splits trailing marks: "(N)", "**N", "*", "see note", ", subtotal", "(19+20)" forms;
-    # prefix words become line_no; printed keeps every word
+    # splits trailing marks until none is left, kept in print order: "(N)", "(*)", "**N", "*",
+    # "see note" or "seenote", ", subtotal", "(19+20)" forms, and one bare digit after a word
+    # ("Sheriff 2", ENT-Q07; "CLASS 100" keeps its number); prefix words become line_no;
+    # printed keeps every word
 def split_line_prefix(line: Line, pattern: str) -> tuple[tuple[Word, ...], Line]: ...
     # leading words that fullmatch `pattern` leave the line before lanes are found, so a column
-    # of "23", "24", "26" prefixes can never form a lane (QPOS-Q08, ENT-Q08, QSMR-Q04)
+    # of "23", "24", "26" prefixes can never form a lane (QPOS-Q08, ENT-Q08, QSMR-Q04).
+    # The line keeps its box. A line of only prefix words comes back with no words, so no
+    # value word is left to seed a lane. text.py names Line only under TYPE_CHECKING and
+    # builds the line with dataclasses.replace, because lines.py imports normalize_space.
 
 
 # checkedtables/lines.py
 def group_lines(page: Page) -> tuple[Line, ...]: ...
     # cluster by word bottom; a word joins a line only if its bottom is within 0.35 x median
     # word height of the line's first word. Never chains: a tall word cannot bridge two lines.
+    # Words are taken by bottom, then x0, then ref. The first word opens a line, and a word
+    # that does not join the open line opens the next. A line's words sort by x0, lines by top.
 def page_lines(page: Page) -> PageLines: ...
 def has_values(line: Line) -> bool: ...                  # a value word, as lanes_from_values defines it
+    # The last word that is not a mark word decides. A mark word holds only *, †, ‡, §, #,
+    # a backtick and superscript digits. A value word is N/A, NA, a dash placeholder (-, --,
+    # an en dash, an em dash), or a digit with nothing else but , . $ % ( ), minus glyphs and
+    # trailing marks. "Class 100 Total" has no values; "2.8" then a backtick word has.
 def lines_text(lines: Sequence[Line]) -> str: ...
+    # each line's text, joined with a newline
 
 
 # checkedtables/pages.py
@@ -1792,8 +1807,10 @@ def render_chain(suggestions: Sequence[Suggestion]) -> str: ...
 # checkedtables/testing.py (shipped in the wheel, from B)
 def page_from_text(text: str, sha: str, page: int) -> Page: ...
     # lays out a monospace block as Words: one character is 6 pt wide, one line is 12 pt;
-    # "**text**" marks bold words; returns style None when the block starts with "#ocr"
+    # "**text**" marks bold words; returns style None when the block starts with "#ocr".
+    # Only a pair of ** marks bold, so a lone "**1" stays a word.
 def doc_of(*pages: Page) -> Document: ...
+    # pages sorted by number; ValueError for no pages, two files or a repeated page number
 ```
 
 The kit holds no Philadelphia fact. It knows no fiscal year: `choose_era` and `cut_pages` take a

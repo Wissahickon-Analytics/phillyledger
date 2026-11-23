@@ -6,7 +6,7 @@ same branch as the work: status, the date the check passed, and anything a later
 | Step | What | Status | Branch | Check passed |
 |---|---|---|---|---|
 | 1 | Workspace, tooling, purity and shape tests | check passed | `step-01/a-workspace`, `step-01/b-import-contracts`, `step-01/c-kit-shape`, `step-01/d-test-isolation` | November 22, 2026, runs 45093444380, 45094817250, 45094829990 and 45092206629 |
-| 2 | Kit, words to cells | in progress | `step-02/a-import-pin`, `step-02/b-value-types` | |
+| 2 | Kit, words to cells | in progress | `step-02/a-import-pin`, `step-02/b-value-types`, `step-02/c-words-to-lines` | |
 | 3 | Archive for the QCMR from FY2022 | not started | | |
 | 4 | Words: PDF adapter with font repair, word cache, codec | not started | | |
 | 5 | QCMR positions parser, registry, row schemas, column vocabulary | not started | | |
@@ -184,6 +184,24 @@ Each entry: step, what changed, why, and the design section updated.
   `RowKey.of` sorts its parts by name. The plan named every rule except the one on no parts.
   `str` of a key with no parts is the empty text, which names no row, and no use in the design
   builds such a key. Design section 2.1.
+- **Step 2: `text` and `lines` state four rules and a ninth mark form** (November 23, 2026,
+  S2-C). Design section 3.1 left four rules open, and its comments now state them.
+  `group_lines` takes words by bottom, then `x0`, then ref, and a word that does not join the
+  open line opens the next. A line's words sort by `x0` and lines by top. `has_values` reads the
+  last word that is not a mark word. A value word is `N/A`, `NA`, a dash placeholder, or a digit
+  with only `,`, `.`, `$`, `%`, parentheses, minus glyphs and trailing marks. `split_line_prefix`
+  keeps the line's box, and a line of only prefix words comes back with no words, so a column of
+  line numbers seeds no lane. `lines_text` joins the lines' text with a newline. `parse_label`
+  also takes one bare digit after a word as a mark, as `entities.py:54-61` of the old code did
+  (ENT-Q07). So "Sheriff 2" gives the text "Sheriff" and the mark "2", and "CLASS 100" and
+  "10 COMMUNITY DEVELOPMENT" keep every word. With that form removed in a scratch copy, the
+  "Sheriff 2" test fails and the "Human Services (1)" test passes. The comments also say three
+  smaller things. `normalize_label` turns punctuation into a space where the design said "drop",
+  as `entities.py:95` did, so "Delivery/couriers" gives "delivery couriers" (BSALES-Q47).
+  `normalize_space` trims the ends. `page_from_text` reads only a pair of `**` as bold, so the
+  label "Total RTT records **1" (RTT-Q38) can be built with it. `text`, `lines` and `testing`
+  import from `re`, `statistics` and `typing`, which join the list in section 11.1. Design
+  sections 3.1 and 11.1.
 
 ## Notes for later sessions
 
