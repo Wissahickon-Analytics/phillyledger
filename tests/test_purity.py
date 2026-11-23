@@ -28,11 +28,17 @@ BANNED_FORMS = (
     "CACHE: dict[str, str] = {}",
     "ITEMS = []",
     "SEEN = set()",
+    "CACHE, SEEN = {}, set()",
+    "if __debug__:\n    CACHE = {}",
+    "try:\n    import tomllib\nexcept ImportError:\n    CACHE = {}",
+    "match __name__:\n    case _:\n        CACHE = {}",
+    "with suppress():\n    for _ in ():\n        while __debug__:\n            CACHE = {}",
 )
 ALLOWED_FORMS = (
     'NAMES = ("a", "b")',
     'LOOKUP = MappingProxyType({"a": 1})',
     "def collect():\n    items = []\n    return items\n",
+    "if __debug__:\n    def collect():\n        items = []\n        return items\n",
 )
 
 
@@ -92,8 +98,9 @@ def test_pure_packages_have_no_effects() -> None:
 
 def test_scan_reports_each_banned_form() -> None:
     for source in BANNED_FORMS:
-        tree = ast.parse("\n".join(("NAMES = ()", source)))
-        assert [line for line, _ in impurities(tree)] == [2], source
+        module = "\n".join(("NAMES = ()", source))
+        last_line = len(module.splitlines())
+        assert [line for line, _ in impurities(ast.parse(module))] == [last_line], source
 
 
 def test_scan_allows_immutable_constants() -> None:
