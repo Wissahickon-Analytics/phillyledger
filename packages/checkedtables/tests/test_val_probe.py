@@ -21,7 +21,7 @@ PROBES = (
     ("-$61,397,587", "M", "None", "-61397587", "Amount -61397587"),  # VAL-Q22
     ("-", "M", "0.0", "None", "Dash no_value"),
     ("--", "M", "0.0", "None", "Dash no_value"),  # BIB-Q50
-    ("—", "M", "0.0", "None", "Dash no_value"),
+    ("\u2014", "M", "0.0", "None", "Dash no_value"),
     ("---", "M", "None", "None", "Unreadable not_a_number"),
     ("- 0", "M", "-0.0", "-0", "Unreadable two_tokens"),
     ("(12.3%)", "P", "-12.3", "-12.3", "Amount -12.3"),  # VAL-Q27
@@ -37,10 +37,10 @@ PROBES = (
     ("44,646,313", "M", "44646313.0", "44646313", "Amount 44646313"),
     ("(5,678)", "M", "-5678.0", "-5678", "Amount -5678"),  # MSCH-Q34
     ("-4.5", "M1", "-4.5", "-4.5", "Amount -4.5"),  # QCASH-Q53
-    ("–7", "M", "-7.0", "-7", "Amount -7"),
+    ("\u20137", "M", "-7.0", "-7", "Amount -7"),
     ("-11.0", "M1", "-11.0", "-11.0", "Amount -11.0"),  # QCASH-Q53
     ("$-61,397,587", "M", "-61397587.0", "-61397587", "Amount -61397587"),  # VAL-Q22
-    ("–", "M", "0.0", "None", "Dash no_value"),
+    ("\u2013", "M", "0.0", "None", "Dash no_value"),
     ("N/A", "M", "None", "None", "NotApplicable"),  # MCITY-Q34
     ("12.3%", "P", "12.3", "12.3", "Amount 12.3"),  # VAL-Q27
     ("69%", "P", "69.0", "69", "Amount 69"),  # VAL-Q27

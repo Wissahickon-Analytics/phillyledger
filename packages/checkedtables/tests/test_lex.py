@@ -2,7 +2,7 @@ from dataclasses import replace
 from decimal import Decimal
 from string import ascii_letters, digits, punctuation
 
-from hypothesis import example, given
+from hypothesis import example, given, settings
 from hypothesis import strategies as st
 
 from checkedtables.cells import Amount, Blank, Cell, Dash, NotApplicable, Text, Unreadable
@@ -21,8 +21,8 @@ COUNT_COLUMN = ColumnSpec("count", "Count", ValueKind.COUNT)
 PERCENT = ColumnSpec(
     "percent", "Percent", ValueKind.PERCENT, NumberFormat(None, PercentSign.OPTIONAL)
 )
-MINUS_GLYPHS = ("-", "−", "–", "—")
-DASHES = ("-", "--", "–", "—")
+MINUS_GLYPHS = ("-", "\u2212", "\u2013", "\u2014")
+DASHES = ("-", "--", "\u2013", "\u2014")
 DOLLARS = (("", ""), ("$", ""), ("", "$"), ("$ ", ""))
 CONFUSABLE_GLYPHS = (
     ("B", "8"),
@@ -58,22 +58,45 @@ FRAGMENTS = (
     "*",
     "`",
     "\xb9",
-    "†",
+    "\u2020",
+)
+NUMBERS = (
+    "0",
+    "7",
+    "12",
+    "007",
+    "1234",
+    "1,234",
+    "1,23",
+    "12.30",
+    "0.05",
+    "37,332,523",
+    "67,215,504.0",
+)
+SIGNED = ("{}", "({})", "{}%", "({}%)", "-{}", "\u2212{}", "\u2013{}", "\u2014{}", "${}", "$({})")
+SIGNED_MORE = (
+    "(${})",
+    "-${}",
+    "$-{}",
+    "+{}",
+    "{}-",
+    "({}",
+    "--{}",
+    "$${}",
+    "{}*",
+    "{}\xb9",
+    "{}%*",
 )
 values = st.builds(
     lambda number, decimals: Decimal(number).scaleb(-decimals),
     st.integers(-(10**15), 10**15),
     st.integers(0, 12),
 )
-word_texts = st.lists(st.sampled_from(FRAGMENTS), max_size=4).map("".join)
-value_words = st.builds(
-    "".join,
-    st.tuples(
-        st.sampled_from(("", "(", "$", "$(", "($", "-$", "$-", "+", *MINUS_GLYPHS)),
-        st.sampled_from(("0", "7", "12", "1,234", "12.3", "0.05", "37,332,523", "67,215,504.0")),
-        st.sampled_from(("", "%", ")", "%)", "*", "\xb9", "-", "%*", "``")),
-    ),
-) | st.sampled_from((*DASHES, "N/A", "NA", "−", "B", "%", "007", "1,23"))
+number_words = st.builds(
+    str.format, st.sampled_from(SIGNED) | st.sampled_from(SIGNED_MORE), st.sampled_from(NUMBERS)
+)
+word_texts = number_words | st.lists(st.sampled_from(FRAGMENTS), max_size=4).map("".join)
+value_words = number_words | st.sampled_from((*DASHES, "N/A", "NA", "\u2212", "B", "%"))
 
 
 def words(*texts: str) -> tuple[Word, ...]:
@@ -124,7 +147,7 @@ def decimal_digits(text: str) -> str:
 )
 @example(Decimal("0.00001"), "", "-", ("", ""))
 @example(Decimal("1234.567890"), ",", "()", ("$", ""))
-@example(Decimal("-1234.567890"), "", "—", ("", "$"))
+@example(Decimal("-1234.567890"), "", "\u2014", ("", "$"))
 def test_lexer_round_trip(
     value: Decimal, grouping: str, negative: str, dollar: tuple[str, str]
 ) -> None:
@@ -132,8 +155,9 @@ def test_lexer_round_trip(
     assert amount(text).printed.as_tuple() == value.as_tuple(), text
 
 
+@settings(max_examples=500)
 @given(
-    st.lists(word_texts, min_size=1, max_size=3),
+    number_words.map(lambda text: [text]) | st.lists(word_texts, min_size=1, max_size=3),
     st.sampled_from(("", "1")),
     st.sampled_from((MONEY, CASH, COUNT_COLUMN, PERCENT)),
     st.sampled_from(tuple(SourceKind)),
@@ -157,10 +181,11 @@ def test_amount_digits_are_the_digits_of_its_words(
         assert cell.printed.as_tuple().exponent == -len(decimal_digits(fraction))
 
 
+@settings(max_examples=500)
 @given(
     st.sampled_from(("", "$")),
-    st.lists(value_words, min_size=1, max_size=2),
-    st.sampled_from(("", "*", "`", "\xb9", "†", "**")),
+    value_words.map(lambda text: [text]) | st.lists(value_words, min_size=1, max_size=2),
+    st.sampled_from(("", "*", "`", "\xb9", "\u2020", "**")),
 )
 @example("$", ["1", "37,332,523"], "*")
 @example("", ["2.8"], "`")
@@ -179,11 +204,13 @@ def test_transliteration_refuses_a_digit_swap() -> None:
     assert transliteration_ok("2918", "291.8")
     assert not transliteration_ok("65.8", "85.8")
     assert not transliteration_ok("77,500,000", "7,500,000")
+    assert not transliteration_ok("7,500,000", "77,500,000")
+    assert not transliteration_ok("291.8", "219.8")
 
 
 def test_confusable_glyphs_are_pinned() -> None:
     confusable = dict(CONFUSABLE_GLYPHS)
-    for glyph in f"{ascii_letters}{punctuation}\xb9−Ο０":
+    for glyph in f"{ascii_letters}{punctuation}\xb9\u2212\u039f\uff10":
         for digit in digits:
             expected = confusable.get(glyph) == digit
             assert transliteration_ok(f"1{glyph}", f"1{digit}") is expected, (glyph, digit)
@@ -280,8 +307,8 @@ def test_footnote_marks_leave_the_amount() -> None:
     assert amount("242,096*").marks == ("*",)
     assert amount("2.8 `", CASH).marks == ("`",)
     assert amount("1,234\xb9").marks == ("\xb9",)
-    assert amount("1,234\xb9\xb2 †").marks == ("\xb9\xb2", "†")
-    assert amount("(5,678)‡").printed == Decimal("-5678")
+    assert amount("1,234\xb9\xb2 \u2020").marks == ("\xb9\xb2", "\u2020")
+    assert amount("(5,678)\u2021").printed == Decimal("-5678")
     assert amount("12.3%\xa7", PERCENT).marks == ("\xa7",)
     assert amount("1,234 # **").marks == ("#", "**")
     cell = amount("242,096*")
@@ -320,7 +347,7 @@ def test_a_dash_means_no_value_unless_the_column_declares_zero() -> None:
 
 def test_dashes_and_marks_are_never_zero() -> None:
     # QCASH-Q52
-    for text in (*DASHES, "*", "---", "−", "- -"):
+    for text in (*DASHES, "*", "---", "\u2212", "- -"):
         cell = lexed(text, CASH)
         assert isinstance(cell, Dash | Unreadable), text
 
@@ -356,7 +383,7 @@ def test_cash_negatives_keep_their_decimal() -> None:
     # QCASH-Q53
     assert amount("(3.0)", CASH).printed.as_tuple() == Decimal("-3.0").as_tuple()
     assert amount("-4.5", CASH).printed == Decimal("-4.5")
-    assert amount("−11.0", CASH).printed.as_tuple() == Decimal("-11.0").as_tuple()
+    assert amount("\u221211.0", CASH).printed.as_tuple() == Decimal("-11.0").as_tuple()
     assert reason("(3)", CASH) == "decimals"
 
 
@@ -394,7 +421,7 @@ def test_a_dollar_sign_leaves_the_number() -> None:
 
 def test_a_trailing_minus_or_a_plus_sign_is_unreadable() -> None:
     # VAL-Q26
-    for text in ("123-", "+12.3%", "+5", "1,234−", "(5,678", "5,678)", "-(5,678)", "--5"):
+    for text in ("123-", "+12.3%", "+5", "1,234\u2212", "(5,678", "5,678)", "-(5,678)", "--5"):
         assert reason(text, PERCENT) == "sign", text
 
 
@@ -414,7 +441,7 @@ def test_strict_grouping() -> None:
 
 
 def test_digits_that_are_not_ascii_never_read() -> None:
-    for text in ("１,234", "١٢", "1\xa0234", "1o4.o"):
+    for text in ("\uff11,234", "\u0661\u0662", "1\xa0234", "1o4.o"):
         assert reason(text) == "not_a_number", text
 
 
