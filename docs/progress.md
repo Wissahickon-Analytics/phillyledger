@@ -151,13 +151,16 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   - Open question for the model, not verified: `created_at` goes into the manifest (section 10).
     If the manifest is one of the create-only files, a retry with the same release id and a new
     `now` may fail in `put_immutable` instead of resuming.
-- **`RawRow.bold` and the pinned `bool` fields, a finding for the step 2 plan** (November 22,
-  2026). Design section 11.4 pins the kit's `bool` fields to `Word.bold` and `Column.printed`.
-  `RawRow.bold` in `checkedtables/rows.py` is also `bool | None` (section 2.1), the same
-  annotation as `Word.bold`. The design does not define `bool_fields` or `kit_dataclasses`, so
-  it does not say whether `RawRow` counts. Read from the design, not run. Step 1 is unaffected,
-  because its expected set is empty. The owner decides whether `RawRow.bold` joins the pinned
-  set or `RawRow` stays out of `kit_dataclasses`.
+- **`RawRow.bold` and the pinned `bool` fields, a finding for the step 5 plan** (November 22,
+  2026, step corrected November 23). Design section 11.4 pins the kit's `bool` fields to
+  `Word.bold` and `Column.printed`. `RawRow.bold` in `checkedtables/rows.py` is also
+  `bool | None` (section 2.1), the same annotation as `Word.bold`. The design does not define
+  `bool_fields` or `kit_dataclasses`, so it does not say whether `RawRow` counts. Read from the
+  design, not run. Step 5 builds `rows.py` (section 15). The design names `RawRow` only in
+  `pipeline.py`, `rows.py`, `columns.py` and `grammar.py` of the kit, and step 2 builds none of
+  them, so steps 1 to 4 are unaffected. This note first named step 2 by mistake. The owner
+  decides, before the step 5 plan, whether `RawRow.bold` joins the pinned set or `RawRow` stays
+  out of `kit_dataclasses`.
 - **`uv.lock` and `exclude-newer`** (November 22, 2026, step 1). The owner's uv config and
   `UV_EXCLUDE_NEWER` set `exclude-newer = "1 week"`, and `uv lock` records that span in
   `uv.lock`. A machine without the setting, such as a CI runner, rejects the lock: `uv lock
@@ -186,7 +189,7 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   `test_bool_fields_are_page_facts_only` expects `set()`. The pull request that adds a kit
   dataclass adds its fields to `FIELD_SNAPSHOT`. The ones that create `Word` and `Column` add
   `("Word", "bold")` and `("Column", "printed")`. `kit_dataclasses` counts every dataclass of
-  `checkedtables` that a public name in a public module reaches, so `RawRow` counts when step 2
+  `checkedtables` that a public name in a public module reaches, so `RawRow` counts when step 5
   creates it. The `RawRow.bold` note above is still the owner's call.
 - **Kit types imported only under `TYPE_CHECKING`** (November 22, 2026, step 1, S1-C). The shape
   test evaluates a parameter's annotation with each name that does not resolve at run time
