@@ -6,7 +6,7 @@ same branch as the work: status, the date the check passed, and anything a later
 | Step | What | Status | Branch | Check passed |
 |---|---|---|---|---|
 | 1 | Workspace, tooling, purity and shape tests | check passed | `step-01/a-workspace`, `step-01/b-import-contracts`, `step-01/c-kit-shape`, `step-01/d-test-isolation` | November 22, 2026, runs 45093444380, 45094817250, 45094829990 and 45092206629 |
-| 2 | Kit, words to cells | in progress | `step-02/a-import-pin` | |
+| 2 | Kit, words to cells | in progress | `step-02/a-import-pin`, `step-02/b-value-types` | |
 | 3 | Archive for the QCMR from FY2022 | not started | | |
 | 4 | Words: PDF adapter with font repair, word cache, codec | not started | | |
 | 5 | QCMR positions parser, registry, row schemas, column vocabulary | not started | | |
@@ -160,6 +160,30 @@ Each entry: step, what changed, why, and the design section updated.
   `import datadesk.core.tables as tables` passes. A pull request that imports a new name adds its
   pair to `PURE_IMPORTS`. One that imports from a new module also adds the module to the list in
   section 11.1. Design section 11.1.
+- **Step 2: step 2 builds five types of `columns` and `table`** (November 23, 2026, S2-B). Design
+  section 3.1 gives `lex_cell` a `ColumnSpec`, and `records` takes a `RowKey` and returns
+  `Finding`. Step 2 listed neither `columns` nor `table`, and no step listed `table`. S2-B builds
+  `NumberFormat` and `ColumnSpec` in `columns.py` and `RowKey`, `Severity` and `Finding` in
+  `table.py`, and nothing else of either module. Step 2 now names the five types, and step 5 now
+  names `table`, which builds `RowKind`, `Additivity`, `TableId`, `Column`, `Row` and `Table`
+  with `rows` and `assemble`. Design section 15.
+- **Step 2: `WordRef` and `Finding` sort a `None` first** (November 23, 2026, S2-B). The design
+  gave both classes `order=True`. That raises `TypeError` when one side holds `None` and the other
+  an `int`, so a word and a child that `split_numeric_runs` made from it could not be sorted
+  together (Appendix A of `docs/plans/step-02.md`). Both classes now order through written
+  `__lt__`, `__le__`, `__gt__` and `__ge__` methods by the design's fields in order, with `None`
+  before every `int` in `WordRef.child` and `Finding.page`. `functools.total_ordering` would need
+  one method, and it would add `functools` to the closed list of section 11.1.
+  `test_word_refs_sort_with_and_without_child` and `test_findings_sort_with_and_without_page`
+  check all four operators against a key that puts `None` first. With `order=True` put back on
+  `WordRef`, the first fails with `TypeError`. Design section 2.1.
+- **Step 2: `RowKey` states its rules** (November 23, 2026, S2-B). The design said that
+  `RowKey.parts` is sorted by name and that `parse` serves TOML records. A `RowKey` now raises
+  `ValueError` for no parts, for names that are not strictly ascending, for an empty name, and for
+  a name or value that holds `|` or `=`, so `RowKey.parse` inverts `str` for every key.
+  `RowKey.of` sorts its parts by name. The plan named every rule except the one on no parts.
+  `str` of a key with no parts is the empty text, which names no row, and no use in the design
+  builds such a key. Design section 2.1.
 
 ## Notes for later sessions
 
@@ -207,13 +231,15 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   pull request. A new gate joins `GATES` and gets its step at the end of `ci.yml`. A scan for
   forbidden strings, tried first, let eight broken workflows pass. The `Kit size report` step is
   not a gate, so it sits in the pinned header, after `Python version`.
-- **The shape pins start empty** (November 22, 2026, step 1, S1-C). In
-  `packages/checkedtables/tests/test_library_shape.py`, `FIELD_SNAPSHOT` is `{}` and
-  `test_bool_fields_are_page_facts_only` expects `set()`. The pull request that adds a kit
-  dataclass adds its fields to `FIELD_SNAPSHOT`. The ones that create `Word` and `Column` add
-  `("Word", "bold")` and `("Column", "printed")`. `kit_dataclasses` counts every dataclass of
-  `checkedtables` that a public name in a public module reaches, so `RawRow` counts when step 5
-  creates it. The `RawRow.bold` note above is still the owner's call.
+- **The shape pins grow with the kit** (November 22, 2026, step 1, S1-C. Updated November 23,
+  2026, S2-B). In `packages/checkedtables/tests/test_library_shape.py`, `FIELD_SNAPSHOT` started
+  as `{}` and `test_bool_fields_are_page_facts_only` expected `set()`. S2-B pins the fields of
+  its 18 dataclasses, each in the commit that creates the class, and the bool test now expects
+  `{("Word", "bold")}`. The pull request that adds a kit dataclass adds its fields to
+  `FIELD_SNAPSHOT`. The one that creates `Column` adds `("Column", "printed")`.
+  `kit_dataclasses` counts every dataclass of `checkedtables` that a public name in a public
+  module reaches, so `RawRow` counts when step 5 creates it. The `RawRow.bold` note above is
+  still the owner's call.
 - **Kit types imported only under `TYPE_CHECKING`** (November 22, 2026, step 1, S1-C). The shape
   test evaluates a parameter's annotation with each name that does not resolve at run time
   standing for an unknown type. So `amount: "Decimal"`, with `Decimal` imported only under
@@ -222,9 +248,12 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   `typing.get_type_hints`. A kit dataclass with the field `amount: "Decimal"` and that import
   fails `test_bool_fields_are_page_facts_only` with `NameError`, so import a field's type at run
   time.
-- **`test_closed_lists_are_pinned` is not written yet** (November 22, 2026, step 1, S1-C). None
-  of the lists it pins exists at step 1. Each list's pin lands in the pull request that creates
-  the list, in the same test file (`CLAUDE.md`, hard rule 6).
+- **`test_closed_lists_are_pinned` is not written yet** (November 22, 2026, step 1, S1-C. Updated
+  November 23, 2026, S2-B). None of the lists it pins exists at step 1. Each list's pin lands in
+  the pull request that creates the list, in the same test file (`CLAUDE.md`, hard rule 6). S2-B
+  creates the `StrEnum` classes `SourceKind`, `ValueKind`, `DashMeaning`, `Presence`,
+  `PercentSign`, `Reading` and `Severity`, and the `Cell` union. Design section 11.4 pins none of
+  them, so the test is still not written.
 - **Every test runs with sockets blocked** (November 22, 2026, step 1, S1-D). `--disable-socket`
   and the audit hook in the root `conftest.py` apply to every test, so a later adapter contract
   test that needs the network opts in with the `enable_socket` marker of pytest-socket. The
@@ -325,3 +354,22 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   that session and for that pull request, at the verified head with CI passing. The clauses on
   pushing to `main` and on force-pushing are unchanged, so the force-pushes in the note above
   still cross the rule.
+- **Hypothesis writes nothing in the checkout** (November 23, 2026, step 2, S2-B). The root
+  `conftest.py` registers and loads one profile with `database=None`, `derandomize=True` and
+  `deadline=None`, so every machine draws the same examples. A wider search is a command a person
+  runs with another profile. Hypothesis 6.170.15 still writes `.hypothesis/constants` into the
+  folder it was imported from, during collection, so `pytest_configure` points it at a temporary
+  folder with `set_hypothesis_home_dir` and `pytest_unconfigure` removes the folder.
+  `test_hypothesis_writes_nothing_in_the_workspace` in `tests/test_gates.py` runs a property test
+  in a workspace copy and fails when a `.hypothesis` folder appears there.
+- **Docstrings put `refs` past its estimate** (November 23, 2026, step 2, S2-B). The kit size
+  report counts every line that is not blank or a comment, docstrings included. At the S2-B head
+  it prints 533 lines. Against design section 12.1: `refs` 111 (estimate 60), `kinds` 29 (40),
+  `words` 112 (90), `labels` 25 (30), `cells` 97 (90). `columns` holds 38 lines for two of its
+  ten names (330), and `table` 121 for three of its eight (190). Without docstrings `refs` is 53
+  lines and `table` 58. The numpy docstring on each public class and method, magic methods
+  included, is about half of each module, and `refs` also writes four comparison methods for
+  `WordRef`. The five whole modules hold 374 lines against an estimate of 310. If the other
+  modules run as far past theirs, the kit passes its 3,800 line budget, an inference that no run
+  has checked. The report never fails the build, so the owner decides whether the budget counts
+  docstrings.

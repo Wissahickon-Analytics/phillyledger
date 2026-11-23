@@ -99,12 +99,15 @@ class Box:
     def contains(self, other: "Box", slack: float) -> bool: ...
 
 
-@dataclass(frozen=True, slots=True, order=True)
+@dataclass(frozen=True, slots=True)
 class WordRef:
     doc_sha256: str
     page: int                  # 1-based page in the publisher file, never a cut file
     index: int                 # extraction order on that page; evidence only, never a record key
     child: int | None = None   # set when split_numeric_runs made this word; its box is approximate
+
+    # __lt__, __le__, __gt__, __ge__: by the four fields, a None child before every int child.
+    # order=True would raise TypeError comparing a word with its child (None against int).
 
 
 # checkedtables/kinds.py
@@ -423,13 +426,16 @@ def additivity_of(kind: RowKind) -> Additivity: ...
 class RowKey:
     parts: tuple[tuple[str, str], ...]      # sorted by name: (("breakdown", "civilian"), ("dept", ...))
 
+    def __post_init__(self) -> None: ...    # ValueError: no parts, names not strictly ascending,
+                                            # an empty name, or "|" or "=" in a name or value
+
     def __str__(self) -> str: ...           # "breakdown=civilian|dept=phl_dept_police"
 
     @staticmethod
-    def of(**parts: str) -> "RowKey": ...
+    def of(**parts: str) -> "RowKey": ...   # sorts the parts by name
 
     @staticmethod
-    def parse(text: str) -> "RowKey": ...   # for TOML records only; code uses RowKey.of
+    def parse(text: str) -> "RowKey": ...   # inverse of str; TOML records only; code uses RowKey.of
 
     @property
     def has_occurrence(self) -> bool: ...   # an "occurrence" part from a list table
@@ -440,13 +446,16 @@ class Severity(StrEnum):
     WARN = "warn"
 
 
-@dataclass(frozen=True, slots=True, order=True)
+@dataclass(frozen=True, slots=True)
 class Finding:
     severity: Severity
     code: str                  # "unknown_row", "style_unavailable", "check_not_evaluated", ...
     subject: str               # "<doc sha8>:<table>:<row key or label>"
     message: str
     page: int | None = None
+
+    # __lt__, __le__, __gt__, __ge__: by the five fields, a None page before every int page,
+    # as WordRef does for child.
 
 
 @dataclass(frozen=True, slots=True, order=True)
@@ -4401,7 +4410,8 @@ codes, and six open with a commentary page that also prints the `TABLE P-1` band
    *Check:* CI is green. A planted `import boto3` in `datadesk.core`, a planted `bool` parameter
    in `checkedtables`, and a planted socket call in a core test each fail CI.
 2. **Kit, words to cells.** `refs`, `kinds`, `words`, `labels`, `text`, `lines`, `cells`, `lex`,
-   `records`, `testing.page_from_text`, with unit and property tests.
+   `records`, `testing.page_from_text`, the `NumberFormat` and `ColumnSpec` types of `columns`,
+   and the `RowKey`, `Severity` and `Finding` types of `table`, with unit and property tests.
    *Check:* Hypothesis suites pass. The 55 probe inputs of VAL section 3.2 give the documented new
    results. `transliteration_ok` refuses "65.8" to "85.8" and "77,500,000" to "7,500,000".
 3. **Archive for the QCMR from FY2022.** Index format, `confirm_period`, `plan_fetch`, the S3
@@ -4414,7 +4424,7 @@ codes, and six open with a commentary page that also prints the `TABLE P-1` band
    *Check:* word fixtures regenerate byte-identical. A cache hit returns an equal `Document`. On
    all 20 grid pages with font codes, no `(cid:` remains, and a rendered crop of each page's
    first and last department rows matches the repaired digits.
-5. **QCMR positions parser.** Kit `pages`, `columns`, `pipeline`, `rows`, `assemble`; the
+5. **QCMR positions parser.** Kit `pages`, `columns`, `pipeline`, `table`, `rows`, `assemble`; the
    department part of the registry; `rowschemas`; `vocab`, `measures` and the catalog test;
    `qcmr_positions`.
    The run starts at the first page whose header carries the era's captions; a page with the
