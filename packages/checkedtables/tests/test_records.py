@@ -336,6 +336,14 @@ def test_a_word_given_twice_is_not_the_cell() -> None:
     assert_finding(reading_for((word,), (*page.words, word), OCR, (reading,)), "stale_reading")
 
 
+def test_a_word_given_twice_cannot_stand_for_another_word() -> None:
+    page, (seven, eight) = cash_row("7 8")
+    reading = record("7 7", "77", (seven, eight))
+    assert_finding(reading_for((seven, seven), page.words, OCR, (reading,)), "stale_reading")
+    printed = replace(reading, seen="7 8")
+    assert reading_for((seven, eight), page.words, OCR, (printed,)) == printed
+
+
 def test_a_reading_cannot_drop_or_add_a_digit_of_another_script() -> None:
     for seen, reading in (
         ("１,234", "234"),
