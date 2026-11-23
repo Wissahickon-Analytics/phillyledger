@@ -223,6 +223,7 @@ def test_pure_imports_are_pinned() -> None:
 def test_scan_reads_a_file_as_the_importer_does(tmp_path: Path) -> None:
     path = tmp_path / "words.py"
     path.write_bytes(GBK_FILE_HIDING_IMPORT)
+    assert impurities(ast.parse(GBK_FILE_HIDING_IMPORT.decode()), KIT_MODULE) == []
     assert impurities(parse_file(path), KIT_MODULE) == [(2, "import sys")]
 
 
@@ -235,9 +236,9 @@ def test_pinned_imports_are_not_modules() -> None:
 def test_star_import_from_outside_fails_whatever_the_pin_holds(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    units = ModuleType("example_units")
-    units.__getattr__ = lambda name: None
-    monkeypatch.setitem(sys.modules, units.__name__, units)
+    answers_every_name = ModuleType("example_units")
+    answers_every_name.__getattr__ = lambda name: None
+    monkeypatch.setitem(sys.modules, answers_every_name.__name__, answers_every_name)
     monkeypatch.setitem(PURE_IMPORTS, "checkedtables", ("example_units.*",))
     star = "from example_units import *"
     assert impurities(ast.parse(star), KIT_MODULE) == [(1, star)]
