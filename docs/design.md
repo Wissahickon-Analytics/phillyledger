@@ -1755,13 +1755,16 @@ def split_numeric_runs(word: Word) -> tuple[Word, ...]: ...
     # "%" or ")" that a digit, "(" or "$" follows. A word with one run comes back unchanged, and
     # so does a word that still holds "(cid:", whose ")" ends a font code (VAL-Q05).
 def lex_cell(words: Sequence[Word], col: ColumnSpec, source: SourceKind) -> Cell: ...
-    # In order: no words -> Blank; YEAR, CODE and TEXT columns -> Text; "N/A" and "NA" ->
-    # NotApplicable; "-", "--", en and em dash, alone or after one "$" word ("$ -", RTT-Q39) ->
-    # Dash(col.dash). Marks then leave the end of the cell into Amount.marks: *, †, ‡, §, #, a
-    # backtick, Unicode superscript digits, and a last one-digit word under 0.7 of the size of
-    # the number word just before it whose bottom sits above that word's bottom (VAL-Q28). A "$"
-    # word that opens the cell leaves its tokens for the join and comes back in front of the
-    # number they give, so "$ $1,234" prints two "$".
+    # In order: no words -> Blank; YEAR, CODE and TEXT columns -> Text; one word "N/A" or "NA"
+    # -> NotApplicable; one word "-", "--", en or em dash, alone or after one "$" word ("$ -",
+    # RTT-Q39) -> Dash(col.dash), so one word that holds a space, such as "$ -", is neither.
+    # Marks then leave the end of the cell into Amount.marks: *, †, ‡, §, #, a backtick,
+    # Unicode superscript digits, and a last word of one digit, alone or with those glyphs after
+    # it ("1*"), under 0.7 of the size of the number word just before it whose bottom sits above
+    # that word's bottom (VAL-Q28). That word is one mark as it prints. Not small and raised,
+    # such a word reads only alone or after one "$" word, so "1*" is 1 with the mark "*" and
+    # "2.8 1*" is Unreadable two_tokens. A "$" word that opens the cell leaves its tokens for
+    # the join and comes back in front of the number they give, so "$ $1,234" prints two "$".
     # One token reads through one private reader, which apply_reading also calls. Paired
     # parentheses or one leading minus glyph (-, U+2212, en dash, em dash) is negative, a "$"
     # stands at most once before the digits on either side of that sign, and the digits are
@@ -1776,7 +1779,8 @@ def lex_cell(words: Sequence[Word], col: ColumnSpec, source: SourceKind) -> Cell
     # never join (QPOS-Q27), and neither do "1234.5 6", "$1 37,332,523", a detached minus or %,
     # or tokens that end in a comma ("10, 936, 234", decision 12). Parentheses after a "$" word
     # do not wrap the whole cell, so "$ (1 23,456)" and "$ (1.2 3)" do not join, and neither
-    # old reader joins them.
+    # old reader joins them. No shape joins a cell that both old readers refuse, compared on the
+    # cell without its marks.
     # A "%" follows col.fmt.percent, and printed decimals equal col.fmt.decimals unless None.
     # Anything else -> Unreadable with the first reason that applies: not_a_number (a glyph no
     # number, sign, mark or separator uses, or no digit), two_tokens (tokens that fit no join

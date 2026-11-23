@@ -284,7 +284,11 @@ Each entry: step, what changed, why, and the design section updated.
   The comment of `doc_of` also says that it sorts the pages by number and raises `ValueError`
   for no pages, for pages of two files and for a repeated page number. `text`, `lines`
   and `testing` import from `re`, `statistics` and `typing`, which join the list in section
-  11.1. Design sections 3.1 and 11.1.
+  11.1. The strategy `pages()` of `test_lines.py`, behind clause C1a, draws every field of
+  `Page` and of `Word`, so it covers the input type of `group_lines` (fix round 4). A mutation
+  that keys on one drawn value, such as dropping OCR words with a confidence above 99.5, can
+  still survive a run without the explicit examples, because a property test samples. Design
+  sections 3.1 and 11.1.
 - **Step 2: the probe clause reads the 55 inputs of VAL section 3.2.1** (November 23, 2026,
   S2-D). VAL section 3.2 prints 16 of the probe's 55 inputs, and no file holds the rest or any
   new result. The owner chose the 55 rows of Appendix E of `docs/plans/step-02.md`, with the
@@ -371,6 +375,47 @@ Each entry: step, what changed, why, and the design section updated.
     `test_a_cell_keeps_the_text_and_ref_of_every_word` and the probe test assert that an `Amount`
     and an `Unreadable` keep the text of every word joined by one space and every word's ref, so
     row 53, `(29 1)`, keeps both words. In a scratch copy, each mutant fails the new tests.
+- **Step 2: the lexer reads a raised `1*` as one mark and a dash from whole words** (November
+  23, 2026, S2-D fix round 3, found in the third Codex review of S2-D). Each change has a test
+  that failed before it. Design section 3.1 and the S2-D boxes and Appendices C and E of
+  `docs/plans/step-02.md` say the same.
+  - A raised footnote that extraction returns as one word, `1*`, passes the same size and
+    position test as a lone raised digit, and the whole word is one mark as it prints. Before,
+    the lexer found no raised digit in `1*`, stripped the `*` and joined the `1` to the fraction
+    through join shape 2. So `2.8 1*` read as 2.81 with the mark `*`, while the same marks as
+    two words, `1` and `*`, gave 2.8. Both layouts now give `Amount 2.8`, for every digit and
+    mark glyph. A raised word of two digits and a mark glyph stays a token, as before.
+  - A last word of one digit with mark glyphs after it that is not small and raised reads only
+    alone or after one `$` word, so no join takes it. Join shape 2 ends in one digit, and `1*`
+    as printed is not one. Before, `2.8 1*` at full size read as 2.81. It is now
+    `Unreadable two_tokens`, and so are `1.2 3²`, `1.2 3*` and `67,215,504.0 0¹`. A lone `1*`
+    and `$ 1*` still read as 1 with the mark `*`. A shape 1 join keeps a mark glued to its last
+    word, so `1 23,456¹` still reads as 123456.
+  - One word `N/A` or `NA` gives `NotApplicable`, and one dash word, alone or after one `$`
+    word, gives a `Dash`. Before, one word whose text was `$ -`, with the space inside it, read
+    as a `Dash`, and `has_values` of S2-C was false for its line. It is now
+    `Unreadable not_a_number`. `test_a_lexed_value_is_a_value_word` now also draws each cell as
+    one word that holds its spaces. The `N/A` rule gives the same results as before, since two
+    words joined by a space never equal `N/A` or `NA`.
+  - Appendix E said that no shape joins a cell that both old readers refuse. Both old readers
+    refuse every cell with a superscript mark, row 52 included, which the owner accepted as an
+    `Amount`. So the sentence now compares the cell without its marks, in Appendix E, in the
+    risk "No lexer rule has met a page" of Appendix C, and in the design.
+    `test_no_cell_joins_that_both_old_readers_refuse` gains 16 marked cells, each with the
+    results of a `cmp`-checked copy of the old `parse_amount` and `parse_decimal` on the cell
+    without its marks. On the marked text the old readers differ in both directions. They
+    refuse `1 23,456¹`, and they join `1234.5 6 *` into 1234.56 while they refuse `1234.5 6`.
+  - `test_amount_digits_are_the_digits_of_its_words` drew a raised `1` or none. With the
+    raised-digit rule changed in a scratch copy to take only the digit `1`, a raised `2` turned
+    `2.8` into 2.82 and the 48 tests of `fae7e17` passed. The property now draws the raised
+    word from all ten digits, with and without a mark glyph after it. In a scratch copy of the
+    fix, that mutant still passes the 48 old tests and fails the property on `2.8` with a
+    raised `2`.
+  - Over 973,752 lexings of generated cells, one to three words from 39 texts, at full size or
+    with a small raised last word, in four columns on both sources, the fix changed 4,232
+    results from those of `fae7e17`. Each change is one of the three above or a change of
+    `Unreadable` reason, and no new `Amount` holds a digit that its words less their marks do
+    not print.
 - **Step 2: `reading_for` takes the page's words, and `records` states its findings**
   (November 23, 2026, S2-E). Design section 3.1 gave `reading_for` a page number, which every
   word's ref already carries, and section 2.1 makes a reading stale when the words inside its box
@@ -869,7 +914,35 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
     split of a fused word, and this page needs two columns bound by the rule between them. Given
     both words as one percent cell, `lex_cell` returns `Unreadable two_tokens`, and each word
     alone reads as an amount. The RTT dossier left the question open: RTT-Q22 is `unsure`, and
-    its row asks for the same render and word-box check as RTT-Q21.
+    its row asks for the same render and word-box check as RTT-Q21. The step 10 plan decides.
+  - A percent and a tax amount are three words on a real page, for the step 10 plan (finding 5
+    of `.codex-review/step-02-pr-fae7e17b.md`). `test_a_percent_and_a_tax_cell_fused_split_apart`
+    (BSALES-Q36) gives `split_numeric_runs` one word, `12.3%45,678`. Codex states that its
+    `pdfplumber` run, with the reference reader's word settings, finds no word with a character
+    after its `%` on page 1 of the FY2017, FY2018 and FY2020 sales tax by sector reports
+    (`collections/sales-tax-sector/FY17.pdf`, `FY18.pdf` and `FY20.pdf`), and that on the FY2017
+    Construction row the percentage, the `$` and the amount are three words. That is Codex's
+    statement, since `pdfplumber` is not installed here until step 4. Read with
+    `pdftotext -f 1 -l 1 -bbox` 26.07.0 in the S2-D fix round 3, the three pages hold 150, 150
+    and 160 words with a `%`, and none has a character after it. On the FY2017 Construction row,
+    `2.3%` spans x 442.73 to 462.05, `$` 476.57 to 481.44 and `7,151,643` 501.05 to 540.21. So
+    the test proves the split of a fused word. The BSALES dossier describes cells that fuse with
+    no whitespace corridor between columns, which puts the separate words of two columns in one
+    cell. Binding those two columns is a matter for the step 10 plan.
+  - A heading of ZIP codes has values, for the step 10 plan. On page 1 of the March 2013 realty
+    transfer report (`collections/realty-transfer-tax/2013_03.pdf`), the table "Realty Transfer
+    Tax by Location" opens its Center City section with a heading that lists ZIP codes and ends
+    in `92)` (finding 3 of `.codex-review/step-02-pr-7d1aa59d.md`). The S2-C fix round 4 reran
+    that command at `7d1aa59`, in a scratch worktree, with `pdftotext -layout` 26.07.0 and a line
+    built by `page_from_text`, and left out the part that loads the old `amounts.py`. It printed
+    `Center City (19102, 03, 06, 07, 08, 09, 10, 23, 30, 46, 47, 92)` and
+    `has_values: True last word: '92)'`. A value word may hold parentheses, and the heading's
+    last word holds a digit and a closing parenthesis, so `has_values` is true for it. The
+    risks "The design's rule gives a sentence that ends in a number values" and "A value word is
+    defined twice" of Appendix C of `docs/plans/step-02.md` accepted this kind of result. The
+    predicate in `lines.py` is loose by design, and step 5 decides whether `lanes_from_values`
+    needs a stricter one. Step 10 parses this report, and the RTT dossier finds a zone's columns
+    "from amount-bearing lines only" (section 4, rule 3).
 - **Constructor checks the kit does not make** (November 23, 2026, step 2, S2-B). Design section
   2.1 says that the checks a kit type makes at construction are the ones its block shows, and no
   others. Those checks guard what enters the kit from outside: an adapter's words, pages and
@@ -989,6 +1062,41 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
     spelling gives `crédit`. The third Codex review of S2-C found it at `0df73f36` (finding 4 of
     `.codex-review/step-02-pr-0df73f36.md`). A rerun of its command in a scratch worktree at that
     head printed `'Cre\u0301dit' 'cre dit' 'credit'` and `'Cr\xe9dit' 'cr\xe9dit' 'cr\xe9dit'`.
-    No page is known to print one.
+    No page is known to print one. No step owns it, and the first step to meet a decomposed label
+    decides.
+  - `split_line_prefix` compiles the table's prefix pattern. For a pattern that Python itself
+    warns about, such as `[[]` (a `FutureWarning`, "Possible nested set"), Python's warnings
+    machinery reads the source file of `text.py` to format the warning and writes a
+    `__warningregistry__` dictionary into the module. The kit does no I/O of its own here, and no
+    table would declare such a pattern, but a table module that did would see the warning in its
+    tests. The fourth Codex review of S2-C found it at `7d1aa59d` (finding 1 of
+    `.codex-review/step-02-pr-7d1aa59d.md`). A rerun of its command in a scratch worktree at that
+    head printed the warning at `text.py:140`, then `registry before: False`,
+    `prefix: [ remainder: Revenue` and `read text.py: True registry after: dict`. Turning
+    warnings into errors for the tests of the pure packages would catch it. That is an idea, not
+    a plan.
+  - In Python `[^\W\d_]` matches a superscript digit. So `normalize_space` closes the hyphen of
+    `"\u00b9 - \u00b2"`, and `parse_label` takes the `2` of `"Total \u00b9 2"` as a mark. The
+    fourth Codex review of S2-C found it at `7d1aa59d` (finding 4). A rerun of its command in a
+    scratch worktree at that head printed `'\u00b9-\u00b2'` and
+    `Total \u00b9 2 'Total \u00b9' ('2',)`, with the superscripts written here as escapes. Both
+    inputs are made up.
+  - `transliteration_ok` and `split_numeric_runs` look for a font code as `(cid:` in lower case.
+    At the S2-D fix round 3 head, `transliteration_ok("10(CID:28)", "10028")` is true, where the
+    lower-case form is false, and `split_numeric_runs` cuts `(CID:21)5` into `(CID:21)` and `5`.
+    `pdfminer` writes the code in lower case, as `f"(cid:{cid})"` at line 268 of
+    `pdfminer/converter.py` in the reference repository's environment, read and not run. The
+    last verifier of S2-D found it. The adapter of step 4 is the only source of such words, so
+    its plan decides whether the kit also refuses another case.
+  - A small raised digit after a `$` word, with no number word before it, reads as the amount.
+    The raised-digit rule measures a digit against the word just before it, which must hold a
+    digit, so `$` and a raised `1` give `Amount 1`, with the `$` at full size or small. The S2-D
+    fix round 3 searched raised layouts at `fae7e17` and at its own head and found this one
+    still reading a raised digit into the number. A raised `*1`, a superscript then a digit, a
+    digit then a superscript or two marks, a digit then `)` or `%`, two digits, a raised
+    superscript word, a raised digit before a full-size mark word, and a `$` word, a number and
+    a raised footnote all keep the digit out of the number at that head. A full-size digit
+    before a raised mark word joins the number through join shape 2, as it does with no mark.
+    No page is known to print a `$` and a raised digit alone, and no step owns the form.
   - `apply_reading`'s message for a word that is not on the reading's file and page has no test
     that reads the message. The S2-E fix round 2 found it.
