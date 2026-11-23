@@ -12,36 +12,64 @@ BANNED_NAMES = frozenset({"random"})
 MUTABLE_DISPLAYS = (ast.List, ast.Dict, ast.Set, ast.ListComp, ast.DictComp, ast.SetComp)
 MUTABLE_CONSTRUCTORS = frozenset({"list", "dict", "set", "bytearray"})
 NESTED_SCOPES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
-BANNED_FORMS = (
-    'open("x")',
-    "print(1)",
-    "input()",
-    "datetime.now()",
-    "date.today()",
-    "os.getcwd()",
-    "import random",
-    "from random import choice",
-    "random.random()",
-    "time.time()",
-    "import builtins",
-    "from builtins import open",
-    'builtins.open("x")',
-    '__import__("boto3")',
-    "CACHE: dict[str, str] = {}",
-    "ITEMS = []",
-    "SEEN = set()",
-    "CACHE, SEEN = {}, set()",
-    "if __debug__:\n    CACHE = {}",
-    "try:\n    import tomllib\nexcept ImportError:\n    CACHE = {}",
-    "match __name__:\n    case _:\n        CACHE = {}",
-    "with suppress():\n    for _ in ():\n        while __debug__:\n            CACHE = {}",
-)
-ALLOWED_FORMS = (
-    'NAMES = ("a", "b")',
-    'LOOKUP = MappingProxyType({"a": 1})',
-    "def collect():\n    items = []\n    return items\n",
-    "if __debug__:\n    def collect():\n        items = []\n        return items\n",
-)
+KIT_MODULE = "checkedtables.words"
+CORE_MODULE = "datadesk.core.tables.birt"
+BANNED_FORMS = {
+    KIT_MODULE: (
+        'open("x")',
+        "print(1)",
+        "input()",
+        "datetime.now()",
+        "date.today()",
+        "os.getcwd()",
+        "import random",
+        "from random import choice",
+        "random.random()",
+        "time.time()",
+        "import builtins",
+        "from builtins import open",
+        'builtins.open("x")',
+        '__import__("boto3")',
+        "CACHE: dict[str, str] = {}",
+        "ITEMS = []",
+        "SEEN = set()",
+        "CACHE, SEEN = {}, set()",
+        "if __debug__:\n    CACHE = {}",
+        "try:\n    pass\nexcept ImportError:\n    CACHE = {}",
+        "match __name__:\n    case _:\n        CACHE = {}",
+        "with suppress():\n    for _ in ():\n        while __debug__:\n            CACHE = {}",
+        "import sys",
+        "import os.path as p",
+        "import dataclasses",
+        "from io import FileIO",
+        "from collections import defaultdict",
+        "from dataclasses import sys",
+        "from re import *",
+        "def make():\n    from uuid import uuid4",
+        "if TYPE_CHECKING:\n    from pathlib import Path",
+    ),
+    CORE_MODULE: (
+        "from ... import shell",
+        "from ...shell import run",
+        "import datadesk.core.tables",
+    ),
+}
+ALLOWED_FORMS = {
+    KIT_MODULE: (
+        'NAMES = ("a", "b")',
+        'LOOKUP = MappingProxyType({"a": 1})',
+        "def collect():\n    items = []\n    return items\n",
+        "if __debug__:\n    def collect():\n        items = []\n        return items\n",
+        "from checkedtables.refs import Box",
+        "import checkedtables.lines",
+        "from . import refs",
+    ),
+    CORE_MODULE: (
+        "from . import catalog",
+        "from checkedtables.refs import Box",
+        "import datadesk.core.tables as tables",
+    ),
+}
 
 
 def package_sources(name: str) -> list[Path]:
@@ -101,19 +129,37 @@ def test_pure_packages_have_no_effects() -> None:
     hits = [
         f"{path}:{line} {found}"
         for name in PURE_PACKAGES
-        for path in package_sources(name)
-        for line, found in impurities(ast.parse(path.read_text(), filename=str(path)))
+        for module, path in package_sources(name)
+        for line, found in impurities(ast.parse(path.read_text(), filename=str(path)), module)
     ]
     assert not hits, "\n".join(hits)
 
 
+def test_pure_imports_are_pinned() -> None:
+    for name in PURE_PACKAGES:
+        pairs = {
+            pair
+            for module, path in package_sources(name)
+            for _, pair in outside_imports(ast.parse(path.read_text(), filename=str(path)), module)
+        }
+        assert tuple(sorted(pairs)) == PURE_IMPORTS[name], name
+
+
+def test_pinned_imports_are_not_modules() -> None:
+    probes = ("dataclasses.sys", "dataclasses.dataclass", "statistics.random", "re.no_such_name")
+    assert module_valued(probes) == ["dataclasses.sys", "statistics.random", "re.no_such_name"]
+    assert module_valued(pair for pairs in PURE_IMPORTS.values() for pair in pairs) == []
+
+
 def test_scan_reports_each_banned_form() -> None:
-    for source in BANNED_FORMS:
-        module = "\n".join(("NAMES = ()", source))
-        last_line = len(module.splitlines())
-        assert [line for line, _ in impurities(ast.parse(module))] == [last_line], source
+    for module, sources in BANNED_FORMS.items():
+        for source in sources:
+            text = "\n".join(("NAMES = ()", source))
+            last_line = len(text.splitlines())
+            assert [line for line, _ in impurities(ast.parse(text), module)] == [last_line], source
 
 
 def test_scan_allows_immutable_constants() -> None:
-    for source in ALLOWED_FORMS:
-        assert impurities(ast.parse(source)) == [], source
+    for module, sources in ALLOWED_FORMS.items():
+        for source in sources:
+            assert impurities(ast.parse(source), module) == [], source

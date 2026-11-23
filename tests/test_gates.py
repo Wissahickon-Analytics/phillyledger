@@ -63,6 +63,8 @@ SRC_FOLDERS = (
 )
 SHAPE_TEST = "packages/checkedtables/tests/test_library_shape.py"
 PLANTED_BOOL_PARAMETER = "def planted(flag: bool) -> None: ...\n"
+PURITY_TEST = "tests/test_purity.py"
+PLANTED_IMPORT = "from io import FileIO"
 DATADESK_CORE_TESTS = "packages/datadesk/tests/core"
 PLANTED_SOCKET_TEST = f"{DATADESK_CORE_TESTS}/test_planted_socket.py"
 PLANTED_SOCKET_SUMMARY = (f"FAILED {PLANTED_SOCKET_TEST}::", f"ERROR {PLANTED_SOCKET_TEST}::")
@@ -208,6 +210,20 @@ def test_planted_family_helper_parameter_fails_shape_test(tmp_path: Path) -> Non
     )
     assert result.returncode == 1, result.stdout
     assert "AssertionError: planted" in result.stdout, result.stdout
+
+
+def test_planted_import_fails_purity_test(tmp_path: Path) -> None:
+    purity_test = {PURITY_TEST: (REPO / PURITY_TEST).read_text()}
+    result = clean_then_planted(
+        tmp_path,
+        purity_test,
+        {**purity_test, "packages/datadesk/src/datadesk/core/tables/birt.py": PLANTED_IMPORT},
+        "uv run pytest",
+        ("-p", "no:cacheprovider", PURITY_TEST),
+    )
+    assert result.returncode == 1, result.stdout
+    lines = result.stdout.splitlines()
+    assert any("birt.py:" in line and PLANTED_IMPORT in line for line in lines), result.stdout
 
 
 def run_socket_plant(
