@@ -82,14 +82,11 @@ def test_double_asterisks_inside_a_word_open_and_close_nothing() -> None:
 
 
 def test_a_word_of_only_asterisks_stays_in_the_text() -> None:
-    page = page_from_text("Total ** *** **** 12", SHA, 1)
-    assert [(word.text, word.bold) for word in page.words] == [
-        ("Total", False),
-        ("**", False),
-        ("***", False),
-        ("****", False),
-        ("12", False),
-    ]
+    for text in ("Total ** *** **** 12", "*** Total**", "**Total ***"):
+        page = page_from_text(text, SHA, 1)
+        assert [(word.text, word.bold) for word in page.words] == [
+            (printed, False) for printed in text.split(" ")
+        ], text
 
 
 def test_ocr_block_has_no_style() -> None:
