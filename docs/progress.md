@@ -260,9 +260,12 @@ Each entry: step, what changed, why, and the design section updated.
   also takes one bare digit after a word as a mark, as `entities.py:54-61` of the old code did
   (ENT-Q07). So "Sheriff 2" gives the text "Sheriff" and the mark "2", and "CLASS 100" and
   "10 COMMUNITY DEVELOPMENT" keep every word. With that form removed in a scratch copy, the
-  "Sheriff 2" test fails and the "Human Services (1)" test passes. The comments also say three
-  smaller things. `normalize_label` turns punctuation into a space where the design said "drop",
-  as `entities.py:95` did, so "Delivery/couriers" gives "delivery couriers" (BSALES-Q47).
+  "Sheriff 2" test fails and the "Human Services (1)" test passes. The mark "see note" takes any
+  one space between its words, or none, where the design named only "see note" and "seenote".
+  With a non-breaking space the mark stayed in the label, so two labels that print the same got
+  different `norm` values (WAGE-Q44, found in the second Codex review). The comments also say
+  three smaller things. `normalize_label` turns punctuation into a space where the design said
+  "drop", as `entities.py:95` did, so "Delivery/couriers" gives "delivery couriers" (BSALES-Q47).
   `normalize_space` trims the ends. `page_from_text` keeps a `**` that opens no bold span, so
   the label "Total RTT records **1" (RTT-Q38) can be built with it. A `**` that starts a word
   opens a span when the word's next character is not `*`, and a `**` that ends a word closes
@@ -270,6 +273,10 @@ Each entry: step, what changed, why, and the design section updated.
   opener to its left on the same line, and every other `**` stays in the text. The first build
   paired the first two `**` on a line, so "Total RTT records **1  **1,234**" gave the words
   `1`, bold, and `1,234**` (found in the Codex review). It now gives `**1` and a bold `1,234`.
+  A word is a run of characters with no ASCII space, and a `**` opens or closes a span only at
+  an ASCII space or a line end. The second Codex review found that a `**` after a non-breaking
+  space opened a span inside a word, so `Tax`, a non-breaking space and `**1,234**` lost the
+  asterisks and 24 points of the word's box. That word now keeps them and is not bold.
   The comment of `doc_of` also says that it sorts the pages by number and raises `ValueError`
   for no pages, for pages of two files and for a repeated page number. `text`, `lines`
   and `testing` import from `re`, `statistics` and `typing`, which join the list in section
@@ -523,8 +530,8 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   of step 4 computes each hash from a file's bytes, and the record lint of step 5 reads the hashes
   that records cite, so those two own the form of a hash. Their plans say where the form is
   checked.
-- **What the step 2 line and label rules do on four real pages, for the plans of steps 5, 8 and
-  11** (November 23, 2026, step 2, S2-C, found in the Codex review). Codex read three PDFs of
+- **What the step 2 line and label rules do on four real pages, for the plans of steps 5, 8, 11
+  and 12** (November 23, 2026, step 2, S2-C, found in the Codex reviews). Codex read three PDFs of
   `../gov-budget-data/data/phila/` with `pdftotext -bbox` and ran `group_lines`, `has_values` and
   `parse_label` on their word boxes at `8846f05`. The S2-C fix round reran the command (the
   block "PDF reproduction for findings 1-4" of `.codex-review/step-02-pr-8846f05c.md`) and
@@ -542,7 +549,11 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
     its label (QPOS-Q11). `group_lines` is the design's rule as written. FY2026 Q4 is one of the
     20 editions step 5 parses, so the step 5 plan tests this page with the real adapter's words
     and decides the rule. The same rule would keep a raised footnote digit out of its cell, and
-    the lexer's rule for VAL-Q28 expects to find that digit in the cell.
+    the lexer's rule for VAL-Q28 expects to find that digit in the cell. The second Codex review
+    says that it reproduced this raised `(1)` and the lower-case `n/a` row below with
+    `pdfplumber` word boxes as well (`.codex-review/step-02-pr-6442b4eb.md`, "What I checked"),
+    which is Codex's statement and not a run of ours, because `pdfplumber` is not installed in
+    this repository until step 4.
   - Margin debris joins a cash row, for the step 8 plan.
     `test_debris_between_two_rows_joins_neither` (QCASH-Q16, VAL-Q13) uses made-up boxes. On
     page 1 of the FY2008 Q4 QCMR cash report (`qcmr/cash/FY08_Q4.pdf`), the run printed the
@@ -564,6 +575,20 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
     `parse_label` reads only the `(19+20)` form (BIB-Q38). The RTT reports print a class code in
     the same shape, "General Commercial (88-2)" (RTT dossier, "Legacy property labels"), so the
     kit cannot take `(8-21)` as a mark unless a table tells it to.
+  - A bare digit after a word leaves a capital project's name, for the owner and the step 12
+    plan. Page 107 of the FY2023 supplemental report (`supplemental-report/FY23.pdf`) prints the
+    project heading `12-CENTER CITY TRAFFIC SIGNALS - PHASE 2` (finding 2 of
+    `.codex-review/step-02-pr-6442b4eb.md`). The S2-C fix round 2 reran that command at
+    `b6013a6`, in a scratch worktree, with `pdftotext -layout` 26.07.0 and a label built by
+    `page_from_text`. It printed `12-CENTER CITY TRAFFIC SIGNALS - PHASE 2` as `Label.printed`,
+    `12-CENTER CITY TRAFFIC SIGNALS - PHASE` as `Label.text` and `('2',)` as `Label.marks`. This
+    is the bare-digit form that S2-C took from ENT-Q07 for "Sheriff 2", and the risk "A bare
+    digit after a word becomes a mark" of Appendix C of `docs/plans/step-02.md` now has a real
+    page. `Label.printed` keeps every word, and S2-C keeps the bare-digit form as it is. The
+    supplemental capital tables of step 12 key a project by its label as printed (design section
+    7.1), and `Label.text` and `Label.norm` drop the phase number that the label prints. The
+    owner decides whether the bare-digit form stays in the kit or becomes a rule that a table
+    declares.
 - **Follow-ups after step 2** (November 23, 2026). The step 2 run found these and did not fix
   them.
   - Nothing ties the module table of design section 11.1 to `PURE_IMPORTS`. A pin can hold a pair
