@@ -47,6 +47,40 @@ def test_double_asterisks_mark_bold_words() -> None:
     assert page.width == 6.0 * len("Total RTT records **1")
 
 
+def test_a_literal_mark_before_a_bold_value_stays_in_the_text() -> None:
+    # RTT-Q38
+    page = page_from_text("Total RTT records **1  **1,234**", SHA, 1)
+    assert [(word.text, word.bold, word.box) for word in page.words[-2:]] == [
+        ("**1", False, Box(108.0, 0.0, 126.0, 12.0)),
+        ("1,234", True, Box(138.0, 0.0, 168.0, 12.0)),
+    ]
+
+
+def test_two_bold_spans_on_one_line() -> None:
+    page = page_from_text("**Taxes** 12 **Fees 34**", SHA, 1)
+    assert [(word.text, word.bold) for word in page.words] == [
+        ("Taxes", True),
+        ("12", False),
+        ("Fees", True),
+        ("34", True),
+    ]
+
+
+def test_a_literal_mark_after_a_bold_span_stays_in_the_text() -> None:
+    # RTT-Q38
+    page = page_from_text("**Total** 12 **1", SHA, 1)
+    assert [(word.text, word.bold) for word in page.words] == [
+        ("Total", True),
+        ("12", False),
+        ("**1", False),
+    ]
+
+
+def test_double_asterisks_inside_a_word_open_and_close_nothing() -> None:
+    page = page_from_text("**ab**cd ef", SHA, 1)
+    assert [(word.text, word.bold) for word in page.words] == [("**ab**cd", False), ("ef", False)]
+
+
 def test_ocr_block_has_no_style() -> None:
     page = page_from_text("#ocr\n**Total** 1,234", SHA, 1)
     assert page.source.kind is SourceKind.OCR
