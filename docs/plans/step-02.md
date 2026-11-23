@@ -153,7 +153,7 @@ Step 2 needs no R2 and no Textract credentials. It reads no PDF and spends no mo
 - [ ] Start a child only after its parent reports a code-ready head.
 - [ ] Hold the file boundaries. Paths under `src/` are in `packages/checkedtables/src/checkedtables/`, and paths under `tests/kit/` stand for `packages/checkedtables/tests/`.
   - [ ] S2-A touches only `tests/test_purity.py`, `tests/test_gates.py`, and section 11.1 of `docs/design.md`.
-  - [ ] S2-B touches only `refs.py`, `kinds.py`, `words.py`, `labels.py`, `cells.py`, `table.py` and `columns.py` under `src/`, the four new test files under `tests/kit/`, `tests/kit/test_library_shape.py`, `tests/test_purity.py`, `tests/test_workspace.py`, `tests/test_gates.py`, the root `conftest.py`, `pyproject.toml`, `uv.lock`, and sections 2.1, 11.1 and 15 of `docs/design.md`.
+  - [ ] S2-B touches only `refs.py`, `kinds.py`, `words.py`, `labels.py`, `cells.py`, `table.py` and `columns.py` under `src/`, the five new test files under `tests/kit/`, `tests/kit/test_library_shape.py`, `tests/test_purity.py`, `tests/test_workspace.py`, `tests/test_gates.py`, the root `conftest.py`, `pyproject.toml`, `uv.lock`, and sections 2.1, 11.1 and 15 of `docs/design.md`.
   - [ ] S2-C touches only `testing.py`, `text.py` and `lines.py` under `src/`, the three new test files under `tests/kit/`, `tests/kit/test_library_shape.py`, `tests/test_purity.py`, and sections 3.1 and 11.1 of `docs/design.md`.
   - [ ] S2-D touches only `lex.py` under `src/`, the two new test files under `tests/kit/`, `tests/test_evidence.py`, `tests/test_purity.py`, sections 3.1, 11.1, 15 and 16 of `docs/design.md`, and a new section 3.2.1 of `docs/evidence/dossiers/VAL.md`.
   - [ ] S2-E touches only `records.py` under `src/`, one new test file under `tests/kit/`, `tests/kit/test_library_shape.py`, `tests/test_purity.py`, and sections 3.1 and 11.1 of `docs/design.md`.
@@ -287,7 +287,7 @@ transcript.
 
 - [ ] Create `refs.py`, `kinds.py`, `labels.py`, `cells.py` and `table.py` in `packages/checkedtables/src/checkedtables/`.
 - [ ] Edit `words.py` and `columns.py` in that folder. Both are empty files today.
-- [ ] Create `test_refs.py`, `test_words.py`, `test_cells.py` and `test_table.py` in `packages/checkedtables/tests/`.
+- [ ] Create `test_refs.py`, `test_words.py`, `test_cells.py`, `test_columns.py` and `test_table.py` in `packages/checkedtables/tests/`.
 - [ ] Edit `packages/checkedtables/tests/test_library_shape.py`, `tests/test_purity.py`, `tests/test_workspace.py`, `tests/test_gates.py` and the root `conftest.py`.
 - [ ] Edit `pyproject.toml` and `uv.lock`.
 - [ ] Edit `docs/design.md` sections 2.1, 11.1 and 15, and `docs/progress.md`.

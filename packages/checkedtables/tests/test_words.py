@@ -1,3 +1,4 @@
+import math
 from dataclasses import replace
 
 import pytest
@@ -39,6 +40,37 @@ def test_text_layer_page_refuses_an_ocr_confidence() -> None:
     with pytest.raises(ValueError, match="OCR confidence on a text layer page"):
         page(1, (replace(word(SHA, 1, 0), text="85.8"), ocr_word))
     assert Page(SHA, 1, 612.0, 792.0, 0, OCR, (ocr_word,)).words == (ocr_word,)
+
+
+def test_page_refuses_two_words_with_one_ref() -> None:
+    first = word(SHA, 1, 0)
+    with pytest.raises(ValueError, match="share the ref"):
+        page(1, (first, replace(first, text="92.0", box=Box(20.0, 0.0, 30.0, 10.0))))
+    children = tuple(replace(first, ref=WordRef(SHA, 1, 0, child)) for child in (0, 1))
+    assert page(1, (first, *children)).words == (first, *children)
+
+
+def test_word_refuses_a_confidence_outside_0_to_100() -> None:
+    ocr_word = replace(word(SHA, 1, 0), confidence=99.0)
+    below, above = math.nextafter(0.0, -math.inf), math.nextafter(100.0, math.inf)
+    for confidence in (math.nan, below, above, 101.0):
+        with pytest.raises(ValueError, match="confidence outside 0 to 100"):
+            replace(ocr_word, confidence=confidence)
+    for confidence in (0.0, 100.0, None):
+        assert replace(ocr_word, confidence=confidence).confidence == confidence
+
+
+def test_page_cites_a_file_and_a_page() -> None:
+    for sha, number, message in (("", 1, "names no file"), (SHA, 0, "number below 1")):
+        with pytest.raises(ValueError, match=message):
+            Page(sha, number, 612.0, 792.0, 0, OCR, ())
+    assert Page(SHA, 1, 612.0, 792.0, 0, OCR, ()).number == 1
+
+
+def test_document_cites_a_file() -> None:
+    with pytest.raises(ValueError, match="names no file"):
+        Document("", ())
+    assert Document(SHA, ()).sha256 == SHA
 
 
 def test_document_page_returns_the_page() -> None:
