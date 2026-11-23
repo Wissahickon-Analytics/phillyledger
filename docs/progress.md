@@ -37,15 +37,16 @@ Each entry: step, what changed, why, and the design section updated.
   item leaves the list in section 17.4.
 - **Step 1: a test fails a source folder with no `__init__.py`** (November 22, 2026, S1-B, found
   in the Codex reviews). import-linter does not scan a folder with no `__init__.py`, and Python
-  still imports the modules in it. With `import subprocess` in a new
+  still imports the modules in it. With `import subprocess` and `RUN = subprocess.run` in a new
   `datadesk/core/sneaky/mod.py`, `uv run lint-imports --no-cache` printed `Contracts: 8 kept, 0
   broken.` and `uv run ruff check .` passed. `test_source_folders_are_packages` in
   `tests/test_gates.py` now fails, naming the folder, when a folder under the three
   `packages/*/src` trees holds a `.py` file, directly or below it, and has no `__init__.py`. It
-  first proves its own check on small trees. A first fix used ruff's `INP001`, dropped because
-  ruff printed `All checks passed!` for `core/reports/probe.py` with `#!/usr/bin/env python3`
-  above `import boto3`, and passed `import subprocess` in `core/venv/mod.py`, a folder it excludes
-  by name, with all eight contracts kept. Design section 12.5.
+  first proves its own check on small trees. A first fix used ruff's `INP001`. The build dropped
+  it because ruff passed two modules. For `core/reports/probe.py` with `import boto3` and
+  `SDK = boto3`, ruff reported `INP001`, and with `#!/usr/bin/env python3` as the first line it
+  printed `All checks passed!`. Ruff also passed `import subprocess` in `core/venv/mod.py`, a
+  folder it excludes by name, with all eight contracts kept. Design section 12.5.
 - **Step 1: the pure packages forbid `importlib`** (November 22, 2026, S1-B, found in the Codex
   review). With `from importlib import import_module` and `import_module("boto3")` in
   `datadesk/core/tables/birt.py`, `uv run lint-imports --no-cache` printed `Contracts: 8 kept, 0
