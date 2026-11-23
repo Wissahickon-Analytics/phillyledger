@@ -240,17 +240,19 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   but pytest sets up a package- or session-scoped fixture first, so one that a core test requests
   still runs in the checkout. Probed at S1-D, fixtures of session and package scope found
   `pyproject.toml` in the working directory, and one of module scope did not.
-- **The pure packages can still reach effects the gates do not name** (November 22, 2026, step
-  1, S1-D, found in the Codex review of the stack and the build). Planted one at a time in
-  `datadesk/core/tables/birt.py`, each of these passes every gate: `from io import FileIO`
-  reading a file, `sys.stdout.write("x")`, `uuid.uuid4()`, `write = print` then `write(1)`,
+- **The pure packages can still reach effects the gates do not name** (November 22, 2026, step 1,
+  S1-D, found in the Codex review of the stack and the build). Planted one at a time in
+  `datadesk/core/tables/birt.py`, each of these passes every gate: `from io import FileIO` reading a
+  file, `sys.stdout.write("x")`, `uuid.uuid4()`, `write = print` then `write(1)`,
   `exec("print(1)")`, `sys.modules["os"].getcwd()`, `import posix` with `posix.getcwd()`,
   `import _socket` with `_socket.socket()`, `defaultdict(list)` assigned at module level, and a
-  mutable class attribute. A core test that starts a subprocess, which opens a socket, also
-  passes every gate. The forbidden lists and the purity scan name specific modules and calls,
-  and every review finds more, so naming more modules does not converge. An allow-list of the
-  modules the pure packages may import would close the import forms. That is a new closed list
-  in the design, so it is an open decision for the owner.
+  mutable class attribute. A core test that starts a subprocess, which opens a socket, also passes
+  every gate. The forbidden lists and the purity scan name specific modules and calls, and every
+  review finds more, so naming more modules does not converge. An allow-list of the modules the pure
+  packages may import would close the import forms. That is a new closed list in the design. The
+  owner chose the allow-list on November 23, 2026. It lands as the first pull request of the step 2
+  plan, which pins the list and changes design section 11.1 in the same pull request (`CLAUDE.md`,
+  hard rule 6).
 - **Follow-ups after step 1** (November 22, 2026). The step 1 run found these and did not fix
   them.
   - Nothing tests a gate's own settings. In scratch copies of the S1-D head, each of
@@ -268,12 +270,24 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
     cause.
   - CI does not pin uv. `setup-uv` found no version in `pyproject.toml` and installed the latest,
     uv 0.13.9, where the lock was written with 0.13.6.
-  - Codex reviewed the stack once, at `76aa7250`, before the last fix round. Verifier lanes
-    checked the socket audit hook, the shape test's new annotation and inheritance handling, and
-    `test_source_folders_are_packages`, and Codex did not review them.
+  - Codex reviewed the stack once, at `76aa7250`, before the last fix round. Verifier lanes checked
+    the socket audit hook, the shape test's new annotation and inheritance handling, and
+    `test_source_folders_are_packages`, and Codex did not review them. The owner landed the stack on
+    November 23, 2026 without a second pass.
   - `.claude/skills/codex-review/run.sh` takes the reference repository's path from the parent of
     the checkout. From a worktree under `.claude/worktrees/`, it names a
     `.claude/worktrees/gov-budget-data` that does not exist.
-  - The import contracts, the purity scan and the shape test name specific modules, calls and
-    forms. Appendix C of `docs/plans/step-01.md` lists the limits found, and the allow-list is
-    the owner's open decision in the note above.
+  - The import contracts, the purity scan and the shape test name specific modules, calls and forms.
+    Appendix C of `docs/plans/step-01.md` lists the limits found, and the note above records the
+    owner's choice of an allow-list.
+- **How step 1 landed** (November 23, 2026). The owner told the agent to merge the four pull
+  requests, and they landed in order as squash commits `fa0eb1d` (#1), `fe83e1e` (#6), `db9ccd6`
+  (#8) and `c22c101` (#10). After each squash, `main` had the tree of the head that landed, which is
+  the base the next pull request was built on. So a merge of `main` into the next branch with
+  `-s ours` moved it onto `main` with no force-push and no change to its tree. Each landing checked
+  that the branch was at its verified head, that its patch id was unchanged, and that CI passed on
+  the head that landed. The push run of CI on `c22c101`, run 45096500670, passed on Python 3.12 and
+  3.14. The owner also kept the build's other choices: the byte pin of `ci.yml`,
+  `exclude-newer = "1 week"` and the ruff exclusion of `*.md`. Hard rule 9 in `CLAUDE.md` is
+  unchanged. During step 1, fresh owner agents force-pushed, with a lease, branches that an earlier
+  agent had created, which crosses the rule's letter. Any change to the rule is the owner's to make.
