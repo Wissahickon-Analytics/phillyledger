@@ -509,13 +509,18 @@ Each entry: step, what changed, why, and the design section updated.
   code. Section 3.1 keeps each rule as built, with a pointer to its decision, and the step 5
   plan schedules the five changes with their tests.
   - Decision 13, the reading rule. A reading may restore what extraction lost and nothing else.
-    A prototype of the rule, run outside this repository at `2638173a`, passes all 34 reviewed
-    readings of the old repository and refuses the eight cases the note "What a reviewed reading
-    can still do" and the last Codex reviews recorded. The lexer test that reads `(59.8j` as
-    `(59.8)` keeps passing through the rule's one exception.
+    Section 16.2 states it as five clauses on the shape of the cell's words. A prototype of the
+    rule, run outside this repository at `2638173a`, passes all 34 reviewed readings of the old
+    repository and refuses the cases the note "What a reviewed reading can still do" and the
+    Codex reviews recorded. The lexer test that reads `(59.8j` as `(59.8)` keeps passing, through
+    the one `j` the rule allows. A first form of the rule failed its own verification and its
+    Codex review, and the word shapes replaced it.
   - Decision 14, a raised footnote mark joins the line it sits on.
-  - Decision 15, `N/A` in any case, a U+2010 dash and `#DIV/0!` are value words. No row of VAL
-    section 3.2.1 holds one of them (a search of the table at `2638173a` finds none).
+  - Decision 15, `N/A` in any case and `#DIV/0!` are value words, and U+2010 is a minus glyph
+    that is a dash when it stands alone. The Codex review of this entry found the minus sign:
+    the FY2021 supplemental report prints U+2010 before 2.75 on page 15 and before 435.43% on
+    page 18 (`pdftotext`, rerun). VAL section 3.2.1 pins `N/A` in upper case at row 28 and holds
+    no row with `n/a`, U+2010 or `#DIV/0!` (a search of the table at `2638173a`).
   - Decision 16, the first join shape needs equal sizes and a small gap.
   - Decision 17, a bare digit ends a label as a mark only by its size or by the row schema.
 

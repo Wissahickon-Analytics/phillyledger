@@ -1696,7 +1696,8 @@ def group_lines(page: Page) -> tuple[Line, ...]: ...
     # that does not join the open line opens the next. A line's words sort by x0, lines by top.
 def page_lines(page: Page) -> PageLines: ...
 def has_values(line: Line) -> bool: ...                  # a value word, as lanes_from_values defines it
-    # Decision 15 (section 16) adds value words at step 5: N/A in any case, U+2010, #DIV/0!.
+    # Decision 15 (section 16) adds value words at step 5: N/A in any case, U+2010 alone or as
+    # a minus sign, #DIV/0!.
     # The last word that is not a mark word decides. A mark word holds only *, †, ‡, §, #,
     # a backtick and superscript digits. A value word is N/A, NA, a dash placeholder (-, --,
     # an en dash, an em dash), or a digit with nothing else but , . $ % ( ), minus glyphs and
@@ -1760,8 +1761,8 @@ def split_numeric_runs(word: Word) -> tuple[Word, ...]: ...
     # "%" or ")" that a digit, "(" or "$" follows. A word with one run comes back unchanged, and
     # so does a word that still holds "(cid:", whose ")" ends a font code (VAL-Q05).
 def lex_cell(words: Sequence[Word], col: ColumnSpec, source: SourceKind) -> Cell: ...
-    # Decisions 15 and 16 (section 16) change at step 5 which forms are not applicable or a
-    # dash, and when a leading digit joins a grouped number. As built:
+    # Decisions 15 and 16 (section 16) change at step 5 which forms are not applicable, a dash
+    # or a minus glyph, and when a leading digit joins a grouped number. As built:
     # In order: no words -> Blank; YEAR, CODE and TEXT columns -> Text; one word "N/A" or "NA"
     # -> NotApplicable; one word "-", "--", en or em dash, alone or after one "$" word ("$ -",
     # RTT-Q39) -> Dash(col.dash), so one word that holds a space, such as "$ -", is neither.
@@ -4663,9 +4664,9 @@ at the decision from each function it touches.
 | 11 | Six captions where the kind of number is a judgment | As filed in section 2.2. The owner confirmed that Budget in Brief "Current Estimate" and collections "Current Estimates" are projections. |
 | 12 | Which 55 inputs does the probe clause of step 2 mean? | The 55 of VAL section 3.2.1. The original inputs are in no file. The owner decided on November 23, 2026, with the words "[u]se your list, but make row 4 unreadable." |
 | 13 | What may a reviewed reading change? | It may restore a digit, a decimal point or a sign that extraction lost, and nothing else. It may not take a digit from a label word, drop or move a printed point, drop a printed sign, or join two printed numbers. Section 16.2 states the rule. `transliteration_ok` keeps its signature. Built at step 5, with `load_records`. |
-| 14 | A raised footnote mark that falls outside its row | `group_lines` lets a small word join the line whose vertical span holds its bottom edge. Small means under 0.7 of the line's median word height, the ratio of the lexer's raised-digit rule. Built at step 5 and proven on a word fixture of page 2 of the FY2026 Q4 positions report, where the raised `(1)` of "Human Services (1)" opens a line of its own today. |
-| 15 | Which printed forms are a value with no number? | `N/A` and `NA` in any case are not applicable (`n/a` on page 19 of the FY2009 Budget in Brief). A cell that holds only U+2010 is a dash (page 17 of the FY2021 supplemental report), and U+2010 is not a minus sign until a page prints it as one. `#DIV/0!` is a value word and lexes as `NotApplicable` with its text kept (page 1 of the July 2020 School report). No row of VAL section 3.2.1 holds one of these forms. Built at step 5. |
-| 16 | When may a leading digit join a grouped number? | Only when the two words have the same size and the gap between them is under a limit. Step 5 sizes the limit on word fixtures. It must keep every row of VAL section 3.2.1 as documented, and it must leave `6` and `30,223` as two cells, which page 1 of the FY2006 Budget in Brief prints 51.55 points apart. |
+| 14 | A raised footnote mark that falls outside its row | `group_lines` lets a small word join the line whose vertical span holds its bottom edge. Small means under 0.7 of the line's median word height, the ratio of the lexer's raised-digit rule. Built at step 5 and proven on a word fixture of the page that holds "Human Services (1)", where the raised `(1)` opens a line of its own today. That is page 2 of the held FY2026 Q4 positions excerpt. The old repository's splitter audit puts positions on pages 32 to 34 of the publisher's 92-page report, which makes it page 33 of the publisher's file. |
+| 15 | Which printed forms are a value with no number? | `N/A` and `NA` in any case are not applicable (`n/a` on page 19 of the FY2009 Budget in Brief). U+2010 is a minus glyph, and alone in a cell it is a dash. The FY2021 supplemental report prints both: `‐2.75` on page 15, `‐435.43%` on page 18, and a lone U+2010 on page 17. `#DIV/0!` is a value word and lexes as `NotApplicable` with its text kept (page 1 of the July 2020 School report). VAL section 3.2.1 pins `N/A` in upper case at row 28 and holds no row with `n/a`, U+2010 or `#DIV/0!`, so no acceptance row changes. Built at step 5. |
+| 16 | When may a leading digit join a grouped number? | Only when the two words have the same size and the gap between them is under a limit. Step 5 sizes the limit on word fixtures. It must keep every row of VAL section 3.2.1 as documented, and it must leave `6` and `30,223` as two cells, which page 1 of the held FY2006 obligation-history excerpt prints 51.55 points apart. |
 | 17 | Is a bare digit at the end of a label a footnote mark? | Only when it is small and raised, or when the table's row schema says its pages use digit footnotes ("Sheriff 2", ENT-Q07). Otherwise it stays in the label, so the project label that ends in "PHASE 2" on page 107 of the FY2023 supplemental report keeps its 2. Built at step 5 with the row schemas. |
 
 ### 16.1 Supplemental reports the City posts
@@ -4690,56 +4691,95 @@ before the series was thought to start. FY2007 to FY2009 were not found.
 
 ### 16.2 The reading rule (decision 13)
 
-`transliteration_ok(seen, reading)` is true when all four clauses hold. `seen` is the cell's text
-less the mark words that end an `Amount`, which is what `apply_reading` passes today.
+`transliteration_ok(seen, reading)` is true when all five clauses hold. `seen` is the cell's text
+less its mark words, which `apply_reading` removes today for an `Amount`. Its words are the
+pieces between single spaces. A digit glyph is an ASCII digit or a pinned confusable glyph, which
+reads as its digit. The minus glyphs are the four of section 3.1 and U+2010 (decision 15).
 
-1. The digits of `reading`, in order, equal the digits of `seen`, where a pinned confusable
-   glyph reads as its digit. This is the rule of section 3.1, unchanged.
-2. Every word of `seen` is number-like. It holds only ASCII digits, the pinned confusable
-   glyphs, the glyphs `. , : ( ) $ %`, the four minus glyphs and the mark glyphs. One exception
-   follows VAL-Q36: a word that opens with `(` and holds no `)` may end in one other glyph,
-   which stands for the closing parenthesis.
-3. Where `seen` prints one point between two digits, the point of `reading` follows the same
-   number of digits. Where `seen` prints two or more such points, no reading passes. A reading
-   may place a point where `seen` prints none.
-4. Where `seen` prints a sign, a leading minus glyph or parentheses, `reading` is negative. A
-   reading may add a sign where `seen` prints none.
+1. Digits. The digits of `reading`, in order, equal the digit glyphs of `seen`. This is the rule
+   of section 3.1, unchanged, with its refusal of a font code and of a decimal digit that is
+   not ASCII.
+2. Word shape. A number word is, in this order: an optional `(`; an optional `$` and an optional
+   minus glyph, in either order; a body made of digit glyphs and the glyphs `.`, `,` and `:`,
+   with at least one ASCII digit; an optional `%`; an optional `)`; and any number of mark
+   glyphs. A word that opens with `(` may hold a `j` in the place of the `)` (VAL-Q36,
+   `(59.8j`). Every word of `seen` is a number word, with two exceptions: the first word may be
+   `$` alone, and a word after the last number word may be `%` alone or made of mark glyphs.
+3. One number. `seen` holds one number word or two. Two stand for one number whose decimal point
+   was lost at the break between them (`(29 1)`, `67: 3`, VAL-Q35). The first then ends with its
+   body. The second is a body of digit glyphs only, with an optional `%`, an optional `)` and
+   mark glyphs after it.
+4. The point. `seen` prints a point at each `.` of a body and at the break between two number
+   words. Where it prints one, the point of `reading` follows the same number of digits, and a
+   reading with no point counts as having it after its last digit. Where `seen` prints two or
+   more, no reading passes. Where it prints none, a reading may place a point anywhere.
+5. The sign. `seen` prints a sign when a number word holds a minus glyph, a `(`, a `)` or the
+   `j` that stands for one. Then `reading` reads as a negative number. Where `seen` prints no
+   sign, a reading may add one.
 
 A null reading needs none of these. It accepts the cell as unreadable.
 
-| `seen` | `reading` | Section 3.1 today | This rule | Clause |
+| `seen` | `reading` | Section 3.1 today | This rule | Clause that fails |
 |---|---|---|---|---|
 | `408,491,218 NET PROFITS TAX` | `4084912180` | passes | fails | 2 |
 | `TOTAL TAX REVENUE *` | `0` | passes | fails | 2 |
 | `#DIV/0!` | `0.0%` | passes | fails | 2 |
 | `29l8` | `29.8` | passes | fails | 2 |
 | `10( cid:28)` | `10028` | passes | fails | 2 |
+| `Bob` | `808` | passes | fails | 2 |
+| `5-3` | `53` | passes | fails | 2 |
+| `408,491,218 1,234` | `4084912181234` | passes | fails | 3 |
 | `110,626,142.01 92.31` | `1106261420192.31` | passes | fails | 3 |
-| `29.18` | `291.8` | passes | fails | 3 |
-| `(29.1)` | `29.1` | passes | fails | 4 |
-| `2918` | `291.8` | passes | passes | |
-| `1o4.o` | `104.0` | passes | passes | |
-| `(29 1)` | `(29.1)` | passes | passes | |
-| `67: 3` | `67.3` | passes | passes | |
-| `(59.8j` | `(59.8)` | passes | passes | |
+| `29.18` | `291.8` | passes | fails | 4 |
+| `29.` | `2.9` | passes | fails | 4 |
+| `(29.1)` | `29.1` | passes | fails | 5 |
+| `$-5` | `5` | passes | fails | 5 |
+| `6 30,223` | `630223` | passes | fails | 3 |
+| `B $23,014` | `823014` | passes | fails | 2 |
+| `.5` | `5` | passes | fails | 4 |
+| `(29.8l` | `(29.8)` | passes | fails | 2 |
+| `‐2.75` | `2.75` | passes | fails | 5 |
+| `2918` | `291.8` | passes | passes |  |
+| `1o4.o` | `104.0` | passes | passes |  |
+| `(29 1)` | `(29.1)` | passes | passes |  |
+| `67: 3` | `67.3` | passes | passes |  |
+| `69,2` | `69.2` | passes | passes |  |
+| `(59.8j` | `(59.8)` | passes | passes |  |
+| `$ 2.8` | `2.8` | passes | passes |  |
+| `‐435.43%` | `-435.43%` | passes | passes |  |
 | `65.8` | `85.8` | fails | fails | 1 |
 | `77,500,000` | `7,500,000` | fails | fails | 1 |
 
-The rule was run on November 23, 2026, against the 34 reviewed readings of the old repository
-(`reviewed_fixed_decimal_cells` in `config/layouts/qcmr-cash.yml` at `22f355da`), all of them OCR
-readings of the cash report. All 34 pass. Without the colon in clause 2, `67: 3` read as 67.3
-fails, and it is a right reading. The table above was run the same day, with a prototype of the
-rule outside this repository.
+The rule was run on November 23, 2026, as a prototype outside this repository, with the kit at
+`2638173a` for clause 1 and for the "today" column. It passes all 34 reviewed readings of the old
+repository (`reviewed_fixed_decimal_cells` in `config/layouts/qcmr-cash.yml` at `22f355da`), all
+of them OCR readings of the cash report. Without the colon in clause 2, `67: 3` read as 67.3
+fails, and it is a right reading. The rows above and 51 more cases gave the results the rule
+states. A first form of the rule asked only that each word hold permitted glyphs. Its own
+verification refused it, because it passed `Bob` read as `808` and joined `408,491,218 1,234`.
 
-Three things the run could not settle, which the step 5 plan carries.
+The step 5 plan carries what the run could not settle.
 
 - None of the 34 readings uses a confusable letter. The pinned list rests on the examples of
   section 3.1 and on VAL-Q36, not on a reviewed reading. It stays as it is, and `l` or `I` for 1
   joins it only when a page shows the need (hard rule 6 of `CLAUDE.md`).
 - The rule does not ask whether the page is a text layer or OCR. A scanned report can carry OCR
   errors in its own text layer, so the source alone does not say whether a confusable is real.
-- A cell that the cut gave label words, such as the first two rows of the table, takes only a
-  null reading under this rule. The fix for such a cell is the cut, not a reading.
+- A cell that the cut gave a label word takes only a null reading. The first rows of the table
+  are such cells, and so is `B $23,014`, which the last word of "Series 2008 A & B" on page 12
+  of the FY2010 Budget in Brief would make. The fix for such a cell is the cut, not a reading.
+- Two number words read only with the point at their break. `12 345` reads as `12.345` and not
+  as `12345`. Whether the two words are one cell is the cut's question. On the held FY2006
+  excerpt `6` and `30,223` are two columns, and the rule refuses to join them only because the
+  second holds a comma.
+- An `Unreadable` cell keeps a raised footnote digit in its text, because `Unreadable` has no
+  marks. `2918` with a raised `1` then reads only as `2918.1`, where the page prints 291.8 and a
+  footnote. Step 5 either gives `apply_reading` the marks the lexer found for an `Unreadable`
+  cell, or keeps the mark out at the cut. The loader of step 5 has the same need, since it sees
+  the record's text and no geometry (the notes "What a reviewed reading can still do" and "The
+  loader's digit check and a footnoted reading disagree" of `docs/progress.md`).
+- A cell that prints `.5` takes only a null reading. A reading of `0.5` adds a digit the cell
+  does not print, and row 14 of VAL section 3.2.1 keeps `.5` unreadable.
 
 ## 17. Known gaps
 
