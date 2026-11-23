@@ -82,6 +82,8 @@ Step 1 creates these. Keep this list true as tooling changes.
 - `uv run ty check`
 - `uv run lint-imports`
 - `uv run prek run --all-files`
+- `just check`, `just test`, `just fix` and `just gates` wrap the commands above (`Justfile`).
+  `just gates` runs the six gates that CI runs, and a test keeps the two lists equal.
 
 ## Hard rules
 
