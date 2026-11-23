@@ -58,8 +58,10 @@ The build added three more after the audit and the Codex review, and the owner h
 them yet. S1-B adds `importlib` to the contracts that guard `checkedtables` and `datadesk.core`,
 and a sentence on `test_source_folders_are_packages` to section 12.5. With them, S1-D also names
 `__import__` in the purity row of section 11.1. S1-C makes the shape test of section 11.4 also
-read a function that a public name re-exports from a private module, and the `__init__` that a
-public class writes itself.
+read a function that a public name re-exports from a private module, the methods and the
+`__init__` that a public class writes or inherits from a base class in the package, and a `bool`
+quoted inside `Optional[...]`. It reads past a name imported only under `TYPE_CHECKING` instead
+of raising.
 
 ## Program checklist
 
@@ -365,14 +367,18 @@ tomllib.loads("")
 
 - [ ] Write `public_functions(module)` in `packages/checkedtables/tests/test_library_shape.py`. It takes a package or a plain module. For a package it also imports every submodule that `pkgutil.walk_packages` finds, and it skips a dotted name when any part starts with `_`.
 - [ ] Make `public_functions` yield every public function, and every public method of every public class, class methods and static methods included. A name is public when it does not start with `_`. A function or class is public when a public name in a public module of the scanned package reaches it and its `__module__` is the package's name or a module under it, private modules included, so a function that `checkedtables/__init__.py` imports from a private module counts. Yield each object once. For a family helper, which is a plain module, the scanned root is that module, so only what the helper defines counts. Found in the build.
-- [ ] For a public class that is not a dataclass and defines `__init__` itself, make `public_functions` also yield that constructor, bound so `self` does not count. Leave a dataclass's generated constructor out, because `test_kit_dataclass_fields_are_pinned` and `test_bool_fields_are_page_facts_only` pin its fields, and the design allows `Word.bold` and `Column.printed`. Found in the build.
+- [ ] Make a public class's methods include those it inherits from a base class in the scanned package, private or not. Read each name once, as the class resolves it, so an override is read and the method it replaces is not. A base outside the package, such as `object`, `Enum`, `Protocol` or `Exception`, adds nothing. The test read `vars(cls)` only, so `class Reader(_Base): pass` passed with `def read(self, strict: bool)` on a private `_Base`. Found in the Codex review.
+- [ ] For a public class that is not a dataclass and whose `__init__` comes from the class itself or from a base class in the scanned package, make `public_functions` also yield that constructor, bound so `self` does not count. Leave a dataclass's generated constructor out, because `test_kit_dataclass_fields_are_pinned` and `test_bool_fields_are_page_facts_only` pin its fields, and the design allows `Word.bold` and `Column.printed`. Found in the build.
 - [ ] Type the return value of `public_functions` as `Iterator[types.FunctionType | types.MethodType]`. With `Callable[..., object]`, `uv run ty check` rejects `fn.__qualname__` (Appendix A). A method comes back bound, as a `types.MethodType`, so `inspect.signature` leaves out its first parameter and the test body stays as the design gives it. A static method comes back as a plain function. Once unwrapped, a static method and an instance method are both `types.FunctionType`, so that type alone cannot say which first parameter to skip. Found in the build.
-- [ ] Write `bool_parameters(fn)` in the same file. It returns the names of the parameters whose annotation is `bool` or is a union with `bool` as a member, so `bool | None` and `Optional[bool]` count. It reads string annotations through `inspect.signature(fn, eval_str=True)`. A `bool` inside another type, such as `tuple[bool, ...]`, does not count.
+- [ ] Write `bool_parameters(fn)` in the same file. It returns the names of the parameters whose annotation is `bool` or is a union with `bool` as a member, so `bool | None` and `Optional[bool]` count. A `bool` inside another type, such as `tuple[bool, ...]`, does not count.
+- [ ] Make `bool_parameters` evaluate each parameter's annotation, and each member of a union, in the function's globals and the builtins, so a quoted annotation and a quoted member such as `Optional["bool"]` count. A name that does not resolve at run time, such as one imported only under `TYPE_CHECKING`, evaluates to a stand-in type, so the function raises nothing and still names a `bool` beside it. Never read the return type. The first version used `inspect.signature(fn, eval_str=True)`, which passed `Optional["bool"]` and raised `NameError` on `def valid() -> "Decimal"`. Found in the Codex review.
 - [ ] Write `test_no_bool_parameters_and_at_most_four` as design section 11.4 gives it, with `bool_parameters(fn)` as the `bool` assertion. For a method, do not count the bound first parameter.
 - [ ] Run the same test over the four family helpers, `qcmr_common`, `collections_common`, `bib_common` and `supp_common` in `datadesk.core.tables`. Design section 11.4 says these modules run the first test too. Name them in a tuple `FAMILY_HELPERS`.
 - [ ] Change the `bool` assertion in the code block of design section 11.4 to match `bool_parameters`, and record the change under Deviations in `docs/progress.md`. The design's predicate passes `flag: bool | None`, which `CLAUDE.md` hard rule 5 bans.
 - [ ] Write `test_bool_parameters_reads_each_spelling`. It checks `flag: bool`, `flag: bool | None`, `flag: Optional[bool]`, a keyword-only `flag: bool = False`, and the first two again as string annotations. It also checks that `flags: tuple[bool, ...]` and `count: int | None` give no name.
+- [ ] Add cases to `test_bool_parameters_reads_each_spelling`. `flag: Optional["bool"]` gives `flag`. With `_typeshed` names imported only under `TYPE_CHECKING`, `flag: bool` beside `row: "DataclassInstance"`, `flag: "bool | DataclassInstance"`, `flag: "bool | _typeshed.DataclassInstance"` and `flag: "bool | SupportsRead[str]"` each give `flag`, and a function with no parameters that returns `"DataclassInstance"` gives no name. Commit the cases failing, before the change to `bool_parameters`. Found in the Codex review.
 - [ ] Write `test_public_functions_reaches_reexports_and_constructors`, a fast in-process test whose inputs the test builds as modules in memory. A public name re-exports `parse(flag: bool)` from a private module, under two names, and a public class `Reader` defines `__init__(self, strict: bool)`. The test asserts that `public_functions` yields exactly `parse`, once, and `Reader.__init__` without `self`. A dataclass with a `bool | None` field and a private helper that no public name reaches give nothing. Commit it failing, before the change to `public_functions`. Found in the build.
+- [ ] Add cases to `test_public_functions_reaches_reexports_and_constructors`. A public class `Child` inherits `__init__(self, source: bool)` and `read(self, lenient: bool)` from a private `_Base` in the package, overrides `_Base.close(self, force: bool)` with `close(self, force: bool, quiet: bool = False)`, and inherits `write(self, verbose: bool)` from a base outside the package. The test asserts the parameter names `["flag"]`, `["strict"]`, `["source"]`, `["lenient"]` and `["force", "quiet"]`, in that order. Commit the cases failing, before the change to `public_functions`. Found in the Codex review.
 - [ ] Write `kit_dataclasses()`, `field_names(cls)` and `FIELD_SNAPSHOT = {}`, then `test_kit_dataclass_fields_are_pinned` as the design gives it.
 - [ ] Write `bool_fields(classes)` and `test_bool_fields_are_page_facts_only`. At this step the expected value is `set()`. The design's two members arrive in the pull requests that create `Word` and `Column`.
 - [ ] Write `source_lines(package)`, `public_names(package)` and `report_budget()`. `source_lines` counts the lines of the package's `.py` files that are neither blank nor comments. `public_names` returns the names in the package's namespace that do not start with `_` and are not modules.
@@ -624,11 +630,14 @@ These stay unproven until the build.
   pass every gate. A list of loaders cannot be complete, so the contracts name none of them.
   Found in the build.
 - **The shape test reads plain signatures (S1-C).** It passes a parameter annotated
-  `Annotated[bool, ...]` or with a `type` alias of `bool`, and a function that `functools.cache`
-  wraps, because the wrapper is not a plain function. It counts `*args` and `**kwargs` as one
-  parameter each. Planted one at a time in scratch copies of the S1-C head, each of the four
-  passes the shape test. These are known limits. Review catches them, and the test does not chase
-  them.
+  `Annotated[bool, ...]`, `Literal[True]`, a `type` alias of `bool` or a type parameter bound to
+  `bool`. It passes a function that `functools.cache` wraps, because the wrapper is not a plain
+  function, and one that any decorator without `functools.wraps` replaces with
+  `(*args, **kwargs)`. It counts `*args` and `**kwargs` as one parameter each. It does not read a
+  `NamedTuple` field, a constructor written as `__new__`, a method of a nested class, a property
+  setter, `__call__`, or the `__init__` that a dataclass with `init=False` writes itself. Planted
+  one at a time in scratch copies of the S1-C head, on Python 3.12 and 3.14, each of these passes
+  the shape test. These are known limits. Review catches them, and the test does not chase them.
 - **`../gov-budget-data` already has six uncommitted entries (every PR).** Audit 7 of
   `verify-step` expects an empty status and uses a plain `git status`, which can rewrite the
   reference's index. Lanes run this plan's snapshot commands in its place. The skill itself is
