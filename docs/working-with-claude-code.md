@@ -37,6 +37,17 @@ each plan and each pull request from outside. The workflow and principles come f
    ```
    The `codex-review` skill runs `codex exec --profile phillyledger-review` in a read-only
    sandbox. Without that file it uses Codex's default model and says so.
+6. Install GitHub's stack extension, which owners use to build a step's pull requests as one
+   stack (`docs/plans/README.md`):
+   ```text
+   gh extension install github/gh-stack
+   ```
+7. Set this clone's commit email to an address that is on your GitHub account, so that commits
+   made here show under your account and not as an unlinked name:
+   ```text
+   git config --local user.email <an email on your GitHub account>
+   ```
+   Agents never change the git author name or email (hard rule 10 in `CLAUDE.md`).
 
 ## Each build step
 
@@ -79,7 +90,9 @@ For a design question the plan leaves open, or a pull request that feels wrong:
 ```
 
 Land the pull requests yourself, or tell the session to merge them once they are verified (hard
-rule 9 in `CLAUDE.md`). Then update the step's row in `docs/progress.md` if the run did not.
+rule 9 in `CLAUDE.md`). A stack lands from its top pull request, by squash. The repository's
+squash default is the pull request title with a blank body, which keeps every line of the branch
+commits out of `main`. Then update the step's row in `docs/progress.md` if the run did not.
 
 ## Known gaps in Claude Code
 

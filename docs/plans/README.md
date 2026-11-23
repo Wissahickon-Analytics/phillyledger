@@ -7,6 +7,29 @@ is verified. Every clause of the step's check is assigned to exactly one pull re
 A plan is written, reviewed by the owner, and only then built. When building shows the plan was
 wrong, the plan file is updated in the same pull request as the change.
 
+## Stacks
+
+From step 3 on, the pull requests of a step that build on one another are one GitHub stack
+(GitHub's stacked pull requests). The plan names the stack's branches in order, bottom first.
+
+- Owners create and update the branches with the `gh stack` extension of the GitHub CLI
+  (`gh stack init`, `gh stack add`, `gh stack submit`). `gh stack link` links pull requests
+  that already exist.
+- A branch takes its parent's new head by a rebase (`gh stack rebase`), never by a merge
+  commit, and is pushed with a lease (`gh stack push`). Hard rule 9 of `CLAUDE.md` allows that
+  force-push inside the step's own stack and nowhere else.
+- A rebase gives a branch new commit SHAs. Its verdict carries over when the pull request's
+  diff against its base is unchanged, shown by an equal `git patch-id` of
+  `git diff <base>...<head>` before and after, and `CI` passes at the new head.
+- The owner lands the stack from its top pull request by squash. Each layer lands as one
+  commit, in order.
+
+Step 2 was built before this rule, and shows why it exists. Hard rule 9 then forbade a
+force-push by an agent that did not create the branch, so each fix round merged the parent
+branch into its child. The five branches ended with eleven merge commits, and most of those
+merges conflicted in `docs/progress.md`. GitHub linked the five pull requests as a stack and
+reported four of them as not rebaseable, so the stack could land only as a whole.
+
 ## How much verification a pull request gets
 
 A full-track plan follows the Multi-phase plan playbook of `/pstack:poteto-mode`. Its format has
