@@ -3713,13 +3713,16 @@ folder, so a module-scoped fixture never sees the checkout.
 
 The pure packages import from outside themselves only by name. `tests/test_purity.py` pins, for
 each pure package, every `module.name` pair that it imports, and the test fails when the pairs in
-the source differ from the pin in either direction. An import statement that binds an outside
-module, a star import, and a pinned name that is itself a module all fail, so pure code never
-holds a module object from outside. `checkedtables` counts its own modules as inside.
-`datadesk.core` counts its own modules and `checkedtables` as inside. A relative import is
-resolved to its full module name first and then judged the same way. The modules each package
-imports from are a closed list, given below. A pull request that imports from a module outside
-the list changes the list and the pin together.
+the source differ from the pin in either direction. The scan reads each file as the importer
+does, coding cookie included. An import statement that binds an outside module, a star import
+from outside, and a pinned name that is itself a module all fail, so pure code never holds a
+module object from outside. A star import from outside fails whatever the pin holds.
+`checkedtables` counts its own modules as inside. `datadesk.core` counts its own modules and
+`checkedtables` as inside. A relative import is resolved to its full module name first and then
+judged the same way. A name taken from an outside module counts as inside when its full name is
+at or under an inside name, as `from datadesk import core` is. The modules each package imports
+from are a closed list, given below. A pull request that imports from a module outside the list
+changes the list and the pin together.
 
 | Package | Outside modules it imports from |
 |---|---|
