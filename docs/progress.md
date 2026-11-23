@@ -374,7 +374,8 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   runs with another profile. Hypothesis 6.170.15 still writes `.hypothesis/constants` under the
   working directory it was imported in, and its pytest plugin starts the writes during
   collection, so `pytest_configure` points it at a temporary folder with
-  `set_hypothesis_home_dir` and `pytest_unconfigure` removes the folder.
+  `set_hypothesis_home_dir` and `pytest_unconfigure` removes the folder. When the folder could
+  not be made, teardown has nothing to remove and leaves the first error to show.
   `test_hypothesis_writes_nothing_in_the_workspace` in `tests/test_gates.py` runs a property test
   in a workspace copy and fails when a `.hypothesis` folder appears there.
 - **Docstrings put `refs` past its estimate** (November 23, 2026, step 2, S2-B). The kit size
