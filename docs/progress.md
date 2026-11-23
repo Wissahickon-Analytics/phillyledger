@@ -1232,7 +1232,15 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
     at confidence `99.21337127685547` with no bold and no size. By Codex's account, FY2007 Q4
     cash carries that word. A lexer that rounds such a word in the one-decimal column to `6.0`
     fails that test, and the digits property through its new example `5.6`. At `5a443450` every
-    test passed under the percent and the style-free lexers.
+    test passed under the percent and the style-free lexers. The Codex review at `e2d91c9d`
+    found two more, and the second fix round closes them.
+    `test_a_bare_percent_above_one_hundred_is_read` reads a bare `116.17` in a two-decimal
+    percent column (SUPOP-Q12), as page 86 of the FY2023 supplemental report prints it. A lexer
+    that returns `Unreadable` above 100 in such a column fails it.
+    `test_an_ocr_word_under_the_confidence_floor_keeps_its_decimals` reads `65.8` in the
+    one-decimal column from an OCR word with no size and the confidence `60.890262603759766`,
+    under the floor of 95 that assembly applies. A lexer that rounds such a word to `66.0`
+    fails it. At `e2d91c9d` every test passed under both lexers.
   - `transliteration_ok` counts a footnote digit, because it sees text only. The Codex review of
     S2-D at `4fa19584` found it (finding 2). At `73d428e2`, `transliteration_ok("2.8 1*", "2.8")`
     is false and `transliteration_ok("2.8 1*", "2.81")` is true. `apply_reading` removes the mark
@@ -1274,7 +1282,16 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
     `test_a_reviewed_amount_names_the_record_that_was_applied` applies the record `cash-fy07-q4`
     to the OCR `Amount` `65.8`, with the reading `65.8` and with none. With `apply_reading`
     patched in memory to write `r1` only when its input cell is an `Amount`, that test fails. At
-    `5a443450` every test passed under that patch.
+    `5a443450` every test passed under that patch. The Codex review at `e2d91c9d` found that the
+    test read `65.8` as a person's reading of FY2007 Q4 cash, where page 1 prints `85.8` and
+    `65.8` is the OCR error of QCASH-Q22. The second fix round gives it the made-up OCR
+    `Amount` `291.8` and the record `second-record`, cites no report and keeps every assertion,
+    and the same patch still fails it. That review also found that no test asked `reading_for`
+    to pick a record that is not the first.
+    `test_a_cell_takes_the_record_boxed_on_it_and_not_the_first_record` boxes `29.18` on the
+    left and `291.8` on the right of two OCR cells that print `2918`, and each cell gets its own
+    record's value and id. With `reading_for` patched in memory to return `readings[0]`, that
+    test fails. At `e2d91c9d` every test passed under that patch.
   - The signed-value property of `test_records.py` compares the value and the exponent, which are
     equal for `Decimal("-0.0")` and `Decimal("0.0")`. The Codex review of S2-E at `73d428e2` found
     it (finding 3), with an in-memory mutant that dropped the sign of a reviewed zero and left all
