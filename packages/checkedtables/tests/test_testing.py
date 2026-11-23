@@ -81,6 +81,17 @@ def test_double_asterisks_inside_a_word_open_and_close_nothing() -> None:
     assert [(word.text, word.bold) for word in page.words] == [("**ab**cd", False), ("ef", False)]
 
 
+def test_a_word_of_only_asterisks_stays_in_the_text() -> None:
+    page = page_from_text("Total ** *** **** 12", SHA, 1)
+    assert [(word.text, word.bold) for word in page.words] == [
+        ("Total", False),
+        ("**", False),
+        ("***", False),
+        ("****", False),
+        ("12", False),
+    ]
+
+
 def test_ocr_block_has_no_style() -> None:
     page = page_from_text("#ocr\n**Total** 1,234", SHA, 1)
     assert page.source.kind is SourceKind.OCR
