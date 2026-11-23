@@ -1,13 +1,21 @@
 import ast
 import importlib.util
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from pathlib import Path
+from types import ModuleType
 
 PURE_PACKAGES = ("checkedtables", "datadesk.core")
+PURE_IMPORTS: dict[str, tuple[str, ...]] = {
+    "checkedtables": (),
+    "datadesk.core": (),
+}
+INSIDE = {
+    "checkedtables": ("checkedtables",),
+    "datadesk.core": ("datadesk.core", "checkedtables"),
+}
 BANNED_CALLS = frozenset({"open", "print", "input", "__import__"})
 BANNED_METHOD_CALLS = frozenset({"now", "today"})
 BANNED_READS_ON = frozenset({"os", "time", "builtins"})
-BANNED_IMPORTS = frozenset({"random", "builtins"})
 BANNED_NAMES = frozenset({"random"})
 MUTABLE_DISPLAYS = (ast.List, ast.Dict, ast.Set, ast.ListComp, ast.DictComp, ast.SetComp)
 MUTABLE_CONSTRUCTORS = frozenset({"list", "dict", "set", "bytearray"})
@@ -72,15 +80,68 @@ ALLOWED_FORMS = {
 }
 
 
-def package_sources(name: str) -> list[Path]:
+def package_sources(name: str) -> list[tuple[str, Path]]:
     spec = importlib.util.find_spec(name)
     assert spec is not None and spec.submodule_search_locations, name
     return sorted(
-        path for folder in spec.submodule_search_locations for path in Path(folder).rglob("*.py")
+        (".".join((name, *path.relative_to(folder).with_suffix("").parts)), path)
+        for folder in map(Path, spec.submodule_search_locations)
+        for path in folder.rglob("*.py")
     )
 
 
-def effect(node: ast.expr | ast.stmt) -> str | None:
+def pure_package(module: str) -> str:
+    (package,) = (name for name in PURE_PACKAGES if is_at_or_under(module, name))
+    return package
+
+
+def is_at_or_under(name: str, root: str) -> bool:
+    return name == root or name.startswith(f"{root}.")
+
+
+def is_inside(name: str, module: str) -> bool:
+    return any(is_at_or_under(name, root) for root in INSIDE[pure_package(module)])
+
+
+def imported_module(node: ast.ImportFrom, module: str) -> str:
+    relative = "." * node.level + (node.module or "")
+    return importlib.util.resolve_name(relative, module.rpartition(".")[0])
+
+
+def bound_module(alias: ast.alias) -> str:
+    return alias.name if alias.asname else alias.name.partition(".")[0]
+
+
+def outside_imports(tree: ast.Module, module: str) -> list[tuple[int, str]]:
+    sources = (
+        (node, imported_module(node, module))
+        for node in ast.walk(tree)
+        if isinstance(node, ast.ImportFrom)
+    )
+    return [
+        (node.lineno, f"{source}.{alias.name}")
+        for node, source in sources
+        if not is_inside(source, module)
+        for alias in node.names
+        if alias.name != "*"
+    ]
+
+
+def module_valued(pairs: Iterable[str]) -> list[str]:
+    found = []
+    for pair in pairs:
+        owner, _, name = pair.rpartition(".")
+        try:
+            value = getattr(importlib.import_module(owner), name)
+        except (ImportError, AttributeError):
+            found.append(pair)
+        else:
+            if isinstance(value, ModuleType):
+                found.append(pair)
+    return found
+
+
+def effect(node: ast.expr | ast.stmt, module: str) -> str | None:
     match node:
         case ast.Call(func=ast.Name(id=name)) if name in BANNED_CALLS:
             return f"{name}()"
@@ -91,10 +152,12 @@ def effect(node: ast.expr | ast.stmt) -> str | None:
         case ast.Name(id=name) if name in BANNED_NAMES:
             return name
         case ast.Import(names=aliases):
-            banned = ", ".join(alias.name for alias in aliases if alias.name in BANNED_IMPORTS)
-            return f"import {banned}" if banned else None
-        case ast.ImportFrom(module=module) if module in BANNED_IMPORTS:
-            return f"from {module} import"
+            names = (alias.name for alias in aliases if not is_inside(bound_module(alias), module))
+            outside = ", ".join(names)
+            return f"import {outside}" if outside else None
+        case ast.ImportFrom(names=[ast.alias(name="*")]):
+            source = imported_module(node, module)
+            return None if is_inside(source, module) else f"from {source} import *"
     return None
 
 
@@ -114,15 +177,21 @@ def module_scope(node: ast.AST) -> Iterator[ast.AST]:
             yield from module_scope(child)
 
 
-def impurities(tree: ast.Module) -> list[tuple[int, str]]:
+def impurities(tree: ast.Module, module: str) -> list[tuple[int, str]]:
     nodes = (node for node in ast.walk(tree) if isinstance(node, ast.expr | ast.stmt))
-    effects = [(node.lineno, found) for node in nodes if (found := effect(node))]
+    effects = [(node.lineno, found) for node in nodes if (found := effect(node, module))]
+    pinned = PURE_IMPORTS[pure_package(module)]
+    unpinned = [
+        (line, "from {} import {}".format(*pair.rsplit(".", 1)))
+        for line, pair in outside_imports(tree, module)
+        if pair not in pinned
+    ]
     state = [
         (statement.lineno, "mutable module state")
         for statement in module_scope(tree)
         if isinstance(statement, ast.Assign | ast.AnnAssign) and is_mutable(statement.value)
     ]
-    return sorted(effects + state)
+    return sorted(effects + unpinned + state)
 
 
 def test_pure_packages_have_no_effects() -> None:
