@@ -40,31 +40,31 @@ can run. The line grouping property is C1a, and the two lexer properties are C1b
 |---|---|---|---|
 | C1a | Hypothesis suites pass, line grouping | S2-C | `test_every_word_lands_in_exactly_one_line` |
 | C1b | Hypothesis suites pass, lexer | S2-D | `test_lexer_round_trip` and `test_amount_digits_are_the_digits_of_its_words` |
-| C2 | The 55 probe inputs of VAL section 3.2 give the documented new results | S2-D, once the owner decides which 55 | `test_val_probe_inputs_give_documented_results` and `test_val_probe_table_is_the_dossier_table` |
+| C2 | The 55 probe inputs of VAL section 3.2 give the documented new results | S2-D | `test_val_probe_inputs_give_documented_results` and `test_val_probe_table_is_the_dossier_table` |
 | C3 | `transliteration_ok` refuses "65.8" to "85.8" and "77,500,000" to "7,500,000" | S2-D | `test_transliteration_refuses_a_digit_swap` |
 
 S2-A, S2-B and S2-E own no clause. S2-A delivers the owner's decision to pin the imports of the
 pure packages (`docs/progress.md`, "The pure packages can still reach effects the gates do not
 name"). S2-B and S2-E build modules that the step lists and the check does not name.
 
-Clause C2 is open, and this plan cannot close it. VAL section 3.2 says the probe ran on 55
-inputs and prints 16 of them, with the old results only. No file in this repository or in
-`../gov-budget-data` holds the other 39 inputs or any new result (Appendix A). An agent does not
-reword a check (`CLAUDE.md`, hard rule 2), and a set that an agent picks is not the set the check
-names. The owner closes C2 in one of two ways before S2-D starts.
+Clause C2 could not be proven as the design writes it, and the owner settled it. VAL section
+3.2 says the probe ran on 55 inputs and prints 16 of them, with the old results only. No file in
+this repository or in `../gov-budget-data` holds the other 39 inputs or any new result
+(Appendix A). An agent does not reword a check (`CLAUDE.md`, hard rule 2), and a set that an
+agent picks is not the set the check names. So the plan put two choices to the owner, to supply
+the original inputs or to decide that Appendix E is the acceptance set.
 
-- The owner supplies the original 55 inputs. S2-D uses them in place of rows 17 to 55 of
-  Appendix E and gives each a new result by the rules of that appendix.
-- The owner decides that Appendix E is the acceptance set. S2-D records that decision in the
-  owner's words as decision 12 of design section 16, and adds "(decision 12)" after the clause in
-  section 15. It makes neither edit without the decision.
+On November 23, 2026 the owner decided, in these words, "[u]se your list, but make row 4
+unreadable." Appendix E is the acceptance set for C2, with row 4 changed. It holds the 16 printed
+inputs and 39 more that the dossier prints as examples in sections 1.3, 2 and 3.1. S2-D records
+the decision as decision 12 of design section 16 and adds "(decision 12)" after the clause in
+section 15. It adds the table to VAL as a new section 3.2.1, which says that the 39 inputs were
+chosen and not recovered. The dossier's own table in section 3.2 stays as it is.
 
-Until the owner does one of the two, S2-D does not start and step 2 cannot pass. S2-A, S2-B and
-S2-C do not depend on the answer. Appendix E is the proposal. It holds the 16 printed inputs and
-39 more that the dossier prints as examples in sections 1.3, 2 and 3.1, and it gives each input a
-new result with the design line or the quirk that decides it. S2-D adds the table to VAL as a
-new section 3.2.1, which says that the 39 inputs were chosen and not recovered. The dossier's own
-table in section 3.2 stays as it is.
+Row 4 is `12, 345`. The first draft joined it as 12,345 through a third join shape, tokens that
+end in a comma. A rule that refuses `12, 345` and still joins `10, 936, 234` would have to count
+tokens, and nothing on a page supports that. So the decision removes the shape. A cell printed with spaces after its commas is `Unreadable` and needs a
+reviewed reading (Appendix C).
 
 Five pull requests change `docs/design.md`. Each change is also an entry under Deviations in
 `docs/progress.md`, in the same pull request. The owner can refuse any of them at the go.
@@ -81,8 +81,9 @@ Five pull requests change `docs/design.md`. Each change is also an entry under D
   `group_lines` takes words in, what a value word is, what `split_line_prefix` returns for a line
   of only prefix words, and what `lines_text` returns. It also adds one mark form to
   `parse_label`, a bare digit after a word, which ENT-Q07 documents and the design's list omits.
-- S2-D replaces the one-sentence kerning rule of `lex_cell` in section 3.1 with the three join
-  shapes of Appendix E, and S2-E gives `reading_for` the page's words in place of the page number and states its finding
+- S2-D replaces the one-sentence kerning rule of `lex_cell` in section 3.1 with the two join
+  shapes of Appendix E, and records the owner's decision on clause C2 in sections 15 and 16.
+- S2-E gives `reading_for` the page's words in place of the page number and states its finding
   codes.
 
 Every design line number in this plan is a line of `docs/design.md` at commit `18cb167`, the
@@ -96,7 +97,7 @@ block by its file comment, such as `# checkedtables/lex.py`.
 The evidence for each box in this section is a row in the decision trail.
 
 - [ ] State the protocol and this plan to the operator, then stop. Start execution only on the operator's explicit go.
-- [ ] Record the operator's decision on clause C2, in the operator's words. S2-A, S2-B and S2-C can start without it. S2-D starts only after the operator supplies the original 55 inputs or decides that Appendix E, as written or as edited, is the acceptance set.
+- [ ] Copy the operator's decision on clause C2 into the decision trail, word for word, from "How to read this". It is made, so no pull request waits on the operator before its parent is code-ready.
 - [ ] Confirm the operator's preconditions before any owner starts. Agents never push to `main` (`CLAUDE.md`, hard rule 9).
   - [ ] `git rev-parse --abbrev-ref HEAD` prints `main`, and `git status --porcelain` prints nothing.
   - [ ] `git ls-remote origin main` prints the SHA that `git rev-parse main` prints.
@@ -154,7 +155,7 @@ Step 2 needs no R2 and no Textract credentials. It reads no PDF and spends no mo
   - [ ] S2-A touches only `tests/test_purity.py`, `tests/test_gates.py`, and section 11.1 of `docs/design.md`.
   - [ ] S2-B touches only `refs.py`, `kinds.py`, `words.py`, `labels.py`, `cells.py`, `table.py` and `columns.py` under `src/`, the four new test files under `tests/kit/`, `tests/kit/test_library_shape.py`, `tests/test_purity.py`, `tests/test_workspace.py`, `tests/test_gates.py`, the root `conftest.py`, `pyproject.toml`, `uv.lock`, and sections 2.1, 11.1 and 15 of `docs/design.md`.
   - [ ] S2-C touches only `testing.py`, `text.py` and `lines.py` under `src/`, the three new test files under `tests/kit/`, `tests/kit/test_library_shape.py`, `tests/test_purity.py`, and sections 3.1 and 11.1 of `docs/design.md`.
-  - [ ] S2-D touches only `lex.py` under `src/`, the two new test files under `tests/kit/`, `tests/test_evidence.py`, `tests/test_purity.py`, sections 3.1 and 11.1 of `docs/design.md`, and a new section 3.2.1 of `docs/evidence/dossiers/VAL.md`. On the operator's decision for Appendix E it also touches sections 15 and 16 of the design.
+  - [ ] S2-D touches only `lex.py` under `src/`, the two new test files under `tests/kit/`, `tests/test_evidence.py`, `tests/test_purity.py`, sections 3.1, 11.1, 15 and 16 of `docs/design.md`, and a new section 3.2.1 of `docs/evidence/dossiers/VAL.md`.
   - [ ] S2-E touches only `records.py` under `src/`, one new test file under `tests/kit/`, `tests/kit/test_library_shape.py`, `tests/test_purity.py`, and sections 3.1 and 11.1 of `docs/design.md`.
   - [ ] Every PR may also edit `docs/progress.md`. A PR edits `docs/plans/step-02.md` when the build shows this plan wrong.
   - [ ] No PR touches `packages/checkedtables/src/checkedtables/__init__.py`, `docs/evidence/coverage.tsv`, `docs/prototype/`, `.claude/`, `CLAUDE.md`, `.github/workflows/ci.yml` or anything under `../gov-budget-data`.
@@ -433,7 +434,7 @@ transcript.
 
 ## Lex cells and check readings (S2-D)
 
-**Depends on.** S2-C, and the operator's decision on clause C2. The base is `step-02/c-words-to-lines`. S2-D owns clauses C1b, C2 and C3. It builds `lex`.
+**Depends on.** S2-C. The operator decided clause C2 on November 23, 2026, so nothing else holds it. The base is `step-02/c-words-to-lines`. S2-D owns clauses C1b, C2 and C3. It builds `lex`.
 
 **Files.**
 
@@ -442,28 +443,28 @@ transcript.
 - [ ] Create `tests/test_evidence.py`.
 - [ ] Edit `tests/test_purity.py`.
 - [ ] Edit `docs/evidence/dossiers/VAL.md`, adding section 3.2.1 and changing no other line.
-- [ ] Edit `docs/design.md` sections 3.1 and 11.1, and `docs/progress.md`. Edit sections 15 and 16 only on the operator's decision that Appendix E is the acceptance set.
+- [ ] Edit `docs/design.md` sections 3.1, 11.1, 15 and 16, and `docs/progress.md`.
 
 **Build.**
 
-- [ ] Write `PROBES` in `test_val_probe.py`, the 55 rows that the operator's decision names. A row holds the input, the column key, the two old results as text, and the new result as text.
+- [ ] Write `PROBES` in `test_val_probe.py`, the 55 rows of Appendix E. A row holds the input, the column key, the two old results as text, and the new result as text.
 - [ ] Write `describe(cell)` in `test_val_probe.py`. It prints a cell the way Appendix E writes a new result, such as `Amount -3.0`, `Amount 242096 marks *`, `Dash no_value`, `NotApplicable` and `Unreadable two_tokens`.
-- [ ] Add the table to VAL as section 3.2.1, "Acceptance inputs for the new lexer", below the dossier's own table and without a change to it. Open the section with where its inputs come from. For Appendix E that is 16 inputs from section 3.2 and 39 that the operator chose on the day of the decision from the examples of sections 1.3, 2 and 3.1. They are not the 39 the original probe ran.
-- [ ] When the operator decides that Appendix E is the acceptance set, add decision 12 to the table of design section 16 in the operator's words, and add "(decision 12)" after the probe clause of step 2 in section 15. Skip this box when the operator supplies the original inputs.
+- [ ] Add the table to VAL as section 3.2.1, "Acceptance inputs for the new lexer", below the dossier's own table and without a change to it. Open the section with where its inputs come from. 16 are the inputs of section 3.2. 39 are examples from sections 1.3, 2 and 3.1, which the owner made part of the acceptance set on November 23, 2026. They are not the 39 that the original probe ran.
+- [ ] Add decision 12 to the table of design section 16. The question is "Which 55 inputs does the probe clause of step 2 mean?" The answer is "The 55 of VAL section 3.2.1. The original inputs are in no file. The owner decided on November 23, 2026, with the words '[u]se your list, but make row 4 unreadable.'" Then add "(decision 12)" after the probe clause of step 2 in section 15, and change no other word of the check.
 - [ ] Write one private number reader in `lex.py`. It reads one signed token. Paired parentheses or one leading minus glyph make the number negative, and a `$` may stand before the digits on either side of the minus glyph or the opening parenthesis. The minus glyphs are `-`, U+2212, the en dash and the em dash (`tables/amounts.py:13`). The digits are `\d{1,3}(,\d{3})*` or `\d+`, then an optional `\.\d+`, and a leading zero is legal only as the whole integer part. The reader returns a `Decimal` built from the text, so it never inserts a decimal point and never uses `float`. `lex_cell` and `apply_reading` of S2-E both call it, so a reading of `(29.1)` reads as a cell of `(29.1)` does.
 - [ ] Write `lex_cell` from design lines 1685 to 1693 as these rules, in order.
   - [ ] No words gives `Blank`. A `YEAR`, `CODE` or `TEXT` column gives `Text`.
   - [ ] The text `N/A` or `NA` gives `NotApplicable`. The text `-`, `--`, an en dash or an em dash gives `Dash(col.dash)`.
   - [ ] Marks leave the end of the cell and go to `Amount.marks`. A mark is one of `*`, `†`, `‡`, `§`, `#` and a backtick (`tables/amounts.py:25`), a Unicode superscript digit, or a last digit word whose size is under 0.7 of the size of the number word before it and whose bottom is above that word's bottom (VAL-Q28). The design measures against the cell's type size, which is the number's and not that of a small `$` in front.
   - [ ] A `$` word of its own leaves the cell's tokens. The number reader takes the `$`, the parentheses and the minus glyph of each token.
-  - [ ] Two or more tokens join only in the three shapes of Appendix E, with their token limits, and only in a `MONEY` or `PERCENT` column on a text layer. Any other cell of two or more tokens is `Unreadable`, a detached minus glyph or `%` included.
+  - [ ] Two or more tokens join only in the two shapes of Appendix E, with their token limits, and only in a `MONEY` or `PERCENT` column on a text layer. Any other cell of two or more tokens is `Unreadable`, a detached minus glyph or `%` and a token that ends in a comma included.
   - [ ] A `%` is legal as `col.fmt.percent` says. When `col.fmt.decimals` is a number, the printed decimals must equal it.
   - [ ] An `Amount` and an `Unreadable` keep the cell's word texts joined by one space, and the refs of every word of the cell, the `$` and mark words included.
   - [ ] Every other cell is `Unreadable` with the first reason that applies, in the order `not_a_number`, `two_tokens`, `sign`, `percent_sign`, `grouping`, `decimals`, as Appendix E defines them.
 - [ ] Write `split_numeric_runs` from design lines 1682 to 1684. A boundary falls between a letter and a comma-grouped number on either side, as `tables/text_cleaning.py:14-20` requires, so `FY2016` stays one word. A boundary also falls after a `%` or a `)` that a digit, a `(` or a `$` follows. Children get `WordRef.child` from 0 and boxes cut in proportion to characters. A word with one run comes back unchanged.
 - [ ] Write `transliteration_ok` from design lines 1694 to 1697. Pin the confusable glyphs as one tuple in `lex.py`. They are `B` and `b` for 8, `D`, `d`, `O`, `o`, `Q` and `q` for 0, and `&` for 6 (`tables/value_recovery.py:46-58`).
 - [ ] Write `tests/test_evidence.py` with `test_val_probe_table_is_the_dossier_table`. It loads `test_val_probe.py` by path, renders each row of `PROBES` as a table row, and asserts that the table of VAL section 3.2.1 holds exactly those 55 rows in order.
-- [ ] Rewrite the `lex_cell` comment of design section 3.1 to state the three join shapes, the minus glyphs and the six reasons. Record it under Deviations in `docs/progress.md`. Pin the new import pairs and list any new module in design section 11.1.
+- [ ] Rewrite the `lex_cell` comment of design section 3.1 to state the two join shapes, the minus glyphs and the six reasons. Record it under Deviations in `docs/progress.md`. Pin the new import pairs and list any new module in design section 11.1.
 
 **You see.**
 
@@ -487,6 +488,7 @@ transcript.
   - [ ] In a scratch copy, make `transliteration_ok` compare digit counts only. `test_transliteration_refuses_a_digit_swap` fails on "65.8" to "85.8".
 - [ ] `test_lex.py` gains `test_bare_integers_never_join` as design lines 3750 to 3752 give it, and `test_two_amounts_in_one_cell_never_join` with `4727 402.5`, `1234.5 6`, `12 3,456`, `204,935 3,344` and `746,066,499 726,847,660`.
 - [ ] `test_lex.py` gains `test_count_and_ocr_cells_never_join`. `1 23,456` in a `COUNT` column is `Unreadable`, and so are `67,215,504.0 0` on a page that starts with `#ocr`, and `-1 37,332,523` and `$1 37,332,523` in a `MONEY` column on a text layer. The same two inputs in a `MONEY` column on a text layer are the amounts 123456 and 67215504.00.
+- [ ] `test_lex.py` gains `test_spaces_after_commas_never_join`. `10, 936, 234` and `(1, 130, 698)` in a `MONEY` column on a text layer are `Unreadable two_tokens`, by the owner's decision on row 4 of Appendix E.
   - [ ] In a scratch copy, let join shape 2 take any number with a decimal point. `test_two_amounts_in_one_cell_never_join` fails on `1234.5 6`.
 - [ ] `test_lex.py` gains one test for each of the 21 quirks that Appendix F gives `lex.py`, with the quirk id in the test name or a comment.
 - [ ] `test_lex.py` gains `test_a_raised_digit_after_a_small_dollar_sign_is_a_mark` for VAL-Q28. It builds by hand a 6-point `$`, a 12-point `2.8` and a raised 6-point `1`. The cell is `Amount 2.8` with the mark `1` and three word refs.
@@ -499,7 +501,7 @@ transcript.
 - [ ] Lane 1. Regression lane against trunk. Run the six gates at the base, which is the S2-C head, and at the head. Record that the base has no lexer. Then run a lane script that reads the 55 rows from VAL section 3.2.1, runs each input through a copy of the old `parse_amount` and `parse_decimal`, and through `page_from_text` and `lex_cell`, and prints the three results beside the three the dossier documents. This lane proves C2. Save `probe-55.log`. Pass when every gate exits 0 on both sides and all 165 results equal the dossier's.
 - [ ] Lane 2. This lane proves C1b. Run `uv run pytest packages/checkedtables/tests/test_lex.py -k "round_trip or digits_of_its_words" --hypothesis-show-statistics`, then run a lane script that prints 200 amounts of its own choosing in each of the eight printed forms and lexes them. Save `lexer-suite.log`. Pass when pytest reports two passed tests, the statistics show at least 100 passing examples for each, and the script reads back every amount it printed.
 - [ ] Lane 3. This lane proves C3. Run a lane script that calls `transliteration_ok` on the four pairs of the check and on every one-digit change of "77,500,000" and "291.8". Save `transliteration.log`. Pass when "1o4.o" to "104.0" and "2918" to "291.8" are accepted, "65.8" to "85.8" and "77,500,000" to "7,500,000" are refused, and every one-digit change is refused.
-- [ ] Lane 4. Run a lane script that lexes `4727 402.5`, `1234.5 6`, `12 3,456`, `204,935 3,344`, `1 23,456` in a count column, `2100` in a one-decimal column, and `69,2`, and prints each cell. Then build 40 cells of two or three tokens from the three join shapes, with and without a `$`, a minus glyph and parentheses, and with one token changed so the shape no longer fits. Lex each in a money column on a text layer and run each through a copy of the old `parse_decimal`. Save `no-repair.log`. Pass when all seven are `Unreadable`, no `Amount` holds a digit or a point that its words do not print, and the new lexer gives an `Amount` for none of the 40 cells that the old reader refuses.
+- [ ] Lane 4. Run a lane script that lexes `4727 402.5`, `1234.5 6`, `12 3,456`, `204,935 3,344`, `1 23,456` in a count column, `2100` in a one-decimal column, and `69,2`, and prints each cell. Then build 40 cells of two or three tokens from the two join shapes and from tokens that end in a comma, with and without a `$`, a minus glyph and parentheses, and with one token changed so the shape no longer fits. Lex each in a money column on a text layer and run each through a copy of the old `parse_decimal`. Save `no-repair.log`. Pass when all seven are `Unreadable`, no `Amount` holds a digit or a point that its words do not print, the new lexer gives an `Amount` for none of the 40 cells that the old reader refuses, and every cell with a token that ends in a comma is `Unreadable`.
 - [ ] Lane 5. Not used. Save `none`. Pass when no agent runs for this lane.
 - [ ] Lane 6. Not used. Save `none`. Pass when no agent runs for this lane.
 - [ ] Lane 7. Not used. Save `none`. Pass when no agent runs for this lane.
@@ -632,7 +634,7 @@ records what each run printed. None of the prototype code is for reuse.
 | Does ruff ask for docstrings on magic methods? | Yes. `D105` fires on `__post_init__` and `__lt__` under the repository's rule set, and `from re import compile` passes it. | Run by the root with `ruff check --isolated` and the selected rules. |
 | Does a relative import leave `datadesk.core`? | Yes. `importlib.util.resolve_name("..", "datadesk.core")` returns `datadesk`. | Run by the root after the Codex review. |
 | Does the old lexer join `1234.5 6`? | No. It returns `None`, and it joins `1,234.5 6`, `123.5 6`, `1 23,456` and `2.8 1`. | Run by the root after the Codex review. |
-| Which signed forms of the three join shapes does the old lexer join? | Shape 1 only with a bare first digit or inside parentheses. `-1 37,332,523` and `$1 37,332,523` give `None`. Shapes 2 and 3 with a `$`, a minus or parentheses. | Run by the root on 21 cells after the Codex review. |
+| Which signed forms of its three joins does the old lexer make? | The digit-first join only with a bare first digit or inside parentheses. `-1 37,332,523` and `$1 37,332,523` give `None`. The decimal join and the comma join with a `$`, a minus or parentheses. | Run by the root on 21 cells after the Codex review. |
 
 These stay unproven until the build.
 
@@ -651,7 +653,7 @@ These stay unproven until the build.
 - **Give `lex_cell` the kind, the format and the dash meaning as three parameters.** The design gives it a `ColumnSpec`, and five parameters would fail the shape test.
 - **Move `split_line_prefix` into `lines.py`.** It would end the cycle with no `TYPE_CHECKING` import. It would also change section 12.1, section 3.1 and four rows of `coverage.tsv` for a function whose signature already works.
 - **Make `has_values` call the lexer.** `lines` would import `lex`, `lex` imports `columns` for `ColumnSpec`, and at step 5 `columns` imports `lines`. The plan keeps a loose predicate in `lines.py` and ties it to the lexer with the property `test_a_lexed_value_is_a_value_word`.
-- **Use the design's one-sentence kerning rule as written.** A join that only needs one separator and a legal result turns `4727 402.5` into 4727402.5 and `12 3,456` into 123,456. The old code names both as two values (`tables/amounts.py:63-97`). The plan ports its two narrow shapes with their token limits, and the comma shape that the old code read by removing spaces.
+- **Use the design's one-sentence kerning rule as written.** A join that only needs one separator and a legal result turns `4727 402.5` into 4727402.5 and `12 3,456` into 123,456. The old code names both as two values (`tables/amounts.py:63-97`). The plan ports its two narrow shapes with their token limits.
 - **Read the reading's number in `records.py` with its own pattern.** Two number grammars drift. `apply_reading` imports the one private reader of `lex.py`. A public name for it would add to the kit's shape for one caller.
 - **Keep the 55 inputs in a fixture file alone.** The check says the results are documented in VAL. `test_val_probe_table_is_the_dossier_table` pins the dossier to the test, as `test_ci_runs_every_gate` pins `ci.yml`.
 - **Let Hypothesis draw new examples on every run.** A gate that fails on one run in fifty blocks an unrelated pull request. The profile is derandomized, and a wider search is a command a person runs.
@@ -660,8 +662,9 @@ These stay unproven until the build.
 
 ## Appendix C. Risks
 
-- **Clause C2 is open (S2-D).** The original 55 inputs are in no file. 39 inputs and all 55 new results of Appendix E are this plan's proposal, and only the owner can make them the acceptance set. Four rows carry a choice the dossier and the design do not settle, and Appendix E marks them. Step 2 cannot pass until the owner decides.
-- **No lexer rule has met a page (S2-D).** The rules come from the design, the dossiers and the old code. Step 5 parses 20 editions and compares every cell with the pinned release at step 6. The join shapes join nothing the old lexer refused to join. Rows 5, 15 and 52 of Appendix E are amounts that the old page lexer refused, for a `-$` order, a `$` before a parenthesis and a superscript mark. Step 6 compares positions only, so the cash and collections steps carry the test of those three on real pages.
+- **Clause C2 rests on a chosen set (S2-D).** The original 55 inputs are in no file. The owner made Appendix E the acceptance set, so 39 of its inputs are examples the dossier prints elsewhere and not the ones the first probe ran. If the original list turns up, it replaces rows 17 to 55 by a new decision.
+- **Spaces after commas make a cell unreadable (S2-D).** VAL section 3.1 reports the form `10, 936, 234 (1, 130, 698)` on text layers and names no family. Each such cell blocks until a reviewed reading supplies its value. The first step that parses a page with the form shows how many readings that costs, and the owner can then restore the join by a new decision.
+- **No lexer rule has met a page (S2-D).** The rules come from the design, the dossiers and the old code. Step 5 parses 20 editions and compares every cell with the pinned release at step 6. The two join shapes join nothing the old lexer refused to join. Rows 5, 15 and 52 of Appendix E are amounts that the old page lexer refused, for a `-$` order, a `$` before a parenthesis and a superscript mark. Step 6 compares positions only, so the cash and collections steps carry the test of those three on real pages.
 - **`split_line_prefix` can take a value (S2-C).** With a prefix pattern that a short count also matches, a line of values with no label goes into the prefix, whole or in part. The words stay on the row as its prefix, so `match_rows` sees a row with no label. The positions parser of step 5 is the first to declare a prefix (`prefix=_LINE_NO`, design line 2484), so the step 5 plan owns the test on real pages. The Budget in Brief line numbers are a `CODE` column (design line 3270) and never reach this rule.
 - **A footnote mark reads as a value word (S2-C).** `(1)` at the end of "Human Services (1)" is a number in parentheses to `has_values`, as it is to the lexer. The design's rule seeds a lane from it. Step 5 builds `lanes_from_values` and owns that test.
 - **A bare digit after a word becomes a mark (S2-C).** "Sheriff 2" loses its digit to `Label.marks`, as the old code did (`entities.py:54-61`). A label that ends in a real one-digit number would lose it too. `Label.printed` keeps every word, and two labels that differ only in that digit collide as a `duplicate_row` finding. The owner can refuse this form at the go.
@@ -706,14 +709,14 @@ No pull request in this plan needs `<pstack>/skills/how/SKILL.md`. Run
 contests them. The decision trail is `.audit/step-02.tsv`, kept out of git, per
 `<pstack>/skills/show-me-your-work/SKILL.md`.
 
-## Appendix E. The proposed acceptance inputs for VAL section 3.2.1
+## Appendix E. The acceptance inputs for VAL section 3.2.1
 
-This table is a proposal. Clause C2 stays open until the owner supplies the original inputs or
-decides that this table, as written or as edited, is the acceptance set. Rows 1 to 16 are the inputs that VAL
+The owner decided on November 23, 2026 that this table is the acceptance set for clause C2, in
+these words, "[u]se your list, but make row 4 unreadable." Rows 1 to 16 are the inputs that VAL
 section 3.2 prints. Rows 17 to 52 are the examples of the table in VAL section 3.1, in its
 order. Rows 53 to 55 are examples from VAL sections 1.3 and 2. The old results are from the
-root's run of the old lexer (Appendix A). The four rows marked "owner" carry a choice that the
-dossier and the design do not settle.
+root's run of the old lexer (Appendix A). Rows 4, 10, 15 and 24 carried a choice that the dossier
+and the design do not settle. The owner changed row 4 and accepted the other three.
 
 Each input becomes words by a split on spaces, and `lex_cell` reads them in one of four columns.
 
@@ -725,19 +728,23 @@ Each input becomes words by a split on spaces, and `lex_cell` reads them in one 
 | P | `PERCENT`, decimals as printed, the sign optional |
 
 Tokens join only in a `MONEY` or `PERCENT` column whose words come from a text layer, and only in
-three shapes. VAL section 3.1 reports kerning splits and spaces after commas on text layers
-alone, and VAL section 11 asks for one word in each cell of a count table. The shapes are read
-after the marks and a pair of parentheses around the whole cell leave, and the joined text must
-then read as one number. In shape 1 the first token is a bare digit, with no `$` and no minus
-glyph. In shapes 2 and 3 the first token may carry both.
+two shapes. VAL section 3.1 reports kerning splits on text layers alone, and VAL section 11 asks
+for one word in each cell of a count table. The shapes are read after the marks and a pair of
+parentheses around the whole cell leave, and the joined text must then read as one number. In
+shape 1 the first token is a bare digit, with no `$` and no minus glyph. In shape 2 the first
+token may carry both.
 
 1. One digit, then one or two digits and one or more comma groups, as in `1 37,332,523` (`tables/amounts.py:88-91`).
 2. A number with a decimal point whose integer part is comma-grouped or at most three digits, then one digit, as in `67,215,504.0 0` (`tables/amounts.py:92-95`).
-3. Tokens that each end in a comma, then a last token, as in `10, 936, 234`. The old lexer read this form by removing every space (`tables/amounts.py:132`).
 
 No shape joins a cell that both old readers, `parse_amount` and `parse_decimal`, refuse to join.
-Both return `None` for `1234.5 6`, `12 3,456`, `1234, 567`, `-1 37,332,523` and `$1 37,332,523`,
-and no shape joins any of the five (Appendix A).
+Both return `None` for `1234.5 6`, `12 3,456`, `-1 37,332,523` and `$1 37,332,523`, and no shape
+joins any of the four (Appendix A).
+
+The old lexer also joined tokens that end in a comma, such as `12, 345` and `10, 936, 234`, by
+removing every space (`tables/amounts.py:132`). The first draft of this plan kept that join as a
+third shape. The owner's decision on row 4 refuses it. A rule that refuses `12, 345` and still
+joins `10, 936, 234` would have to count tokens, and nothing on a page supports that. A cell printed with spaces after its commas is `Unreadable`.
 
 An `Unreadable` cell carries the first reason that applies.
 
@@ -755,18 +762,18 @@ An `Unreadable` cell carries the first reason that applies.
 | 1 | `12 345` | `12345.0` | `12345` | C | `Unreadable two_tokens` | QPOS-Q27, design line 1690 |
 | 2 | `1 2` | `12.0` | `12` | C | `Unreadable two_tokens` | QPOS-Q27 |
 | 3 | `12 345 678` | `12345678.0` | `12345678` | C | `Unreadable two_tokens` | QPOS-Q27 |
-| 4 | `12, 345` | `12345.0` | `12345` | M | `Amount 12345` | join shape 3. Owner. VAL-Q21 lists this input beside rows 1 and 2 |
+| 4 | `12, 345` | `12345.0` | `12345` | M | `Unreadable two_tokens` | The owner's decision. VAL-Q21 lists this input beside rows 1 and 2 |
 | 5 | `-$61,397,587` | `None` | `-61397587` | M | `Amount -61397587` | VAL-Q22 |
 | 6 | `-` | `0.0` | `None` | M | `Dash no_value` | design line 1688 |
 | 7 | `--` | `0.0` | `None` | M | `Dash no_value` | BIB-Q50 |
 | 8 | `—` | `0.0` | `None` | M | `Dash no_value` | design line 1688 |
 | 9 | `---` | `None` | `None` | M | `Unreadable not_a_number` | design line 1692 |
-| 10 | `- 0` | `-0.0` | `-0` | M | `Unreadable two_tokens` | Owner. A dash word and a number word |
+| 10 | `- 0` | `-0.0` | `-0` | M | `Unreadable two_tokens` | A dash word and a number word. The owner accepted it |
 | 11 | `(12.3%)` | `-12.3` | `-12.3` | P | `Amount -12.3` | VAL-Q27 |
 | 12 | `+12.3%` | `None` | `None` | P | `Unreadable sign` | VAL-Q26 |
 | 13 | `123-` | `None` | `None` | M | `Unreadable sign` | VAL-Q26 |
 | 14 | `.5` | `None` | `None` | M | `Unreadable grouping` | design line 1692 |
-| 15 | `$(1,234)` | `None` | `None` | M | `Amount -1234` | Owner. Design line 1686 splits the `$` off |
+| 15 | `$(1,234)` | `None` | `None` | M | `Amount -1234` | Design line 1686 splits the `$` off. The owner accepted it |
 | 16 | `1,234 5` | `None` | `None` | M | `Unreadable two_tokens` | MSCH-Q29 |
 | 17 | `1,234,567` | `1234567.0` | `1234567` | M | `Amount 1234567` | strict grouping |
 | 18 | `11.6` | `11.6` | `11.6` | M1 | `Amount 11.6` | strict grouping |
@@ -775,7 +782,7 @@ An `Unreadable` cell carries the first reason that applies.
 | 21 | `44,646,313` | `44646313.0` | `44646313` | M | `Amount 44646313` | strict grouping |
 | 22 | `(5,678)` | `-5678.0` | `-5678` | M | `Amount -5678` | MSCH-Q34 |
 | 23 | `-4.5` | `-4.5` | `-4.5` | M1 | `Amount -4.5` | QCASH-Q53 |
-| 24 | `–7` | `-7.0` | `-7` | M | `Amount -7` | Owner. An en dash that touches the digits is a minus |
+| 24 | `–7` | `-7.0` | `-7` | M | `Amount -7` | An en dash that touches the digits is a minus. The owner accepted it |
 | 25 | `-11.0` | `-11.0` | `-11.0` | M1 | `Amount -11.0` | QCASH-Q53 |
 | 26 | `$-61,397,587` | `-61397587.0` | `-61397587` | M | `Amount -61397587` | VAL-Q22 |
 | 27 | `–` | `0.0` | `None` | M | `Dash no_value` | design line 1688 |
@@ -789,7 +796,7 @@ An `Unreadable` cell carries the first reason that applies.
 | 35 | `TOTAL TAX REVENUE *` | `None` | `None` | M | `Unreadable not_a_number` | design line 1692 |
 | 36 | `1 37,332,523` | `137332523.0` | `137332523` | M | `Amount 137332523` | join shape 1 |
 | 37 | `67,215,504.0 0` | `67215504.0` | `67215504.00` | M | `Amount 67215504.00` | join shape 2 |
-| 38 | `10, 936, 234 (1, 130, 698)` | `None` | `None` | M | `Unreadable two_tokens` | MSCH-Q29. Each half joins once a lane holds it alone |
+| 38 | `10, 936, 234 (1, 130, 698)` | `None` | `None` | M | `Unreadable two_tokens` | MSCH-Q29. Each half alone is `Unreadable` too, by the owner's decision on row 4 |
 | 39 | `TAX434,605,553` | `None` | `None` | M | `Unreadable not_a_number` | VAL-Q34. `split_numeric_runs` gives `TAX` and `434,605,553` |
 | 40 | `408,491,218 NET PROFITS TAX` | `None` | `None` | M | `Unreadable not_a_number` | design line 1692 |
 | 41 | `2100` | `2100.0` | `2100` | M1 | `Unreadable decimals` | QCASH-Q21, design line 1692 |
@@ -808,9 +815,8 @@ An `Unreadable` cell carries the first reason that applies.
 | 54 | `1o4.o` | `None` | `None` | M1 | `Unreadable not_a_number` | VAL-Q36 |
 | 55 | `110,626,142.01 92.31` | `None` | `None` | M | `Unreadable two_tokens` | VAL-Q15 |
 
-The old lexer joined the tokens of rows 1 to 4, 10, 42 and 53 into one number. The new results
-keep one of those seven joins, row 4, where a printed comma supports it. The other six are
-`Unreadable`.
+The old lexer joined the tokens of rows 1 to 4, 10, 42 and 53 into one number. All seven are
+`Unreadable` now.
 
 ## Appendix F. Quirks by pull request
 
@@ -880,3 +886,6 @@ Codex has not reviewed the revisions below.
 
 The root found one more thing while it checked finding 8. Ruff's `D105` asks for a docstring on
 each magic method of the kit (Appendix A), and "PR mechanics" now says so.
+
+The owner decided clause C2 on November 23, 2026, after this review. Row 4 of Appendix E and the
+join shapes changed with that decision, and Codex has not reviewed the change.
