@@ -1,5 +1,5 @@
 {
-  "model": "fable",
+  "model": "opus",
   "effortLevel": "xhigh",
   "env": {
     "ANTHROPIC_DEFAULT_FABLE_MODEL": "claude-fable-5-2"

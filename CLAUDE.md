@@ -11,41 +11,49 @@ step is finished when its check passes.
 - Engineering work follows pstack (the `pstack` Claude Code plugin). Substantive work starts with
   `/pstack:poteto-mode`, and its principles apply. The project rules below add to pstack. Where
   they differ, the project rule wins and says so.
-- The main session runs Fable. It plans, owns the design, reviews every diff and verifies every
-  claim. Code is written by `pstack:poteto-agent` delegates on Opus 5.5. Model roles live in
+- Claude usage is the scarce budget, Fable's most of all, and Codex usage is not. So each model
+  has one job, and no long session runs on Fable. Fable plans a step and reads each finished
+  diff once. Opus runs each build and writes the code, as `pstack:poteto-agent` delegates. Codex
+  reviews each plan, and verifies and reviews each pull request. Model roles live in
   `~/.claude/rules/pstack-models.md`, written by `/pstack:setup-pstack`, never in this file.
-- Each build step goes through two runs of `/pstack:poteto-mode`. This is the full track.
-  1. **Plan.** The Multi-phase plan playbook turns step N of design section 15 into
-     `docs/plans/step-NN.md`: the pull requests in landing order, the files each touches, and
-     each one's verification, with every clause of the step's check assigned to a pull request.
-     Codex then reviews the plan (`codex-review plan N`), and the Fable session revises it for
-     each finding it confirms. The run stops there.
-  2. **Build.** After the owner's go, the Autopilot-stack playbook runs that plan. Opus owners
-     build each pull request, and a swarm verifies it with the `verify-step` skill. Codex then
-     reviews it (`codex-review pr N <base>`), and the Fable session confirms or drops each Codex
-     finding, sends confirmed ones back to a fresh Opus owner, and gives the final review.
-     Contested design goes to `/pstack:interrogate`. Pull requests stack only where one builds
-     on another. From step 3 on, a step's stacked pull requests are one GitHub stack, built and
-     kept linear with `gh stack` (`docs/plans/README.md`). The owner decides each landing (hard
-     rule 9).
-- **Verification is sized by what there is to prove.** A pull request's swarm is the three
-  parts of `verify-step` (the gates, the check and the audits), each as its own lane, plus one
-  live lane for each clause the pull request owns and each risk its plan names. It gets a
-  timing lane only where the design or the step's check names a time or size budget. pstack's
-  plan format asks for ten live lanes and four perf boxes on every pull request. The plan
-  writes the ones it does not need as "Not used", and no agent runs for them. This differs
-  from pstack, and the project rule wins. `docs/plans/README.md` has the wording and the reason.
+- Each build step takes a Plan run, then one Build run for each pull request. This is the full
+  track.
+  1. **Plan**, in a session on Fable. `/pstack:poteto-mode` turns step N of design section 15
+     into `docs/plans/step-NN.md`, in the short format of `docs/plans/README.md`: every clause
+     of the step's check with the pull request that owns it and the test that proves it, and
+     the pull requests in landing order with the files each touches. Codex reviews the plan
+     once (`codex-review plan N`), and the session revises it for each finding it confirms. The
+     run stops there.
+  2. **Build**, in a session on Opus, one session for each pull request. After the owner's go,
+     `/pstack:poteto-mode` runs the Feature playbook on that pull request. One Opus owner
+     builds it, and the session runs `just gates`. Codex verifies and reviews it in one pass
+     (`codex-review pr N <base>`), and the session confirms or drops each finding. The findings
+     that block go to one fix round by a fresh Opus owner, and Codex reads the fix diff
+     (`codex-review fix N <reviewed-head>`). Last, a fresh Fable delegate reads the whole diff
+     once. The owner decides each landing (hard rule 9).
+- **The loop stops.** A pull request gets one Codex review and one fix round, and a second
+  round needs the owner's go. `docs/plans/README.md` says which confirmed findings block. Every
+  other one is a follow-up, listed in the pull request's text.
+- **Codex verifies, and no Claude agent does.** No Claude agent verifies a pull request, reviews
+  its comments or reviews a decision trail, and no swarm runs. The owner applies `no-comments`
+  and `deslop` to its own diff. The plan and the design give the shapes, the names and the
+  signatures, so the session marks the Feature playbook's `how` and `architect` steps `skip`
+  and runs no `arena`. This differs from pstack, and the project rule wins.
+  `docs/plans/README.md` has the measurements behind it.
+- Pull requests stack only where one builds on another. From step 3 on, a step's stacked pull
+  requests are one GitHub stack, built and kept linear with `gh stack` (`docs/plans/README.md`).
+  Contested design goes to `/pstack:interrogate`.
 - **Light track.** The owner may start a step on the light track when its diff cannot change a
   published value, the label or period a value is published under, the kit's public shape, or
-  the release protocol. `docs/plans/README.md` says which steps qualify. It is one run of
-  `/pstack:poteto-mode` with the Feature playbook. The session writes a short plan as the first
-  commit of the pull request, one Opus owner builds it, one verifier runs `verify-step` in full
-  at the finished head, and Codex reviews the pull request once. There is no plan review and no
-  swarm. Every hard rule below still holds.
+  the release protocol. `docs/plans/README.md` says which steps qualify. It skips the Plan run.
+  The Build session writes the short plan as the first commit of the pull request, and Codex
+  does not review the plan. The rest of the Build run and every hard rule below still hold.
 - After steps 6, 13 and 14, Codex also reviews the whole design against the code, the way it
   reviewed the design on November 22, 2026 (`docs/reviews/`).
 - Start every session by reading `docs/progress.md`, then the part of `docs/design.md` the work
-  needs. Never work from memory of the design.
+  needs. Never work from memory of the design. `docs/deviations/`, `docs/plan-notes.md` and
+  `docs/followups.md` hold history and notes for single steps. Read one only when the work
+  names it.
 
 ## Where things are
 
@@ -54,7 +62,10 @@ step is finished when its check passes.
   the owner's decisions, 17 the known gaps, 18 the Codex review.
 - `docs/plans/`: one plan per build step.
 - `docs/working-with-claude-code.md`: one-time setup and the prompts for each step.
-- `docs/progress.md`: step status, deviations from the design, and notes for later sessions.
+- `docs/progress.md`: step status and the notes every session needs.
+- `docs/deviations/step-NN.md`: what each step changed in the design, and why.
+- `docs/plan-notes.md`: notes a step left for the plan of a later step.
+- `docs/followups.md`: confirmed findings that did not block their pull request.
 - `docs/principles.md`: functional core, imperative shell, and plan-then-execute, with sources.
 - `docs/evidence/dossiers/<FAMILY>.md`: what the PDFs actually contain. Quirk ids such as
   `QPOS-Q12` refer to these files. `docs/evidence/quirks.tsv` lists every quirk, and
@@ -104,8 +115,8 @@ Step 1 creates these. Keep this list true as tooling changes.
 7. Following pstack, settle a question by running something when a run can settle it, make the
    reversible choice, and record it. Stop for the owner only on calls no run can settle: what a
    printed number means, what gets published, money, or anything touching `../gov-budget-data`.
-   A design change is recorded in `docs/design.md` and under Deviations in `docs/progress.md` in
-   the same pull request.
+   A design change is recorded in `docs/design.md` and in `docs/deviations/step-NN.md` in the
+   same pull request.
 8. Credentials (R2, Textract) come from the environment. Never commit or print them. Textract
    calls through `datadesk ocr --spend` need the owner's go-ahead.
 9. Agents open pull requests ready for review. The owner decides every landing. An agent merges
@@ -141,13 +152,16 @@ Step 1 creates these. Keep this list true as tooling changes.
   `tests/fixtures/words/` as Python literals. Regenerate a fixture only on purpose, and say so
   in the commit.
 - The `verify-step` skill is this repo's verification: the gates, the check clause by clause,
-  and the audits pstack's Prove It Works asks for.
+  and the audits pstack's Prove It Works asks for. Codex runs it for every pull request, through
+  the `codex-review` skill.
 
 ## Writing
 
 Docs, commit messages and pull request text follow pstack's `unslop` and `technical-writing`
 skills: plain and direct, no em-dashes. When a choice rests on evidence, cite the page or the
-dossier quirk id. Pull request titles are `type(scope): subject`.
+dossier quirk id. Pull request titles are `type(scope): subject`. An entry in
+`docs/deviations/` is a few sentences: what changed, why, the run that shows it and the design
+section. The pull request holds the history of its rounds.
 
 ## Data this repo does not hold
 
