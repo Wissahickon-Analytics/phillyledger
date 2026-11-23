@@ -8,10 +8,14 @@ PURE_PACKAGES = ("checkedtables", "datadesk.core")
 PURE_IMPORTS: dict[str, tuple[str, ...]] = {
     "checkedtables": (
         "collections.abc.Iterable",
+        "collections.abc.Sequence",
         "dataclasses.dataclass",
+        "dataclasses.replace",
         "decimal.Decimal",
         "enum.StrEnum",
         "re.compile",
+        "statistics.median",
+        "typing.TYPE_CHECKING",
     ),
     "datadesk.core": (),
 }
