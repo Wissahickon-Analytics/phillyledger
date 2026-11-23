@@ -6,7 +6,12 @@ from types import ModuleType
 
 PURE_PACKAGES = ("checkedtables", "datadesk.core")
 PURE_IMPORTS: dict[str, tuple[str, ...]] = {
-    "checkedtables": ("collections.abc.Iterable", "dataclasses.dataclass", "enum.StrEnum"),
+    "checkedtables": (
+        "collections.abc.Iterable",
+        "dataclasses.dataclass",
+        "decimal.Decimal",
+        "enum.StrEnum",
+    ),
     "datadesk.core": (),
 }
 INSIDE = {
