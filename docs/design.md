@@ -1752,9 +1752,9 @@ def lex_cell(words: Sequence[Word], col: ColumnSpec, source: SourceKind) -> Cell
     # Marks then leave the end of the cell into Amount.marks: *, †, ‡, §, #, a backtick,
     # Unicode superscript digits, and a last word of one digit, alone or with those glyphs after
     # it ("1*"), under 0.7 of the size of the number word just before it whose bottom sits above
-    # that word's bottom (VAL-Q28). That word is one mark as it prints. Not small and raised, a
-    # last word of one digit with those glyphs after it keeps them when a number word comes
-    # before it, so "2.8 1*" fits no join. A "$" word that opens the cell leaves its tokens for
+    # that word's bottom (VAL-Q28). That word is one mark as it prints. Not small and raised,
+    # such a word reads only alone or after one "$" word, so "1*" is 1 with the mark "*" and
+    # "2.8 1*" is Unreadable two_tokens. A "$" word that opens the cell leaves its tokens for
     # the join and comes back in front of the number they give, so "$ $1,234" prints two "$".
     # One token reads through one private reader, which apply_reading also calls. Paired
     # parentheses or one leading minus glyph (-, U+2212, en dash, em dash) is negative, a "$"

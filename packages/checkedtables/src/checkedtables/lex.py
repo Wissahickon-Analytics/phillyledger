@@ -80,9 +80,14 @@ def _tokens_and_marks(words: Sequence[Word]) -> tuple[tuple[str, ...], tuple[str
     while kept and (_MARK_WORD.fullmatch(kept[-1].text) or _is_raised_digit(kept)):
         marks.insert(0, kept.pop().text)
     tokens = [word.text for word in kept]
-    # VAL-Q28: a full-size "1*" after a number keeps its mark, so no join takes it.
-    footnote = tokens[:-1] not in ([], ["$"]) and _FOOTNOTE.fullmatch(tokens[-1]) is not None
-    if tokens and not footnote and (number := tokens[-1].rstrip(_MARKS)) != tokens[-1]:
+    footnote_after_a_number = (
+        tokens[:-1] not in ([], ["$"]) and _FOOTNOTE.fullmatch(tokens[-1]) is not None
+    )
+    if (
+        tokens
+        and not footnote_after_a_number
+        and (number := tokens[-1].rstrip(_MARKS)) != tokens[-1]
+    ):
         marks.insert(0, tokens[-1][len(number) :])
         tokens[-1] = number
     return tuple(tokens), tuple(marks)
@@ -201,10 +206,10 @@ def lex_cell(words: Sequence[Word], col: ColumnSpec, source: SourceKind) -> Cell
     `Amount` keeps apart from its value: the glyphs ``*``, ``†``, ``‡``, ``§``, ``#``, a
     backtick and superscript digits, and a last word of one digit, alone or with those glyphs
     after it as in "1*", under 0.7 of the size of the number word just before it whose bottom is
-    above that word's bottom. That word is one mark as it prints. A last word of one digit with
-    those glyphs after it that is not small and raised keeps them when a number word comes
-    before it, so "2.8 1*" fits no join. A ``$`` word may stand first in the cell. It is the one
-    ``$`` that the number may print, so "$ $1,234" prints two.
+    above that word's bottom. That word is one mark as it prints. Such a word that is not small
+    and raised reads only alone or after one ``$`` word, so "1*" is 1 with the mark ``*`` and
+    "2.8 1*" is `Unreadable` with "two_tokens". A ``$`` word may stand first in the cell. It is
+    the one ``$`` that the number may print, so "$ $1,234" prints two.
 
     A word reads as a number when paired parentheses around it or one leading minus glyph
     (``-``, U+2212, an en dash or an em dash) give its sign, a ``$`` stands at most once before

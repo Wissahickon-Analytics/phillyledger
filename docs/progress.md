@@ -381,9 +381,9 @@ Each entry: step, what changed, why, and the design section updated.
     through join shape 2. So `2.8 1*` read as 2.81 with the mark `*`, while the same marks as
     two words, `1` and `*`, gave 2.8. Both layouts now give `Amount 2.8`, for every digit and
     mark glyph. A raised word of two digits and a mark glyph stays a token, as before.
-  - A last word of one digit with mark glyphs after it that is not small and raised keeps them
-    when a number word comes before it, so no join takes it. Join shape 2 ends in one digit,
-    and `1*` as printed is not one. Before, `2.8 1*` at full size read as 2.81. It is now
+  - A last word of one digit with mark glyphs after it that is not small and raised reads only
+    alone or after one `$` word, so no join takes it. Join shape 2 ends in one digit, and `1*`
+    as printed is not one. Before, `2.8 1*` at full size read as 2.81. It is now
     `Unreadable two_tokens`, and so are `1.2 3²`, `1.2 3*` and `67,215,504.0 0¹`. A lone `1*`
     and `$ 1*` still read as 1 with the mark `*`. A shape 1 join keeps a mark glued to its last
     word, so `1 23,456¹` still reads as 123456.
