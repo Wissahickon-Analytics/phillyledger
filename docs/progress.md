@@ -757,6 +757,15 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   the other modules run as far past theirs, the kit passes its 3,800 line budget, an inference
   that no run has checked. The report never fails the build, so the owner decides whether the
   budget counts docstrings.
+- **Five more kit modules against their estimates** (November 23, 2026, step 2, S2-E fix
+  round 3). The same count as the note above, at `f82950e`, with and without
+  docstrings, against design section 12.1: `testing` 91 and 51 (estimate 90), `text` 118 and 52
+  (150), `lines` 122 and 52 (120), `lex` 269 and 181 (230), `records` 239 and 115 (140). The
+  five hold 839 lines against an estimate of 730, and 451 without docstrings. With docstrings,
+  `records` runs 99 lines past its estimate and `lex` 39. Without them, each of the five is at
+  or under its estimate. `uv run python packages/checkedtables/tests/test_library_shape.py`
+  prints `checkedtables: 1431 lines (budget 3,800), 0 public names (budget 140)`, the sum of
+  these five and the seven modules of the note above.
 - **What an OCR word carries, a note for the step 4 plan** (November 23, 2026, step 2, S2-B).
   `Page` refuses a word with an OCR confidence on a text layer page. It does not refuse the
   converse states: a word on an OCR page with no confidence, or with a style, which the design
@@ -943,6 +952,20 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
     predicate in `lines.py` is loose by design, and step 5 decides whether `lanes_from_values`
     needs a stricter one. Step 10 parses this report, and the RTT dossier finds a zone's columns
     "from amount-bearing lines only" (section 4, rule 3).
+  - A spreadsheet error hides two valued rows, for the owner and the step 9 plan (design section
+    15, "Monthly City and School"). On page 1 of the July 2020 School report
+    (`collections/monthly-school/2020_07.pdf`), the rows `PAYMENT IN LIEU OF TAXES` and
+    `OTHER NON TAX` end in the text `#DIV/0!` in the percent column, and `has_values` is false
+    for both. The design's rule reads the last word that is not a mark, and `#DIV/0!` is not a
+    value word. No dossier records that text. The Codex review of S2-C at `d3dbb428` found it
+    (finding 2 of `.codex-review/step-02-pr-d3dbb428.md`). The S2-E fix round 3 reran it at
+    `f82950e`, read-only, with `pdftotext -f 1 -l 1 -layout` piped to a script that builds each
+    row with `page_from_text` and calls `group_lines` and `has_values`. It printed
+    `has_values=False` for `PAYMENT IN LIEU OF TAXES 4,574,002 - 96,584 350,198 (253,614)
+    96,584 350,198 (253,614) (96,584) #DIV/0!` and for `OTHER NON TAX 2,557 - - - - - - - -
+    #DIV/0!`. The owner decides what the cell publishes. An idea, not a plan: a spreadsheet
+    error text could count as a value word, so the row keeps its values while the cell itself
+    lexes as `Unreadable`.
 - **Constructor checks the kit does not make** (November 23, 2026, step 2, S2-B). Design section
   2.1 says that the checks a kit type makes at construction are the ones its block shows, and no
   others. Those checks guard what enters the kit from outside: an adapter's words, pages and
@@ -1000,7 +1023,13 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
     can drop a printed sign, since `(29.1)` read as `29.1` gives 29.1, and add one, since `29.1`
     read as `(29.1)` or `-29.1` gives -29.1. Design section 3.1 allows a reading to place a
     separator and a sign that extraction lost. Whether a reading may change one that the cell
-    already prints is the owner's decision.
+    already prints is the owner's decision. A reading can also join two printed numbers by
+    dropping a printed decimal point (Codex review of `2e0f4eca`, finding 2). The cell
+    `110,626,142.01 92.31`, a balance and the percentage beside it (VAL-Q15), is `Unreadable`
+    with the reason `two_tokens`. The reading `1106261420192.31` gives a reviewed `Amount` of
+    that value, and the reading `110626142.01` gives `reading_refused`. A rerun at `f82950e`
+    printed `reading '1106261420192.31' -> Amount 1106261420192.31 reviewed` and
+    `reading '110626142.01' -> reading_refused`. This case falls under the same decision.
   - An `Unreadable` cell that also holds a small raised footnote digit keeps that digit in its
     text, so a reading must carry it. On a text layer, `2918` then a raised `1` in a one-decimal
     column gives `Unreadable` `2918 1` with the reason `decimals`. The readings `291.8` and
@@ -1017,6 +1046,28 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
     change is the owner's decision under hard rule 6 of `CLAUDE.md`. An idea, not a plan: a
     stricter rule would refuse a reading when `seen` holds a letter that is not a pinned
     confusable.
+  - A confusable letter anywhere in the cell's text supplies a digit, in a word that holds no
+    digit and on a text layer as well as on OCR (Codex review of `2e0f4eca`, finding 1). In a
+    money column the cell `408,491,218 NET PROFITS TAX` is `Unreadable` with the reason
+    `not_a_number`. The reading `408491218` gives `reading_refused`, and the reading
+    `4084912180` gives a reviewed `Amount` of 4084912180, because the `O` of `PROFITS` reads as
+    0. The cell `TOTAL TAX REVENUE *` read as `0` gives a reviewed `Amount` of 0. A rerun at
+    `f82950e` on both sources printed `reading '408491218' -> reading_refused`,
+    `reading '4084912180' -> Amount 4084912180 reviewed` and, for `TOTAL TAX REVENUE *`,
+    `reading '0' -> Amount 0 reviewed`. The code follows design section 3.1 as written ("D, d,
+    O, o, Q and q as 0 ... and every other glyph as nothing"), so this is a question about the
+    design's rule and not a defect of `records.py`. Such a cell exists only when the cut puts
+    label words into a value cell. VAL probes 35 and 40 (VAL section 3.2.1) are these two texts
+    in a money column, and each lexes as `Unreadable not_a_number`. VAL section 3.1 lists them
+    as a footnote mark and as an amount fused to a label in the collections reports. Codex
+    states that on page 2 of the April 2024 City collections statement
+    (`collections/monthly-city/2024_04.pdf`) `TOTAL TAX REVENUE *` is a row label, and that the
+    first amount to its right is `4,160,607,459`. That is Codex's statement, not checked here.
+    The owner decides the rule. Ideas, not a plan: a confusable letter could count only inside a
+    word that also holds a digit, or only on an OCR page, or a reading could be refused when
+    `seen` holds a letter that is not a pinned confusable. When the step 5 plan writes
+    `load_records`, it should run a tighter rule against the old repository's reviewed readings
+    before the owner adopts it.
 - **Follow-ups after step 2** (November 23, 2026). The step 2 run found these and did not fix
   them.
   - Nothing ties the module table of design section 11.1 to `PURE_IMPORTS`. A pin can hold a pair
@@ -1100,3 +1151,27 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
     No page is known to print a `$` and a raised digit alone, and no step owns the form.
   - `apply_reading`'s message for a word that is not on the reading's file and page has no test
     that reads the message. The S2-E fix round 2 found it.
+  - Hand-built words `10(` and `cid:28)` in a count column give an `Unreadable` cell whose text
+    is `10( cid:28)`, and the reading `10028` gives a reviewed `Amount`, because the font-code
+    check looks for `(cid:` in `seen`. The S2-E verifier found it at `2e0f4eca`, and a rerun at
+    `f82950e` printed `cell 'Unreadable not_a_number', reading '10028' -> Amount 10028
+    reviewed`. A text layer gives a font code in place of one character, so no extraction
+    should split it across two words. The note above on the case of `(cid:` cites the
+    `pdfminer` line that writes it. This is for the plan of the step that ports the word
+    reader: the reader must keep a font code inside one word, or the check must look for
+    `cid:`.
+  - `pages()` in `packages/checkedtables/tests/test_lines.py` draws, for each word index, the
+    word or its children and never both. So `test_every_word_lands_in_exactly_one_line` passes
+    when `group_lines` drops a parent word whose child is on the page. The Codex review of S2-C
+    at `d3dbb428` found it (finding 1). `Page` accepts a parent with its children (the
+    Deviations entry "the constructor checks are the ones the design blocks show"). At
+    `f82950e`, a page of the word `1,234` and its children `1,` and `234` builds, and
+    `group_lines` keeps all three words. In a scratch copy with `group_lines` changed to drop
+    such a parent, the same page gave only the two children, and the property and the other 11
+    tests of `test_lines.py` passed.
+  - A label whose words are `Sheriff` ending in a non-breaking space and then `2` gives the
+    norm `sheriff 2` with no mark, where `Sheriff 2` gives `sheriff` with the mark `2`. The
+    bare-digit form needs exactly one whitespace character before the digit. The input is
+    constructed. The Codex review of S2-C at `d3dbb428` found it (finding 3), and a rerun of
+    `parse_label` at `f82950e` printed `norm 'sheriff 2' marks ()` and
+    `norm 'sheriff' marks ('2',)`.
