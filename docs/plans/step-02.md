@@ -392,7 +392,7 @@ transcript.
 
 **Verify, unit.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
-- [ ] `test_lines.py` gains the Hypothesis properties `test_every_word_lands_in_exactly_one_line`, `test_a_line_never_spans_more_than_the_tolerance` and `test_group_lines_ignores_word_order`. Each draws pages of words with free boxes, on a text layer or an OCR page, with every field of `Word` drawn. Run `uv run pytest packages/checkedtables/tests/test_lines.py`.
+- [ ] `test_lines.py` gains the Hypothesis properties `test_every_word_lands_in_exactly_one_line`, `test_a_line_never_spans_more_than_the_tolerance` and `test_group_lines_ignores_word_order`. Each draws pages of words with free boxes, on a text layer or an OCR page, with every field of `Page` and of `Word` drawn. Run `uv run pytest packages/checkedtables/tests/test_lines.py`.
   - [ ] In a scratch copy, make `group_lines` compare a word with the word before it. `test_a_line_never_spans_more_than_the_tolerance` fails.
   - [ ] In a scratch copy, make `group_lines` drop a word that fits no open line. `test_every_word_lands_in_exactly_one_line` fails.
 - [ ] `test_lines.py` gains `test_debris_between_two_rows_joins_neither` for QCASH-Q16 and VAL-Q13, `test_a_label_that_ends_in_text_has_no_values` with "Class 100 Total", `test_a_row_that_ends_in_a_dash_has_values`, and `test_a_row_that_ends_in_a_mark_word_has_values` with `2.8` and a backtick word, row 34 of Appendix E.

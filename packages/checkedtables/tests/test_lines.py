@@ -10,11 +10,18 @@ from checkedtables.kinds import SourceKind
 from checkedtables.lines import Line, PageLines, group_lines, has_values, lines_text, page_lines
 from checkedtables.refs import Box, WordRef
 from checkedtables.testing import page_from_text
-from checkedtables.words import Page, Word, WordSource
+from checkedtables.words import Page, Rule, Word, WordSource
 
 SHA = "a" * 64
+OTHER_SHA = "b" * 64
 TEXT_LAYER = WordSource(SourceKind.TEXT_LAYER, "pdfplumber==0.11.4;dedupe_chars")
 OCR = WordSource(SourceKind.OCR, "textract:AnalyzeDocument;dpi=300")
+SOURCES = (
+    TEXT_LAYER,
+    WordSource(SourceKind.TEXT_LAYER, "pdfplumber==0.11.4"),
+    OCR,
+    WordSource(SourceKind.OCR, "textract:DetectDocumentText;dpi=200"),
+)
 coordinates = st.floats(min_value=0.0, max_value=100.0)
 sizes = st.floats(min_value=0.0, max_value=30.0)
 boxes = st.builds(
@@ -25,10 +32,15 @@ boxes = st.builds(
     sizes,
 )
 splits = st.sampled_from(((None,), (0, 1), (0, 1, 2)))
-texts = st.sampled_from(("Taxes", "1,234", "-", "*", "x", ""))
+texts = st.sampled_from(
+    ("Taxes", "1,234", "-", "*", "x", "", "$", "%", "(1,234)", "N/A")
+) | st.text(max_size=5)
 bolds = st.sampled_from((None, True, False))
 font_sizes = st.none() | st.floats()
 ocr_confidences = st.none() | st.floats(min_value=0.0, max_value=100.0)
+page_sizes = st.floats(min_value=0.0, exclude_min=True, allow_infinity=False)
+rotations = st.sampled_from((0, 90, 180, 270))
+rules = st.lists(st.builds(Rule, boxes), max_size=3).map(tuple)
 
 
 def placed(
@@ -63,19 +75,28 @@ LOW_CONFIDENCE = page_of(
     Word(WordRef(SHA, 1, 1), "85.8", Box(60.0, 0.0, 84.0, 12.0), None, None, 89.0),
     source=OCR,
 )
+PAGE_2_OF_ANOTHER_FILE = replace(
+    page_from_text("Taxes $ 1,234", OTHER_SHA, 2),
+    rotation=90,
+    rules=(Rule(Box(0.0, 14.0, 78.0, 14.0)),),
+)
 
 
 @st.composite
 def pages(draw: st.DrawFn) -> Page:
-    source = draw(st.sampled_from((TEXT_LAYER, OCR)))
-    confidences = ocr_confidences if source is OCR else st.none()
+    sha = draw(st.sampled_from((SHA, OTHER_SHA)))
+    number = draw(st.integers(min_value=1, max_value=3))
+    source = draw(st.sampled_from(SOURCES))
+    confidences = ocr_confidences if source.kind is SourceKind.OCR else st.none()
     runs = draw(st.lists(splits, max_size=12))
-    refs = [WordRef(SHA, 1, index, child) for index, run in enumerate(runs) for child in run]
-    words = [
+    refs = [WordRef(sha, number, index, child) for index, run in enumerate(runs) for child in run]
+    words = tuple(
         Word(ref, draw(texts), draw(boxes), draw(bolds), draw(font_sizes), draw(confidences))
         for ref in refs
-    ]
-    return page_of(*words, source=source)
+    )
+    return Page(
+        sha, number, draw(page_sizes), draw(page_sizes), draw(rotations), source, words, draw(rules)
+    )
 
 
 def tolerance(page: Page) -> float:
@@ -92,10 +113,12 @@ def line(text: str) -> Line:
 @example(UNEVEN_HEIGHTS)
 @example(SPLIT_WORD)
 @example(LOW_CONFIDENCE)
+@example(PAGE_2_OF_ANOTHER_FILE)
 def test_every_word_lands_in_exactly_one_line(page: Page) -> None:
     lines = group_lines(page)
     assert Counter(word for found in lines for word in found.words) == Counter(page.words)
     assert all(found.words for found in lines)
+    assert all(found.page == page.number for found in lines)
 
 
 @given(pages())

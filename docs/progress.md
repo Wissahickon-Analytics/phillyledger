@@ -284,7 +284,11 @@ Each entry: step, what changed, why, and the design section updated.
   The comment of `doc_of` also says that it sorts the pages by number and raises `ValueError`
   for no pages, for pages of two files and for a repeated page number. `text`, `lines`
   and `testing` import from `re`, `statistics` and `typing`, which join the list in section
-  11.1. Design sections 3.1 and 11.1.
+  11.1. The strategy `pages()` of `test_lines.py`, behind clause C1a, draws every field of
+  `Page` and of `Word`, so it covers the input type of `group_lines` (fix round 4). A mutation
+  that keys on one drawn value, such as dropping OCR words with a confidence above 99.5, can
+  still survive a run without the explicit examples, because a property test samples. Design
+  sections 3.1 and 11.1.
 - **Step 2: the probe clause reads the 55 inputs of VAL section 3.2.1** (November 23, 2026,
   S2-D). VAL section 3.2 prints 16 of the probe's 55 inputs, and no file holds the rest or any
   new result. The owner chose the 55 rows of Appendix E of `docs/plans/step-02.md`, with the
@@ -820,6 +824,20 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
     the test proves the split of a fused word. The BSALES dossier describes cells that fuse with
     no whitespace corridor between columns, which puts the separate words of two columns in one
     cell. Binding those two columns is a matter for the step 10 plan.
+  - A heading of ZIP codes has values, for the step 10 plan. On page 1 of the March 2013 realty
+    transfer report (`collections/realty-transfer-tax/2013_03.pdf`), the table "Realty Transfer
+    Tax by Location" opens its Center City section with a heading that lists ZIP codes and ends
+    in `92)` (finding 3 of `.codex-review/step-02-pr-7d1aa59d.md`). The S2-C fix round 4 reran
+    that command at `7d1aa59`, in a scratch worktree, with `pdftotext -layout` 26.07.0 and a line
+    built by `page_from_text`, and left out the part that loads the old `amounts.py`. It printed
+    `Center City (19102, 03, 06, 07, 08, 09, 10, 23, 30, 46, 47, 92)` and
+    `has_values: True last word: '92)'`. A value word may hold parentheses, and the heading's
+    last word holds a digit and a closing parenthesis, so `has_values` is true for it. The
+    risks "The design's rule gives a sentence that ends in a number values" and "A value word is
+    defined twice" of Appendix C of `docs/plans/step-02.md` accepted this kind of result. The
+    predicate in `lines.py` is loose by design, and step 5 decides whether `lanes_from_values`
+    needs a stricter one. Step 10 parses this report, and the RTT dossier finds a zone's columns
+    "from amount-bearing lines only" (section 4, rule 3).
 - **Constructor checks the kit does not make** (November 23, 2026, step 2, S2-B). Design section
   2.1 says that the checks a kit type makes at construction are the ones its block shows, and no
   others. Those checks guard what enters the kit from outside: an adapter's words, pages and
@@ -907,7 +925,25 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
     spelling gives `crédit`. The third Codex review of S2-C found it at `0df73f36` (finding 4 of
     `.codex-review/step-02-pr-0df73f36.md`). A rerun of its command in a scratch worktree at that
     head printed `'Cre\u0301dit' 'cre dit' 'credit'` and `'Cr\xe9dit' 'cr\xe9dit' 'cr\xe9dit'`.
-    No page is known to print one.
+    No page is known to print one. No step owns it, and the first step to meet a decomposed label
+    decides.
+  - `split_line_prefix` compiles the table's prefix pattern. For a pattern that Python itself
+    warns about, such as `[[]` (a `FutureWarning`, "Possible nested set"), Python's warnings
+    machinery reads the source file of `text.py` to format the warning and writes a
+    `__warningregistry__` dictionary into the module. The kit does no I/O of its own here, and no
+    table would declare such a pattern, but a table module that did would see the warning in its
+    tests. The fourth Codex review of S2-C found it at `7d1aa59d` (finding 1 of
+    `.codex-review/step-02-pr-7d1aa59d.md`). A rerun of its command in a scratch worktree at that
+    head printed the warning at `text.py:140`, then `registry before: False`,
+    `prefix: [ remainder: Revenue` and `read text.py: True registry after: dict`. Turning
+    warnings into errors for the tests of the pure packages would catch it. That is an idea, not
+    a plan.
+  - In Python `[^\W\d_]` matches a superscript digit. So `normalize_space` closes the hyphen of
+    `"\u00b9 - \u00b2"`, and `parse_label` takes the `2` of `"Total \u00b9 2"` as a mark. The
+    fourth Codex review of S2-C found it at `7d1aa59d` (finding 4). A rerun of its command in a
+    scratch worktree at that head printed `'\u00b9-\u00b2'` and
+    `Total \u00b9 2 'Total \u00b9' ('2',)`, with the superscripts written here as escapes. Both
+    inputs are made up.
   - `transliteration_ok` and `split_numeric_runs` look for a font code as `(cid:` in lower case.
     At the S2-D fix round 3 head, `transliteration_ok("10(CID:28)", "10028")` is true, where the
     lower-case form is false, and `split_numeric_runs` cuts `(CID:21)5` into `(CID:21)` and `5`.
