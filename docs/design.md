@@ -3854,14 +3854,19 @@ def report_budget() -> None:                    # printed in CI and in the PR; n
 ```
 
 `bool_parameters` names each parameter whose annotation is `bool` or a union with `bool` as a
-member, so `flag: bool | None` and `flag: Optional[bool]` fail as `flag: bool` does. It reads
-string annotations through `inspect.signature(fn, eval_str=True)`. A `bool` inside another type,
-such as `tuple[bool, ...]`, does not count. A method's bound first parameter does not count
-toward the four. `public_functions` reads each function and class, once, that a public name in a
-public module reaches, when its `__module__` is the scanned module or a module under it, private
-modules included. A public class that is not a dataclass and writes its own `__init__` has that
-constructor checked too, without `self`. A dataclass's generated constructor stays out, because
-the two field tests pin its fields and allow the `bool` fields `Word.bold` and `Column.printed`.
+member, so `flag: bool | None` and `flag: Optional[bool]` fail as `flag: bool` does. It
+evaluates each parameter's annotation in the function's module, a quoted one and a quoted member
+such as `Optional["bool"]` included, and never the return type. A name that does not resolve at
+run time, such as one imported only under `TYPE_CHECKING`, stands for an unknown type, so it
+raises nothing and a `bool` beside it in a union still counts. A `bool` inside another type, such
+as `tuple[bool, ...]`, does not count. A method's bound first parameter does not count toward the
+four. `public_functions` reads each function and class, once, that a public name in a public
+module reaches, when its `__module__` is the scanned module or a module under it, private modules
+included. A public class's methods, and its `__init__` when it is not a dataclass, include those
+it inherits from a base class in the scanned package, private or not, each read once as the class
+resolves it, without `self`. A base outside the package, such as `object`, `Enum` or `Exception`,
+adds nothing. A dataclass's generated constructor stays out, because the two field tests pin its
+fields and allow the `bool` fields `Word.bold` and `Column.printed`.
 
 `NoteKind` lives in `datadesk`, but its list is pinned in the same test file. A new kind of
 per-edition switch is then as visible as a new kit field (R1). The six vocabulary lists are pinned
