@@ -1,11 +1,22 @@
+import builtins
 import dataclasses
 import importlib
 import inspect
 import pkgutil
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable, Iterator, Mapping
+from functools import reduce
+from operator import or_
 from pathlib import Path
 from types import FunctionType, MethodType, ModuleType, UnionType
-from typing import TYPE_CHECKING, Optional, Union, get_args, get_origin, get_type_hints
+from typing import (
+    TYPE_CHECKING,
+    ForwardRef,
+    Optional,
+    Union,
+    get_args,
+    get_origin,
+    get_type_hints,
+)
 
 import checkedtables
 from datadesk.core.tables import bib_common, collections_common, qcmr_common, supp_common
@@ -40,13 +51,20 @@ def public_objects(root: ModuleType) -> Iterable[object]:
     }.values()
 
 
-def written_constructor(cls: type) -> Iterator[MethodType]:
-    if "__init__" in vars(cls) and not dataclasses.is_dataclass(cls):
-        yield MethodType(vars(cls)["__init__"], cls)
+def package_members(cls: type, root: ModuleType) -> dict[str, object]:
+    owners = {name: owner for owner in reversed(cls.__mro__) for name in vars(owner)}
+    return {name: vars(owner)[name] for name, owner in owners.items() if in_package(owner, root)}
 
 
-def public_methods_as_called(cls: type) -> Iterator[FunctionType | MethodType]:
-    for name, member in vars(cls).items():
+def written_constructor(cls: type, members: Mapping[str, object]) -> Iterator[MethodType]:
+    if "__init__" in members and not dataclasses.is_dataclass(cls):
+        yield MethodType(cls.__init__, cls)
+
+
+def public_methods_as_called(
+    cls: type, members: Mapping[str, object]
+) -> Iterator[FunctionType | MethodType]:
+    for name, member in members.items():
         if name.startswith("_"):
             continue
         if isinstance(member, FunctionType):
@@ -60,8 +78,32 @@ def public_functions(module: ModuleType) -> Iterator[FunctionType | MethodType]:
         if isinstance(value, FunctionType):
             yield value
         elif isinstance(value, type):
-            yield from written_constructor(value)
-            yield from public_methods_as_called(value)
+            members = package_members(value, module)
+            yield from written_constructor(value, members)
+            yield from public_methods_as_called(value, members)
+
+
+class Unresolved(type):
+    def __getattr__(cls, name: str) -> "Unresolved":
+        return cls
+
+    def __getitem__(cls, key: object) -> "Unresolved":
+        return cls
+
+
+class AnnotationNames(dict[str, object]):
+    def __missing__(self, name: str) -> Unresolved:
+        return Unresolved(name, (), {})
+
+
+def resolved(annotation: object, names: AnnotationNames) -> object:
+    if isinstance(annotation, ForwardRef):
+        annotation = annotation.__forward_arg__
+    if isinstance(annotation, str):
+        annotation = eval(annotation, {}, names)
+    if get_origin(annotation) in (Union, UnionType):
+        return reduce(or_, (resolved(arg, names) for arg in get_args(annotation)))
+    return annotation
 
 
 def accepts_bool(annotation: object) -> bool:
@@ -71,8 +113,9 @@ def accepts_bool(annotation: object) -> bool:
 
 
 def bool_parameters(fn: FunctionType | MethodType) -> list[str]:
-    parameters = inspect.signature(fn, eval_str=True).parameters.values()
-    return [parameter.name for parameter in parameters if accepts_bool(parameter.annotation)]
+    names = AnnotationNames({**vars(builtins), **inspect.unwrap(fn).__globals__})
+    parameters = inspect.signature(fn).parameters.values()
+    return [p.name for p in parameters if accepts_bool(resolved(p.annotation, names))]
 
 
 def kit_dataclasses() -> list["type[DataclassInstance]"]:
