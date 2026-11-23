@@ -173,9 +173,12 @@ Each entry: step, what changed, why, and the design section updated.
   static scan cannot know what it holds when the statement runs. A ban on assigning it would miss
   `globals()["__package__"]`. An absolute import does not read `__package__`, and all 64 imports
   from `checkedtables` and `datadesk` in the design's code samples are absolute. The same source
-  now fails with `relative import from .`. A pull request that imports a new name adds its pair
-  to `PURE_IMPORTS`. One that imports from a new module also adds the module to the list in
-  section 11.1. Design section 11.1.
+  now fails with `relative import from .`. An absolute import still finds a submodule through its
+  package's `__path__`, which source can also change at run time. So the scan shows only that no
+  import, read as written, gives pure code a module object from outside, as section 11.1 now says
+  (see the note "The pure packages can still reach effects the gates do not name"). A pull
+  request that imports a new name adds its pair to `PURE_IMPORTS`. One that imports from a new
+  module also adds the module to the list in section 11.1. Design section 11.1.
 
 ## Notes for later sessions
 
@@ -320,6 +323,26 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
     `words.py`, `from checkedtables.words import dataclass` in `birt.py` passed all six gates in
     the same scratch copy. This is by design. Every pinned name is reviewed as legal in pure code,
     and no module object passes that way, because a pinned name that is a module fails.
+  - An S2-A verification lane found that source which changes `__path__` at run time makes an
+    absolute import bind a module from outside. It was run again in a scratch copy of `cd433543`
+    on Python 3.12.15. `datadesk/core/__init__.py` held a function that declares
+    `global __path__`, sets `__path__ = [*__path__, "<stdlib>"]` and is called at import, where
+    `<stdlib>` is the folder of the standard library. `datadesk/core/tables/birt.py` held
+    `from datadesk.core import subprocess` and a function that calls `subprocess.run` on `echo`.
+    Importing `birt` bound `datadesk.core.subprocess` to the standard library's `subprocess.py`,
+    and the function ran `echo`. With a stub `datadesk/core/subprocess.pyi` that holds
+    `from subprocess import run as run`, all six gates exit 0. Without the stub, `ty check` exits
+    1 with ``Module `datadesk.core` has no member `subprocess` ``, `prek` exits 1 on its `ty`
+    hook, and the other four gates exit 0. The same plant in `checkedtables/__init__.py` and
+    `checkedtables/words.py` binds the standard library's `subprocess` the same way, and
+    `uv run pytest` exits 1 with or without the stub. The library shape test walks `__path__` and
+    imports `asyncio/windows_events.py` from the standard library folder. That import raises
+    `ImportError: win32 only`, so three tests in `test_library_shape.py` and the two planted shape
+    tests in `tests/test_gates.py` fail. With the stub the other five gates exit 0, and without it
+    `ty check` and `prek` also exit 1. The route stays open. `__path__` is a module
+    global that source changes at run time, the family that Appendix B of the step 2 plan leaves
+    to a separate decision for the owner. A rule against assigning `__path__` would also miss
+    `__path__.append(...)`. Review reads for it, as design section 11.1 says.
 - **Follow-ups after step 1** (November 22, 2026). The step 1 run found these and did not fix
   them.
   - Nothing tests a gate's own settings. In scratch copies of the S1-D head, each of
@@ -377,3 +400,10 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
     path the whole suite reads the other checkout, and the purity test agrees with the rest. The
     Codex review of S2-A at `c103b016` showed it with `PYTHONPATH` set to a sibling worktree's
     kit, where `test_pure_imports_are_pinned` failed on that worktree's imports.
+  - `test_scan_reports_each_banned_form` checks each banned form against the live `PURE_IMPORTS`.
+    Once a pin holds a name that a banned form imports, the scan accepts the form and the test
+    fails. The third Codex review of S2-A, at `cd433543`, showed it with
+    `collections.defaultdict` pinned for `checkedtables` in memory. Its command printed `scan: []`
+    and `AssertionError: from collections import defaultdict` on Python 3.12.15. Both pins are
+    empty, so no pin names one today. A later pull request that pins a name that one of the banned
+    forms imports, such as `collections.defaultdict`, must also edit that form.
