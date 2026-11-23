@@ -96,6 +96,9 @@ class UnresolvedType(type):
 
 class AnnotationNames(dict[str, object]):
     def __missing__(self, name: str) -> UnresolvedType:
+        if name.startswith("__"):
+            # pytest reads __tracebackhide__ from the locals of the eval frame on an error.
+            raise KeyError(name)
         return UnresolvedType(name, (), {})
 
 
