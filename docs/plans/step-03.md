@@ -85,22 +85,33 @@ City's file for an edition may differ from the copy.
 
 | # | Clause of the check | Owner | Test that proves it |
 |---|---|---|---|
-| C1 | Each of the 20 reports, FY2022 Q1 to FY2026 Q4, is indexed | S3-E | `test_each_of_the_20_reports_is_indexed` in `tests/test_archive_inventory.py` |
+| C1 | Each of the 20 reports, FY2022 Q1 to FY2026 Q4, is indexed | S3-E | `test_each_of_the_20_editions_has_a_row_and_a_current_version` in `tests/test_archive_inventory.py` |
 | C2 | Each is indexed once | S3-E | `test_each_inventory_sha_is_indexed_once`, same file |
-| C3 | Each is indexed by the sha in the inventory | S3-E | `test_the_index_holds_the_inventory_shas`, same file |
+| C3 | Each is indexed by the sha in the inventory | S3-E | `test_each_edition_is_indexed_under_its_inventory_sha`, same file |
 | C4 | The inventory is checked by hand | S3-E | `test_every_inventory_row_is_checked`, same file, and the owner's words in the pull request |
-| C5 | Fetching the same listing again adds nothing | S3-D | `test_fetching_the_same_listing_again_adds_nothing` in `packages/datadesk/tests/shell/test_run_fetch.py` |
+| C5 | Fetching the same listing again adds nothing | S3-D | `test_fetching_the_same_listing_again_adds_nothing` in `packages/datadesk/tests/shell/test_fetch_command.py` |
 
-The three tests of C1 to C3 read the index file and the inventory file from the checkout and
-compare them. The index comes from `datadesk`. The inventory comes from `shasum`, `pdfinfo` and
-`pdftotext`, so the two sides share no code. C4's test fails while any row has an empty
-`checked` cell, and only the owner's word fills a cell (see "The inventory").
+The tests of C1 to C3 read the index file and the inventory file from the checkout. The test
+file holds the 20 edition ids as its own list, built from the 20 quarter ends, September 30,
+2021 to June 30, 2026. So a quarter that is missing from both files fails C1. C3 compares
+pairs: the sha of an inventory row must be the sha of the index's current version of that
+row's edition. C2 requires each inventory sha on exactly one index line. S3-E shows two changes
+failing, each in its pull request: the shas of FY2022 Q1 and Q2 swapped in the index, and one
+quarter removed from both files.
 
-C5's test runs `run_fetch` twice against a fake `Http` that replays the recorded feed, a fake
-`PdfReader` and the dict store. After the second run the store saw no `put`, the index text is
-byte for byte the same, and the plan holds no file to write. S3-C adds the pure half,
-`test_plan_fetch_adds_nothing_for_an_indexed_sha`. S3-E records the second real run against the
-City's site and R2 in its pull request.
+The index comes from `datadesk`. The inventory's `sha256` comes from a `curl` download and
+`shasum` (see "The inventory"), so the two sides share no code. C4's test fails while any row
+has an empty `checked` cell, and only the owner's word fills a cell.
+
+C5's test drives the function behind `datadesk fetch qcmr` twice, so it covers the listing
+read, `run_fetch` and the index write. It uses a temporary checkout, a fake `Http` that replays
+the recorded feed and one body for each report URL, a fake `PdfReader`, and the dict store.
+After the first run it asserts the store's keys, the bytes under each key, and the edition and
+sha of each index line. It then loads the checkout again and runs the command a second time.
+The store saw no new `put`, the index file is byte for byte the same, and the plan holds no
+file to write. S3-C adds the pure half, `test_plan_fetch_adds_nothing_for_an_indexed_sha`.
+S3-E records two real runs against the City's site and R2 in its pull request, and each run
+prints the listing's `html_sha256`.
 
 ## Shapes the design leaves open
 
@@ -111,45 +122,68 @@ pull request that builds a shape records it in `docs/design.md` and in
 1. **A QCMR edition's period is its fiscal quarter.** `Period(first day of the quarter, the
    printed end date)`, so FY2026 Q4 is April 1 to June 30, 2026, and its id is
    `qcmr:2026-06-30:none`. Editions then never overlap.
-2. **`listed_at`.** For a document-finder link it is the 14-digit upload stamp in the URL path.
-   For a held copy it is the empty string, which sorts first, so a held copy never outranks a
-   listed version. Two versions of one edition with the same `listed_at` make `add_versions`
-   return a finding.
+2. **`listed_at` and the order of versions.** For a document-finder link `listed_at` is the
+   14-digit upload stamp in the URL path. For a held copy it is the empty string.
+   `current(edition)` is the edition's version that no other version supersedes. A new version
+   supersedes the current one when its `listed_at` is later or the same, so step 13 can record
+   new bytes behind an unchanged URL (design 18.1). A new version with an earlier `listed_at`
+   is a rejection for the owner, so a held copy never supersedes a listed version.
+   `add_versions` returns a finding when an edition would have two versions that nothing
+   supersedes.
 3. **The index file** is `packages/datadesk/src/datadesk/data/index.jsonl`, one
-   `DocumentVersion` on each line.
+   `DocumentVersion` on each line. S3-D commits it empty, and `parse_index("")` is the empty
+   index, so the first command runs on a fresh checkout.
 4. **`SourceEntry`** has `id`, `series`, `shape`, `listing_url`, `category` and
    `first_period_end`. `shape` is a `ListingShape`, a `StrEnum` of `document_finder`,
    `phila_documents` and `manual`. `SourceCatalog` holds the entries and `entry(id)`.
    `load_catalog(text)` returns a `SourceCatalog` or findings. Lag, recheck interval,
    `missing_ok`, slug exceptions and `DatasetSpec` wait for the steps that need them.
-5. **`plan_watch`, first cut.** It keeps the design's signature. A listed link gets one
-   `FetchRequest` when it has an edition and no skip reason, its period ends on or after the
-   entry's `first_period_end`, and no indexed version holds its URL. The reason is `new` when
-   the edition has no version and `revision` when it has one. `wayback`, `gaps` and `findings`
-   stay empty until step 13. `PullRequestPlan(files, branch, title, body)` lives in
-   `core/watch.py`.
-6. **The City's file first, the held copy second.** `datadesk fetch qcmr` downloads every listed
-   report from FY2022 Q1 on, because five URLs show a second upload and the City's last listed
-   file is the current version of its edition (design 6.3). `datadesk import-held` then builds
-   one `Fetched` for each held file, with the reason `held` and no URL, and sends it through the
-   same `plan_fetch`. A held sha that is already indexed under its edition adds nothing. A held
-   file for an edition with no version is indexed with `Via.MANUAL` and no URL. A held sha that
+5. **`plan_watch`, first cut.** It keeps the design's signature. `parse_listing` keeps the links
+   of the entry's category alone. `plan_watch` takes the last listed link of each edition
+   (design line 2035), drops an edition whose period ends before `first_period_end`, and makes
+   one `FetchRequest` for each link whose URL no indexed version holds. The reason is `new`
+   when the edition has no version and `revision` when it has one. A link whose title reads as
+   a report and whose date is not a quarter end gets the skip reason `not_a_quarter_end`, and
+   `plan_watch` returns a finding for it in `WatchPlan.findings`. `wayback` and `gaps` stay
+   empty until step 13. `PullRequestPlan(files, branch, title, body)` lives in `core/watch.py`.
+6. **The City's file first, the held copy second.** `datadesk fetch qcmr` downloads the last
+   listed report of every edition from FY2022 Q1 on, because five URLs show a second upload and
+   the City's last listed file is the current version of its edition (design 6.3).
+   `datadesk import-held` then reads the inventory. For each row with a `held_file` it reads
+   that one file, checks its sha against the row's `held_sha256`, and builds a
+   `Held(edition, name, sha256, size, page1_text)`. It opens no other file in the folder, so
+   the 59 older reports there wait for step 7. `plan_import(held, index, notes)` in
+   `core/fetch.py` sends each `Held` through `confirm_period` and the index rules of
+   `plan_fetch`. A held sha that is already indexed under its edition adds nothing. A held file
+   for an edition with no version is indexed with `Via.MANUAL` and `urls=()`. A held sha that
    differs from its edition's listed version is a `Rejection` with the reason
-   `differs_from_listed`, and the owner decides it.
-7. **`confirm_period` returns the period the page prints.** It is the expected period, or the
+   `differs_from_listed`, and the owner decides it. A `Rejection` names the `FetchRequest` or
+   the `Held` it refuses.
+7. **A version gains a URL.** When a fetched sha is already indexed under its edition and the
+   request's URL is new, `plan_fetch` stores nothing and `index_add` carries the version with
+   that URL. `add_versions` merges it into the one line, so `urls` holds every URL that served
+   the bytes (design line 1102) and the next `plan_watch` asks for nothing. A held version that
+   a listing later serves takes the listing's `listed_at` and title, and `Via.PUBLISHER`.
+8. **`confirm_period` returns the period the page prints.** It is the expected period, or the
    period a `PRINTED_PERIOD` note names for a text that page 1 holds. Anything else is a
    finding: no phrase, a date that is not a quarter end, or another quarter with no note.
-   `plan_fetch` passes it only the notes whose `doc_sha256` is the fetched sha.
-8. **One store for each bucket.** R2 cannot make one object public (fact 7), so
+   `plan_fetch` and `plan_import` pass it only the notes whose `doc_sha256` is the sha at hand.
+   The two commands pass no notes at step 3. `load_records` arrives at step 5 and the first
+   real note at step 7 (QCASH-Q07), so unit tests alone prove the note path here. A cover among
+   the 20 that fails stops S3-E for the owner.
+9. **One store for each bucket.** R2 cannot make one object public (fact 7), so
    `ObjectStore.put` loses `public` and becomes `put(key, data, condition)`. `Deps` holds a
    store bound to the archive bucket. A later step adds a store for each bucket it needs. The
-   sketch of `run_fetch` at design line 2381 also omits `condition`. A report is stored with
-   `CreateOnly`, and a `PreconditionFailed` on a key that is the report's own sha counts as
-   stored.
-9. **`run_fetch` returns the `FetchPlan` and calls no `GitHost`.** The CLI writes the plan's
-   files into the checkout, last, after every `put`, and prints the title and the body. The
-   session opens the pull request. Step 13 builds the `GitHost` port and its adapter.
-10. **`PdfReader` has `page1_text` alone** at step 3. Step 4 adds `words` and `render`.
+   sketch of `run_fetch` at design line 2381 also omits `condition`. A report is stored through
+   `put_immutable(store, key, data, sha)`, the helper of design 4.5 less its `public`
+   parameter. It writes with `CreateOnly`. On `PreconditionFailed` it reads the object and
+   hashes it. The same bytes complete the put. Other bytes raise, and the command stops before
+   it writes the index.
+10. **`run_fetch` returns the `FetchPlan` and calls no `GitHost`.** It tries a failed `get` or
+    `put` up to three times and then stops (design section 9). The CLI writes the plan's files
+    into the checkout last, after every `put`, and prints the title and the body. The session
+    opens the pull request. Step 13 builds the `GitHost` port and its adapter.
+11. **`PdfReader` has `page1_text` alone** at step 3. Step 4 adds `words` and `render`.
 
 ## Pull requests
 
@@ -164,9 +198,12 @@ Builds on `main`. `feat(datadesk): add the archive index`.
 - Files: `src/datadesk/core/domain.py`, `src/datadesk/core/index.py`,
   `tests/core/test_domain.py`, `tests/core/test_index.py`.
 - Proves: `render_index(parse_index(text)) == text` for a sorted text, and
-  `parse_index(render_index(index)) == index` as a Hypothesis property. `ArchiveIndex` refuses
-  one sha twice. `add_versions` returns a finding for a sha under another edition and for two
-  versions with one `listed_at`. `current` gives the last listed version.
+  `parse_index(render_index(index)) == index` as a Hypothesis property. `parse_index("")` is the
+  empty index. `ArchiveIndex` refuses one sha twice. `add_versions` merges a new URL into the
+  line of the same sha and edition. It returns a finding for a sha under another edition, and
+  for an edition left with two versions that nothing supersedes. A version with the same
+  `listed_at` as the one it supersedes round-trips. `current` gives the version that nothing
+  supersedes.
 
 ### S3-B, `step-03/b-listing`: the QCMR catalog entry and its listing
 
@@ -180,10 +217,16 @@ Builds on S3-A. `feat(datadesk): read the QCMR listing`.
   the real `catalog.toml`.
 - `periods.py` gets `MONTHS`, `fiscal_year_of` and `fiscal_quarter`. `fiscal_period` needs
   `Window` and waits for step 5. `match_month` waits for step 9.
+- The fixture keeps the QCMR category from September 30, 2021 on and one other category whole.
 - Proves, on the recorded feed: 21 report links get editions and 13 infographics get the skip
-  reason `infographic`. "Manager's" and "Managers" read the same. The host `admin.phila.gov`
-  becomes `www.phila.gov` (QCASH-Q04). The edition comes from the title and never from the URL.
-  `plan_watch` asks for 21 fetches on an empty index and none when the index holds every URL.
+  reason `infographic`. A link of the other category is never listed. "Manager's" and
+  "Managers" read the same. The host `admin.phila.gov` becomes `www.phila.gov` (QCASH-Q04). The
+  edition comes from the title and never from the URL, so `...March-30-2026R.pdf` under its
+  March 31 title is FY2026 Q3. `plan_watch` asks for 21 fetches on an empty index and none
+  when the index holds every URL. The count is 20 if question 2 sets a last period end.
+- Proves, on changed copies of the feed: with a second attachment appended for one quarter,
+  `plan_watch` asks for the last one alone, a test ported from the old `test_qcmr.py:165`. A
+  report title dated March 30, 2026 gives a finding and no fetch.
 
 ### S3-C, `step-03/c-fetch-plan`: `confirm_period` and `plan_fetch`
 
@@ -195,13 +238,17 @@ Builds on S3-B. `feat(datadesk): confirm the printed period and plan a fetch`.
   starts with the `NoteKind` pin (hard rule 6, design 11.4).
 - Proves, for `confirm_period`: the printed quarter end passes. Another quarter is a finding
   (QOBL-Q06). A mismatch passes only with a `PRINTED_PERIOD` note whose text page 1 holds
-  (QCASH-Q07). A cover with no phrase is a finding. September and December ends belong to the
-  next fiscal year (QPOS-Q34).
+  (QCASH-Q07), and a note for another sha does not clear it. A cover with no phrase is a
+  finding. September and December ends belong to the next fiscal year (QPOS-Q34).
 - Proves, for `plan_fetch`: a confirmed report gets one `StoreObject` at
   `pdf/<sha[:2]>/<sha>.pdf` and one index line. A sha indexed under another edition is a
   `content_alias` rejection (MSCH-Q01). A status other than 200 is a rejection. A later listing
-  of an edition supersedes the earlier version (QPOS-Q32). A held copy that differs from the
-  listed version is a `differs_from_listed` rejection. An indexed sha adds nothing.
+  of an edition supersedes the earlier version (QPOS-Q32), and so do new bytes with the same
+  `listed_at`. An indexed sha at an indexed URL adds nothing. An indexed sha at a new URL adds
+  the URL and stores nothing.
+- Proves, for `plan_import`: a held file for an edition with no version is indexed with
+  `Via.MANUAL` and no URL. One that equals the listed version adds nothing. One that differs
+  from it is a `differs_from_listed` rejection.
 
 ### S3-D, `step-03/d-shell`: the S3 adapter and the two commands
 
@@ -209,16 +256,27 @@ Builds on S3-C. `feat(datadesk): store reports in R2 and run fetch`.
 
 - Files: `src/datadesk/shell/ports.py`, `settings.py`, `gather.py`, `run_fetch.py`, `cli.py`,
   `src/datadesk/shell/adapters/__init__.py`, `s3.py`, `http_httpx.py`, `pdf_pdfplumber.py`,
-  `tests/shell/` with the fakes, the contract suite and the tests below,
-  `packages/datadesk/pyproject.toml` for `boto3`, `httpx`, `pdfplumber` and the `datadesk`
-  script, `uv.lock`, and `CLAUDE.md` for the two new commands.
-- Proves: C5. The `ObjectStore` contract suite passes on the dict store in CI. `CreateOnly`
-  refuses a key that exists and leaves its bytes. `IfMatch` refuses a stale etag.
-  `load_settings` names a missing variable and never prints a value. `import-held` stops when a
-  held file's sha is not the one its inventory row gives.
-- The owner of S3-D runs the same contract suite against MinIO in Docker and records the run in
-  the pull request. Design 11.1 runs real-adapter contracts nightly and before a release, so CI
-  skips that half, and the suite reports the skip.
+  `src/datadesk/data/index.jsonl`, empty, `tests/shell/` with the fakes, the contract suites
+  and the tests below, `packages/datadesk/pyproject.toml` for `boto3`, `httpx`, `pdfplumber`
+  and the `datadesk` script, `uv.lock`, the root `conftest.py` for `import ssl`
+  (`docs/progress.md`), and `CLAUDE.md` for the two new commands.
+- Proves: C5. The `ObjectStore` contract suite covers a create on an absent key, a replacement
+  with the current etag, a stale etag refused with the bytes kept, `CreateOnly` on a key that
+  exists, and `IfMatch(None)` on an absent key and on one that exists. `put_immutable`
+  completes when the store already holds the same bytes and raises when it holds others, each
+  with the dict store loaded first. A failed `get` or `put` that then succeeds stores once.
+  Three failures stop the command with the index file untouched.
+- Proves: `load_settings` names a missing variable and prints no value.
+  `test_s3_client_ignores_the_ambient_aws_profile` builds the adapter's client under an
+  `AWS_PROFILE` that does not exist and under shared files that hold other keys. `import-held`
+  never opens an older file in the folder, indexes a held report that the fetch did not
+  bring, and stops when a held file's sha is not the one its inventory row gives.
+- Proves: the `page1_text` contract on two PDFs the test builds, a text page and an image
+  page. The `Http` contract passes on the fake.
+- The suites run on the fakes in CI. Design 11.1 runs the real halves nightly and before a
+  release, so CI skips them and reports the skip. The owner of S3-D runs the `ObjectStore`
+  suite against MinIO in Docker and the `Http` suite as one request for the City's feed, and
+  records both runs in the pull request.
 
 ### S3-E, `step-03/e-archive`: the 20 reports
 
@@ -227,29 +285,36 @@ under `src/`.
 
 - Files: `src/datadesk/data/index.jsonl`, `docs/evidence/inventory/qcmr.tsv`,
   `tests/test_archive_inventory.py`, `docs/plan-notes.md`, `CLAUDE.md`.
-- Runs, each recorded in the pull request with its command and output: the contract suite
-  against R2, `datadesk fetch qcmr`, `datadesk import-held`, and `datadesk fetch qcmr` a second
-  time.
+- Runs, each recorded in the pull request with its command and output: `datadesk fetch qcmr`,
+  `datadesk import-held`, and `datadesk fetch qcmr` a second time. With the owner's go
+  (question 3), the `ObjectStore` suite also runs against a scratch bucket on R2.
 - Owns C1 to C4. `docs/plan-notes.md` gets a note for step 7: the feed lists QCMR reports back
   to December 31, 2006. `CLAUDE.md` gets the folder of the held reports in place of "ask for
   the path when step 3 starts".
 
 ## The inventory
 
-`docs/evidence/inventory/qcmr.tsv` has one row for each indexed report, with the columns
+`docs/evidence/inventory/qcmr.tsv` has one row for each expected edition, with the columns
 `edition`, `sha256`, `bytes`, `pages`, `page1_period`, `url`, `held_file`, `held_sha256` and
 `checked`.
 
 How it is made, in S3-E:
 
-1. After the first fetch, the session downloads each stored report from the archive bucket by
-   its key into a scratch folder.
-2. A shell loop over that folder fills `sha256` with `shasum -a 256`, `bytes` with `stat`,
-   `pages` with `pdfinfo`, and `page1_period` with the `PERIOD ENDING` phrase from
-   `pdftotext -f 1 -l 1`. The same loop over the owner's folder fills `held_file` and
-   `held_sha256`. The pull request prints the loop, so anyone can run it again.
-3. The session checks each row against the table above. A sha that differs from the copy seen
-   is reported to the owner before anything else.
+1. Before any command runs, the session writes one row for each of the 20 editions, and one
+   for FY2027 Q1 if question 2 says so, with `edition` alone. A shell loop over the 14 in-range
+   files of the owner's folder fills `held_file` and `held_sha256` with `shasum -a 256`. The
+   session checks those shas against the table above.
+2. `datadesk fetch qcmr` runs, then `datadesk import-held`, which reads the rows of step 1.
+3. For each row the session downloads the City's file with `curl`, from the URL the index
+   gives, into a scratch folder. `sha256` is `shasum -a 256` of that download, `bytes` its
+   size, `pages` comes from `pdfinfo`, and `page1_period` is the `PERIOD ENDING` phrase from
+   `pdftotext -f 1 -l 1`. This download shares no code with `datadesk`. For a report that
+   reached the archive from the held folder, the source is the held file.
+4. For each row the session compares that source digest, the digest of the object read back
+   from the archive bucket, the object's key and the index line. Where the table above has a
+   copy, its sha is a fifth witness. Any difference goes to the owner before he checks a row.
+
+The pull request prints each loop, so anyone can run it again.
 
 How it is checked: the owner opens each PDF from the scratch folder. He confirms that the cover
 names the row's period, that the file is the whole report with the row's page count, and that
@@ -261,9 +326,12 @@ The owner has seen an earlier form of this proposal and has not confirmed it (qu
 
 ## Environment variables
 
-`load_settings(environ)` reads these six and nothing else. The S3 adapter passes the values to
-its client itself and reads no `AWS_*` variable and no credentials file, so a profile set for
-another account is never used.
+`load_settings(environ)` reads these six and nothing else. The S3 adapter gives its client the
+endpoint and the two keys from `Settings`. That alone does not shut out an AWS profile. A boto3
+1.43.26 client built with explicit keys raised `ProfileNotFound` under `AWS_PROFILE` set to a
+missing profile (run on November 23, 2026). S3-D builds the client so that a profile or a
+credentials file changes nothing, and `test_s3_client_ignores_the_ambient_aws_profile` proves
+it.
 
 | Variable | Holds |
 |---|---|
@@ -274,8 +342,15 @@ another account is never used.
 | `DATADESK_R2_ARCHIVE_PUBLIC_URL` | the bucket's public address, which the hand check downloads from |
 | `DATADESK_HTTP_USER_AGENT` | the User-Agent that `Http` sends to the City's site |
 
-`Settings` keeps the secret out of its `repr`. No test and no CI job reads a real credential.
-The MinIO run sets the same variables for a local server.
+`Settings` keeps both key values out of its `repr`, and no command prints either one.
+
+CI runs on the fakes and reads no credential. The `ObjectStore` contract suite reads its target
+from four variables of its own: `DATADESK_CONTRACT_S3_ENDPOINT_URL`,
+`DATADESK_CONTRACT_S3_ACCESS_KEY_ID`, `DATADESK_CONTRACT_S3_SECRET_ACCESS_KEY` and
+`DATADESK_CONTRACT_S3_BUCKET`. It skips its real half, with a message, when they are unset. The
+MinIO run sets them to a local server with throwaway keys. A run against R2 sets them to a
+scratch bucket and a real token, and only with the owner's go (question 3). So no test writes
+to the archive bucket, and no test reads the six variables above.
 
 ## Risks to probe
 
@@ -288,9 +363,10 @@ The MinIO run sets the same variables for a local server.
    (`FY22_Q1.pdf`). `confirm_period` reads the `PERIOD ENDING` phrase alone (QCASH-Q05,
    QOBL-Q04). pdfplumber may break the phrase across lines or put U+00A0 in it (QOBL-Q02), so
    S3-C tests both, and S3-E runs the 20 real covers.
-4. **A title, a cover and a URL can name different days** (fact 5, FY2026 Q3). A report title
-   whose date is not a quarter end gets a skip reason that `plan_watch` reports, and never
-   disappears, as it did in the old `reports_from_feed`.
+4. **A title, a cover and a URL can name different days** (fact 5, FY2026 Q3). The edition
+   comes from the title. The old `reports_from_feed` mapped a title date by its month alone
+   (`qcmr.py:145`), so a title dated March 30 read as Q3. Here such a title is a finding
+   (shape 5).
 5. **Conditional writes through boto3** (design line 2290, section 18.1). `IfNoneMatch="*"` and
    `IfMatch` on `put_object` must raise `PreconditionFailed` on MinIO and on R2, and the etag
    that `put` and `head` return must be the same string.
@@ -313,15 +389,43 @@ The MinIO run sets the same variables for a local server.
 2. **Does step 3 index FY2027 Q1?** The feed lists it (fact 4). The proposal is yes, with a 21st
    inventory row. The clauses stay about the 20. If no, the catalog entry gets a last period
    end of June 30, 2026, which a later step removes.
-3. **Which R2 bucket is the archive, and what is its public address?** The design says "both
-   buckets use Cloudflare R2" and names neither. Step 3 needs the archive bucket, a token that
-   can write to it, and the six variable names above confirmed or changed.
+3. **Which R2 bucket is the archive, and may step 3 use it?** The design says "both buckets use
+   Cloudflare R2" and names neither. Step 3 needs the archive bucket, its public address, a
+   token that can write to it, and the variable names above confirmed or changed. It stores
+   about 21 PDFs, near 50 MB (the 19 copies seen hold 38,831,218 bytes), and makes a few
+   hundred requests. Whether that costs money depends on the account's allowance, which this
+   plan has not read. A report becomes public at its first `put` if the bucket is public by
+   then. A second go is asked for the contract suite on a scratch bucket with a real token.
+   Without it, MinIO and Cloudflare's page are the proof of the conditional writes.
 4. **Is the inventory right as proposed?** The form shown earlier was a 20-row table computed
    from the held folder: edition, file name, sha256, page count and the period printed on page
    1, each row checked by opening the PDF. This plan changes two things. The rows come from the
-   City's files in the archive, and the held copies are a second sha beside them (shape 6).
+   City's files, downloaded apart from `datadesk`, and the held copies are a second sha beside
+   them (shape 6).
 5. **What happens to a held copy that differs from the City's file?** The proposal is to leave
    it out of the index and list it in the pull request. The other choice is to index it as an
    earlier version.
 6. **May the Build session install the `gh stack` extension?** It is not installed (fact 8), and
    `docs/plans/README.md` requires it from this step on.
+
+## Codex review
+
+Codex reviewed commit `39f8af3e` on November 23, 2026. Its report is
+`.codex-review/step-03-plan-39f8af3e.md`. It raised twelve findings, four as blocking. Each was
+checked against the plan, the design or a run, all twelve held, and the plan above is revised
+for each. None is disputed.
+
+| # | Finding | How it was confirmed | What changed |
+|---|---|---|---|
+| 1 | C1 to C3 pass with two shas filed under each other's quarter, or with a quarter missing from both files | The plan's test names compared sha sets, not pairs | "Clauses": the test holds its own 20 ids and compares pairs, and two changes are shown failing |
+| 2 | C5's test ran `run_fetch`, which neither reads the listing nor writes the index | Design line 2368, and shape 10 gives the write to the CLI | C5's test drives the command twice on a temporary checkout and asserts the first run's result |
+| 3 | A create-only conflict counted as stored without reading the object | `put_immutable` at design line 2465 hashes the object | Shape 9 uses `put_immutable`, and S3-D tests both outcomes |
+| 4 | `import-held` read all 73 files and needed inventory rows that did not exist yet | The plan's own text | Shape 6 and "The inventory": rows for the expected editions come first, and the import reads only the files they name |
+| 5 | The inventory hashed the archive's own output | The plan's own text | "The inventory": the sha comes from a `curl` download, compared with the archive object, its key and the index |
+| 6 | The fixture could not prove the category filter or "last link per edition wins" | Design line 2035, and the fixture was cut to one category | Shape 5 and S3-B: a second category stays, and the two-attachment test is ported |
+| 7 | A new URL for indexed bytes was dropped, and new bytes at an unchanged URL could not be added | Design lines 1102 and 5056 | Shapes 2 and 7, with tests in S3-A and S3-C |
+| 8 | `plan_watch` had no field for the bad title it promised to report, and the old code was misdescribed | Shape 5 kept `findings` empty, and `qcmr.py:145` maps by month | Shape 5 returns a finding, and risk 4 is corrected |
+| 9 | A held file had no typed form, and no note reached the command | Design lines 2008 and 2379 | Shape 6 adds `Held` and `plan_import`, and shape 8 defers real notes to step 5 |
+| 10 | The store tests passed an adapter that refuses every `IfMatch`, and two adapters had no contract | Design lines 2293, 3786 and 4051 | S3-D: the full condition matrix, retries, the `Http` and `page1_text` contracts, and the root `conftest.py` |
+| 11 | Explicit keys do not shut out an AWS profile | Rerun: `ProfileNotFound` under a missing `AWS_PROFILE`, boto3 1.43.26 | "Environment variables": the claim is gone, and a test must prove the isolation |
+| 12 | A real R2 run contradicted "no test reads a real credential", and the cost was unstated | The plan's own text, and the byte total recomputed as 38,831,218 | The contract suite has its own variables and a scratch bucket, and question 3 asks for the go |
