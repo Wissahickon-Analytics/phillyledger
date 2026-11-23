@@ -35,7 +35,8 @@ The step 1 check passed in four `pull_request` runs of `.github/workflows/ci.yml
 The three plant runs came from temporary pull requests 7, 9 and 13, which are closed. Each ran on
 the head of its stack branch at the time, not on the final heads. C2 ran on `805cd23` of
 `step-01/b-import-contracts`, C3 on `bd0f2f1` of `step-01/c-kit-shape`, and C4 on `b4eda02` of
-`step-01/d-test-isolation`, which has the same patch id as the final S1-D head.
+`step-01/d-test-isolation`, which has the same patch id as `d3a9477`, the restacked S1-D head
+that the clean run used.
 
 ## Deviations from the design
 
