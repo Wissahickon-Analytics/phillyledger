@@ -34,6 +34,7 @@ FIELD_SNAPSHOT: dict[str, tuple[str, ...]] = {
     "Rule": ("box",),
     "Page": ("doc_sha256", "number", "width", "height", "rotation", "source", "words", "rules"),
     "Document": ("sha256", "pages"),
+    "Label": ("printed", "text", "norm", "squash", "marks", "line_no"),
 }
 
 
