@@ -1,6 +1,6 @@
 ---
 name: verify-step
-description: Verify a phillyledger pull request or build step against the design. Runs the gates, proves each clause of the step's check with a named test, and audits the diff for weakened checks, purity breaks and altered numbers. Use whenever work on a build step claims to be done, and for every swarm verifier.
+description: Verify a phillyledger pull request or build step against the design. Proves each clause of the step's check with a named test, and audits the diff for weakened checks, purity breaks and altered numbers. Codex runs it for every pull request, through the codex-review skill.
 argument-hint: "[step-number] [base-branch]"
 ---
 
@@ -12,14 +12,14 @@ when no base is given. Report findings. Do not fix anything.
 - `git diff <base>...HEAD` and `git log <base>..HEAD`.
 - Step $0 in design section 15, the module tables in section 12, and every section the step
   names.
-- `docs/plans/step-NN.md` for the pull request this branch is meant to deliver, and
-  `docs/progress.md` for what the builder claims.
+- `docs/plans/step-NN.md` for the pull request this branch is meant to deliver, and the commit
+  messages and `docs/deviations/step-NN.md` for what the builder claims.
 
 ## Gates
 
-Run each and record the command and its result: `uv run pytest`, `uv run ruff check .`,
-`uv run ruff format --check .`, `uv run ty check`, `uv run lint-imports`. A gate that does not
-exist yet (before step 1 builds it) is reported as missing, not as passing.
+The Build session runs `just gates` at the head, and CI runs the same six gates. Do not rerun
+them all. Run one only when a finding needs it. The `Justfile` gives each gate's command, and
+the tools are in `.venv/bin`.
 
 ## The check
 
@@ -34,7 +34,7 @@ breaking the code the clause describes in a scratch copy and showing the test st
    broad `except`, `# type: ignore`, `noqa`, fixtures regenerated without a reason in the
    commit.
 2. **Design drift.** Names, signatures, types and module boundaries that differ from the design
-   without an entry under Deviations in `docs/progress.md`.
+   without an entry in `docs/deviations/step-NN.md`.
 3. **Purity.** Anything in `checkedtables` or `datadesk.core` that touches files, sockets,
    processes, the clock, the environment, randomness or logging, or keeps mutable module state.
 4. **Honest numbers.** Code that changes a printed value, fills a missing one, guesses, or binds
@@ -43,11 +43,14 @@ breaking the code the clause describes in a scratch copy and showing the test st
    without the pin test and the design changing together.
 6. **Quirks.** Each quirk the diff marks in `docs/evidence/coverage.tsv` has a test that
    exercises it.
-7. **Reference repo.** `git -C ../gov-budget-data status --porcelain` is empty.
+7. **Reference repo.** No file that `git -C ../gov-budget-data status --porcelain` lists was
+   written after this branch's first commit. Use the path the caller gives when the checkout
+   is not beside that repository. The owner's own pending changes there are older, and do not
+   count.
 
 ## Report
 
-The gates with their results. Then each clause of the check: proven by which test, or not
-proven and why. Then findings ranked most serious first, each with file and line, what is wrong,
-and the command and output that show it. A finding without a run behind it is left out. Say
-plainly when there are none.
+Each clause of the check: proven by which test, or not proven and why. Then findings ranked most serious first, each with file and line, what is wrong,
+and the command and output, or the two quoted lines, that show it. Mark each finding `blocks` or `follow-up` by the rule
+in `docs/plans/README.md`. A finding with neither a run nor quoted lines
+behind it is left out. Say plainly when there are none.
