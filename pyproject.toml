@@ -14,6 +14,7 @@ dev = [
   "checkedtables",
   "phillyledger",
   "datadesk",
+  "hypothesis>=6.170",
   "import-linter>=2.16",
   "prek==0.5.10",
   "pytest>=9",
