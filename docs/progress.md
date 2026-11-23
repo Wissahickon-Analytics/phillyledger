@@ -6,7 +6,7 @@ same branch as the work: status, the date the check passed, and anything a later
 | Step | What | Status | Branch | Check passed |
 |---|---|---|---|---|
 | 1 | Workspace, tooling, purity and shape tests | check passed | `step-01/a-workspace`, `step-01/b-import-contracts`, `step-01/c-kit-shape`, `step-01/d-test-isolation` | November 22, 2026, runs 45093444380, 45094817250, 45094829990 and 45092206629 |
-| 2 | Kit, words to cells | in progress | `step-02/a-import-pin`, `step-02/b-value-types`, `step-02/c-words-to-lines`, `step-02/d-lexer` | |
+| 2 | Kit, words to cells | in progress | `step-02/a-import-pin`, `step-02/b-value-types`, `step-02/c-words-to-lines`, `step-02/d-lexer`, `step-02/e-records` | |
 | 3 | Archive for the QCMR from FY2022 | not started | | |
 | 4 | Words: PDF adapter with font repair, word cache, codec | not started | | |
 | 5 | QCMR positions parser, registry, row schemas, column vocabulary | not started | | |
@@ -226,6 +226,29 @@ Each entry: step, what changed, why, and the design section updated.
   since no other reason's meaning covers them. The comments of `split_numeric_runs` and
   `transliteration_ok` now state where a cut falls and the nine confusable glyphs. `lex.py`
   imports nothing new. Design section 3.1.
+- **Step 2: `reading_for` takes the page's words, and `records` states its findings**
+  (November 23, 2026, S2-E). Design section 3.1 gave `reading_for` a page number, which every
+  word's ref already carries, and section 2.1 makes a reading stale when the words inside its box
+  stop joining to `seen`. The function could not see those words. It is now
+  `reading_for(cell_words, page_words, source, readings)`. A reading is a candidate when its
+  source matches and its box, with 1.0 point of slack, holds a cell word of its file and page.
+  Two candidates give `duplicate_reading`. The page words the box holds must be exactly the
+  cell's words and join to `seen`, else `stale_reading`, so a box over two cells of `7` is stale
+  for both. `apply_reading` gives `reading_refused` for a cell that is not an `Amount` or an
+  `Unreadable`, and for a reading that fails `transliteration_ok` or does not read as one signed
+  number through the private reader of `lex.py`. It gives `stale_reading` when the cell's text
+  differs from `seen`, so a record with `seen` "85.8" cannot put its value on a cell that prints
+  `65.8`. A null reading on an `Amount` gives the reason `reviewed_null`. Every finding is BLOCK
+  on the reading's page, with the subject `<doc sha8>:reading:<reading id>`, because neither
+  function has the table name that the subject form of `Finding` needs. Two rules go past the
+  plan's words. `apply_reading` also gives `stale_reading` when the cell's words are not on the
+  reading's file and page, so a reading of page 4 never applies to a cell on page 5 that prints
+  the same text: a human reading is a record with a page (`CLAUDE.md`, hard rule 4). With that
+  test removed in a scratch copy, `test_a_reading_never_lends_its_value_to_another_cell` fails.
+  `ReviewedReading` refuses an empty `id` with `ValueError`, because `Amount` refuses an empty
+  `review_id` and `apply_reading` must not raise for a record that a file can hold. `records`
+  imports no new outside name, so `PURE_IMPORTS` and the list in section 11.1 are unchanged.
+  Design sections 2.1 and 3.1.
 
 ## Notes for later sessions
 
@@ -250,6 +273,12 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   them, so steps 1 to 4 are unaffected. This note first named step 2 by mistake. The owner
   decides, before the step 5 plan, whether `RawRow.bold` joins the pinned set or `RawRow` stays
   out of `kit_dataclasses`.
+- **`assemble` passes the words of the cut page to `reading_for`, a note for the step 5 plan**
+  (November 23, 2026, step 2, S2-E). `reading_for` compares the page words its box holds with
+  the cell's words as values. So `assemble` passes the words the cells were cut from, after any
+  `split_numeric_runs`, and not the page's raw words. Probed at S2-E: for "TAX434,605,553" on an
+  OCR page, a reading around the child "434,605,553" gives `stale_reading` with the raw word as
+  `page_words`, and the reading itself with the two children.
 - **`uv.lock` and `exclude-newer`** (November 22, 2026, step 1). The owner's uv config and
   `UV_EXCLUDE_NEWER` set `exclude-newer = "1 week"`, and `uv lock` records that span in
   `uv.lock`. A machine without the setting, such as a CI runner, rejects the lock: `uv lock
@@ -407,7 +436,8 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   in a workspace copy and fails when a `.hypothesis` folder appears there.
 - **Docstrings put `refs` past its estimate** (November 23, 2026, step 2, S2-B). The kit size
   report counts every line that is not blank or a comment, docstrings included. At the S2-B head
-  it prints 518 lines. Against design section 12.1: `refs` 107 (estimate 60), `kinds` 29 (40),
+  it prints 518 lines. At the S2-E head `records` counts 198 lines against its estimate of 140,
+  and 91 without docstrings. Against design section 12.1: `refs` 107 (estimate 60), `kinds` 29 (40),
   `words` 109 (90), `labels` 25 (30), `cells` 97 (90). `columns` holds 38 lines for two of its
   ten names (330), and `table` 113 for three of its eight (190). Without docstrings `refs` is 53
   lines and `table` 58. The numpy docstring on each public class and method, magic methods

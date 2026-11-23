@@ -662,7 +662,7 @@ What these make impossible:
 # checkedtables/records.py: the two record types the kit applies to cells
 @dataclass(frozen=True, slots=True)
 class ReviewedReading:
-    id: str
+    id: str                    # never empty: a reviewed Amount names it
     doc_sha256: str
     page: int
     box: Box                   # where the reviewer looked
@@ -670,6 +670,8 @@ class ReviewedReading:
     seen: str                  # what extraction returns inside the box, joined: "2918" or "1o4.o"
     reading: str | None        # what a person reads on the rendered page; None accepts null
     reason: str
+
+    def __post_init__(self) -> None: ...   # ValueError: an empty id
 
 
 @dataclass(frozen=True, slots=True)
@@ -1742,13 +1744,29 @@ def transliteration_ok(seen: str, reading: str) -> bool: ...
 
 
 # checkedtables/records.py
-def reading_for(cell_words: Sequence[Word], page: int, source: SourceKind,
+def reading_for(cell_words: Sequence[Word], page_words: Sequence[Word], source: SourceKind,
                 readings: Sequence[ReviewedReading]) -> ReviewedReading | Finding | None: ...
-    # the reading whose box holds these words on this page and source. Joined word text must
-    # equal `seen`, else a stale_reading Finding. Two readings for one cell: a Finding.
+    # A reading is a candidate when its source is `source` and its box, with 1.0 pt of slack,
+    # holds a cell word of its file and page. None: no candidate. duplicate_reading: two or
+    # more, named by the least id. The page words the box holds must be exactly the cell's
+    # words, and their texts joined by one space, left to right, must equal `seen`, else
+    # stale_reading, so a box that holds part of a cell or two cells is stale for each.
+    # page_words takes the place of a page number, which every word's ref carries: without
+    # them a word that moved into the box could not be seen. The caller passes the words the
+    # cells were cut from.
 def apply_reading(cell: Cell, reading: ReviewedReading) -> Cell | Finding: ...
-    # transliteration_ok(seen, reading) or a Finding; then Amount(reading=REVIEWED) or
-    # Unreadable(accepted_by=id) when reading is None
+    # 1. Only an Amount or an Unreadable takes a reading, else reading_refused.
+    # 2. The cell's words lie on the reading's file and page and its text equals `seen`, else
+    #    stale_reading. transliteration_ok reads both texts from the record, so without this
+    #    test a reading could put its value on another cell's words.
+    # 3. A None reading gives Unreadable(accepted_by=id). An Unreadable keeps its reason, and
+    #    an Amount gets "reviewed_null".
+    # 4. Any other reading must pass transliteration_ok(seen, reading) and read as one signed
+    #    number through the private reader of lex_cell, else reading_refused. Then
+    #    Amount(the reading's number, the cell's text and words, the reading's source,
+    #    REVIEWED, the reading's id).
+    # Every finding of both functions is BLOCK, on the reading's page, with the subject
+    # "<doc sha8>:reading:<reading id>". They have no table name for the form of Finding.subject.
 
 
 # checkedtables/rows.py

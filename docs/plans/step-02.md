@@ -156,7 +156,7 @@ Step 2 needs no R2 and no Textract credentials. It reads no PDF and spends no mo
   - [ ] S2-B touches only `refs.py`, `kinds.py`, `words.py`, `labels.py`, `cells.py`, `table.py` and `columns.py` under `src/`, the four new test files under `tests/kit/`, `tests/kit/test_library_shape.py`, `tests/test_purity.py`, `tests/test_workspace.py`, `tests/test_gates.py`, the root `conftest.py`, `pyproject.toml`, `uv.lock`, and sections 2.1, 11.1 and 15 of `docs/design.md`.
   - [ ] S2-C touches only `testing.py`, `text.py` and `lines.py` under `src/`, the three new test files under `tests/kit/`, `tests/kit/test_library_shape.py`, `tests/test_purity.py`, and sections 3.1 and 11.1 of `docs/design.md`.
   - [ ] S2-D touches only `lex.py` under `src/`, the two new test files under `tests/kit/`, `tests/test_evidence.py`, `tests/test_purity.py`, sections 3.1, 11.1, 15 and 16 of `docs/design.md`, and a new section 3.2.1 of `docs/evidence/dossiers/VAL.md`.
-  - [ ] S2-E touches only `records.py` under `src/`, one new test file under `tests/kit/`, `tests/kit/test_library_shape.py`, `tests/test_purity.py`, and sections 3.1 and 11.1 of `docs/design.md`.
+  - [ ] S2-E touches only `records.py` under `src/`, one new test file under `tests/kit/`, `tests/kit/test_library_shape.py`, `tests/test_purity.py`, and sections 2.1, 3.1 and 11.1 of `docs/design.md`.
   - [ ] Every PR may also edit `docs/progress.md`. A PR edits `docs/plans/step-02.md` when the build shows this plan wrong.
   - [ ] No PR touches `packages/checkedtables/src/checkedtables/__init__.py`, `docs/evidence/coverage.tsv`, `docs/prototype/`, `.claude/`, `CLAUDE.md`, `.github/workflows/ci.yml` or anything under `../gov-budget-data`.
 - [ ] Hold the review gate. No PR in this plan changes an interaction, so none is review-gated. Every PR still stops at verified and waits for the operator to land it.
@@ -534,15 +534,15 @@ transcript.
 - [ ] Edit `packages/checkedtables/src/checkedtables/records.py`, an empty file today.
 - [ ] Create `packages/checkedtables/tests/test_records.py`.
 - [ ] Edit `packages/checkedtables/tests/test_library_shape.py` and `tests/test_purity.py`.
-- [ ] Edit `docs/design.md` sections 3.1 and 11.1, and `docs/progress.md`.
+- [ ] Edit `docs/design.md` sections 2.1, 3.1 and 11.1, and `docs/progress.md`.
 
 **Build.**
 
-- [ ] Write `ReviewedReading`, `EveryRow`, `DashRule` and `CellRecords` in `records.py` from design lines 653 to 686.
+- [ ] Write `ReviewedReading`, `EveryRow`, `DashRule` and `CellRecords` in `records.py` from design lines 653 to 686. `ReviewedReading` refuses an empty `id` with `ValueError`, because `Amount` refuses an empty `review_id` (S2-B) and `apply_reading` must not raise for a record a file can hold. State it in the design block of section 2.1.
 - [ ] Write `reading_for` from design lines 1701 to 1704 with the signature `reading_for(cell_words, page_words, source, readings)`. `page_words` takes the place of the design's `page` number, which every word's ref already carries. Design lines 689 to 690 make a reading stale when the words inside its box stop joining to `seen`, and the function cannot see those words unless the caller passes them.
 - [ ] A reading is a candidate for a cell when its document, page and source match and its box holds at least one of the cell's words, with 1.0 point of slack. No candidate gives `None`. Two candidates give a `duplicate_reading` finding.
 - [ ] For the one candidate, take every word of `page_words` that the box holds. Those words must be exactly the cell's words, and their texts joined by one space, left to right, must equal `seen`. Otherwise the result is a `stale_reading` finding. A box that holds two cells is stale for both.
-- [ ] Write `apply_reading` from design lines 1705 to 1707. Only an `Amount` or an `Unreadable` cell takes a reading, and any other cell gives a `reading_refused` finding. The cell's `text` must equal the reading's `seen`, or the result is `stale_reading`. Both arguments of `transliteration_ok` come from the record, so without this test a reading could put its value on another cell's words.
+- [ ] Write `apply_reading` from design lines 1705 to 1707. Only an `Amount` or an `Unreadable` cell takes a reading, and any other cell gives a `reading_refused` finding. The cell's `text` must equal the reading's `seen`, or the result is `stale_reading`. Both arguments of `transliteration_ok` come from the record, so without this test a reading could put its value on another cell's words. For the same reason the cell's words must lie on the reading's file and page, or the result is `stale_reading`, so a reading of one page never applies to a cell of another page that prints the same text.
 - [ ] A reading of `None` gives `Unreadable` with `accepted_by` set. An `Unreadable` cell keeps its reason, and an `Amount` gets the reason `reviewed_null`.
 - [ ] Any other reading must pass `transliteration_ok(seen, reading)` and must read as one signed number through the number reader of `lex.py`, or the result is `reading_refused`.
 - [ ] Build the reviewed `Amount` from the cell's text and words, the reading's source, `Reading.REVIEWED` and the reading's id.
