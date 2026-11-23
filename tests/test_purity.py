@@ -1,5 +1,6 @@
 import ast
 import importlib.util
+from collections.abc import Iterator
 from pathlib import Path
 
 PURE_PACKAGES = ("checkedtables", "datadesk.core")
@@ -10,6 +11,7 @@ BANNED_IMPORTS = frozenset({"random", "builtins"})
 BANNED_NAMES = frozenset({"random"})
 MUTABLE_DISPLAYS = (ast.List, ast.Dict, ast.Set, ast.ListComp, ast.DictComp, ast.SetComp)
 MUTABLE_CONSTRUCTORS = frozenset({"list", "dict", "set", "bytearray"})
+NESTED_SCOPES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
 BANNED_FORMS = (
     'open("x")',
     "print(1)",
@@ -72,7 +74,16 @@ def is_mutable(value: ast.expr | None) -> bool:
     match value:
         case ast.Call(func=ast.Name(id=name)):
             return name in MUTABLE_CONSTRUCTORS
+        case ast.Tuple(elts=elements):
+            return any(is_mutable(element) for element in elements)
     return isinstance(value, MUTABLE_DISPLAYS)
+
+
+def module_scope(node: ast.AST) -> Iterator[ast.AST]:
+    for child in ast.iter_child_nodes(node):
+        if not isinstance(child, NESTED_SCOPES):
+            yield child
+            yield from module_scope(child)
 
 
 def impurities(tree: ast.Module) -> list[tuple[int, str]]:
@@ -80,7 +91,7 @@ def impurities(tree: ast.Module) -> list[tuple[int, str]]:
     effects = [(node.lineno, found) for node in nodes if (found := effect(node))]
     state = [
         (statement.lineno, "mutable module state")
-        for statement in tree.body
+        for statement in module_scope(tree)
         if isinstance(statement, ast.Assign | ast.AnnAssign) and is_mutable(statement.value)
     ]
     return sorted(effects + state)
