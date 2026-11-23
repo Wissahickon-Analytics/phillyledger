@@ -5,7 +5,7 @@ same branch as the work: status, the date the check passed, and anything a later
 
 | Step | What | Status | Branch | Check passed |
 |---|---|---|---|---|
-| 1 | Workspace, tooling, purity and shape tests | check passed | `step-01/a-workspace`, `step-01/b-import-contracts`, `step-01/c-kit-shape`, `step-01/d-test-isolation` | November 22, 2026, runs 45093444380, 45079756579, 45082927896 and 45092206629 |
+| 1 | Workspace, tooling, purity and shape tests | check passed | `step-01/a-workspace`, `step-01/b-import-contracts`, `step-01/c-kit-shape`, `step-01/d-test-isolation` | November 22, 2026, runs 45093444380, 45094817250, 45094829990 and 45092206629 |
 | 2 | Kit, words to cells | not started | | |
 | 3 | Archive for the QCMR from FY2022 | not started | | |
 | 4 | Words: PDF adapter with font repair, word cache, codec | not started | | |
@@ -25,18 +25,18 @@ The step 1 check passed in four `pull_request` runs of `.github/workflows/ci.yml
 - Clean: run 45093444380 at `d3a9477dad72aa38751277fd2d4f3ee684b49ce1`, the head of
   `step-01/d-test-isolation` after the restack and before the commit that set this row. Every
   gate passed on Python 3.12 and 3.14.
-- C2: run 45079756579 at `4395f899294790a878db848e00db2a08d5850ed7`, with `import boto3` planted
+- C2: run 45094817250 at `57b19ab8a77c2756903ea7479706838000c477ce`, with `import boto3` planted
   in `datadesk.core`. The `uv run lint-imports` step failed with `datadesk core is pure BROKEN`.
-- C3: run 45082927896 at `ec19cf4fd446023fa76f8f5197e3e14d00861a25`, with a `bool` parameter
+- C3: run 45094829990 at `b843fa8f426df090c28213c6bf6898d5b83bb935`, with a `bool` parameter
   planted in `checkedtables`. The `uv run pytest` step failed with `AssertionError: planted`.
 - C4: run 45092206629 at `71a76f3d16b74a8bb5c604dac03a3c170f7d8636`, with a `socket.socket()`
   call planted in a core test. The `uv run pytest` step failed with `SocketBlockedError`.
 
-The three plant runs came from temporary pull requests 7, 9 and 13, which are closed. Each ran on
-the head of its stack branch at the time, not on the final heads. C2 ran on `805cd23` of
-`step-01/b-import-contracts`, C3 on `bd0f2f1` of `step-01/c-kit-shape`, and C4 on `b4eda02` of
-`step-01/d-test-isolation`, which has the same patch id as `d3a9477`, the restacked S1-D head
-that the clean run used.
+The three plant runs came from temporary pull requests 14, 15 and 13, which are closed. Each plant
+is one commit on a stack head. C2 ran on `8979428`, the final head of
+`step-01/b-import-contracts`, and C3 on `7189a67`, the final head of `step-01/c-kit-shape`. C4
+ran on `b4eda02` of `step-01/d-test-isolation`, which has the same patch id as `d3a9477`, the
+restacked S1-D head that the clean run used.
 
 ## Deviations from the design
 
@@ -251,3 +251,29 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   and every review finds more, so naming more modules does not converge. An allow-list of the
   modules the pure packages may import would close the import forms. That is a new closed list
   in the design, so it is an open decision for the owner.
+- **Follow-ups after step 1** (November 22, 2026). The step 1 run found these and did not fix
+  them.
+  - Nothing tests a gate's own settings. In scratch copies of the S1-D head, each of
+    `--collect-only` in pytest's `addopts`, a root `conftest.py` hook that skips every test,
+    `"*.py"` in ruff's `extend-exclude` and `"**"` in ty's `exclude` made its gate pass on a plant
+    it had failed, with `uv run pytest` exiting 0. The `verify-step` audit for weakened checks
+    reads each diff for these settings.
+  - Only the gates behind C2, C3 and C4 have a planted test. The ruff check, ruff format and ty
+    gates failed on a plant only in temporary pull requests at S1-A: runs 45077882205 (`F401`),
+    45077856003 (a file to reformat) and 45077874284 (`invalid-assignment`).
+  - A checkout with `core.autocrlf=true` fails `test_ci_runs_every_gate`, because Git writes
+    `ci.yml` with CRLF line endings and the test compares bytes (see "`ci.yml` is pinned").
+    `git -c core.autocrlf=true cat-file --filters HEAD:.github/workflows/ci.yml | file -` prints
+    `CRLF line terminators`. A `.gitattributes` rule that keeps the file LF would fix it at the
+    cause.
+  - CI does not pin uv. `setup-uv` found no version in `pyproject.toml` and installed the latest,
+    uv 0.13.9, where the lock was written with 0.13.6.
+  - Codex reviewed the stack once, at `76aa7250`, before the last fix round. Verifier lanes
+    checked the socket audit hook, the shape test's new annotation and inheritance handling, and
+    `test_source_folders_are_packages`, and Codex did not review them.
+  - `.claude/skills/codex-review/run.sh` takes the reference repository's path from the parent of
+    the checkout. From a worktree under `.claude/worktrees/`, it names a
+    `.claude/worktrees/gov-budget-data` that does not exist.
+  - The import contracts, the purity scan and the shape test name specific modules, calls and
+    forms. Appendix C of `docs/plans/step-01.md` lists the limits found, and the allow-list is
+    the owner's open decision in the note above.
