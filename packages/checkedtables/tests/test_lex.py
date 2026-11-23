@@ -1,4 +1,4 @@
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import replace
 from decimal import Decimal
 from itertools import product
@@ -19,6 +19,7 @@ from checkedtables.words import Word
 SHA = "a" * 64
 MONEY = ColumnSpec("money", "Money", ValueKind.MONEY, NumberFormat(decimals=None))
 CASH = ColumnSpec("cash", "Cash", ValueKind.MONEY, NumberFormat(decimals=1))
+CENTS = ColumnSpec("cents", "Cents", ValueKind.MONEY, NumberFormat(decimals=2))
 COUNT_COLUMN = ColumnSpec("count", "Count", ValueKind.COUNT)
 PERCENT = ColumnSpec(
     "percent", "Percent", ValueKind.PERCENT, NumberFormat(None, PercentSign.OPTIONAL)
@@ -30,6 +31,7 @@ NEGATIVES = ("()", *MINUS_GLYPHS)
 DOLLARS = (("", ""), ("$", ""), ("", "$"), ("$ ", ""))
 EDGE_VALUES = (Decimal("-0.00"), Decimal("12345678901234567890.123456789"))
 FIRST_LINE = {SourceKind.TEXT_LAYER: "", SourceKind.OCR: "#ocr\n"}
+NO_CONFIDENCES = (None, None, None, None)
 JOIN_FORMS = (
     ("1 23,456", "123456.0", "123456", "Amount 123456"),
     ("(1 23,456)", "-123456.0", "-123456", "Amount -123456"),
@@ -164,6 +166,14 @@ value_words = number_words | st.sampled_from((*DASHES, "N/A", "NA", "\u2212", "B
 raised_words = st.just("") | st.builds(
     str.__add__, st.sampled_from(digits), st.sampled_from(RAISED_MARKS)
 )
+printed_numbers = st.builds(
+    lambda *form: printed(*form).split(" "),
+    values,
+    st.sampled_from(GROUPINGS),
+    st.sampled_from(NEGATIVES),
+    st.sampled_from(DOLLARS),
+)
+ocr_confidences = st.none() | st.floats(min_value=0.0, max_value=100.0)
 
 
 def words(*texts: str) -> tuple[Word, ...]:
@@ -229,6 +239,12 @@ def prints_a_sign(text: str) -> bool:
     return any(glyph in lead for glyph in MINUS_GLYPHS) or ("(" in lead and ")" in tail)
 
 
+def fixed_column(text: str) -> ColumnSpec:
+    fraction = text.rpartition(".")[2] if "." in text else ""
+    fmt = NumberFormat(decimals=len(decimal_digits(fraction)))
+    return ColumnSpec("fixed", "Fixed", ValueKind.MONEY, fmt)
+
+
 def in_every_printed_form(test: Callable[..., None]) -> Callable[..., None]:
     for form in product(EDGE_VALUES, GROUPINGS, NEGATIVES, DOLLARS, SourceKind):
         test = example(*form)(test)
@@ -252,36 +268,52 @@ def test_lexer_round_trip(
 ) -> None:
     text = printed(value, grouping, negative, dollar)
     page = page_from_text(f"{FIRST_LINE[source]}{text}", SHA, 1)
-    cell = lex_cell(page.words, MONEY, page.source.kind)
-    assert isinstance(cell, Amount), (text, source)
-    assert (cell.printed.as_tuple(), cell.source) == (value.as_tuple(), source), (text, source)
+    for col in (MONEY, fixed_column(text)):
+        cell = lex_cell(page.words, col, page.source.kind)
+        assert isinstance(cell, Amount), (text, source, col)
+        assert (cell.printed.as_tuple(), cell.source) == (value.as_tuple(), source), (text, source)
 
 
 @settings(max_examples=500)
 @given(
-    number_words.map(lambda text: [text]) | st.lists(word_texts, min_size=1, max_size=3),
+    number_words.map(lambda text: [text])
+    | st.lists(word_texts, min_size=1, max_size=3)
+    | printed_numbers,
     raised_words,
     st.sampled_from((MONEY, CASH, COUNT_COLUMN, PERCENT)),
     st.sampled_from(tuple(SourceKind)),
+    st.lists(ocr_confidences, min_size=4, max_size=4),
 )
-@example(["007"], "", MONEY, SourceKind.TEXT_LAYER)
-@example(["1", "37,332,523"], "", MONEY, SourceKind.TEXT_LAYER)
-@example(["67,215,504.0", "0"], "", MONEY, SourceKind.TEXT_LAYER)
-@example(["$", "2.8"], "1", CASH, SourceKind.TEXT_LAYER)
-@example(["2.8"], "2", MONEY, SourceKind.TEXT_LAYER)
-@example(["2.8"], "1*", MONEY, SourceKind.TEXT_LAYER)
-@example(["0.05%*"], "", PERCENT, SourceKind.TEXT_LAYER)
-@example(["5%"], "", PERCENT, SourceKind.TEXT_LAYER)
+@example(["007"], "", MONEY, SourceKind.TEXT_LAYER, NO_CONFIDENCES)
+@example(["1", "37,332,523"], "", MONEY, SourceKind.TEXT_LAYER, NO_CONFIDENCES)
+@example(["67,215,504.0", "0"], "", MONEY, SourceKind.TEXT_LAYER, NO_CONFIDENCES)
+@example(["$", "2.8"], "1", CASH, SourceKind.TEXT_LAYER, NO_CONFIDENCES)
+@example(["2.8"], "2", MONEY, SourceKind.TEXT_LAYER, NO_CONFIDENCES)
+@example(["2.8"], "1*", MONEY, SourceKind.TEXT_LAYER, NO_CONFIDENCES)
+@example(["0.05%*"], "", PERCENT, SourceKind.TEXT_LAYER, NO_CONFIDENCES)
+@example(["5%"], "", PERCENT, SourceKind.TEXT_LAYER, NO_CONFIDENCES)
+@example(["65.8"], "", CASH, SourceKind.OCR, (89.0, None, None, None))
+@example(["$", "(828,904.89)"], "1", CENTS, SourceKind.OCR, (100.0, 0.0, 51.5, None))
 def test_amount_digits_are_the_digits_of_its_words(
-    texts: list[str], raised: str, col: ColumnSpec, source: SourceKind
+    texts: list[str],
+    raised: str,
+    col: ColumnSpec,
+    source: SourceKind,
+    confidences: Sequence[float | None],
 ) -> None:
-    cell = lex_cell(placed_cell(texts, raised), col, source)
-    if isinstance(cell, Amount):
-        joined = " ".join(texts)
-        fraction = joined.rpartition(".")[2] if "." in joined else ""
-        assert decimal_digits(format(cell.printed.copy_abs(), "f")) == decimal_digits(joined)
-        assert cell.printed.as_tuple().exponent == -len(decimal_digits(fraction))
-        assert cell.printed.is_signed() == prints_a_sign(joined), (joined, source)
+    cell_words = placed_cell(texts, raised)
+    if source is SourceKind.OCR:
+        cell_words = [
+            replace(word, confidence=confidences[index]) for index, word in enumerate(cell_words)
+        ]
+    joined = " ".join(texts)
+    for column in (col, fixed_column(joined)):
+        cell = lex_cell(cell_words, column, source)
+        if isinstance(cell, Amount):
+            fraction = joined.rpartition(".")[2] if "." in joined else ""
+            assert decimal_digits(format(cell.printed.copy_abs(), "f")) == decimal_digits(joined)
+            assert cell.printed.as_tuple().exponent == -len(decimal_digits(fraction))
+            assert cell.printed.is_signed() == prints_a_sign(joined), (joined, source)
 
 
 @settings(max_examples=500)
@@ -594,6 +626,17 @@ def test_cash_negatives_keep_their_decimal() -> None:
     assert amount("-4.5", CASH).printed == Decimal("-4.5")
     assert amount("\u221211.0", CASH).printed.as_tuple() == Decimal("-11.0").as_tuple()
     assert reason("(3)", CASH) == "decimals"
+
+
+def test_an_ocr_amount_keeps_the_decimals_it_prints() -> None:
+    # QCASH-Q22
+    cell = amount("#ocr\n65.8", CASH)
+    assert (cell.printed.as_tuple(), cell.source) == (Decimal("65.8").as_tuple(), SourceKind.OCR)
+    cell = amount("#ocr\n828,904.89", CENTS)
+    assert (cell.printed.as_tuple(), cell.source) == (
+        Decimal("828904.89").as_tuple(),
+        SourceKind.OCR,
+    )
 
 
 def test_a_blank_lane_cell_is_blank() -> None:
