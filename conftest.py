@@ -1,8 +1,13 @@
+import shutil
 import sys
+import tempfile
 from collections.abc import Generator
+from pathlib import Path
 
 import pytest
 import pytest_socket
+from hypothesis import settings
+from hypothesis.configuration import set_hypothesis_home_dir
 
 REFUSED_AUDIT_EVENTS = frozenset(
     {
@@ -13,7 +18,11 @@ REFUSED_AUDIT_EVENTS = frozenset(
         "socket.getnameinfo",
     }
 )
+HYPOTHESIS_HOME = pytest.StashKey[Path]()
 _marked_test_running = False
+
+settings.register_profile("phillyledger", database=None, derandomize=True, deadline=None)
+settings.load_profile("phillyledger")
 
 
 def _refuse_sockets(event: str, _args: tuple[object, ...]) -> None:
@@ -21,7 +30,7 @@ def _refuse_sockets(event: str, _args: tuple[object, ...]) -> None:
         raise pytest_socket.SocketBlockedError(f"A test tried to use {event}.")
 
 
-def pytest_configure() -> None:
+def pytest_configure(config: pytest.Config) -> None:
     # pytest-socket first blocks after test modules import. This call covers names bound by
     # "from socket import socket" at import.
     pytest_socket.disable_socket()
@@ -29,6 +38,15 @@ def pytest_configure() -> None:
     # teardown. CPython raises these audit events inside the socket constructor and the resolver
     # functions, so no name or fixture phase skips them.
     sys.addaudithook(_refuse_sockets)
+    # Hypothesis writes .hypothesis/constants into the folder it was imported from during
+    # collection, even with database=None.
+    home = Path(tempfile.mkdtemp(prefix="hypothesis-"))
+    config.stash[HYPOTHESIS_HOME] = home
+    set_hypothesis_home_dir(home)
+
+
+def pytest_unconfigure(config: pytest.Config) -> None:
+    shutil.rmtree(config.stash[HYPOTHESIS_HOME], ignore_errors=True)
 
 
 @pytest.hookimpl(wrapper=True)
