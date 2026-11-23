@@ -226,6 +226,25 @@ def test_a_negative_reading_is_read() -> None:
     assert str(result.printed) == "-29.1"
 
 
+def test_a_reading_with_a_minus_gives_a_negative_amount() -> None:
+    _, cell_words = cash_row("45")
+    cell = lex_cell(cell_words, CASH, OCR)
+    refs = tuple(word.ref for word in cell_words)
+    expected = Amount(Decimal("-4.5"), "45", refs, OCR, Reading.REVIEWED, "r1")
+    assert apply_reading(cell, record("45", "-4.5", cell_words)) == expected
+
+
+def test_a_reading_places_the_decimal_point_it_reads() -> None:
+    # VAL-Q35
+    for reading, expected, exponent in (
+        ("29.18", Decimal("29.18"), -2),
+        ("291.8", Decimal("291.8"), -1),
+    ):
+        result = reviewed("2918", reading)
+        assert isinstance(result, Amount), (reading, result)
+        assert (result.printed, result.printed.as_tuple().exponent) == (expected, exponent), reading
+
+
 def test_a_null_reading_on_an_amount_gives_reviewed_null() -> None:
     _, cell_words = cash_row("65.8")
     cell = lex_cell(cell_words, CASH, OCR)
@@ -467,6 +486,7 @@ def test_a_reading_joins_the_cell_words_as_given_and_not_by_left_edge() -> None:
 
 @given(seen_parts, st.integers(1, 16), st.sampled_from(("", ",")), st.sampled_from(SIGNED))
 @example([("", "2918")], 3, "", "{}")
+@example([("", "2918")], 2, "", "{}")
 @example([("", "29"), (" ", "1")], 2, "", "({})")
 @example([("", "69"), (",", "2")], 2, ",", "{}")
 @example([("", "67"), (": ", "3")], 2, "", "-{}")
@@ -487,3 +507,9 @@ def test_a_reviewed_amount_keeps_the_digits_seen(
     result = apply_reading(lex_cell(cell_words, CASH, OCR), found)
     assert isinstance(result, Amount), (seen, reading, result)
     assert transliterated(format(result.printed.copy_abs(), "f")) == seen_digits, (seen, reading)
+    minus = "" if sign in ("{}", "${}") else "-"
+    expected = Decimal(minus + seen_digits[:whole] + (f".{fraction}" if fraction else ""))
+    assert (result.printed, result.printed.as_tuple().exponent) == (
+        expected,
+        expected.as_tuple().exponent,
+    ), (seen, reading)
