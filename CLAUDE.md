@@ -25,7 +25,7 @@ step is finished when its check passes.
      reviews it (`codex-review pr N <base>`), and the Fable session confirms or drops each Codex
      finding, sends confirmed ones back to a fresh Opus owner, and gives the final review.
      Contested design goes to `/pstack:interrogate`. Pull requests stack only where one builds
-     on another. The owner lands them.
+     on another. The owner decides each landing (hard rule 9).
 - **Verification is sized by what there is to prove.** A pull request's swarm is the three
   parts of `verify-step` (the gates, the check and the audits), each as its own lane, plus one
   live lane for each clause the pull request owns and each risk its plan names. It gets a
@@ -39,7 +39,7 @@ step is finished when its check passes.
   `/pstack:poteto-mode` with the Feature playbook. The session writes a short plan as the first
   commit of the pull request, one Opus owner builds it, one verifier runs `verify-step` in full
   at the finished head, and Codex reviews the pull request once. There is no plan review and no
-  swarm. Every hard rule below still holds, and the owner lands the pull request.
+  swarm. Every hard rule below still holds.
 - After steps 6, 13 and 14, Codex also reviews the whole design against the code, the way it
   reviewed the design on November 22, 2026 (`docs/reviews/`).
 - Start every session by reading `docs/progress.md`, then the part of `docs/design.md` the work
@@ -104,8 +104,11 @@ Step 1 creates these. Keep this list true as tooling changes.
    the same pull request.
 8. Credentials (R2, Textract) come from the environment. Never commit or print them. Textract
    calls through `datadesk ocr --spend` need the owner's go-ahead.
-9. Agents open pull requests ready for review. Agents never merge, never push to `main`, and
-   never force-push a branch they did not create. The owner lands every pull request.
+9. Agents open pull requests ready for review. The owner decides every landing. An agent merges
+   a pull request only when the owner tells it to, in that session and for that pull request, and
+   only at the verified head with CI passing. That instruction does not carry over to a later
+   pull request or session. Agents never push to `main` and never force-push a branch they did
+   not create.
 
 ## Code
 

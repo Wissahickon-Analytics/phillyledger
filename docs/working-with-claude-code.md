@@ -78,8 +78,8 @@ For a design question the plan leaves open, or a pull request that feels wrong:
 /pstack:interrogate
 ```
 
-Land the pull requests yourself, then update the step's row in `docs/progress.md` if the run
-did not.
+Land the pull requests yourself, or tell the session to merge them once they are verified (hard
+rule 9 in `CLAUDE.md`). Then update the step's row in `docs/progress.md` if the run did not.
 
 ## Known gaps in Claude Code
 

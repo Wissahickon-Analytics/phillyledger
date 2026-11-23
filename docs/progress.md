@@ -291,3 +291,9 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   `exclude-newer = "1 week"` and the ruff exclusion of `*.md`. Hard rule 9 in `CLAUDE.md` is
   unchanged. During step 1, fresh owner agents force-pushed, with a lease, branches that an earlier
   agent had created, which crosses the rule's letter. Any change to the rule is the owner's to make.
+- **Hard rule 9 changed** (November 23, 2026). The rule said agents never merge. The owner told
+  agents to merge the four step 1 pull requests, pull request 16 and pull request 12, then asked
+  for the rule to match. An agent now merges a pull request only when the owner tells it to, in
+  that session and for that pull request, at the verified head with CI passing. The clauses on
+  pushing to `main` and on force-pushing are unchanged, so the force-pushes in the note above
+  still cross the rule.
