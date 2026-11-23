@@ -436,8 +436,8 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   in a workspace copy and fails when a `.hypothesis` folder appears there.
 - **Docstrings put `refs` past its estimate** (November 23, 2026, step 2, S2-B). The kit size
   report counts every line that is not blank or a comment, docstrings included. At the S2-B head
-  it prints 518 lines. At the S2-E head `records` counts 198 lines against its estimate of 140,
-  and 91 without docstrings. Against design section 12.1: `refs` 107 (estimate 60), `kinds` 29 (40),
+  it prints 518 lines. At the S2-E head it prints 1,278, and `records` counts 202 lines against
+  its estimate of 140, and 91 without docstrings. Against design section 12.1: `refs` 107 (estimate 60), `kinds` 29 (40),
   `words` 109 (90), `labels` 25 (30), `cells` 97 (90). `columns` holds 38 lines for two of its
   ten names (330), and `table` 113 for three of its eight (190). Without docstrings `refs` is 53
   lines and `table` 58. The numpy docstring on each public class and method, magic methods
