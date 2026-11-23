@@ -257,6 +257,19 @@ def test_a_reviewed_cell_names_the_record_that_was_applied() -> None:
         assert accepted == replace(cell, accepted_by=review)
 
 
+def test_a_reviewed_amount_names_the_record_that_was_applied() -> None:
+    # QCASH-Q22
+    _, cell_words = cash_row("65.8")
+    cell = lex_cell(cell_words, CASH, OCR)
+    assert isinstance(cell, Amount), cell
+    read = apply_reading(cell, record("65.8", "65.8", cell_words, "cash-fy07-q4"))
+    accepted = apply_reading(cell, record("65.8", None, cell_words, "cash-fy07-q4"))
+    assert read == Amount(
+        Decimal("65.8"), "65.8", cell.words, OCR, Reading.REVIEWED, "cash-fy07-q4"
+    )
+    assert accepted == Unreadable("65.8", cell.words, "reviewed_null", "cash-fy07-q4")
+
+
 def test_a_reviewed_zero_keeps_its_sign() -> None:
     # QCASH-Q53
     result = reviewed("(0.0)", "(0.0)")
