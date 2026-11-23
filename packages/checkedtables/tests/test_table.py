@@ -14,15 +14,21 @@ findings = st.builds(
     Finding,
     severity=st.sampled_from(Severity),
     code=st.sampled_from(("unknown_row", "style_unavailable")),
-    subject=st.sampled_from(("a1b2c3d4:positions:dept=police",)),
+    subject=st.sampled_from(("a1b2c3d4:positions:dept=police", "a1b2c3d4:positions:dept=fire")),
     message=st.sampled_from(("", "row printed twice")),
     page=st.none() | st.integers(1, 3),
 )
 
 
-def page_first_key(finding: Finding) -> tuple[str, str, str, str, int]:
-    page = -1 if finding.page is None else finding.page
-    return (finding.severity.value, finding.code, finding.subject, finding.message, page)
+def page_first_key(finding: Finding) -> tuple[str, str, str, str, bool, int | None]:
+    return (
+        finding.severity.value,
+        finding.code,
+        finding.subject,
+        finding.message,
+        finding.page is not None,
+        finding.page,
+    )
 
 
 @given(st.dictionaries(names, values, min_size=1))
@@ -44,6 +50,8 @@ def test_row_key_refuses_unsorted_names() -> None:
     ):
         with pytest.raises(ValueError, match="strictly ascending"):
             RowKey(parts)
+    with pytest.raises(ValueError, match="strictly ascending"):
+        RowKey.parse("b=1|a=2")
 
 
 def test_row_key_refuses_empty_names_and_separators() -> None:
@@ -74,3 +82,10 @@ def test_findings_sort_with_and_without_page(found: list[Finding]) -> None:
     for a, b in product(found, repeat=2):
         for compare in COMPARISONS:
             assert compare(a, b) == compare(page_first_key(a), page_first_key(b)), (a, b)
+
+
+def test_findings_compare_only_with_findings() -> None:
+    finding = Finding(Severity.BLOCK, "unknown_row", "a1b2c3d4:positions:dept=police", "")
+    for compare in COMPARISONS:
+        with pytest.raises(TypeError):
+            compare(finding, 1)

@@ -82,6 +82,11 @@ def test_label_mark_two_asterisks_and_a_digit() -> None:
         "Total RTT records",
         ("**1",),
     )
+    assert printed_text_marks(label("Total RTT records **12")) == (
+        "Total RTT records **12",
+        "Total RTT records",
+        ("**12",),
+    )
 
 
 def test_label_mark_one_asterisk() -> None:
@@ -100,6 +105,11 @@ def test_label_mark_comma_subtotal() -> None:
         "Manufacturing",
         (", subtotal",),
     )
+    assert printed_text_marks(label("Manufacturing, SUBTOTAL")) == (
+        "Manufacturing, SUBTOTAL",
+        "Manufacturing",
+        (", SUBTOTAL",),
+    )
 
 
 def test_label_mark_see_note_with_and_without_its_space() -> None:
@@ -117,6 +127,28 @@ def test_label_mark_see_note_with_and_without_its_space() -> None:
         ("seenote",),
     )
     assert spaced.squash == joined.squash == "federalgovtincludesuspostoffice"
+    assert printed_text_marks(label("Federal Gov't (includes US Post Office) SEE NOTE")) == (
+        "Federal Gov't (includes US Post Office) SEE NOTE",
+        "Federal Gov't (includes US Post Office)",
+        ("SEE NOTE",),
+    )
+
+
+def test_label_mark_see_note_with_any_one_space_between_its_words() -> None:
+    # WAGE-Q44
+    for space in ("\xa0", "\t", "\u2009"):
+        found = label(f"Federal Government see{space}note")
+        assert printed_text_marks(found) == (
+            f"Federal Government see{space}note",
+            "Federal Government",
+            (f"see{space}note",),
+        ), ascii(space)
+        assert found.norm == label("Federal Government see note").norm == "federal government"
+
+
+def test_label_control_see_note_inside_a_word_keeps_every_word() -> None:
+    # WAGE-Q44
+    assert printed_text_marks(label("Oversee note")) == ("Oversee note", "Oversee note", ())
 
 
 def test_label_mark_bare_digit_after_a_word() -> None:
@@ -145,6 +177,12 @@ def test_label_control_leading_two_digit_code_keeps_every_word() -> None:
         "10 COMMUNITY DEVELOPMENT",
         (),
     )
+
+
+def test_label_control_digit_after_a_number_or_a_mark_keeps_every_word() -> None:
+    # MCITY-Q13, ENT-Q07
+    assert printed_text_marks(label("Fiscal 202 4")) == ("Fiscal 202 4", "Fiscal 202 4", ())
+    assert printed_text_marks(label("Total (1) 2")) == ("Total (1) 2", "Total (1) 2", ())
 
 
 def test_label_control_leading_parenthesis_keeps_every_word() -> None:
@@ -200,6 +238,11 @@ def test_normalize_label_reads_a_spaced_unicode_hyphen() -> None:
     assert normalize_label(spaced) == "total locally generated non tax revenue"
     assert normalize_space("Sub \u2010 Total") == "Sub-Total"
     assert normalize_label("Sub \u2010 Total") == "sub total"
+
+
+def test_normalize_label_casefolds_and_drops_underscores() -> None:
+    assert normalize_label("Stra\xdfe") == normalize_label("STRASSE") == "strasse"
+    assert normalize_label("Fund_Balance") == "fund balance"
 
 
 def test_normalize_label_keeps_digit_separators() -> None:

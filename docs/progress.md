@@ -141,14 +141,20 @@ Each entry: step, what changed, why, and the design section updated.
   This is the owner's allow-list (see the note "The pure packages can still reach effects the
   gates do not name"). `PURE_IMPORTS` in `tests/test_purity.py` maps `checkedtables` and
   `datadesk.core` to the sorted `module.name` pairs that each imports from outside. Both are
-  empty, because every file in both packages is empty. The scan resolves a relative import first,
-  and it reads imports in function bodies and under `if TYPE_CHECKING`. It fails an `import`
-  statement that binds an outside module, a from-import of a pair the pin does not hold, and a
-  star import from outside, which it reads as a pair such as `re.*` that no pin can hold.
-  `checkedtables` counts itself as inside, and `datadesk.core` counts itself and `checkedtables`.
+  empty, because every file in both packages is empty. The scan parses each file's bytes, so it
+  reads a coding cookie as the importer does. It reads imports in function bodies and under
+  `if TYPE_CHECKING`. It fails every relative import, an `import` statement that binds an outside
+  module, a from-import of a pair the pin does not hold, and a star import from outside whatever
+  the pin holds. `checkedtables` counts itself as inside, and `datadesk.core`
+  counts itself and `checkedtables`. A name taken from an outside module counts as inside when
+  its full name is at or under an inside name, so in `datadesk.core` the import
+  `from datadesk import core` passes and `from datadesk import shell` fails.
   `test_pure_imports_are_pinned` fails when the pairs in the source and the pin differ in either
-  direction. `test_pinned_imports_are_not_modules` fails on a pinned pair that does not resolve
-  or that resolves to a module, such as `dataclasses.sys`. `BANNED_IMPORTS` is gone, because the
+  direction. `test_pinned_imports_are_not_modules` fails on a pinned pair that does not resolve,
+  that resolves to a module, such as `dataclasses.sys`, or whose name is `*`. The verification
+  lanes and the Codex review of S2-A found that the scan read each file as UTF-8, passed a pinned
+  star import and reported `from datadesk import core`. The same pull request fixed each, with a
+  test. `BANNED_IMPORTS` is gone, because the
   pin refuses `random` and `builtins` with every other module. Before the change, with
   `from io import FileIO` appended to `datadesk/core/tables/birt.py`,
   `uv run pytest tests/test_purity.py` printed `3 passed`. Now it fails and prints
@@ -157,16 +163,29 @@ Each entry: step, what changed, why, and the design section updated.
   fails. The build judges the module that the statement binds, as section 11.1 says.
   `import datadesk.core.tables` names an inside module and binds `datadesk`, and once any code has
   imported `datadesk.shell`, the shell is an attribute of that binding. So that import fails, and
-  `import datadesk.core.tables as tables` passes. A pull request that imports a new name adds its
-  pair to `PURE_IMPORTS`. One that imports from a new module also adds the module to the list in
-  section 11.1. Design section 11.1.
+  `import datadesk.core.tables as tables` passes. The plan resolved a relative import from the
+  file's dotted name, and the build refuses every relative import instead. The second Codex
+  review of S2-A, at `c103b016`, read `__package__ = "email.mime"` and then `from . import text`
+  as `checkedtables.words`. Its command passed that source to `outside_imports` and `impurities`
+  and ran it with `exec` in a copy of the module's globals. On Python 3.12.15 it printed
+  `outside pairs: []`, `purity findings: []` and `bound module: email.mime.text`. Python resolves
+  a relative import through the module global `__package__`, which source can rebind, and a
+  static scan cannot know what it holds when the statement runs. A ban on assigning it would miss
+  `globals()["__package__"]`. An absolute import does not read `__package__`, and all 64 imports
+  from `checkedtables` and `datadesk` in the design's code samples are absolute. The same source
+  now fails with `relative import from .`. An absolute import still finds a submodule through its
+  package's `__path__`, which source can also change at run time. So the scan shows only that no
+  import, read as written, gives pure code a module object from outside, as section 11.1 now says
+  (see the note "The pure packages can still reach effects the gates do not name"). A pull
+  request that imports a new name adds its pair to `PURE_IMPORTS`. One that imports from a new
+  module also adds the module to the list in section 11.1. Design section 11.1.
 - **Step 2: step 2 builds five types of `columns` and `table`** (November 23, 2026, S2-B). Design
   section 3.1 gives `lex_cell` a `ColumnSpec`, and `records` takes a `RowKey` and returns
   `Finding`. Step 2 listed neither `columns` nor `table`, and no step listed `table`. S2-B builds
   `NumberFormat` and `ColumnSpec` in `columns.py` and `RowKey`, `Severity` and `Finding` in
   `table.py`, and nothing else of either module. Step 2 now names the five types, and step 5 now
-  names `table`, which builds `RowKind`, `Additivity`, `TableId`, `Column`, `Row` and `Table`
-  with `rows` and `assemble`. Design section 15.
+  names `table`, which builds `RowKind`, `Additivity`, `additivity_of`, `TableId`, `Column`, `Row`
+  and `Table` with `rows` and `assemble`. Design section 15.
 - **Step 2: `WordRef` and `Finding` sort a `None` first** (November 23, 2026, S2-B). The design
   gave both classes `order=True`. That raises `TypeError` when one side holds `None` and the other
   an `int`, so a word and a child that `split_numeric_runs` made from it could not be sorted
@@ -184,6 +203,56 @@ Each entry: step, what changed, why, and the design section updated.
   `RowKey.of` sorts its parts by name. The plan named every rule except the one on no parts.
   `str` of a key with no parts is the empty text, which names no row, and no use in the design
   builds such a key. Design section 2.1.
+- **Step 2: a text layer page refuses an OCR confidence** (November 23, 2026, S2-B, found in the
+  Codex review). The design calls `Word.confidence` OCR only and lists "a page with two word
+  sources" among the states its types make impossible. `Page` checked only each word's file and
+  page, so a text layer page took a word with a Textract confidence, and an OCR reading such as
+  the 65.8 of QCASH-Q22 could pass as a text layer number. `Page.__post_init__` now raises
+  `ValueError` for a word with a confidence on a page whose source kind is `TEXT_LAYER`. The
+  converse rules wait for step 4 (the note "What an OCR word carries"). Design section 2.1.
+- **Step 2: `Document` and `WordRef` check what they cite** (November 23, 2026, S2-B, found in
+  the Codex review). `Document` took a page of another file, so `Document.page` could return it,
+  and `WordRef("", 0, 0)` cited no file and page 0. `Document.__post_init__` now raises
+  `ValueError` for a page whose `doc_sha256` is not the document's `sha256`, and for page numbers
+  that are not strictly ascending, as the design's comment on `pages` already said.
+  `WordRef.__post_init__` raises `ValueError` for an empty `doc_sha256`, for a page below 1, which
+  the design calls 1-based, and for an index or a child below 0. Design section 2.1.
+- **Step 2: the constructor checks are the ones the design blocks show** (November 23, 2026,
+  S2-B, found in the second and third Codex reviews and by verifiers). Each Codex round asked for
+  a few more constructor checks, and the list had no natural end. Design section 2.1 now opens
+  with a closed statement. The checks a kit type makes at construction are the ones its block
+  shows, and no others. They guard what enters the kit from outside, and a relation between two
+  fields that one kit function computes has no check at construction (the note "Constructor
+  checks the kit does not make"). Fix round 3 replaced a wider rule of fix round 2, which promised
+  a check for every fact a block states. The blocks state many facts that no constructor checks.
+  One check in the code had no line in its block, the refusal of a part with no `=` in
+  `RowKey.parse`, and fix round 3 added it to the `table` block. Fix round 2 added six checks.
+  Each is shown in its block of section 2.1, and each has a test of the refused value and of its
+  nearest legal value. No field changed, so `FIELD_SNAPSHOT` is unchanged.
+  - `Amount` refuses an empty `review_id` in either reading. The `cells` block says "a reviewed
+    Amount names its review, and only then", and the empty text names no review.
+    `Amount(..., Reading.REVIEWED, "")` was accepted.
+  - `Dash` refuses no words. The `cells` block lists "a number without words" as impossible, and
+    a `ZERO` dash is the operand 0. It also lists "blank" and "dash" as two flags on one field,
+    and a dash with no words is a blank cell. `NotApplicable`, `Unreadable` and `Text` get no
+    such check. `Dash("", (), DashMeaning.ZERO)` was accepted.
+  - `Page` refuses two words with equal refs. The `refs` block says a ref's `index` is the
+    "extraction order on that page", so one ref names one word. A word and the children that
+    `split_numeric_runs` cuts from it differ in `child`, so they may share a page.
+  - `Word` refuses a confidence outside 0 to 100, NaN included. The `words` block says "OCR only,
+    0 to 100". A NaN and 101.0 were accepted, and `< 95` is false for both, so both clear a
+    confidence floor of 95.
+  - `Page` refuses an empty `doc_sha256` and a `number` below 1, and `Document` refuses an empty
+    `sha256`. The `words` block lists "a word without its file hash and page" as impossible, and
+    the `refs` block calls a page "1-based". A page with no words escaped the word checks, so
+    `Page("", 0, ...)` and `Document("", ...)` were accepted. The kit checks a hash for presence
+    only (the note "The kit checks a hash for presence only").
+  - `ColumnSpec` refuses an empty `name` and an empty `caption`. The `columns` block lists "a
+    column without a name and a caption" as impossible, and the empty caption regex matches every
+    header.
+
+  The `ColumnSpec` test is in a new `test_columns.py`, and the S2-B file lists of
+  `docs/plans/step-02.md` now name it. Design section 2.1.
 - **Step 2: `text` and `lines` state four rules and a ninth mark form** (November 23, 2026,
   S2-C). Design section 3.1 left four rules open, and its comments now state them.
   `group_lines` takes words by bottom, then `x0`, then ref, and a word that does not join the
@@ -195,13 +264,27 @@ Each entry: step, what changed, why, and the design section updated.
   also takes one bare digit after a word as a mark, as `entities.py:54-61` of the old code did
   (ENT-Q07). So "Sheriff 2" gives the text "Sheriff" and the mark "2", and "CLASS 100" and
   "10 COMMUNITY DEVELOPMENT" keep every word. With that form removed in a scratch copy, the
-  "Sheriff 2" test fails and the "Human Services (1)" test passes. The comments also say three
-  smaller things. `normalize_label` turns punctuation into a space where the design said "drop",
-  as `entities.py:95` did, so "Delivery/couriers" gives "delivery couriers" (BSALES-Q47).
-  `normalize_space` trims the ends. `page_from_text` reads only a pair of `**` as bold, so the
-  label "Total RTT records **1" (RTT-Q38) can be built with it. `text`, `lines` and `testing`
-  import from `re`, `statistics` and `typing`, which join the list in section 11.1. Design
-  sections 3.1 and 11.1.
+  "Sheriff 2" test fails and the "Human Services (1)" test passes. The mark "see note" takes any
+  one space between its words, or none, where the design named only "see note" and "seenote".
+  With a non-breaking space the mark stayed in the label, so two labels that print the same got
+  different `norm` values (WAGE-Q44, found in the second Codex review). The comments also say
+  three smaller things. `normalize_label` turns punctuation into a space where the design said
+  "drop", as `entities.py:95` did, so "Delivery/couriers" gives "delivery couriers" (BSALES-Q47).
+  `normalize_space` trims the ends. `page_from_text` keeps a `**` that opens no bold span, so
+  the label "Total RTT records **1" (RTT-Q38) can be built with it. A `**` that starts a word
+  opens a span when the word's next character is not `*`, and a `**` that ends a word closes
+  one when the character before it is not `*`. Each closer pairs with the nearest unpaired
+  opener to its left on the same line, and every other `**` stays in the text. The first build
+  paired the first two `**` on a line, so "Total RTT records **1  **1,234**" gave the words
+  `1`, bold, and `1,234**` (found in the Codex review). It now gives `**1` and a bold `1,234`.
+  A word is a run of characters with no ASCII space, and a `**` opens or closes a span only at
+  an ASCII space or a line end. The second Codex review found that a `**` after a non-breaking
+  space opened a span inside a word, so `Tax`, a non-breaking space and `**1,234**` lost the
+  asterisks and 24 points of the word's box. That word now keeps them and is not bold.
+  The comment of `doc_of` also says that it sorts the pages by number and raises `ValueError`
+  for no pages, for pages of two files and for a repeated page number. `text`, `lines`
+  and `testing` import from `re`, `statistics` and `typing`, which join the list in section
+  11.1. Design sections 3.1 and 11.1.
 - **Step 2: the probe clause reads the 55 inputs of VAL section 3.2.1** (November 23, 2026,
   S2-D). VAL section 3.2 prints 16 of the probe's 55 inputs, and no file holds the rest or any
   new result. The owner chose the 55 rows of Appendix E of `docs/plans/step-02.md`, with the
@@ -226,6 +309,39 @@ Each entry: step, what changed, why, and the design section updated.
   since no other reason's meaning covers them. The comments of `split_numeric_runs` and
   `transliteration_ok` now state where a cut falls and the nine confusable glyphs. `lex.py`
   imports nothing new. Design section 3.1.
+- **Step 2: the lexer refuses five more readings it took** (November 23, 2026, S2-D fix round,
+  found in the Codex review and the verification lanes). Each change has a test that failed
+  before it. Design section 3.1 and the S2-D boxes of `docs/plans/step-02.md` say the same.
+  - A `$` word that opens a cell comes back in front of the number that the other tokens give,
+    so the reader sees every `$`. Before, `$ $1,234` read as 1234, and `$ $67,215,504.0 0` as
+    67215504.00, which both old readers refuse. Both are now `Unreadable grouping`, and so are
+    `$ -$5`, `$ $(5)` and `$ ($5)`. `$ 5`, `$ (1,234)` and `$ 1 37,332,523` read as before.
+  - One `$` word and one dash form are a `Dash` with the column's meaning. Before, `$ -` was
+    `Unreadable not_a_number`. Page 1 of the August 2020 realty transfer report
+    (`collections/realty-transfer-tax/2020_08.pdf`) prints the form. Read with
+    `pdftotext -bbox`, its "Unclassified" row holds `56 $ 1,313`, `50 $ -`, `61 $ 0`,
+    `6 $ 1,313`, `12.0% n/a`, `(5) $ 1,313` and `-8.2% n/a`, so the August 2019 local-tax cell
+    prints `$` and `-` where the August 2018 one prints `$` and `0`. The "Voided transactions"
+    row prints `-` or `$ -` in each count and local-tax cell, and the page repeats both rows in
+    its second table, by location. A dash then a mark word, `$ N/A` and `- 0` are unchanged.
+  - `transliteration_ok` fails when either text holds a character that `str.isdecimal()` holds
+    and that is not an ASCII digit. Before, a fullwidth seven then `7,500,000` passed against
+    the reading `7,500,000`, because that glyph counted as nothing. A superscript digit is not
+    decimal, so `1,234¹` to `1234` still passes.
+  - `split_numeric_runs` returns a word that holds `(cid:` unchanged. Before, `(cid:21)5` split
+    after its `)`, and the child `5` read as `Amount 5`. Design section 15, step 4, makes such a
+    word `Unreadable`, and ten of the twenty editions that step 5 parses extract their grid
+    fonts as `(cid:N)` codes.
+  - A `)` that digits follow is a sign problem, so `(1).23` and `(1)2` give `sign` where they
+    gave `grouping`. The design already named a misplaced parenthesis.
+  - The design, the `lex_cell` docstring and the reason table of Appendix E now say that
+    `grouping` covers a misplaced mark, such as `2*42,096`, as the code did.
+  - Five mutants of `lex.py` passed the tests of `d9d15ed0`. They are a reader that applies
+    the `Decimal` context to its result, one that builds `-Decimal(digits)`, a
+    `transliteration_ok` that lets a reading drop the last digit, a reader that reads a
+    one-digit percent as negative, and a lexer that gives a dash in a one-decimal column the
+    meaning zero. Each now fails a test. The round trip draws the sign apart from up to 41
+    digits and names `-0.00` and `12345678901234567890.123456789` in every printed form.
 - **Step 2: `reading_for` takes the page's words, and `records` states its findings**
   (November 23, 2026, S2-E). Design section 3.1 gave `reading_for` a page number, which every
   word's ref already carries, and section 2.1 makes a reading stale when the words inside its box
@@ -381,6 +497,49 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   passes all six gates. At `ad866a9`, before the pin, all ten passed `uv run pytest`. The pin reads
   static imports only. A list of the builtin names pure code may use would be a second closed list
   and a separate decision for the owner (Appendices B and C of `docs/plans/step-02.md`).
+  - The S2-A verification lanes found six more routes. Three use the bare module globals:
+    `getattr(__loader__, method)(path)` and `getattr(getattr(__spec__, loader), method)(path)`,
+    with the names held in variables, and `__builtins__["open"]`. Three took the same objects
+    with `from . import __builtins__`, `from . import __loader__` and `from . import __spec__`.
+    Each was run again planted alone in `checkedtables/words.py`, with a docstring, in a scratch
+    copy of `a4bac18`, the S2-A commit that refuses relative imports. Each plant read
+    `pyproject.toml` at run time. The three bare globals still pass all six gates. The three
+    relative spellings now fail `test_pure_packages_have_no_effects` with
+    `words.py:1 relative import from .`, so `uv run pytest` fails, and the other five gates pass.
+    The absolute spellings `from checkedtables import __builtins__`,
+    `from checkedtables import __loader__` and `from checkedtables import __spec__`, used the same
+    way, pass all six gates, because each full name is inside the kit. Written as
+    `__loader__.get_data(path)` or `__spec__.loader.get_data(path)`, with the bare globals or the
+    absolute spellings, the line fails `ty check`, which types `__loader__` as
+    `LoaderProtocol | None` and `__spec__` as `ModuleSpec | None`. The routes that pass stay open
+    because they are module globals that need no outside import, so no import pin sees them. A
+    list of the builtin names pure code may use is a separate decision for the owner (Appendix B
+    of the step 2 plan).
+  - `datadesk.core` can import a name that the kit pins from a `checkedtables` module, with no pin
+    of its own. With `dataclasses.dataclass` pinned for `checkedtables` and imported in
+    `words.py`, `from checkedtables.words import dataclass` in `birt.py` passed all six gates in
+    the same scratch copy. This is by design. Every pinned name is reviewed as legal in pure code,
+    and no module object passes that way, because a pinned name that is a module fails.
+  - An S2-A verification lane found that source which changes `__path__` at run time makes an
+    absolute import bind a module from outside. It was run again in a scratch copy of `cd433543`
+    on Python 3.12.15. `datadesk/core/__init__.py` held a function that declares
+    `global __path__`, sets `__path__ = [*__path__, "<stdlib>"]` and is called at import, where
+    `<stdlib>` is the folder of the standard library. `datadesk/core/tables/birt.py` held
+    `from datadesk.core import subprocess` and a function that calls `subprocess.run` on `echo`.
+    Importing `birt` bound `datadesk.core.subprocess` to the standard library's `subprocess.py`,
+    and the function ran `echo`. With a stub `datadesk/core/subprocess.pyi` that holds
+    `from subprocess import run as run`, all six gates exit 0. Without the stub, `ty check` exits
+    1 with ``Module `datadesk.core` has no member `subprocess` ``, `prek` exits 1 on its `ty`
+    hook, and the other four gates exit 0. The same plant in `checkedtables/__init__.py` and
+    `checkedtables/words.py` binds the standard library's `subprocess` the same way, and
+    `uv run pytest` exits 1 with or without the stub. The library shape test walks `__path__` and
+    imports `asyncio/windows_events.py` from the standard library folder. That import raises
+    `ImportError: win32 only`, so three tests in `test_library_shape.py` and the two planted shape
+    tests in `tests/test_gates.py` fail. With the stub the other five gates exit 0, and without it
+    `ty check` and `prek` also exit 1. The route stays open. `__path__` is a module
+    global that source changes at run time, the family that Appendix B of the step 2 plan leaves
+    to a separate decision for the owner. A rule against assigning `__path__` would also miss
+    `__path__.append(...)`. Review reads for it, as design section 11.1 says.
 - **Follow-ups after step 1** (November 22, 2026). The step 1 run found these and did not fix
   them.
   - Nothing tests a gate's own settings. In scratch copies of the S1-D head, each of
@@ -431,18 +590,187 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   runs with another profile. Hypothesis 6.170.15 still writes `.hypothesis/constants` under the
   working directory it was imported in, and its pytest plugin starts the writes during
   collection, so `pytest_configure` points it at a temporary folder with
-  `set_hypothesis_home_dir` and `pytest_unconfigure` removes the folder.
+  `set_hypothesis_home_dir` and `pytest_unconfigure` removes the folder. When the folder could
+  not be made, teardown has nothing to remove and leaves the first error to show.
   `test_hypothesis_writes_nothing_in_the_workspace` in `tests/test_gates.py` runs a property test
   in a workspace copy and fails when a `.hypothesis` folder appears there.
 - **Docstrings put `refs` past its estimate** (November 23, 2026, step 2, S2-B). The kit size
   report counts every line that is not blank or a comment, docstrings included. At the S2-B head
-  it prints 518 lines. At the S2-E head it prints 1,278, and `records` counts 202 lines against
-  its estimate of 140, and 91 without docstrings. Against design section 12.1: `refs` 107 (estimate 60), `kinds` 29 (40),
-  `words` 109 (90), `labels` 25 (30), `cells` 97 (90). `columns` holds 38 lines for two of its
-  ten names (330), and `table` 113 for three of its eight (190). Without docstrings `refs` is 53
-  lines and `table` 58. The numpy docstring on each public class and method, magic methods
-  included, is about half of each module, and `refs` also writes four comparison methods for
-  `WordRef`. The five whole modules hold 367 lines against an estimate of 310. If the other
-  modules run as far past theirs, the kit passes its 3,800 line budget, an inference that no run
-  has checked. The report never fails the build, so the owner decides whether the budget counts
-  docstrings.
+  it prints 592 lines. At the S2-E head, with S2-D merged in, it prints 1,376, and `records`
+  counts 202 lines against its estimate of 140, and 91 without docstrings. Against design
+  section 12.1: `refs` 121 (estimate 60), `kinds` 29 (40),
+  `words` 147 (90), `labels` 25 (30), `cells` 108 (90). `columns` holds 49 lines for two of its
+  ten names (330). `table` holds 113 lines (190) for two of the eight names its row lists,
+  `RowKey` and `Finding`, and for `Severity`, which the row does not list. Without docstrings
+  `refs` is 62 lines, `words` 65, `cells` 50 and `table` 58. The numpy docstrings on each public
+  class and method, magic methods included, are 308 of the 592 lines. By module their share runs
+  from 28 percent in `kinds` to 64 percent in `labels`. `refs` also writes four comparison
+  methods for `WordRef`. The five whole modules hold 430 lines against an estimate of 310. If
+  the other modules run as far past theirs, the kit passes its 3,800 line budget, an inference
+  that no run has checked. The report never fails the build, so the owner decides whether the
+  budget counts docstrings.
+- **What an OCR word carries, a note for the step 4 plan** (November 23, 2026, step 2, S2-B).
+  `Page` refuses a word with an OCR confidence on a text layer page. It does not refuse the
+  converse states: a word on an OCR page with no confidence, or with a style, which the design
+  says no OCR word has. Step 4 builds the adapters and learns what pdfplumber and Textract return
+  for every word, so its plan decides whether `Page` refuses those states too, and records the
+  choice in design section 2.1.
+- **The kit checks a hash for presence only, a note for the step 4 and step 5 plans** (November
+  23, 2026, step 2, S2-B). `WordRef`, `Page` and `Document` refuse an empty hash and take any
+  other text, such as `"unknown"`. The old repository checks that a hash is 64 lowercase
+  hexadecimal characters (`gov_budget_etl/models.py`, line 216). The kit does not. The adapter
+  of step 4 computes each hash from a file's bytes, and the record lint of step 5 reads the hashes
+  that records cite, so those two own the form of a hash. Their plans say where the form is
+  checked.
+- **What the step 2 line and label rules do on four real pages, for the plans of steps 5, 8, 11
+  and 12** (November 23, 2026, step 2, S2-C, found in the Codex reviews). Codex read three PDFs of
+  `../gov-budget-data/data/phila/` with `pdftotext -bbox` and ran `group_lines`, `has_values` and
+  `parse_label` on their word boxes at `8846f05`. The S2-C fix round reran the command (the
+  block "PDF reproduction for findings 1-4" of `.codex-review/step-02-pr-8846f05c.md`) and
+  printed the same eight lines. Real pages enter this repository's tests only as word fixtures
+  that `datadesk fixture` writes, from step 4 on (`CLAUDE.md`, Tests), so S2-C changed none of
+  the three functions for them. The boxes are those of `pdftotext`, not those of the adapter
+  that step 4 builds.
+  - A raised footnote mark leaves its row, for the step 5 plan and the owner. On page 2 of the
+    FY2026 Q4 QCMR positions report (`qcmr/positions/FY26_Q4.pdf`), the mark of "Human Services
+    (1)" is raised. The word `(1)` has top 357.95 and bottom 363.44, "Human" has bottom 367.62,
+    and the tolerance of `group_lines` is 2.906, 0.35 of the median word height of 8.303. The
+    mark's bottom is 4.18 above the row's, so `group_lines` makes `(1)` a line of its own. The
+    run printed `(1) True` and `Human Services 438 1,059 1,497 532 1,323 1,855 448 1,045 1,493
+    362 True`. So `has_values` is true for the lone mark, and `parse_label` never sees it with
+    its label (QPOS-Q11). `group_lines` is the design's rule as written. FY2026 Q4 is one of the
+    20 editions step 5 parses, so the step 5 plan tests this page with the real adapter's words
+    and decides the rule. The same rule would keep a raised footnote digit out of its cell, and
+    the lexer's rule for VAL-Q28 expects to find that digit in the cell. The second Codex review
+    says that it reproduced this raised `(1)` and the lower-case `n/a` row below with `pdfplumber`
+    word boxes as well (`.codex-review/step-02-pr-6442b4eb.md`, "What I checked"), which is Codex's
+    statement and not a run of ours, because `pdfplumber` is not installed in this repository until
+    step 4. The S2-D fix round reran the Codex command at the S2-D head on the words of
+    `test_a_raised_digit_after_a_small_dollar_sign_is_a_mark`. Through `group_lines` they make two
+    lines, and in a money column the run printed `'1' Amount 1` and `'$ 2.8' Amount 2.8`, so the row
+    loses its mark and gains a value of 1. Given the three words as one cell, `lex_cell` returns
+    `Amount 2.8` with the mark `1` and three refs, which is right for the words it gets, so the line
+    rule and the raised-mark rule cannot both hold when a mark rises more than the line tolerance.
+  - Margin debris joins a cash row, for the step 8 plan.
+    `test_debris_between_two_rows_joins_neither` (QCASH-Q16, VAL-Q13) uses made-up boxes. On
+    page 1 of the FY2008 Q4 QCMR cash report (`qcmr/cash/FY08_Q4.pdf`), the run printed the
+    words left of x 115 on three lines as `['~']`, `['Debt', 'Service-Long', 'Term']` and
+    `['co', 'lnterfund', 'Charges']`. So the debris `~` is a line of its own, and the debris
+    `co`, bottom 323.32, lands on the line of "lnterfund Charges", bottom 323.89, inside the
+    page's tolerance of 1.859. The step that parses cash tests the real page.
+  - A lower-case `n/a` hides a row, for the owner and the step 11 plan. Page 19 of the adopted
+    FY2009 Budget in Brief (`budget-in-brief/adopted/FY09.pdf`) prints `n/a` in the last
+    column of row 7. The run printed `7 Other Sources 57,353 69,000 0 0 0 n/a False`. The
+    design names `N/A` and `NA` only, so `has_values` is false for that row. Under the lexer
+    rules of the S2-D section of `docs/plans/step-02.md`, read and not run, the cell would be
+    `Unreadable`, which blocks and publishes nothing. The old reader took the marker in any case
+    (`tables/amounts.py:26`). Whether a lower-case `n/a` means not applicable is the owner's
+    decision. Page 1 of the August 2020 realty transfer report
+    (`collections/realty-transfer-tax/2020_08.pdf`) prints it too. Read with `pdftotext -bbox`
+    in the S2-D fix round, the "Unclassified" row holds `n/a` in both local-tax cells of the
+    percent-change columns, for 2020 against 2019 and 2020 against 2018, and the page repeats the
+    row in its second table. At the S2-D head `lex_cell` reads `n/a` as
+    `Unreadable not_a_number`, as `test_not_applicable_cells_are_never_numbers` asserts, and a
+    copy of the old `is_null_amount_marker("n/a")` returns True.
+  - Line formulas other than `(19+20)` stay in the label, for the step 11 plan. On the same
+    page, the run printed `Subtotal (12 thru 17) ()` and `Operating Surplus (Deficit) for Fiscal
+    Year (8-21) ()`. So rows 19 and 22 keep their line formulas in `Label.text`, because
+    `parse_label` reads only the `(19+20)` form (BIB-Q38). The RTT reports print a class code in
+    the same shape, "General Commercial (88-2)" (RTT dossier, "Legacy property labels"), so the
+    kit cannot take `(8-21)` as a mark unless a table tells it to.
+  - A bare digit after a word leaves a capital project's name, for the owner and the step 12
+    plan. Page 107 of the FY2023 supplemental report (`supplemental-report/FY23.pdf`) prints the
+    project heading `12-CENTER CITY TRAFFIC SIGNALS - PHASE 2` (finding 2 of
+    `.codex-review/step-02-pr-6442b4eb.md`). The S2-C fix round 2 reran that command at
+    `b6013a6`, in a scratch worktree, with `pdftotext -layout` 26.07.0 and a label built by
+    `page_from_text`. It printed `12-CENTER CITY TRAFFIC SIGNALS - PHASE 2` as `Label.printed`,
+    `12-CENTER CITY TRAFFIC SIGNALS - PHASE` as `Label.text` and `('2',)` as `Label.marks`. This
+    is the bare-digit form that S2-C took from ENT-Q07 for "Sheriff 2", and the risk "A bare
+    digit after a word becomes a mark" of Appendix C of `docs/plans/step-02.md` now has a real
+    page. `Label.printed` keeps every word, and S2-C keeps the bare-digit form as it is. The
+    supplemental capital tables of step 12 key a project by its label as printed (design section
+    7.1), and `Label.text` and `Label.norm` drop the phase number that the label prints. The
+    owner decides whether the bare-digit form stays in the kit or becomes a rule that a table
+    declares.
+- **Constructor checks the kit does not make** (November 23, 2026, step 2, S2-B). Design section
+  2.1 says that the checks a kit type makes at construction are the ones its block shows, and no
+  others. Those checks guard what enters the kit from outside: an adapter's words, pages and
+  documents, a record file's ids, and a table module's columns. A relation between two fields
+  that one kit function computes belongs to that function and its tests. A constructor that
+  checked `Label.squash` or `Amount.printed` would copy the label reader and the lexer into the
+  types, and the type modules would import them in a cycle. The blocks state the facts below, and
+  no constructor checks them. The verifier's log of fix round 2 and the third Codex review of S2-B
+  found them. Each value was built again in a scratch copy of `aec4c6c` on Python 3.12.15, and
+  each constructor accepted it.
+  - The adapters of step 4 meet the word facts. On an OCR page, `Page` accepts a word with
+    `bold=True` and a word with no confidence (the note "What an OCR word carries"). `WordRef`,
+    `Page` and `Document` accept the hash `"unknown"` (the note "The kit checks a hash for
+    presence only", which also names the record lint of step 5). A subclass of `WordRef` with the
+    same four fields as a ref on the page compares unequal to that ref, so `Page` holds both
+    words.
+  - The record lint of step 5 meets the record ids. `Dash` accepts an empty `rule_id`, and
+    `Unreadable` accepts an empty `accepted_by`.
+  - The catalog test of step 5 meets the column declarations. `NumberFormat` accepts
+    `decimals=-1`. `ColumnSpec` accepts the caption `"Adopted ("`, which `re.compile` refuses
+    with `missing ), unterminated subpattern at position 8`.
+  - `parse_label` of S2-C and its tests keep the label facts. `Label` accepts a `squash` that is
+    not its `norm` without spaces, a `line_no` that is not in `printed`, and a `text` that is not
+    drawn from `printed`.
+  - `lex_cell` of S2-D, `apply_reading` of S2-E and their tests keep the cell facts. The cell
+    constructors accept a direct `Amount` of 65.8 from the text `85.8`, a `ZERO` `Dash` from
+    `85.8` and a `NotApplicable` from `85.8`, the digit disagreement of QCASH-Q22. `Amount` also
+    accepts `Decimal("NaN")`. The step 2 plan has the number reader of S2-D build a `Decimal`
+    from digit text, so it cannot return NaN.
+  - `Dash` accepts `NO_VALUE` with a `rule_id`, where the block says the rule set `ZERO`. The
+    design names no function yet that applies a `DashRule`, so the step that builds one keeps
+    this fact.
+  - `Finding` accepts a `subject` with no colon, where the block gives the form
+    `<doc sha8>:<table>:<row key or label>`. Each function that makes a finding builds its
+    subject, and no step checks the form.
+
+  One idea is for the owner to decide, and no plan holds it. A direct `Amount` could refuse, at
+  construction, a `printed` whose ASCII digits differ from the digits of its `text` less the
+  digits of its `marks`. Clause C1b of step 2 says "An `Amount`'s digits are the digits of its
+  words, always". The check would make that clause a fact of the type, and not only of the
+  lexer's tests. A reviewed `Amount` could not make the same check, because its text may hold a
+  confusable letter, such as the `o` of `1o4.o`.
+- **Follow-ups after step 2** (November 23, 2026). The step 2 run found these and did not fix
+  them.
+  - Nothing ties the module table of design section 11.1 to `PURE_IMPORTS`. A pin can hold a pair
+    from a module that the table does not list, and every test still passes. The Codex review of
+    S2-A showed it with `from decimal import Decimal` in `words.py` and `decimal.Decimal` pinned,
+    while the table said `none`. Until a test reads the table, the audit of each pull request
+    checks it by hand against the modules in `PURE_IMPORTS`.
+  - `package_sources` in `tests/test_purity.py` finds each pure package with `find_spec`, as it
+    has since step 1. With a foreign `PYTHONPATH`, or an editable install that points at another
+    checkout, it reads that checkout's sources. Every test imports the kit by name, so under that
+    path the whole suite reads the other checkout, and the purity test agrees with the rest. The
+    Codex review of S2-A at `c103b016` showed it with `PYTHONPATH` set to a sibling worktree's
+    kit, where `test_pure_imports_are_pinned` failed on that worktree's imports.
+  - `test_scan_reports_each_banned_form` checks each banned form against the live `PURE_IMPORTS`.
+    Once a pin holds a name that a banned form imports, the scan accepts the form and the test
+    fails. The third Codex review of S2-A, at `cd433543`, showed it with
+    `collections.defaultdict` pinned for `checkedtables` in memory. Its command printed `scan: []`
+    and `AssertionError: from collections import defaultdict` on Python 3.12.15. Both pins are
+    empty, so no pin names one today. A later pull request that pins a name that one of the banned
+    forms imports, such as `collections.defaultdict`, must also edit that form.
+  - `page_from_text` splits lines at `\n` only and words at an ASCII space only. So a block with
+    `\r\n` line ends keeps `\r` in its words and in the `#ocr` line, which then reads as text
+    layer, and a non-breaking space stays inside a word. The Codex review of S2-C found both at
+    `8846f05c`, and a rerun of its command at `7c1eb0b` printed `text_layer ['#ocr\r', 'Taxes',
+    '1,234\r']` for `#ocr\r\nTaxes 1,234\r\n` and `['Taxes\xa01,234'] False` for
+    `Taxes\u00a01,234`. The second is what a page test of `normalize_space` needs.
+    `test_page_lines_carry_the_source_and_the_text` builds `CASH\xa0FLOW` so that `Line.text`
+    must collapse the space. With words split at any whitespace in a scratch copy, the 80 kit
+    tests still passed, and that space never reached `Line.text`.
+  - `test_hypothesis_profile_is_derandomized` in `tests/test_workspace.py` asserts the name of the
+    active Hypothesis profile. Hypothesis renames the active profile when a run sets
+    `--hypothesis-verbosity=verbose`, so that one diagnostic flag fails the test. The third Codex
+    review of S2-B found it at `aec4c6c8`. In a scratch copy of that head, pytest with the flag
+    failed the test on the name `phillyledger-with-verbose-verbosity`, and the same run without
+    the flag passed.
+  - `pytest_unconfigure` in the root `conftest.py` removes the Hypothesis home with
+    `shutil.rmtree(home, ignore_errors=True)`, so a failed cleanup is silent. The third Codex
+    review of S2-B found it at `aec4c6c8`. Its command, which patches `os.lstat` to raise
+    `PermissionError`, printed `cleanup failed: True teardown returned normally` in a scratch copy
+    of that head.

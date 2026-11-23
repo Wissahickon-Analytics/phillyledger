@@ -80,6 +80,14 @@ in section 11.4 enforces both rules.
 
 ### 2.1 `checkedtables` types
 
+The checks a kit type makes at construction are the ones its block below shows, and no others.
+They guard what enters the kit from outside: an adapter's words, pages and documents, a record
+file's ids, and a table module's columns. Each raises `ValueError`. A relation between two fields
+that one kit function computes has no check at construction. `parse_label` keeps `Label.norm`,
+`Label.squash` and `Label.text`, and `lex_cell` and `apply_reading` keep `Amount.printed` and
+each cell's `text`, and their tests prove it. A pull request that adds a check shows it in the
+block.
+
 ```python
 # checkedtables/refs.py: Box and WordRef. Cells and checks import this module, never words.
 @dataclass(frozen=True, slots=True)
@@ -105,6 +113,9 @@ class WordRef:
     page: int                  # 1-based page in the publisher file, never a cut file
     index: int                 # extraction order on that page; evidence only, never a record key
     child: int | None = None   # set when split_numeric_runs made this word; its box is approximate
+
+    def __post_init__(self) -> None: ...    # ValueError: an empty doc_sha256, a page below 1,
+                                            # or an index or a child below 0
 
     # __lt__, __le__, __gt__, __ge__: by the four fields, a None child before every int child.
     # order=True would raise TypeError comparing a word with its child (None against int).
@@ -158,6 +169,8 @@ class Word:
     size: float | None
     confidence: float | None   # OCR only, 0 to 100
 
+    def __post_init__(self) -> None: ...    # ValueError: a confidence outside 0 to 100 or NaN
+
 
 @dataclass(frozen=True, slots=True)
 class Rule:
@@ -176,15 +189,29 @@ class Page:
     rules: tuple[Rule, ...] = ()
 
     def __post_init__(self) -> None:
+        if not self.doc_sha256:
+            raise ValueError(f"page {self.number} names no file")
+        if self.number < 1:
+            raise ValueError(f"a page has a number below 1: {self.number}")
+        seen: set[WordRef] = set()
         for w in self.words:
             if w.ref.doc_sha256 != self.doc_sha256 or w.ref.page != self.number:
                 raise ValueError(f"word {w.ref} does not belong to page {self.number}")
+            if w.ref in seen:
+                raise ValueError(f"two words on page {self.number} share the ref {w.ref}")
+            seen.add(w.ref)
+            if self.source.kind is SourceKind.TEXT_LAYER and w.confidence is not None:
+                raise ValueError(f"word {w.ref} has an OCR confidence on a text layer page")
 
 
 @dataclass(frozen=True, slots=True)
 class Document:
     sha256: str
     pages: tuple[Page, ...]    # pages extracted, ascending; need not be contiguous
+
+    def __post_init__(self) -> None: ...    # ValueError: an empty sha256, a page whose
+                                            # doc_sha256 is not sha256, or page numbers that are
+                                            # not strictly ascending
 
     def page(self, number: int) -> Page: ...
 ```
@@ -263,6 +290,8 @@ class ColumnSpec:
     fmt: NumberFormat = NumberFormat()
     presence: Presence = Presence.REQUIRED
     dash: DashMeaning = DashMeaning.NO_VALUE
+
+    def __post_init__(self) -> None: ...     # ValueError: an empty name or an empty caption
 
 
 @dataclass(frozen=True, slots=True)
@@ -354,6 +383,8 @@ class Amount:
     def __post_init__(self) -> None:
         if not self.words:
             raise ValueError("an Amount needs the words it was read from")
+        if self.review_id == "":
+            raise ValueError("an Amount names an empty review id")
         if (self.reading is Reading.REVIEWED) != (self.review_id is not None):
             raise ValueError("a reviewed Amount names its review, and only then")
 
@@ -364,6 +395,10 @@ class Dash:
     words: tuple[WordRef, ...]
     meaning: DashMeaning
     rule_id: str | None = None     # the DashRule that set ZERO, if any
+
+    def __post_init__(self) -> None:
+        if not self.words:
+            raise ValueError("a Dash needs the words it was read from")
 
 
 @dataclass(frozen=True, slots=True)
@@ -436,6 +471,7 @@ class RowKey:
 
     @staticmethod
     def parse(text: str) -> "RowKey": ...   # inverse of str; TOML records only; code uses RowKey.of
+                                            # ValueError: a part with no "="
 
     @property
     def has_occurrence(self) -> bool: ...   # an "occurrence" part from a list table
@@ -1630,9 +1666,9 @@ def squash(norm: str) -> str: ...
     # remove spaces; matches kerning gaps such as "truc k" and "LI QUOR"
 def parse_label(prefix: Sequence[Word], words: Sequence[Word]) -> Label: ...
     # splits trailing marks until none is left, kept in print order: "(N)", "(*)", "**N", "*",
-    # "see note" or "seenote", ", subtotal", "(19+20)" forms, and one bare digit after a word
-    # ("Sheriff 2", ENT-Q07; "CLASS 100" keeps its number); prefix words become line_no;
-    # printed keeps every word
+    # "see note" with any one space or none between its words, ", subtotal", "(19+20)" forms,
+    # and one bare digit after a word ("Sheriff 2", ENT-Q07; "CLASS 100" keeps its number);
+    # prefix words become line_no; printed keeps every word
 def split_line_prefix(line: Line, pattern: str) -> tuple[tuple[Word, ...], Line]: ...
     # leading words that fullmatch `pattern` leave the line before lanes are found, so a column
     # of "23", "24", "26" prefixes can never form a lane (QPOS-Q08, ENT-Q08, QSMR-Q04).
@@ -1709,13 +1745,16 @@ def split_numeric_runs(word: Word) -> tuple[Word, ...]: ...
     # "TAX434,605,553" -> ("TAX", "434,605,553"); "12.3%45,678" -> ("12.3%", "45,678");
     # children get WordRef.child and a box cut in proportion to characters. A cut falls between
     # a letter and a comma-grouped number on either side, so "FY2016" stays whole, and after a
-    # "%" or ")" that a digit, "(" or "$" follows. A word with one run comes back unchanged.
+    # "%" or ")" that a digit, "(" or "$" follows. A word with one run comes back unchanged, and
+    # so does a word that still holds "(cid:", whose ")" ends a font code (VAL-Q05).
 def lex_cell(words: Sequence[Word], col: ColumnSpec, source: SourceKind) -> Cell: ...
     # In order: no words -> Blank; YEAR, CODE and TEXT columns -> Text; "N/A" and "NA" ->
-    # NotApplicable; "-", "--", en and em dash -> Dash(col.dash). Marks then leave the end of the
-    # cell into Amount.marks: *, †, ‡, §, #, a backtick, Unicode superscript digits, and a last
-    # one-digit word under 0.7 of the size of the number word just before it whose bottom sits
-    # above that word's bottom (VAL-Q28). A "$" word that opens the cell leaves its tokens.
+    # NotApplicable; "-", "--", en and em dash, alone or after one "$" word ("$ -", RTT-Q39) ->
+    # Dash(col.dash). Marks then leave the end of the cell into Amount.marks: *, †, ‡, §, #, a
+    # backtick, Unicode superscript digits, and a last one-digit word under 0.7 of the size of
+    # the number word just before it whose bottom sits above that word's bottom (VAL-Q28). A "$"
+    # word that opens the cell leaves its tokens for the join and comes back in front of the
+    # number they give, so "$ $1,234" prints two "$".
     # One token reads through one private reader, which apply_reading also calls. Paired
     # parentheses or one leading minus glyph (-, U+2212, en dash, em dash) is negative, a "$"
     # stands at most once before the digits on either side of that sign, and the digits are
@@ -1732,15 +1771,16 @@ def lex_cell(words: Sequence[Word], col: ColumnSpec, source: SourceKind) -> Cell
     # A "%" follows col.fmt.percent, and printed decimals equal col.fmt.decimals unless None.
     # Anything else -> Unreadable with the first reason that applies: not_a_number (a glyph no
     # number, sign, mark or separator uses, or no digit), two_tokens (tokens that fit no join
-    # shape), sign (a plus, a minus after a digit, an unpaired or misplaced parenthesis, two
-    # signs), percent_sign, grouping (what is left is not one strictly grouped number, a
-    # misplaced "$" or "%" included), decimals.
+    # shape), sign (a plus, a minus after a digit, an unpaired or misplaced parenthesis such as
+    # the ")" of "(1).23", two signs), percent_sign, grouping (what is left is not one strictly
+    # grouped number, a misplaced "$", "%" or mark included), decimals.
     # Amount and Unreadable keep the word texts joined by one space and the ref of every word.
 def transliteration_ok(seen: str, reading: str) -> bool: ...
     # the digits of `reading`, in order, equal the digit-or-OCR-confusable glyphs of `seen`;
-    # B and b read as 8, D, d, O, o, Q and q as 0, & as 6, and every other glyph as nothing
-    # ("1o4.o" -> "104.0" passes; "2918" -> "291.8" passes; "65.8" -> "85.8" fails;
-    # "77,500,000" -> "7,500,000" fails)
+    # B and b read as 8, D, d, O, o, Q and q as 0, & as 6, and every other glyph as nothing,
+    # except that a decimal digit that is not ASCII (str.isdecimal, so not a superscript) in
+    # either text fails ("1o4.o" -> "104.0" passes; "2918" -> "291.8" passes; "65.8" -> "85.8"
+    # fails; "77,500,000" -> "7,500,000" fails; "７7,500,000" -> "7,500,000" fails)
 
 
 # checkedtables/records.py
@@ -1846,7 +1886,12 @@ def render_chain(suggestions: Sequence[Suggestion]) -> str: ...
 def page_from_text(text: str, sha: str, page: int) -> Page: ...
     # lays out a monospace block as Words: one character is 6 pt wide, one line is 12 pt;
     # "**text**" marks bold words; returns style None when the block starts with "#ocr".
-    # Only a pair of ** marks bold, so a lone "**1" stays a word.
+    # A word is a run of characters with no ASCII space, so a tab or a non-breaking space
+    # stays inside it. A ** that starts a word opens a bold span when the word's next
+    # character is not *, and a ** that ends a word closes one when the character before it
+    # is not *. Each closer pairs with the nearest unpaired opener to its left on the same
+    # line. Every other ** stays in the text, so "**1  **1,234**" gives "**1" and a bold
+    # "1,234" (RTT-Q38).
 def doc_of(*pages: Page) -> Document: ...
     # pages sorted by number; ValueError for no pages, two files or a repeated page number
 ```
@@ -3762,7 +3807,7 @@ Determinism rules:
 | Adapter contracts | each port's fake and real adapter pass the same tests | network or MinIO for the real ones | nightly and before release |
 | Corpus | every archived edition parses and its gate passes | the archive | before release |
 | Canary | one full run from bytes to a staged release | fakes plus two archived PDFs | every commit |
-| Purity | AST scan of `checkedtables` and `datadesk.core` for `open`, `print`, `input`, `.now()`, `.today()`, `os.`, `random`, `time.`, `builtins`, `__import__`, and mutable module state: a module-level assignment of a list, dict or set display, a comprehension of one, or a call to `list`, `dict`, `set` or `bytearray`. The scan also fails every import from outside the package that the import pin below does not hold | nothing | every commit |
+| Purity | AST scan of `checkedtables` and `datadesk.core` for `open`, `print`, `input`, `.now()`, `.today()`, `os.`, `random`, `time.`, `builtins`, `__import__`, and mutable module state: a module-level assignment of a list, dict or set display, a comprehension of one, or a call to `list`, `dict`, `set` or `bytearray`. The scan also fails every relative import, and every import from outside the package that the import pin below does not hold | nothing | every commit |
 
 The core suites run under `pytest-socket` with sockets disabled and an empty temporary directory
 as the working directory (from A). Word fixtures of real pages are generated once by
@@ -3777,13 +3822,20 @@ folder, so a module-scoped fixture never sees the checkout.
 
 The pure packages import from outside themselves only by name. `tests/test_purity.py` pins, for
 each pure package, every `module.name` pair that it imports, and the test fails when the pairs in
-the source differ from the pin in either direction. An import statement that binds an outside
-module, a star import, and a pinned name that is itself a module all fail, so pure code never
-holds a module object from outside. `checkedtables` counts its own modules as inside.
-`datadesk.core` counts its own modules and `checkedtables` as inside. A relative import is
-resolved to its full module name first and then judged the same way. The modules each package
-imports from are a closed list, given below. A pull request that imports from a module outside
-the list changes the list and the pin together.
+the source differ from the pin in either direction. The scan reads each file as the importer
+does, coding cookie included. An import statement that binds an outside module, a star import
+from outside, and a pinned name that is itself a module all fail, so no import, read as written,
+gives pure code a module object from outside. A star import from outside fails whatever the pin
+holds. `checkedtables` counts its own modules as inside. `datadesk.core` counts its own modules and
+`checkedtables` as inside. A name taken from an outside module counts as inside when its full name
+is at or under an inside name, as `from datadesk import core` is. A relative import fails, inside or
+out. Python resolves it through the module global `__package__`, which source can rebind, so pure
+code imports by absolute name. The scan reads source as written. Source that changes a module global
+at run time, such as `__path__`, can still make an absolute import bind another module, and a static
+scan cannot see that change. The note "The pure packages can still reach effects the gates do not
+name" in `docs/progress.md` lists the routes found, and review reads for them. The modules each
+package imports from are a closed list, given below. A pull request that imports from a module
+outside the list changes the list and the pin together.
 
 | Package | Outside modules it imports from |
 |---|---|

@@ -4,7 +4,7 @@ from checkedtables.kinds import SourceKind
 from checkedtables.refs import Box, WordRef
 from checkedtables.words import Document, Page, Word, WordSource
 
-_BOLD = compile(r"\*\*(.+?)\*\*")
+_MARKER = compile(r"(?P<open>(?<![^ ])\*\*(?=[^ *]))|(?<=[^ *])\*\*(?![^ ])")
 _WORD = compile(r"[^ ]+")
 _TOOL = "checkedtables.testing.page_from_text"
 _COLUMN = 6.0
@@ -12,18 +12,30 @@ _ROW = 12.0
 
 
 def _unmark(row: str) -> tuple[str, tuple[bool, ...]]:
-    parts = _BOLD.split(row)
-    bold = tuple(index % 2 == 1 for index, part in enumerate(parts) for _ in part)
-    return "".join(parts), bold
+    unpaired: list[int] = []
+    spans: list[tuple[int, int]] = []
+    for found in _MARKER.finditer(row):
+        if found["open"]:
+            unpaired.append(found.start())
+        elif unpaired:
+            spans.append((unpaired.pop(), found.start()))
+    markers = {at + step for span in spans for at in span for step in (0, 1)}
+    kept = [index for index in range(len(row)) if index not in markers]
+    bold = tuple(any(start < index < end for start, end in spans) for index in kept)
+    return "".join(row[index] for index in kept), bold
 
 
 def page_from_text(text: str, sha: str, page: int) -> Page:
     """Lay out a monospace block of text as the words of one page.
 
-    A word is a run of characters with no space. Character column ``c`` of line ``r`` starts at
-    ``x0 = 6c`` and ``top = 12r``, and every word is 12 points tall. A pair of ``**`` marks the
-    text between it as bold and leaves the layout before columns are counted. A lone ``**``
-    stays in the text.
+    A word is a run of characters with no ASCII space, so a tab or a non-breaking space stays
+    inside a word. Character column ``c`` of line ``r`` starts at ``x0 = 6c`` and ``top = 12r``,
+    and every word is 12 points tall. A ``**`` that starts a word opens a bold span when the
+    next character of the word is not ``*``. A ``**`` that ends a word closes one when the
+    character before it in the word is not ``*``, and it pairs with the nearest unpaired
+    opening ``**`` to its left on the same line. A pair marks the words between it as bold and
+    leaves the layout before columns are counted. Every other ``**`` stays in the text, so
+    ``**1`` with no closer, ``**ab**cd``, ``x**ab**`` and ``***`` are words.
 
     Parameters
     ----------

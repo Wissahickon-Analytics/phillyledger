@@ -16,11 +16,14 @@ SHA = "a" * 64
 TEXT_LAYER = WordSource(SourceKind.TEXT_LAYER, "pdfplumber==0.11.4;dedupe_chars")
 coordinates = st.floats(min_value=0.0, max_value=100.0)
 sizes = st.floats(min_value=0.0, max_value=30.0)
+splits = st.sampled_from(((None,), (0, 1), (0, 1, 2)))
 
 
-def placed(index: int, text: str, x0: float, top: float, bottom: float) -> Word:
+def placed(
+    index: int, text: str, x0: float, top: float, bottom: float, child: int | None = None
+) -> Word:
     box = Box(x0, top, x0 + 6.0 * len(text), bottom)
-    return Word(WordRef(SHA, 1, index), text, box, False, 12.0, None)
+    return Word(WordRef(SHA, 1, index, child), text, box, False, 12.0, None)
 
 
 def page_of(*words: Word) -> Page:
@@ -39,22 +42,27 @@ OUT_OF_ORDER = page_of(
     placed(1, "45", 50.0, 18.0, 30.0),
     placed(2, "|", 200.0, 0.0, 50.0),
 )
+SPLIT_WORD = page_of(
+    placed(0, "12.3%", 0.0, 0.0, 12.0, child=0),
+    placed(0, "45,678", 30.0, 0.0, 12.0, child=1),
+)
 
 
 @st.composite
 def pages(draw: st.DrawFn) -> Page:
-    boxes = draw(st.lists(st.tuples(coordinates, coordinates, sizes, sizes), max_size=30))
+    runs = draw(st.lists(splits, max_size=12))
+    refs = [WordRef(SHA, 1, index, child) for index, run in enumerate(runs) for child in run]
+    boxes = draw(
+        st.lists(
+            st.tuples(coordinates, coordinates, sizes, sizes),
+            min_size=len(refs),
+            max_size=len(refs),
+        )
+    )
     return page_of(
         *(
-            Word(
-                WordRef(SHA, 1, index),
-                f"w{index}",
-                Box(x0, top, x0 + width, top + height),
-                False,
-                12.0,
-                None,
-            )
-            for index, (x0, top, width, height) in enumerate(boxes)
+            Word(ref, f"w{at}", Box(x0, top, x0 + width, top + height), False, 12.0, None)
+            for at, (ref, (x0, top, width, height)) in enumerate(zip(refs, boxes, strict=True))
         )
     )
 
@@ -71,6 +79,7 @@ def line(text: str) -> Line:
 @given(pages())
 @example(STAIRCASE)
 @example(UNEVEN_HEIGHTS)
+@example(SPLIT_WORD)
 def test_every_word_lands_in_exactly_one_line(page: Page) -> None:
     lines = group_lines(page)
     assert Counter(word for found in lines for word in found.words) == Counter(page.words)
@@ -151,7 +160,8 @@ def test_a_row_that_ends_in_a_dash_has_values() -> None:
 
 def test_a_row_that_ends_in_a_mark_word_has_values() -> None:
     assert has_values(line("Debt Service 2.8 `"))
-    for mark in ("*", "\u2020", "\u2021", "\xa7", "#", "`", "\xb9", "\xb2\xb3", "**"):
+    superscripts = ("\xb9", "\xb2\xb3", "\u2070", "\u2074", "\u2079")
+    for mark in ("*", "\u2020", "\u2021", "\xa7", "#", "`", "**", *superscripts):
         assert has_values(line(f"Debt Service 2.8 {mark}")), mark
         assert not has_values(line(f"Debt Service {mark}")), mark
 
@@ -171,6 +181,8 @@ def test_value_words_end_a_row_with_values() -> None:
         "\u20147",
         "242,096*",
         "1,234\xb9",
+        "1,234\u2070",
+        "1,234\u2079",
     )
     for value in values:
         assert has_values(line(f"Taxes {value}")), value

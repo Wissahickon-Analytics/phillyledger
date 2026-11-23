@@ -46,7 +46,9 @@ def pytest_configure(config: pytest.Config) -> None:
 
 
 def pytest_unconfigure(config: pytest.Config) -> None:
-    shutil.rmtree(config.stash[HYPOTHESIS_HOME], ignore_errors=True)
+    home = config.stash.get(HYPOTHESIS_HOME, None)
+    if home is not None:
+        shutil.rmtree(home, ignore_errors=True)
 
 
 @pytest.hookimpl(wrapper=True)

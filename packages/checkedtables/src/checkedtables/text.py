@@ -20,7 +20,7 @@ _TRAILING_MARK = compile(
     r"|\*\*\d+"
     r"|\*"
     r"|,\s*(?i:subtotal)"
-    r"|(?<=\s)(?i:see ?note)"
+    r"|(?<=\s)(?i:see\s?note)"
     r"|(?<=[^\W\d_]\s)\d"
     r")\s*$"
 )
@@ -90,7 +90,8 @@ def parse_label(prefix: Sequence[Word], words: Sequence[Word]) -> Label:
 
     Marks leave the end of the label one at a time until none is left. A mark is a number or a
     line formula in parentheses ("(1)", "(23+29)"), "(*)", two asterisks and a number ("**1"),
-    one asterisk, ", subtotal", "see note" or "seenote", or one digit after a word ("Sheriff 2").
+    one asterisk, ", subtotal", "see note" with any one space or none between its words, or one
+    digit after a word ("Sheriff 2").
 
     Parameters
     ----------

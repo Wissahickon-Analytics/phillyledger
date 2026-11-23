@@ -94,12 +94,28 @@ class WordRef:
     child : int or None
         Set when `split_numeric_runs` cut this word out of a longer one. Its box is then
         approximate.
+
+    Raises
+    ------
+    ValueError
+        When `doc_sha256` is empty, `page` is below 1, or `index` or `child` is below 0.
     """
 
     doc_sha256: str
     page: int
     index: int
     child: int | None = None
+
+    def __post_init__(self) -> None:
+        """Refuse a ref that names no file, a page below 1, or an index or child below 0."""
+        if not self.doc_sha256:
+            raise ValueError(f"a word ref names no file: {self}")
+        if self.page < 1:
+            raise ValueError(f"a word ref has a page below 1: {self}")
+        if self.index < 0:
+            raise ValueError(f"a word ref has an index below 0: {self}")
+        if self.child is not None and self.child < 0:
+            raise ValueError(f"a word ref has a child below 0: {self}")
 
     def _order(self) -> tuple[str, int, int, tuple[int, ...]]:
         return (self.doc_sha256, self.page, self.index, () if self.child is None else (self.child,))
