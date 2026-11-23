@@ -140,6 +140,77 @@ I ran a byte-identical copy of `tables/amounts.py` (diffed against the checkout)
 
 `12 345` is the known defect. The cause is `.replace(" ", "")` at `tables/amounts.py:123` and 145, which `_contains_separate_amount_tokens` allows when no token has a comma or point (`tables/amounts.py:64-66`). Two count cells in one lane become one unprinted number.
 
+#### 3.2.1 Acceptance inputs for the new lexer
+
+Section 3.2 prints 16 of the probe's 55 inputs, with the old results only, and no file holds the other 39 inputs or any new result. The owner decided on November 23, 2026 that this table is the acceptance set for the probe clause of build step 2, with the words "[u]se your list, but make row 4 unreadable." Design section 16 records it as decision 12. Rows 1 to 16 are the inputs of section 3.2. Rows 17 to 52 are the examples of the table in section 3.1, in its order, and rows 53 to 55 are examples from sections 1.3 and 2. These 39 were chosen from the examples this dossier prints. They are not the 39 inputs that the original probe ran.
+
+Each input is split on spaces into words, and the new lexer (`checkedtables.lex.lex_cell`) reads the words as one cell of a text layer in one of four columns. The old results come from a copy of `tables/amounts.py` that `cmp` reports identical to the reference checkout on November 23, 2026. `tests/test_evidence.py` fails when this table differs from `PROBES` in `packages/checkedtables/tests/test_val_probe.py`, and `test_val_probe_inputs_give_documented_results` fails when the lexer gives another new result.
+
+| Key | Column |
+|---|---|
+| M | money, decimals as printed |
+| M1 | money, one decimal, the QCMR cash format |
+| C | count, no decimals |
+| P | percent, decimals as printed, the sign optional |
+
+| # | Input | Old `parse_amount` | Old `parse_decimal` | Column | New result |
+|---|---|---|---|---|---|
+| 1 | `12 345` | `12345.0` | `12345` | C | `Unreadable two_tokens` |
+| 2 | `1 2` | `12.0` | `12` | C | `Unreadable two_tokens` |
+| 3 | `12 345 678` | `12345678.0` | `12345678` | C | `Unreadable two_tokens` |
+| 4 | `12, 345` | `12345.0` | `12345` | M | `Unreadable two_tokens` |
+| 5 | `-$61,397,587` | `None` | `-61397587` | M | `Amount -61397587` |
+| 6 | `-` | `0.0` | `None` | M | `Dash no_value` |
+| 7 | `--` | `0.0` | `None` | M | `Dash no_value` |
+| 8 | `—` | `0.0` | `None` | M | `Dash no_value` |
+| 9 | `---` | `None` | `None` | M | `Unreadable not_a_number` |
+| 10 | `- 0` | `-0.0` | `-0` | M | `Unreadable two_tokens` |
+| 11 | `(12.3%)` | `-12.3` | `-12.3` | P | `Amount -12.3` |
+| 12 | `+12.3%` | `None` | `None` | P | `Unreadable sign` |
+| 13 | `123-` | `None` | `None` | M | `Unreadable sign` |
+| 14 | `.5` | `None` | `None` | M | `Unreadable grouping` |
+| 15 | `$(1,234)` | `None` | `None` | M | `Amount -1234` |
+| 16 | `1,234 5` | `None` | `None` | M | `Unreadable two_tokens` |
+| 17 | `1,234,567` | `1234567.0` | `1234567` | M | `Amount 1234567` |
+| 18 | `11.6` | `11.6` | `11.6` | M1 | `Amount 11.6` |
+| 19 | `(3.0)` | `-3.0` | `-3.0` | M1 | `Amount -3.0` |
+| 20 | `828,904.89` | `828904.89` | `828904.89` | M | `Amount 828904.89` |
+| 21 | `44,646,313` | `44646313.0` | `44646313` | M | `Amount 44646313` |
+| 22 | `(5,678)` | `-5678.0` | `-5678` | M | `Amount -5678` |
+| 23 | `-4.5` | `-4.5` | `-4.5` | M1 | `Amount -4.5` |
+| 24 | `–7` | `-7.0` | `-7` | M | `Amount -7` |
+| 25 | `-11.0` | `-11.0` | `-11.0` | M1 | `Amount -11.0` |
+| 26 | `$-61,397,587` | `-61397587.0` | `-61397587` | M | `Amount -61397587` |
+| 27 | `–` | `0.0` | `None` | M | `Dash no_value` |
+| 28 | `N/A` | `None` | `None` | M | `NotApplicable` |
+| 29 | `12.3%` | `12.3` | `12.3` | P | `Amount 12.3` |
+| 30 | `69%` | `69.0` | `69` | P | `Amount 69` |
+| 31 | `26.6%` | `26.6` | `26.6` | P | `Amount 26.6` |
+| 32 | `74.98` | `74.98` | `74.98` | P | `Amount 74.98` |
+| 33 | `242,096*` | `242096.0` | `242096` | M | `Amount 242096 marks *` |
+| 34 | `` 2.8 ` `` | `2.8` | `2.8` | M1 | `` Amount 2.8 marks ` `` |
+| 35 | `TOTAL TAX REVENUE *` | `None` | `None` | M | `Unreadable not_a_number` |
+| 36 | `1 37,332,523` | `137332523.0` | `137332523` | M | `Amount 137332523` |
+| 37 | `67,215,504.0 0` | `67215504.0` | `67215504.00` | M | `Amount 67215504.00` |
+| 38 | `10, 936, 234 (1, 130, 698)` | `None` | `None` | M | `Unreadable two_tokens` |
+| 39 | `TAX434,605,553` | `None` | `None` | M | `Unreadable not_a_number` |
+| 40 | `408,491,218 NET PROFITS TAX` | `None` | `None` | M | `Unreadable not_a_number` |
+| 41 | `2100` | `2100.0` | `2100` | M1 | `Unreadable decimals` |
+| 42 | `266 1` | `2661.0` | `2661` | M1 | `Unreadable two_tokens` |
+| 43 | `69,2` | `None` | `None` | M1 | `Unreadable grouping` |
+| 44 | `67: 3` | `None` | `None` | M1 | `Unreadable not_a_number` |
+| 45 | `B` | `None` | `None` | M1 | `Unreadable not_a_number` |
+| 46 | `O` | `None` | `None` | M1 | `Unreadable not_a_number` |
+| 47 | `Q` | `None` | `None` | M1 | `Unreadable not_a_number` |
+| 48 | `D` | `None` | `None` | M1 | `Unreadable not_a_number` |
+| 49 | `&` | `None` | `None` | M1 | `Unreadable not_a_number` |
+| 50 | `(59.8j` | `None` | `None` | M1 | `Unreadable not_a_number` |
+| 51 | `:` | `None` | `None` | M1 | `Unreadable not_a_number` |
+| 52 | `1,234¹` | `None` | `None` | M | `Amount 1234 marks ¹` |
+| 53 | `(29 1)` | `-291.0` | `-291` | M1 | `Unreadable two_tokens` |
+| 54 | `1o4.o` | `None` | `None` | M1 | `Unreadable not_a_number` |
+| 55 | `110,626,142.01 92.31` | `None` | `None` | M | `Unreadable two_tokens` |
+
 ### 3.3 Three lexers and two dash meanings
 
 There are three amount readers. `tables/amounts.py:91` serves page parsing, `tables/classification.py:25-41` adds `-$` support, and `parse_decimal` (`tables/amounts.py:137`) serves Decimal export. The classification wrapper says the page lexer was not widened because that "would invalidate every page" (`tables/classification.py:28-30`). That is a cache and fingerprint cost, not a document fact.

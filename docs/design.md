@@ -1741,20 +1741,52 @@ def cut_pages(layout: Layout, pages: Sequence[PageLines], on: date,
 # checkedtables/lex.py
 def split_numeric_runs(word: Word) -> tuple[Word, ...]: ...
     # "TAX434,605,553" -> ("TAX", "434,605,553"); "12.3%45,678" -> ("12.3%", "45,678");
-    # children get WordRef.child and a box cut in proportion to characters
+    # children get WordRef.child and a box cut in proportion to characters. A cut falls between
+    # a letter and a comma-grouped number on either side, so "FY2016" stays whole, and after a
+    # "%" or ")" that a digit, "(" or "$" follows. A word with one run comes back unchanged, and
+    # so does a word that still holds "(cid:", whose ")" ends a font code (VAL-Q05).
 def lex_cell(words: Sequence[Word], col: ColumnSpec, source: SourceKind) -> Cell: ...
-    # strict grouping; parentheses or a leading minus is negative; "$" and trailing marks split
-    # off, including Unicode superscript digits and a trailing digit word under 0.7 of the cell's
-    # type size whose bottom sits above the cell's baseline (VAL-Q28); "-", "--", en and em dash
-    # -> Dash(col.dash); "N/A" and "NA" -> NotApplicable; no words -> Blank.
-    # Two bare integer tokens never join (QPOS-Q27). A kerning split joins only when one token
-    # carries a separator and the result matches strict grouping ("67,215,504.0 0").
-    # No decimal point is ever inserted. Anything else -> Unreadable(reason).
-    # YEAR, CODE and TEXT columns give Text.
+    # In order: no words -> Blank; YEAR, CODE and TEXT columns -> Text; one word "N/A" or "NA"
+    # -> NotApplicable; one word "-", "--", en or em dash, alone or after one "$" word ("$ -",
+    # RTT-Q39) -> Dash(col.dash), so one word that holds a space, such as "$ -", is neither.
+    # Marks then leave the end of the cell into Amount.marks: *, †, ‡, §, #, a backtick,
+    # Unicode superscript digits, and a last word of one digit, alone or with those glyphs after
+    # it ("1*"), under 0.7 of the size of the number word just before it whose bottom sits above
+    # that word's bottom (VAL-Q28). That word is one mark as it prints. Not small and raised,
+    # such a word reads only alone or after one "$" word, so "1*" is 1 with the mark "*" and
+    # "2.8 1*" is Unreadable two_tokens. A "$" word that opens the cell leaves its tokens for
+    # the join and comes back in front of the number they give, so "$ $1,234" prints two "$".
+    # One token reads through one private reader, which apply_reading also calls. Paired
+    # parentheses or one leading minus glyph (-, U+2212, en dash, em dash) is negative, a "$"
+    # stands at most once before the digits on either side of that sign, and the digits are
+    # [0-9]{1,3}(,[0-9]{3})* or [0-9]+, then an optional .[0-9]+, ASCII only, with a leading
+    # zero only as the whole integer part. The Decimal is built from the text, so no decimal
+    # point is ever inserted and no float is used.
+    # Two tokens join only in a MONEY or PERCENT column on a text layer, after a pair of
+    # parentheses around the whole cell leaves, and only when the joined text reads as one
+    # number. Shape 1: a bare digit, then 1 or 2 digits and comma groups ("1 37,332,523").
+    # Shape 2: a number with a point whose integer part is 1 to 3 digits or comma-grouped, which
+    # may carry a "$" and a minus glyph, then one digit ("67,215,504.0 0"). So two bare integers
+    # never join (QPOS-Q27), and neither do "1234.5 6", "$1 37,332,523", a detached minus or %,
+    # or tokens that end in a comma ("10, 936, 234", decision 12). Parentheses after a "$" word
+    # do not wrap the whole cell, so "$ (1 23,456)" and "$ (1.2 3)" do not join, and neither
+    # old reader joins them. No shape joins a cell that both old readers refuse, compared on the
+    # cell without its marks.
+    # A "%" follows col.fmt.percent, and printed decimals equal col.fmt.decimals unless None.
+    # Anything else -> Unreadable with the first reason that applies: not_a_number (a glyph no
+    # number, sign, mark or separator uses, or no digit), two_tokens (tokens that fit no join
+    # shape), sign (a plus, a minus after a digit, an unpaired or misplaced parenthesis such as
+    # the ")" of "(1).23", two signs), percent_sign, grouping (what is left is not one strictly
+    # grouped number, a misplaced "$", "%" or mark included), decimals.
+    # Amount and Unreadable keep the word texts joined by one space and the ref of every word.
 def transliteration_ok(seen: str, reading: str) -> bool: ...
-    # the digits of `reading`, in order, equal the digit-or-OCR-confusable glyphs of `seen`
-    # ("1o4.o" -> "104.0" passes; "2918" -> "291.8" passes; "65.8" -> "85.8" fails;
-    # "77,500,000" -> "7,500,000" fails)
+    # the digits of `reading`, in order, equal the digit-or-OCR-confusable glyphs of `seen`;
+    # B and b read as 8, D, d, O, o, Q and q as 0, & as 6, and every other glyph as nothing,
+    # except that a decimal digit that is not ASCII (str.isdecimal, so not a superscript) in
+    # either text fails ("1o4.o" -> "104.0" passes; "2918" -> "291.8" passes; "65.8" -> "85.8"
+    # fails; "77,500,000" -> "7,500,000" fails; "７7,500,000" -> "7,500,000" fails). A `seen`
+    # that holds "(cid:" fails against every reading, since a font code that extraction could
+    # not decode is no evidence of any digit ("10(cid:28)" -> "10028" and -> "109" fail, VAL-Q05)
 
 
 # checkedtables/records.py
@@ -4478,7 +4510,8 @@ codes, and six open with a commentary page that also prints the `TABLE P-1` band
    `records`, `testing.page_from_text`, the `NumberFormat` and `ColumnSpec` types of `columns`,
    and the `RowKey`, `Severity` and `Finding` types of `table`, with unit and property tests.
    *Check:* Hypothesis suites pass. The 55 probe inputs of VAL section 3.2 give the documented new
-   results. `transliteration_ok` refuses "65.8" to "85.8" and "77,500,000" to "7,500,000".
+   results (decision 12). `transliteration_ok` refuses "65.8" to "85.8" and "77,500,000" to
+   "7,500,000".
 3. **Archive for the QCMR from FY2022.** Index format, `confirm_period`, `plan_fetch`, the S3
    adapter, the QCMR catalog entry, and a one-time import of held FY2022 to FY2026 reports by sha.
    *Check:* each of the 20 reports is indexed once, by the sha in an inventory checked by hand.
@@ -4570,7 +4603,7 @@ codes, and six open with a commentary page that also prints the `TABLE P-1` band
 ## 16. Decisions
 
 The owner answered these on November 22, 2026. Decision 6 followed the Codex review the same day. Two setup questions were settled the same day: the repository and its folder are
-named `phillyledger`, and both buckets use Cloudflare R2.
+named `phillyledger`, and both buckets use Cloudflare R2. Decision 12 came on November 23, 2026.
 
 | # | Question | Answer |
 |---|---|---|
@@ -4585,6 +4618,7 @@ named `phillyledger`, and both buckets use Cloudflare R2.
 | 9 | A wrapped supplemental source label | WARN on each join. |
 | 10 | Keep `verify_cell_provenance` | Keep. |
 | 11 | Six captions where the kind of number is a judgment | As filed in section 2.2. The owner confirmed that Budget in Brief "Current Estimate" and collections "Current Estimates" are projections. |
+| 12 | Which 55 inputs does the probe clause of step 2 mean? | The 55 of VAL section 3.2.1. The original inputs are in no file. The owner decided on November 23, 2026, with the words "[u]se your list, but make row 4 unreadable." |
 
 ### 16.1 Supplemental reports the City posts
 
