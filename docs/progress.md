@@ -342,6 +342,35 @@ Each entry: step, what changed, why, and the design section updated.
     one-digit percent as negative, and a lexer that gives a dash in a one-decimal column the
     meaning zero. Each now fails a test. The round trip draws the sign apart from up to 41
     digits and names `-0.00` and `12345678901234567890.123456789` in every printed form.
+- **Step 2: the lexer refuses a font code as a digit and a join after a `$` word** (November 23,
+  2026, S2-D fix round 2, found in the second Codex review of S2-D). Each change has a test that
+  failed before it. Design section 3.1 and the S2-D boxes and Appendix E of
+  `docs/plans/step-02.md` say the same.
+  - `transliteration_ok` fails when `seen` holds `(cid:`. Before, it counted the `d` of `cid` as
+    a zero and the code number as digits, so `10(cid:28)` passed against `10028` and failed
+    against `109`. Codex reports that `pdfplumber` extracts that word on page 1 of the FY2023 Q1
+    positions report (`qcmr/positions/FY23_Q1.pdf`), where the page prints 109. That is Codex's
+    statement, since `pdfplumber` is not installed here until step 4. A font code is no evidence
+    of any digit, so no reading can be checked against a cell that holds one. Such a cell can
+    only be accepted as null, or repaired by the font repair of step 4.
+  - A pair of parentheses leaves for a join only when it wraps the whole cell, so a `$` word
+    before it stops the join. Before, `$ (1 23,456)` read as -123456, `$ (1.2 3)` as -1.23 and
+    `$ (67,215,504.0 0)` as -67215504.00. A `cmp`-checked copy of the old `parse_amount` and
+    `parse_decimal` returns `None` for each, and Appendix E says no shape joins such a cell. They
+    are now `Unreadable two_tokens`. `test_no_cell_joins_that_both_old_readers_refuse` holds 30
+    cells, a `$` word or none, three join forms and five sign forms, with all three readers'
+    results. Over 448 join cells with every minus glyph and `$` position, these `$ (` cells were
+    the only ones that both old readers refuse and the lexer read as an amount. Over 1,183,744
+    lexings of generated cells in four columns on both sources, the fix changed the result of
+    `$ (` joins only. `-$1.2 3` and `-$67,215,504.0 0` still read as amounts, with any minus
+    glyph. The old `parse_decimal` joins them and the old `parse_amount` refuses them.
+  - Two mutants of `lex.py` passed the 45 tests of `0603fce3`: one that reads an OCR `(3.0)` as a
+    positive text-layer 3.0, and one that keeps only the first word's text and ref in every
+    `Unreadable`. The round trip now draws the page's source and asserts that the `Amount` keeps
+    it, and the digits property checks the sign in both directions.
+    `test_a_cell_keeps_the_text_and_ref_of_every_word` and the probe test assert that an `Amount`
+    and an `Unreadable` keep the text of every word joined by one space and every word's ref, so
+    row 53, `(29 1)`, keeps both words. In a scratch copy, each mutant fails the new tests.
 
 ## Notes for later sessions
 
@@ -591,6 +620,17 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   of step 4 computes each hash from a file's bytes, and the record lint of step 5 reads the hashes
   that records cite, so those two own the form of a hash. Their plans say where the form is
   checked.
+- **A word that still holds a font code, a note for the step 4 plan** (November 23, 2026, step 2,
+  S2-D fix round 2, found in the second Codex review of S2-D). Design section 15, step 4, says
+  that a word still holding `(cid:` after repair lexes as `Unreadable`. At the S2-D head,
+  `lex_cell` returns `Unreadable not_a_number` for `10(cid:28)` in a money, count or percent
+  column, since `c`, `i`, `d` and `:` are no number's glyphs. It returns `Text` for the same word
+  in a `YEAR`, `CODE` or `TEXT` column, because those columns give `Text` before any glyph is
+  read. The sentence is part of step 4's own list, so the step 4 plan decides the rule for those
+  three columns. `transliteration_ok` now fails against every reading of a `seen` that holds
+  `(cid:`, so a reviewed reading cannot supply a digit that a font code hides, and such a cell can
+  only be accepted as null. The step 4 plan also decides how a reviewed reading can supply a
+  glyph that a font code hides, if the font repair leaves one.
 - **What the step 2 line and label rules do on four real pages, for the plans of steps 5, 8, 11
   and 12** (November 23, 2026, step 2, S2-C, found in the Codex reviews). Codex read three PDFs of
   `../gov-budget-data/data/phila/` with `pdftotext -bbox` and ran `group_lines`, `has_values` and
@@ -661,6 +701,36 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
     7.1), and `Label.text` and `Label.norm` drop the phase number that the label prints. The
     owner decides whether the bare-digit form stays in the kit or becomes a rule that a table
     declares.
+  - Join shape 1 joins two printed amounts, for the owner and the plans of steps 5 and 11
+    (finding 2 of `.codex-review/step-02-pr-0603fce3.md`). On page 1 of the adopted FY2006 Budget
+    in Brief (`budget-in-brief/adopted/FY06.pdf`), the row "Purchase of Services" of the Board of
+    L.&I. Review prints `6` under Increase/(Decrease) and `30,223` under FY2005 Estimated
+    Obligations. Read with `pdftotext -f 1 -l 1 -bbox` 26.07.0 in the S2-D fix round 2, `6` has
+    x0 346.56, top 443.52, x1 351.41 and bottom 454.24, and `30,223` has x0 402.96, top 443.52,
+    x1 429.65 and bottom 454.24. The gap between them is 51.55 points, as Codex measured with
+    `pdfplumber`. Given both words with those boxes as one cell of a money column on a text
+    layer, `lex_cell` at the S2-D head returns `Amount 630223` through join shape 1, and a copy of
+    the old `parse_amount` and `parse_decimal` joins them too. Each word alone reads as
+    `Amount 6` and `Amount 30223`. This is the risk "Join shape 1 can join two cells" of Appendix
+    C of `docs/plans/step-02.md`, which leaves the test of the cut to step 5 and its fixtures, and
+    it now has a real page. The join shapes are part of the owner's decision of November 23, 2026,
+    so S2-D does not change them. An idea for the owner, not a plan: `lex_cell` receives each
+    word's box, so a join could also require the two words to sit close together. The size of
+    that limit needs the real fixtures of step 5.
+  - Two percents in one row are two words on a real page, for the step 10 plan (finding 4 of
+    `.codex-review/step-02-pr-0603fce3.md`). `test_two_percents_in_one_cell_split_apart`
+    (RTT-Q22) splits one fused word, `12.3%4.5%`. On page 2 of the August 2020 realty transfer
+    report (`collections/realty-transfer-tax/2020_08.pdf`), the Center City Condominiums row
+    prints `-33.6%` and `-48.1%` as two separate words under the "% Difference" headings "# of
+    records" and "local tax". Read with `pdftotext -f 2 -l 2 -bbox` in the S2-D fix round 2,
+    `-33.6%` has x0 718.08, top 359.78, x1 746.60 and bottom 368.10, and `-48.1%` has x0 764.88,
+    top 359.78, x1 793.39 and bottom 368.10, a gap of 18.28 points. Codex states that its
+    `pdfplumber` run puts a vertical rule at x 748.08 to 748.92 between them. That is Codex's
+    statement, since `pdfplumber` is not installed here until step 4. So the test proves the
+    split of a fused word, and this page needs two columns bound by the rule between them. Given
+    both words as one percent cell, `lex_cell` returns `Unreadable two_tokens`, and each word
+    alone reads as an amount. The RTT dossier left the question open: RTT-Q22 is `unsure`, and
+    its row asks for the same render and word-box check as RTT-Q21.
 - **Constructor checks the kit does not make** (November 23, 2026, step 2, S2-B). Design section
   2.1 says that the checks a kit type makes at construction are the ones its block shows, and no
   others. Those checks guard what enters the kit from outside: an adapter's words, pages and
