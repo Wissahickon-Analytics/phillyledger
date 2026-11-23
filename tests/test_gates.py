@@ -78,7 +78,14 @@ def run_gate(
     return subprocess.run(
         command,
         cwd=workspace,
-        env={**os.environ, "PYTHONPATH": pythonpath, "COLUMNS": "200"},
+        env={
+            **os.environ,
+            "PYTHONPATH": pythonpath,
+            "COLUMNS": "200",
+            "NO_COLOR": "1",
+            "PY_COLORS": "0",
+            "TERM": "dumb",
+        },
         capture_output=True,
         text=True,
         check=False,
@@ -95,6 +102,16 @@ def clean_then_planted(
     before = run_gate(tmp_path / "clean", clean, gate, extra)
     assert before.returncode == 0, f"clean copy fails {gate}:\n{before.stdout}{before.stderr}"
     return run_gate(tmp_path / "planted", planted, gate, extra)
+
+
+def folders_missing_init(source_root: Path) -> list[Path]:
+    folders = {
+        source_root / folder
+        for module in source_root.rglob("*.py")
+        for folder in module.relative_to(source_root).parents
+        if folder != Path()
+    }
+    return sorted(folder for folder in folders if not (folder / "__init__.py").is_file())
 
 
 def test_ci_runs_every_gate() -> None:
@@ -119,6 +136,29 @@ def test_planted_boto3_import_fails_lint_imports(tmp_path: Path) -> None:
         )
         assert result.returncode != 0, f"{path}: {text}{result.stdout}"
         assert "datadesk core is pure BROKEN" in result.stdout, f"{path}: {text}{result.stdout}"
+
+
+def test_source_folders_are_packages(tmp_path: Path) -> None:
+    module = "import subprocess\n"
+    probes = {
+        "plain": ({"pkg/sneaky/mod.py": module}, ["pkg/sneaky"]),
+        "shebang": ({"pkg/sneaky/mod.py": f"#!/usr/bin/env python3\n{module}"}, ["pkg/sneaky"]),
+        "venv": ({"pkg/venv/mod.py": module}, ["pkg/venv"]),
+        "parent": (
+            {"pkg/outer/inner/__init__.py": "", "pkg/outer/inner/mod.py": module},
+            ["pkg/outer"],
+        ),
+        "packages": ({"top.py": module, "pkg/sub/__init__.py": "", "pkg/sub/mod.py": module}, []),
+    }
+    for name, (files, expected) in probes.items():
+        root = tmp_path / name
+        for path, text in {"pkg/__init__.py": "", **files}.items():
+            (root / path).parent.mkdir(parents=True, exist_ok=True)
+            (root / path).write_text(text)
+        assert folders_missing_init(root) == [root / folder for folder in expected], name
+
+    missing = [folder for src in SRC_FOLDERS for folder in folders_missing_init(REPO / src)]
+    assert missing == [], f"import-linter skips these folders, add __init__.py: {missing}"
 
 
 def test_planted_namespace_folder_fails_ruff_check(tmp_path: Path) -> None:
