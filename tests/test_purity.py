@@ -99,7 +99,7 @@ def package_sources(name: str) -> list[tuple[str, Path]]:
 
 
 def parse_file(path: Path) -> ast.Module:
-    return ast.parse(path.read_text(), filename=str(path))
+    return ast.parse(path.read_bytes(), filename=str(path))
 
 
 def pure_package(module: str) -> str:
@@ -126,31 +126,28 @@ def bound_module(alias: ast.alias) -> str:
 
 def outside_imports(tree: ast.Module, module: str) -> list[tuple[int, str]]:
     package = pure_package(module)
-    sources = (
-        (node, imported_module(node, module))
+    pairs = (
+        (node.lineno, f"{imported_module(node, module)}.{alias.name}")
         for node in ast.walk(tree)
         if isinstance(node, ast.ImportFrom)
-    )
-    return [
-        (node.lineno, f"{source}.{alias.name}")
-        for node, source in sources
-        if not is_inside(source, package)
         for alias in node.names
-    ]
+    )
+    return [(line, pair) for line, pair in pairs if not is_inside(pair, package)]
 
 
 def module_valued(pairs: Iterable[str]) -> list[str]:
-    found = []
-    for pair in pairs:
-        owner, _, name = pair.rpartition(".")
-        try:
-            value = getattr(importlib.import_module(owner), name)
-        except (ImportError, AttributeError):
-            found.append(pair)
-        else:
-            if isinstance(value, ModuleType):
-                found.append(pair)
-    return found
+    return [pair for pair in pairs if not names_a_value(pair)]
+
+
+def names_a_value(pair: str) -> bool:
+    owner, _, name = pair.rpartition(".")
+    if name == "*":
+        return False
+    try:
+        value = getattr(importlib.import_module(owner), name)
+    except (ImportError, AttributeError):
+        return False
+    return not isinstance(value, ModuleType)
 
 
 def effect(node: ast.expr | ast.stmt, package: str) -> str | None:
@@ -193,7 +190,7 @@ def impurities(tree: ast.Module, module: str) -> list[tuple[int, str]]:
     unpinned = [
         (line, "from {} import {}".format(*pair.rsplit(".", 1)))
         for line, pair in outside_imports(tree, module)
-        if pair not in PURE_IMPORTS[package]
+        if pair.endswith(".*") or pair not in PURE_IMPORTS[package]
     ]
     state = [
         (statement.lineno, "mutable module state")
