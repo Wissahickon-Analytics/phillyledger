@@ -226,6 +226,39 @@ Each entry: step, what changed, why, and the design section updated.
   since no other reason's meaning covers them. The comments of `split_numeric_runs` and
   `transliteration_ok` now state where a cut falls and the nine confusable glyphs. `lex.py`
   imports nothing new. Design section 3.1.
+- **Step 2: the lexer refuses five more readings it took** (November 23, 2026, S2-D fix round,
+  found in the Codex review and the verification lanes). Each change has a test that failed
+  before it. Design section 3.1 and the S2-D boxes of `docs/plans/step-02.md` say the same.
+  - A `$` word that opens a cell comes back in front of the number that the other tokens give,
+    so the reader sees every `$`. Before, `$ $1,234` read as 1234, and `$ $67,215,504.0 0` as
+    67215504.00, which both old readers refuse. Both are now `Unreadable grouping`, and so are
+    `$ -$5`, `$ $(5)` and `$ ($5)`. `$ 5`, `$ (1,234)` and `$ 1 37,332,523` read as before.
+  - One `$` word and one dash form are a `Dash` with the column's meaning. Before, `$ -` was
+    `Unreadable not_a_number`. Page 1 of the August 2020 realty transfer report
+    (`collections/realty-transfer-tax/2020_08.pdf`) prints the form. Read with
+    `pdftotext -bbox`, its "Unclassified" row holds `56 $ 1,313`, `50 $ -`, `61 $ 0`,
+    `6 $ 1,313`, `12.0% n/a`, `(5) $ 1,313` and `-8.2% n/a`, so the August 2019 local-tax cell
+    prints `$` and `-` where the August 2018 one prints `$` and `0`. The "Voided transactions"
+    row prints `-` or `$ -` in each count and local-tax cell, and the page repeats both rows in
+    its second table, by location. A dash then a mark word, `$ N/A` and `- 0` are unchanged.
+  - `transliteration_ok` fails when either text holds a character that `str.isdecimal()` holds
+    and that is not an ASCII digit. Before, a fullwidth seven then `7,500,000` passed against
+    the reading `7,500,000`, because that glyph counted as nothing. A superscript digit is not
+    decimal, so `1,234¹` to `1234` still passes.
+  - `split_numeric_runs` returns a word that holds `(cid:` unchanged. Before, `(cid:21)5` split
+    after its `)`, and the child `5` read as `Amount 5`. Design section 15, step 4, makes such a
+    word `Unreadable`, and ten of the twenty editions that step 5 parses extract their grid
+    fonts as `(cid:N)` codes.
+  - A `)` that digits follow is a sign problem, so `(1).23` and `(1)2` give `sign` where they
+    gave `grouping`. The design already named a misplaced parenthesis.
+  - The design, the `lex_cell` docstring and the reason table of Appendix E now say that
+    `grouping` covers a misplaced mark, such as `2*42,096`, as the code did.
+  - Five mutants of `lex.py` passed the tests of `d9d15ed0`. They are a reader that applies
+    the `Decimal` context to its result, one that builds `-Decimal(digits)`, a
+    `transliteration_ok` that lets a reading drop the last digit, a reader that reads a
+    one-digit percent as negative, and a lexer that gives a dash in a one-decimal column the
+    meaning zero. Each now fails a test. The round trip draws the sign apart from up to 41
+    digits and names `-0.00` and `12345678901234567890.123456789` in every printed form.
 
 ## Notes for later sessions
 

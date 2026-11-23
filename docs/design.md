@@ -1707,13 +1707,16 @@ def split_numeric_runs(word: Word) -> tuple[Word, ...]: ...
     # "TAX434,605,553" -> ("TAX", "434,605,553"); "12.3%45,678" -> ("12.3%", "45,678");
     # children get WordRef.child and a box cut in proportion to characters. A cut falls between
     # a letter and a comma-grouped number on either side, so "FY2016" stays whole, and after a
-    # "%" or ")" that a digit, "(" or "$" follows. A word with one run comes back unchanged.
+    # "%" or ")" that a digit, "(" or "$" follows. A word with one run comes back unchanged, and
+    # so does a word that still holds "(cid:", whose ")" ends a font code (VAL-Q05).
 def lex_cell(words: Sequence[Word], col: ColumnSpec, source: SourceKind) -> Cell: ...
     # In order: no words -> Blank; YEAR, CODE and TEXT columns -> Text; "N/A" and "NA" ->
-    # NotApplicable; "-", "--", en and em dash -> Dash(col.dash). Marks then leave the end of the
-    # cell into Amount.marks: *, †, ‡, §, #, a backtick, Unicode superscript digits, and a last
-    # one-digit word under 0.7 of the size of the number word just before it whose bottom sits
-    # above that word's bottom (VAL-Q28). A "$" word that opens the cell leaves its tokens.
+    # NotApplicable; "-", "--", en and em dash, alone or after one "$" word ("$ -", RTT-Q39) ->
+    # Dash(col.dash). Marks then leave the end of the cell into Amount.marks: *, †, ‡, §, #, a
+    # backtick, Unicode superscript digits, and a last one-digit word under 0.7 of the size of
+    # the number word just before it whose bottom sits above that word's bottom (VAL-Q28). A "$"
+    # word that opens the cell leaves its tokens for the join and comes back in front of the
+    # number they give, so "$ $1,234" prints two "$".
     # One token reads through one private reader, which apply_reading also calls. Paired
     # parentheses or one leading minus glyph (-, U+2212, en dash, em dash) is negative, a "$"
     # stands at most once before the digits on either side of that sign, and the digits are
@@ -1730,15 +1733,16 @@ def lex_cell(words: Sequence[Word], col: ColumnSpec, source: SourceKind) -> Cell
     # A "%" follows col.fmt.percent, and printed decimals equal col.fmt.decimals unless None.
     # Anything else -> Unreadable with the first reason that applies: not_a_number (a glyph no
     # number, sign, mark or separator uses, or no digit), two_tokens (tokens that fit no join
-    # shape), sign (a plus, a minus after a digit, an unpaired or misplaced parenthesis, two
-    # signs), percent_sign, grouping (what is left is not one strictly grouped number, a
-    # misplaced "$" or "%" included), decimals.
+    # shape), sign (a plus, a minus after a digit, an unpaired or misplaced parenthesis such as
+    # the ")" of "(1).23", two signs), percent_sign, grouping (what is left is not one strictly
+    # grouped number, a misplaced "$", "%" or mark included), decimals.
     # Amount and Unreadable keep the word texts joined by one space and the ref of every word.
 def transliteration_ok(seen: str, reading: str) -> bool: ...
     # the digits of `reading`, in order, equal the digit-or-OCR-confusable glyphs of `seen`;
-    # B and b read as 8, D, d, O, o, Q and q as 0, & as 6, and every other glyph as nothing
-    # ("1o4.o" -> "104.0" passes; "2918" -> "291.8" passes; "65.8" -> "85.8" fails;
-    # "77,500,000" -> "7,500,000" fails)
+    # B and b read as 8, D, d, O, o, Q and q as 0, & as 6, and every other glyph as nothing,
+    # except that a decimal digit that is not ASCII (str.isdecimal, so not a superscript) in
+    # either text fails ("1o4.o" -> "104.0" passes; "2918" -> "291.8" passes; "65.8" -> "85.8"
+    # fails; "77,500,000" -> "7,500,000" fails; "７7,500,000" -> "7,500,000" fails)
 
 
 # checkedtables/records.py

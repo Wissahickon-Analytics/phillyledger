@@ -454,15 +454,15 @@ transcript.
 - [ ] Write one private number reader in `lex.py`. It reads one signed token. Paired parentheses or one leading minus glyph make the number negative, and a `$` may stand before the digits on either side of the minus glyph or the opening parenthesis. The minus glyphs are `-`, U+2212, the en dash and the em dash (`tables/amounts.py:13`). The digits are `\d{1,3}(,\d{3})*` or `\d+`, then an optional `\.\d+`, with ASCII digits only, and a leading zero is legal only as the whole integer part. The reader returns a `Decimal` built from the text, so it never inserts a decimal point and never uses `float`. `lex_cell` and `apply_reading` of S2-E both call it, so a reading of `(29.1)` reads as a cell of `(29.1)` does.
 - [ ] Write `lex_cell` from design lines 1685 to 1693 as these rules, in order.
   - [ ] No words gives `Blank`. A `YEAR`, `CODE` or `TEXT` column gives `Text`.
-  - [ ] The text `N/A` or `NA` gives `NotApplicable`. The text `-`, `--`, an en dash or an em dash gives `Dash(col.dash)`.
+  - [ ] The text `N/A` or `NA` gives `NotApplicable`. The text `-`, `--`, an en dash or an em dash, alone or after one `$` word, gives `Dash(col.dash)`. The S2-D fix round added the `$` form, which a spreadsheet's accounting format prints for an empty cell (page 1 of the August 2020 realty transfer report, RTT-Q39).
   - [ ] Marks leave the end of the cell and go to `Amount.marks`. A mark is one of `*`, `†`, `‡`, `§`, `#` and a backtick (`tables/amounts.py:25`), a Unicode superscript digit, or a last one-digit word whose size is under 0.7 of the size of the number word just before it, which holds a digit, and whose bottom is above that word's bottom (VAL-Q28). The design measures against the cell's type size, which is the number's and not that of a small `$` in front.
-  - [ ] A `$` word that opens the cell leaves its tokens. A `$` word anywhere else stays a token, so `5 $` and `1 $ 37,332,523` are `Unreadable two_tokens`. The number reader takes the `$`, the parentheses and the minus glyph of each token.
+  - [ ] A `$` word that opens the cell leaves its tokens. A `$` word anywhere else stays a token, so `5 $` and `1 $ 37,332,523` are `Unreadable two_tokens`. The number reader takes the `$`, the parentheses and the minus glyph of each token. The `$` word comes back in front of the number that the other tokens give, so the reader sees it, and `$ $1,234` and `$ $67,215,504.0 0` are `Unreadable grouping` (S2-D fix round).
   - [ ] Two or more tokens join only in the two shapes of Appendix E, with their token limits, and only in a `MONEY` or `PERCENT` column on a text layer. Any other cell of two or more tokens is `Unreadable`, a detached minus glyph or `%` and a token that ends in a comma included.
   - [ ] A `%` is legal as `col.fmt.percent` says. When `col.fmt.decimals` is a number, the printed decimals must equal it.
   - [ ] An `Amount` and an `Unreadable` keep the cell's word texts joined by one space, and the refs of every word of the cell, the `$` and mark words included.
   - [ ] Every other cell is `Unreadable` with the first reason that applies, in the order `not_a_number`, `two_tokens`, `sign`, `percent_sign`, `grouping`, `decimals`, as Appendix E defines them.
-- [ ] Write `split_numeric_runs` from design lines 1682 to 1684. A boundary falls between a letter and a comma-grouped number on either side, as `tables/text_cleaning.py:14-20` requires, so `FY2016` stays one word. A boundary also falls after a `%` or a `)` that a digit, a `(` or a `$` follows. Children get `WordRef.child` from 0 and boxes cut in proportion to characters. A word with one run comes back unchanged.
-- [ ] Write `transliteration_ok` from design lines 1694 to 1697. Pin the confusable glyphs as one tuple in `lex.py`. They are `B` and `b` for 8, `D`, `d`, `O`, `o`, `Q` and `q` for 0, and `&` for 6 (`tables/value_recovery.py:46-58`).
+- [ ] Write `split_numeric_runs` from design lines 1682 to 1684. A boundary falls between a letter and a comma-grouped number on either side, as `tables/text_cleaning.py:14-20` requires, so `FY2016` stays one word. A boundary also falls after a `%` or a `)` that a digit, a `(` or a `$` follows. Children get `WordRef.child` from 0 and boxes cut in proportion to characters. A word with one run comes back unchanged, and so does a word that holds `(cid:`, since its `)` ends a font code and design section 15, step 4, makes such a word `Unreadable` (S2-D fix round).
+- [ ] Write `transliteration_ok` from design lines 1694 to 1697. Pin the confusable glyphs as one tuple in `lex.py`. They are `B` and `b` for 8, `D`, `d`, `O`, `o`, `Q` and `q` for 0, and `&` for 6 (`tables/value_recovery.py:46-58`). A character of either text that `str.isdecimal()` holds and that is not an ASCII digit fails the check, so a reading cannot drop a fullwidth digit (S2-D fix round).
 - [ ] Write `tests/test_evidence.py` with `test_val_probe_table_is_the_dossier_table`. It loads `test_val_probe.py` by path, renders each row of `PROBES` as a table row, and asserts that the table of VAL section 3.2.1 holds exactly those 55 rows in order.
 - [ ] Rewrite the `lex_cell` comment of design section 3.1 to state the two join shapes, the minus glyphs and the six reasons. Record it under Deviations in `docs/progress.md`. Pin the new import pairs and list any new module in design section 11.1.
 
@@ -475,10 +475,10 @@ transcript.
 
 **Verify, unit.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
-- [ ] C1b. `test_lex.py` gains the Hypothesis property `test_lexer_round_trip`. It draws a `Decimal` with 0 to 12 decimals and prints it grouped or plain, with parentheses or a minus glyph when negative, and with or without a `$`. It names `0.00001` and `1234.567890` as explicit examples. The cell that `lex_cell` returns in a column with decimals as printed is an `Amount` whose `printed` has the same sign, digits and exponent.
+- [ ] C1b. `test_lex.py` gains the Hypothesis property `test_lexer_round_trip`. It draws a `Decimal` with 0 to 12 decimals and prints it grouped or plain, with parentheses or a minus glyph when negative, and with or without a `$`. It names `0.00001` and `1234.567890` as explicit examples. The S2-D fix round draws the sign apart from up to 41 digits, so a negative zero and more than 28 significant digits can come up, and names `-0.00` and `12345678901234567890.123456789` in every printed form. The cell that `lex_cell` returns in a column with decimals as printed is an `Amount` whose `printed` has the same sign, digits and exponent.
   - [ ] In a scratch copy, make the number reader drop a trailing zero of the fraction. The property fails.
   - [ ] In a scratch copy, make the number reader refuse a fraction of more than four digits. The property fails.
-- [ ] C1b. `test_lex.py` gains the Hypothesis property `test_amount_digits_are_the_digits_of_its_words`. It draws word texts from digits, separators, signs, letters, spaces and marks. Whenever the cell is an `Amount`, the decimal digits of `printed` are the decimal digits of the words that are not marks, in order, and the exponent is minus the count of digits after the last point.
+- [ ] C1b. `test_lex.py` gains the Hypothesis property `test_amount_digits_are_the_digits_of_its_words`. It draws word texts from digits, separators, signs, letters, spaces and marks. Whenever the cell is an `Amount`, the decimal digits of `printed` are the decimal digits of the words that are not marks, in order, and the exponent is minus the count of digits after the last point. `printed` is negative only when the words print a minus glyph before their digits or a pair of parentheses around them (S2-D fix round).
   - [ ] In a scratch copy, make `lex_cell` join two bare integers. The property still passes, because a join keeps the digits, so `test_bare_integers_never_join` is the test that fails. Record both results.
   - [ ] In a scratch copy, make the number reader accept `007` as 7. The property fails.
 - [ ] C2. `test_val_probe.py` gains `test_val_probe_inputs_give_documented_results`. It asserts `len(PROBES) == 55`. For each row it builds the words with `page_from_text`, lexes them in the row's column, and asserts that `describe` of the cell equals the row's new result. Row 39 also asserts the two children of `split_numeric_runs`.
@@ -492,7 +492,7 @@ transcript.
   - [ ] In a scratch copy, let join shape 2 take any number with a decimal point. `test_two_amounts_in_one_cell_never_join` fails on `1234.5 6`.
 - [ ] `test_lex.py` gains one test for each of the 21 quirks that Appendix F gives `lex.py`, with the quirk id in the test name or a comment.
 - [ ] `test_lex.py` gains `test_a_raised_digit_after_a_small_dollar_sign_is_a_mark` for VAL-Q28. It builds by hand a 6-point `$`, a 12-point `2.8` and a raised 6-point `1`. The cell is `Amount 2.8` with the mark `1` and three word refs.
-  - [ ] In a scratch copy, measure the raised digit against the first word. The test fails, because the cell becomes 2.81 through join shape 2.
+  - [ ] In a scratch copy, measure the raised digit against the first word. The test fails, because join shape 2 joins `2.8 1` into 2.81, and the column has one decimal, so the cell is `Unreadable decimals`.
 - [ ] `test_lex.py` gains the Hypothesis property `test_a_lexed_value_is_a_value_word`. Every cell of one or more words that `lex_cell` reads as `Amount`, `Dash` or `NotApplicable` in a `PERCENT` column with an optional percent sign makes `has_values` true for a line that ends in those words. The strategy draws cells with a mark word and cells with a `$` word.
 - [ ] The branch log shows the tests committed before `lex.py`, and failing at that commit.
 
@@ -752,9 +752,9 @@ An `Unreadable` cell carries the first reason that applies.
 |---|---|
 | `not_a_number` | a token holds a character that no number, sign, mark or separator uses, or the cell holds no digit |
 | `two_tokens` | two or more tokens that match no join shape |
-| `sign` | a plus sign, a trailing minus, an unpaired parenthesis or two signs |
+| `sign` | a plus sign, a trailing minus, an unpaired or misplaced parenthesis, such as the `)` of `(1).23`, or two signs |
 | `percent_sign` | a `%` that the column's format does not allow, or a missing one that it requires |
-| `grouping` | digits and separators that are not one strictly grouped number |
+| `grouping` | digits and separators that are not one strictly grouped number, a misplaced `$`, `%` or mark included |
 | `decimals` | printed decimals that differ from the column's format |
 
 | # | Input | Old `parse_amount` | Old `parse_decimal` | Column | New result | Decided by |
