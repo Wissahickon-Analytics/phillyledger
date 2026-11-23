@@ -507,8 +507,10 @@ Each entry: step, what changed, why, and the design section updated.
   recommendations with the words "follow your recommendations". Design section 16 records them
   as decisions 13 to 17, each as he saw it. The recommendations were a few sentences each. What
   the run worked out afterward goes further, and in one place against a recommendation: section
-  16.2 proposes the exact reading rule, and section 16.3 sets each proposal beside what he
-  adopted. The proposals wait for his confirmation. This entry changes no
+  16.2 holds the exact reading rule, and section 16.3 sets each later piece beside what he
+  adopted. He confirmed the reading rule of section 16.2 the same day, after the run told him
+  it goes beyond and against his recommendation, with the words "I approve the detailed ruled".
+  The other entries of section 16.3 wait for his confirmation. This entry changes no
   code. Section 3.1 keeps each rule as built, with a pointer to its decision, and the step 5
   plan schedules the five changes with their tests.
   - Decision 13, the reading rule. A reading may restore what extraction lost and nothing else.
@@ -1047,8 +1049,8 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
 - **What a reviewed reading can still do, for the owner and the step 5 plan** (November 23,
   2026, step 2, S2-E fix round, found in the Codex review of `ce55ea9a`). Each case below was
   run in a scratch copy of `f479ede`, and the fix round changed none of them. The owner decided
-  the direction of the rule on November 23, 2026 (design section 16, decision 13). The exact
-  rule in section 16.2 is the run's proposal and waits for his confirmation (section 16.3).
+  the direction of the rule on November 23, 2026 (design section 16, decision 13), and
+  confirmed the exact rule of section 16.2 the same day (section 16.3).
   - `apply_reading` alone accepts a reading of another cell that prints the same text on the
     same page (Codex finding 4). On a row of `2918 2918`, a reading whose box holds the first
     cell gives `None` from `reading_for` for the second cell, and `apply_reading` of it to the

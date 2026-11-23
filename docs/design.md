@@ -1696,8 +1696,8 @@ def group_lines(page: Page) -> tuple[Line, ...]: ...
     # that does not join the open line opens the next. A line's words sort by x0, lines by top.
 def page_lines(page: Page) -> PageLines: ...
 def has_values(line: Line) -> bool: ...                  # a value word, as lanes_from_values defines it
-    # Decision 15 (section 16) adds value words at step 5: N/A in any case, U+2010 alone or as
-    # a minus sign, #DIV/0!.
+    # Decision 15 (section 16) adds value words at step 5: N/A and NA in any case, U+2010
+    # alone or as a minus sign, #DIV/0!.
     # The last word that is not a mark word decides. A mark word holds only *, †, ‡, §, #,
     # a backtick and superscript digits. A value word is N/A, NA, a dash placeholder (-, --,
     # an en dash, an em dash), or a digit with nothing else but , . $ % ( ), minus glyphs and
@@ -1724,6 +1724,7 @@ def choose_era(eras: Sequence[Era], header_text: str, on: date) -> Era | Finding
     # exactly one era whose signature regexes all match and whose excludes all miss; then the
     # expected range must contain `on`. Zero or two candidates, or a date outside: a Finding.
 def lanes_from_values(body: Sequence[Line]) -> tuple[Lane, ...]: ...
+    # Decision 15 (section 16) adds value words at step 5, as at has_values. As built:
     # cluster right edges of value words. A value word is a numeric word with no non-numeric
     # word to its right on its line, so "Class 100 Total" never seeds a lane.
 def lanes_from_rules(rules: Sequence[Rule], region: Box) -> tuple[Lane, ...]: ...
@@ -4653,10 +4654,12 @@ recommendations to the owner in chat, each a few sentences long, and he adopted 
 words "follow your recommendations". The rows below give each recommendation as he saw it.
 The run then checked them against real pages and the old repository's readings. That work
 went further than the recommendations, and in one place against one. Section 16.3 lists,
-decision by decision, what was worked out after he answered. Those parts are proposals, and
-so is the whole of section 16.2. The owner confirms or changes them before the step 5 plan
-builds on them. Until step 5 the code keeps the rule that section 3.1 states, and section 3.1
-points at the decision from each function it touches.
+decision by decision, what was worked out after he answered. The run told him in chat that
+the reading rule of section 16.2 goes beyond his recommendation and reverses it on confusable
+letters, and he confirmed that rule the same day with the words "I approve the detailed
+ruled". The other entries of section 16.3 are proposals. The owner confirms or changes them
+before the step 5 plan builds on them. Until step 5 the code keeps the rule that section 3.1
+states, and section 3.1 points at the decision from each function it touches.
 
 | # | Question | Answer |
 |---|---|---|
@@ -4700,9 +4703,12 @@ before the series was thought to start. FY2007 to FY2009 were not found.
 
 ### 16.2 The reading rule (decision 13)
 
-This section is a proposal. The owner adopted decision 13 as its row above states it. The
-exact rule below was worked out after he answered, through three verifications and three
-Codex reviews, and section 16.3 says where it goes beyond or against what he saw.
+The owner adopted decision 13 as its row above states it. The exact rule below was worked out
+after he answered, through three verifications and three Codex reviews, and section 16.3 says
+where it goes beyond or against what he saw. He was told of that in chat and confirmed the
+rule on November 23, 2026, with the words "I approve the detailed ruled". He was not shown
+this section clause by clause. The list at its end, of what the step 5 plan carries, is not
+part of what he confirmed, and one question on it is his to answer.
 
 `transliteration_ok(seen, reading)` is true when `reading` reads as one signed number through the
 private reader of `lex_cell`, and clauses 1 to 5 hold. `seen` is the cell's text less its mark
@@ -4747,8 +4753,8 @@ them and the function does not.
    an OCR page here. The held FY2007 Q4 cash report is one: ScanSnap and Acrobat Paper Capture
    made it, and its text layer holds `20.B` and `25.B`. `apply_reading` knows the reading's
    source, and `SourceKind` does not yet tell the two kinds of text layer apart.
-7. The gap. The two number words of clause 3 have the same size and stand no farther apart than
-   the gap limit, both as decision 16 sets them. `reading_for` sees the word boxes. On page 1 of
+7. The gap. The two number words of clause 3 have the same size and stand closer than the gap
+   limit, both as decision 16 sets them. `reading_for` sees the word boxes. On page 1 of
    the held FY2006 excerpt, `30,217` and `6` are two columns, and without this test they read
    as 30217.6. Where one extraction word holds both number words, there is no gap to measure and
    the clause holds: Textract returned `(29 1)`, `(3 2)` and `266 1` of the FY2007 Q3 cash
@@ -4862,23 +4868,30 @@ The step 5 plan carries what the run could not settle.
   footnote. Step 5 either gives `apply_reading` the marks the lexer found for an `Unreadable`
   cell, or keeps the mark out at the cut (the notes "What a reviewed reading can still do" and
   "The loader's digit check and a footnoted reading disagree" of `docs/progress.md`).
+- A word that extraction glued from two printed numbers still reads. `1,2345,678` reads as
+  1.2345678: clause 4 takes its first comma as the point, since four digits follow it, and its
+  second as grouping, and clause 7 measures no gap inside one word. The last verifier found
+  it at `13b94b9`. The word reader and the cut keep two numbers in two words.
+- Clauses 7 and 8 are not yet exact enough to build. Clause 7 does not say how the size of two
+  words is compared, or which finding a failure raises. Clause 8 does not say whether clause 6
+  still applies to a confirmation. The last verifier asked both, and the step 5 plan answers.
 - A cell that prints `.5` takes only a null reading. A reading of `0.5` adds a digit the cell
   does not print, the reader does not read `.5`, and row 14 of VAL section 3.2.1 keeps `.5`
   unreadable.
 
 ### 16.3 What was worked out after the owner answered
 
-The owner saw five short recommendations and adopted them. The middle column gives each as he
-saw it. The last column gives what sections 16 and 16.2 hold beyond it. Everything in the last
-column waits for his confirmation.
+The owner saw five short recommendations and adopted them. The second column gives each as he
+saw it. The third gives what sections 16 and 16.2 hold beyond it. The last says whether he has
+confirmed that.
 
-| # | As recommended and adopted | Worked out after, not yet confirmed |
-|---|---|---|
-| 13 | Every word of the cell must look like a number. A reading may add a point or a sign that extraction lost, and may not move or drop one the cell prints. The confusable list stays. The recommendation also said that confusables would not be limited to OCR pages. | The five clauses and three tests of section 16.2. They add a limit of two number words with the point at their break, a comma or a colon between digits as a point unless the comma groups thousands, a `j` for a closing parenthesis, a first digit glyph that is an ASCII digit, a gap test on two words, and a confirmation of an `Amount`. One of them goes against the recommendation: clause 6 reads a confusable as a digit only on an OCR page, because `15030B` on a publisher's text layer would otherwise read as 150308. |
-| 14 | A small word joins a line when its bottom falls inside that line's vertical span, at the lexer's 0.7 ratio, proven on the FY2026 Q4 positions page as a word fixture. | The span holds the edge when the line's top is above it and the line's bottom is at or below it. Small is measured against that line's median word height. Where two lines hold the word, it joins the one whose bottom edge is nearer to its own, and on a tie it stays a line of its own. |
-| 15 | `N/A` and `NA` in any case. U+2010 as a dash placeholder only, and not a minus sign until a page shows it as one. `#DIV/0!` as a value word that lexes as `NotApplicable`. | U+2010 is also a minus glyph. The FY2021 supplemental report prints it before 2.75 on page 15 and before 435.43% on page 18. The owner was told this in chat and has not answered it. |
-| 16 | Keep the join, only at equal size and a small gap, with the limit sized on real fixtures at step 5. | Nothing. One question is open and is the owner's: whether the same test covers the lexer's second join shape (the list at the end of section 16.2). |
-| 17 | Off by default. A mark when small and raised, or where the row schema says the pages use digit footnotes. To be decided before step 12. | It is built at step 5, with the row schemas. |
+| # | As recommended and adopted | Worked out after | Confirmed |
+|---|---|---|---|
+| 13 | Every word of the cell must look like a number. A reading may add a point or a sign that extraction lost, and may not move or drop one the cell prints. The confusable list stays. The recommendation also said that confusables would not be limited to OCR pages. | The five clauses and three tests of section 16.2. They add a limit of two number words with the point at their break, a comma or a colon between digits as a point unless the comma groups thousands, a `j` for a closing parenthesis, a first digit glyph that is an ASCII digit, a gap test on two words, and a confirmation of an `Amount`. One of them goes against the recommendation: clause 6 reads a confusable as a digit only on an OCR page, because `15030B` on a publisher's text layer would otherwise read as 150308. | Yes, on November 23, 2026: "I approve the detailed ruled". |
+| 14 | A small word joins a line when its bottom falls inside that line's vertical span, at the lexer's 0.7 ratio, proven on the FY2026 Q4 positions page as a word fixture. | The span holds the edge when the line's top is above it and the line's bottom is at or below it. Small is measured against that line's median word height. Where two lines hold the word, it joins the one whose bottom edge is nearer to its own, and on a tie it stays a line of its own. | Not yet. |
+| 15 | `N/A` and `NA` in any case. U+2010 as a dash placeholder only, and not a minus sign until a page shows it as one. `#DIV/0!` as a value word that lexes as `NotApplicable`. | U+2010 is also a minus glyph. The FY2021 supplemental report prints it before 2.75 on page 15 and before 435.43% on page 18. The owner was told this in chat and has not answered it. | Not yet. |
+| 16 | Keep the join, only at equal size and a small gap, with the limit sized on real fixtures at step 5. | Nothing. One question is open and is the owner's: whether the same test covers the lexer's second join shape (the list at the end of section 16.2). | The question is open. |
+| 17 | Off by default. A mark when small and raised, or where the row schema says the pages use digit footnotes. To be decided before step 12. | It is built at step 5, with the row schemas. | Not yet. |
 
 ## 17. Known gaps
 
