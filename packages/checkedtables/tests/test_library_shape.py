@@ -43,6 +43,8 @@ FIELD_SNAPSHOT: dict[str, tuple[str, ...]] = {
     "Text": ("text", "words"),
     "NumberFormat": ("decimals", "percent"),
     "ColumnSpec": ("name", "caption", "kind", "fmt", "presence", "dash"),
+    "RowKey": ("parts",),
+    "Finding": ("severity", "code", "subject", "message", "page"),
 }
 
 
