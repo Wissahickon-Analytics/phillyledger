@@ -1,8 +1,11 @@
 import ast
 import importlib.util
+import sys
 from collections.abc import Iterable, Iterator
 from pathlib import Path
 from types import ModuleType
+
+import pytest
 
 PURE_PACKAGES = ("checkedtables", "datadesk.core")
 PURE_IMPORTS: dict[str, tuple[str, ...]] = {
@@ -65,10 +68,15 @@ BANNED_FORMS = {
         "from re import *",
         "def make():\n    from uuid import uuid4",
         "if TYPE_CHECKING:\n    from pathlib import Path",
+        "from . import refs",
+        '__package__ = "email.mime"\nfrom . import text',
     ),
     CORE_MODULE: (
+        "from . import catalog",
+        "from ... import core",
         "from ... import shell",
         "from ...shell import run",
+        "from datadesk import shell",
         "import datadesk.core.tables",
     ),
 }
@@ -80,14 +88,15 @@ ALLOWED_FORMS = {
         "if __debug__:\n    def collect():\n        items = []\n        return items\n",
         "from checkedtables.refs import Box",
         "import checkedtables.lines",
-        "from . import refs",
+        "from checkedtables.lines import *",
     ),
     CORE_MODULE: (
-        "from . import catalog",
         "from checkedtables.refs import Box",
         "import datadesk.core.tables as tables",
+        "from datadesk import core",
     ),
 }
+GBK_FILE_HIDING_IMPORT = b'# coding: gbk\nX = "\xe3\x81\x81\\"; import sys #\'"\n'
 
 
 def package_sources(name: str) -> list[tuple[str, Path]]:
@@ -98,6 +107,10 @@ def package_sources(name: str) -> list[tuple[str, Path]]:
         for folder in map(Path, spec.submodule_search_locations)
         for path in folder.rglob("*.py")
     )
+
+
+def parse_file(path: Path) -> ast.Module:
+    return ast.parse(path.read_bytes(), filename=str(path))
 
 
 def pure_package(module: str) -> str:
@@ -113,42 +126,34 @@ def is_inside(name: str, package: str) -> bool:
     return any(is_at_or_under(name, root) for root in INSIDE[package])
 
 
-def imported_module(node: ast.ImportFrom, module: str) -> str:
-    relative = "." * node.level + (node.module or "")
-    return importlib.util.resolve_name(relative, module.rpartition(".")[0])
-
-
 def bound_module(alias: ast.alias) -> str:
     return alias.name if alias.asname else alias.name.partition(".")[0]
 
 
 def outside_imports(tree: ast.Module, module: str) -> list[tuple[int, str]]:
     package = pure_package(module)
-    sources = (
-        (node, imported_module(node, module))
+    pairs = (
+        (node.lineno, f"{node.module}.{alias.name}")
         for node in ast.walk(tree)
-        if isinstance(node, ast.ImportFrom)
-    )
-    return [
-        (node.lineno, f"{source}.{alias.name}")
-        for node, source in sources
-        if not is_inside(source, package)
+        if isinstance(node, ast.ImportFrom) and not node.level
         for alias in node.names
-    ]
+    )
+    return [(line, pair) for line, pair in pairs if not is_inside(pair, package)]
 
 
 def module_valued(pairs: Iterable[str]) -> list[str]:
-    found = []
-    for pair in pairs:
-        owner, _, name = pair.rpartition(".")
-        try:
-            value = getattr(importlib.import_module(owner), name)
-        except (ImportError, AttributeError):
-            found.append(pair)
-        else:
-            if isinstance(value, ModuleType):
-                found.append(pair)
-    return found
+    return [pair for pair in pairs if not names_a_value(pair)]
+
+
+def names_a_value(pair: str) -> bool:
+    owner, _, name = pair.rpartition(".")
+    if name == "*":
+        return False
+    try:
+        value = getattr(importlib.import_module(owner), name)
+    except (ImportError, AttributeError):
+        return False
+    return not isinstance(value, ModuleType)
 
 
 def effect(node: ast.expr | ast.stmt, package: str) -> str | None:
@@ -161,6 +166,8 @@ def effect(node: ast.expr | ast.stmt, package: str) -> str | None:
             return f"{owner}.{name}"
         case ast.Name(id=name) if name in BANNED_NAMES:
             return name
+        case ast.ImportFrom(level=level, module=name) if level:
+            return f"relative import from {'.' * level}{name or ''}"
         case ast.Import(names=aliases):
             names = (alias.name for alias in aliases if not is_inside(bound_module(alias), package))
             outside = ", ".join(names)
@@ -191,7 +198,7 @@ def impurities(tree: ast.Module, module: str) -> list[tuple[int, str]]:
     unpinned = [
         (line, "from {} import {}".format(*pair.rsplit(".", 1)))
         for line, pair in outside_imports(tree, module)
-        if pair not in PURE_IMPORTS[package]
+        if pair.endswith(".*") or pair not in PURE_IMPORTS[package]
     ]
     state = [
         (statement.lineno, "mutable module state")
@@ -206,7 +213,7 @@ def test_pure_packages_have_no_effects() -> None:
         f"{path}:{line} {found}"
         for name in PURE_PACKAGES
         for module, path in package_sources(name)
-        for line, found in impurities(ast.parse(path.read_text(), filename=str(path)), module)
+        for line, found in impurities(parse_file(path), module)
     ]
     assert not hits, "\n".join(hits)
 
@@ -216,15 +223,43 @@ def test_pure_imports_are_pinned() -> None:
         pairs = {
             pair
             for module, path in package_sources(name)
-            for _, pair in outside_imports(ast.parse(path.read_text(), filename=str(path)), module)
+            for _, pair in outside_imports(parse_file(path), module)
         }
         assert tuple(sorted(pairs)) == PURE_IMPORTS[name], name
+
+
+def test_scan_reads_a_file_as_the_importer_does(tmp_path: Path) -> None:
+    path = tmp_path / "words.py"
+    path.write_bytes(GBK_FILE_HIDING_IMPORT)
+    assert impurities(ast.parse(GBK_FILE_HIDING_IMPORT.decode()), KIT_MODULE) == []
+    assert impurities(parse_file(path), KIT_MODULE) == [(2, "import sys")]
 
 
 def test_pinned_imports_are_not_modules() -> None:
     probes = ("dataclasses.sys", "dataclasses.dataclass", "statistics.random", "re.no_such_name")
     assert module_valued(probes) == ["dataclasses.sys", "statistics.random", "re.no_such_name"]
     assert module_valued(pair for pairs in PURE_IMPORTS.values() for pair in pairs) == []
+
+
+def test_star_import_from_outside_fails_whatever_the_pin_holds(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    answers_every_name = ModuleType("example_units")
+    answers_every_name.__getattr__ = lambda name: None
+    monkeypatch.setitem(sys.modules, answers_every_name.__name__, answers_every_name)
+    monkeypatch.setitem(PURE_IMPORTS, "checkedtables", ("example_units.*",))
+    star = "from example_units import *"
+    assert impurities(ast.parse(star), KIT_MODULE) == [(1, star)]
+    assert module_valued(PURE_IMPORTS["checkedtables"]) == ["example_units.*"]
+
+
+def test_scan_passes_a_name_its_own_package_pins(monkeypatch: pytest.MonkeyPatch) -> None:
+    tree = ast.parse("from decimal import Decimal")
+    monkeypatch.setitem(PURE_IMPORTS, "checkedtables", ("decimal.Decimal",))
+    assert impurities(tree, KIT_MODULE) == []
+    monkeypatch.setitem(PURE_IMPORTS, "checkedtables", ())
+    monkeypatch.setitem(PURE_IMPORTS, "datadesk.core", ("decimal.Decimal",))
+    assert impurities(tree, KIT_MODULE) == [(1, "from decimal import Decimal")]
 
 
 def test_scan_reports_each_banned_form() -> None:

@@ -30,15 +30,16 @@ class Amount:
     reading : Reading
         How the number was read.
     review_id : str or None
-        The ReviewedReading that supplied the number, set exactly when `reading` is REVIEWED.
+        The ReviewedReading that supplied the number, set exactly when `reading` is REVIEWED,
+        and never empty.
     marks : tuple[str, ...]
         Marks printed with the number, such as the "*" of "242,096*" or a superscript digit.
 
     Raises
     ------
     ValueError
-        When `words` is empty, or when `review_id` is set without a reviewed reading or missing
-        from one.
+        When `words` is empty, when `review_id` is empty, or when `review_id` is set without a
+        reviewed reading or missing from one.
     """
 
     printed: Decimal
@@ -50,9 +51,11 @@ class Amount:
     marks: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
-        """Refuse an Amount with no words, or with a review id that does not match its reading."""
+        """Refuse no words, an empty review id, or a review id the reading does not match."""
         if not self.words:
             raise ValueError("an Amount needs the words it was read from")
+        if self.review_id == "":
+            raise ValueError("an Amount names an empty review id")
         if (self.reading is Reading.REVIEWED) != (self.review_id is not None):
             raise ValueError("a reviewed Amount names its review, and only then")
 
@@ -66,17 +69,27 @@ class Dash:
     text : str
         The dash as printed.
     words : tuple[WordRef, ...]
-        The words of the dash.
+        The words of the dash. Never empty.
     meaning : DashMeaning
         What the dash means.
     rule_id : str or None
         The DashRule that set ZERO, if one did.
+
+    Raises
+    ------
+    ValueError
+        When `words` is empty.
     """
 
     text: str
     words: tuple[WordRef, ...]
     meaning: DashMeaning
     rule_id: str | None = None
+
+    def __post_init__(self) -> None:
+        """Refuse a Dash with no words."""
+        if not self.words:
+            raise ValueError("a Dash needs the words it was read from")
 
 
 @dataclass(frozen=True, slots=True)
