@@ -14,9 +14,21 @@ from checkedtables.words import Page, Word, WordSource
 
 SHA = "a" * 64
 TEXT_LAYER = WordSource(SourceKind.TEXT_LAYER, "pdfplumber==0.11.4;dedupe_chars")
+OCR = WordSource(SourceKind.OCR, "textract:AnalyzeDocument;dpi=300")
 coordinates = st.floats(min_value=0.0, max_value=100.0)
 sizes = st.floats(min_value=0.0, max_value=30.0)
+boxes = st.builds(
+    lambda x0, top, width, height: Box(x0, top, x0 + width, top + height),
+    coordinates,
+    coordinates,
+    sizes,
+    sizes,
+)
 splits = st.sampled_from(((None,), (0, 1), (0, 1, 2)))
+texts = st.sampled_from(("Taxes", "1,234", "-", "*", "x", ""))
+bolds = st.sampled_from((None, True, False))
+font_sizes = st.none() | st.floats()
+ocr_confidences = st.none() | st.floats(min_value=0.0, max_value=100.0)
 
 
 def placed(
@@ -26,8 +38,8 @@ def placed(
     return Word(WordRef(SHA, 1, index, child), text, box, False, 12.0, None)
 
 
-def page_of(*words: Word) -> Page:
-    return Page(SHA, 1, 612.0, 792.0, 0, TEXT_LAYER, words)
+def page_of(*words: Word, source: WordSource = TEXT_LAYER) -> Page:
+    return Page(SHA, 1, 612.0, 792.0, 0, source, words)
 
 
 STAIRCASE = page_of(*(placed(i, f"w{i}", 6.0 * i, 3.6 * i, 3.6 * i + 12.0) for i in range(40)))
@@ -46,25 +58,24 @@ SPLIT_WORD = page_of(
     placed(0, "12.3%", 0.0, 0.0, 12.0, child=0),
     placed(0, "45,678", 30.0, 0.0, 12.0, child=1),
 )
+LOW_CONFIDENCE = page_of(
+    Word(WordRef(SHA, 1, 0), "Taxes", Box(0.0, 0.0, 30.0, 12.0), None, None, 100.0),
+    Word(WordRef(SHA, 1, 1), "85.8", Box(60.0, 0.0, 84.0, 12.0), None, None, 89.0),
+    source=OCR,
+)
 
 
 @st.composite
 def pages(draw: st.DrawFn) -> Page:
+    source = draw(st.sampled_from((TEXT_LAYER, OCR)))
+    confidences = ocr_confidences if source is OCR else st.none()
     runs = draw(st.lists(splits, max_size=12))
     refs = [WordRef(SHA, 1, index, child) for index, run in enumerate(runs) for child in run]
-    boxes = draw(
-        st.lists(
-            st.tuples(coordinates, coordinates, sizes, sizes),
-            min_size=len(refs),
-            max_size=len(refs),
-        )
-    )
-    return page_of(
-        *(
-            Word(ref, f"w{at}", Box(x0, top, x0 + width, top + height), False, 12.0, None)
-            for at, (ref, (x0, top, width, height)) in enumerate(zip(refs, boxes, strict=True))
-        )
-    )
+    words = [
+        Word(ref, draw(texts), draw(boxes), draw(bolds), draw(font_sizes), draw(confidences))
+        for ref in refs
+    ]
+    return page_of(*words, source=source)
 
 
 def tolerance(page: Page) -> float:
@@ -80,6 +91,7 @@ def line(text: str) -> Line:
 @example(STAIRCASE)
 @example(UNEVEN_HEIGHTS)
 @example(SPLIT_WORD)
+@example(LOW_CONFIDENCE)
 def test_every_word_lands_in_exactly_one_line(page: Page) -> None:
     lines = group_lines(page)
     assert Counter(word for found in lines for word in found.words) == Counter(page.words)
