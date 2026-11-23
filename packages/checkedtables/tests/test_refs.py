@@ -28,8 +28,8 @@ word_refs = st.builds(
 )
 
 
-def child_first_key(ref: WordRef) -> tuple[str, int, int, int]:
-    return (ref.doc_sha256, ref.page, ref.index, -1 if ref.child is None else ref.child)
+def child_first_key(ref: WordRef) -> tuple[str, int, int, bool, int | None]:
+    return (ref.doc_sha256, ref.page, ref.index, ref.child is not None, ref.child)
 
 
 def test_inverted_box_raises() -> None:
@@ -52,18 +52,37 @@ def test_box_around_holds_every_box(members: list[Box]) -> None:
 
 
 def test_box_around_nothing_raises() -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="needs at least one box"):
         Box.around(())
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="needs at least one box"):
         Box.around(iter(()))
 
 
 def test_box_contains_with_slack() -> None:
     cell = Box(10.0, 10.0, 20.0, 20.0)
-    word = Box(9.5, 10.0, 20.0, 20.5)
-    assert not cell.contains(word, 0.0)
-    assert cell.contains(word, 0.5)
-    assert not cell.contains(Box(21.0, 10.0, 22.0, 20.0), 0.5)
+    for slack in (0.0, 0.5):
+        assert cell.contains(Box(12.0, 12.0, 18.0, 18.0), slack)
+    for reach in (0.25, 1.0):
+        for word in (
+            Box(10.0 - reach, 12.0, 18.0, 18.0),
+            Box(12.0, 10.0 - reach, 18.0, 18.0),
+            Box(12.0, 12.0, 20.0 + reach, 18.0),
+            Box(12.0, 12.0, 18.0, 20.0 + reach),
+        ):
+            for slack, contained in ((0.0, False), (reach / 2, False), (reach, True)):
+                assert cell.contains(word, slack) is contained, (word, slack)
+
+
+def test_word_ref_cites_a_file_and_a_page() -> None:
+    for doc_sha256, page, index, child, message in (
+        ("", 1, 0, None, "names no file"),
+        ("a" * 64, 0, 0, None, "page below 1"),
+        ("a" * 64, 1, -1, None, "index below 0"),
+        ("a" * 64, 1, 0, -1, "child below 0"),
+    ):
+        with pytest.raises(ValueError, match=message):
+            WordRef(doc_sha256, page, index, child)
+    assert WordRef("a" * 64, 1, 0, 0).child == 0
 
 
 @given(st.lists(word_refs))
@@ -72,3 +91,9 @@ def test_word_refs_sort_with_and_without_child(refs: list[WordRef]) -> None:
     for a, b in product(refs, repeat=2):
         for compare in COMPARISONS:
             assert compare(a, b) == compare(child_first_key(a), child_first_key(b)), (a, b)
+
+
+def test_word_refs_compare_only_with_word_refs() -> None:
+    for compare in COMPARISONS:
+        with pytest.raises(TypeError):
+            compare(WordRef("a" * 64, 1, 0), 1)

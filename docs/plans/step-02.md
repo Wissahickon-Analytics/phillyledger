@@ -153,7 +153,7 @@ Step 2 needs no R2 and no Textract credentials. It reads no PDF and spends no mo
 - [ ] Start a child only after its parent reports a code-ready head.
 - [ ] Hold the file boundaries. Paths under `src/` are in `packages/checkedtables/src/checkedtables/`, and paths under `tests/kit/` stand for `packages/checkedtables/tests/`.
   - [ ] S2-A touches only `tests/test_purity.py`, `tests/test_gates.py`, and section 11.1 of `docs/design.md`.
-  - [ ] S2-B touches only `refs.py`, `kinds.py`, `words.py`, `labels.py`, `cells.py`, `table.py` and `columns.py` under `src/`, the four new test files under `tests/kit/`, `tests/kit/test_library_shape.py`, `tests/test_purity.py`, `tests/test_workspace.py`, `tests/test_gates.py`, the root `conftest.py`, `pyproject.toml`, `uv.lock`, and sections 2.1, 11.1 and 15 of `docs/design.md`.
+  - [ ] S2-B touches only `refs.py`, `kinds.py`, `words.py`, `labels.py`, `cells.py`, `table.py` and `columns.py` under `src/`, the five new test files under `tests/kit/`, `tests/kit/test_library_shape.py`, `tests/test_purity.py`, `tests/test_workspace.py`, `tests/test_gates.py`, the root `conftest.py`, `pyproject.toml`, `uv.lock`, and sections 2.1, 11.1 and 15 of `docs/design.md`.
   - [ ] S2-C touches only `testing.py`, `text.py` and `lines.py` under `src/`, the three new test files under `tests/kit/`, `tests/kit/test_library_shape.py`, `tests/test_purity.py`, and sections 3.1 and 11.1 of `docs/design.md`.
   - [ ] S2-D touches only `lex.py` under `src/`, the two new test files under `tests/kit/`, `tests/test_evidence.py`, `tests/test_purity.py`, sections 3.1, 11.1, 15 and 16 of `docs/design.md`, and a new section 3.2.1 of `docs/evidence/dossiers/VAL.md`.
   - [ ] S2-E touches only `records.py` under `src/`, one new test file under `tests/kit/`, `tests/kit/test_library_shape.py`, `tests/test_purity.py`, and sections 3.1 and 11.1 of `docs/design.md`.
@@ -221,31 +221,32 @@ transcript.
 **Build.**
 
 - [ ] Add `PURE_IMPORTS` to `tests/test_purity.py`. It maps each name in `PURE_PACKAGES` to a sorted tuple of `module.name` strings, one for each name the package imports from outside. Both tuples are empty at this head, because every file in both packages is empty (Appendix A).
-- [ ] Add `INSIDE`. `checkedtables` counts `checkedtables` as inside. `datadesk.core` counts `datadesk.core` and `checkedtables` as inside. An import of a module at or under an inside name is never pinned. Resolve a relative import against the package of the module that holds it, then judge it the same way. `from . import refs` in `checkedtables/words.py` is inside. `from ... import shell` in `datadesk/core/tables/birt.py` names `datadesk.shell` and is outside.
-- [ ] Write `outside_imports(tree, module)`, where `module` is the dotted name of the file being read. It returns the line and the `module.name` string of every name that a `from module import name` statement takes from an outside module. It walks every node, so it reads function bodies and `if TYPE_CHECKING` blocks.
-- [ ] Give `impurities` the same `module` parameter. Make it also report an `import` statement that binds an outside module, in any spelling, a star import from an outside module, and an outside pair that `PURE_IMPORTS[package]` does not hold. `import datadesk.core.tables` names an inside module and binds `datadesk`, so it fails, and `import datadesk.core.tables as tables` passes.
+- [ ] Add `INSIDE`. `checkedtables` counts `checkedtables` as inside. `datadesk.core` counts `datadesk.core` and `checkedtables` as inside. An absolute import of a module at or under an inside name is never pinned. A name taken from an outside module is inside when its full name `module.name` is at or under an inside name, so `from datadesk import core` in `datadesk/core/tables/birt.py` is inside. A relative import fails wherever it points, once, on its line. Python resolves it through the module global `__package__`, which source can rebind, so in `checkedtables/words.py` the lines `__package__ = "email.mime"` and `from . import text` bind `email.mime.text`. Pure code imports by absolute name, as every import in the design's code samples does.
+- [ ] Write `outside_imports(tree, module)`, where `module` is the dotted name of the file being read. It returns the line and the `module.name` string of every name that an absolute `from module import name` statement takes, when that full name is outside. It walks every node, so it reads function bodies and `if TYPE_CHECKING` blocks.
+- [ ] Write `parse_file(path)`, which parses the file's bytes, and use it in both tests that read package sources. The scan then reads a coding cookie as the importer does. `test_scan_reads_a_file_as_the_importer_does` writes a GBK file whose UTF-8 text hides `import sys` and expects the scan to report `import sys` on line 2.
+- [ ] Give `impurities` the same `module` parameter. Make it also report every relative import, an `import` statement that binds an outside module, in any spelling, a star import from an outside module whatever the pin holds, and an outside pair that `PURE_IMPORTS[package]` does not hold. `import datadesk.core.tables` names an inside module and binds `datadesk`, so it fails, and `import datadesk.core.tables as tables` passes. `test_scan_passes_a_name_its_own_package_pins` pins `decimal.Decimal` with `monkeypatch` and expects `from decimal import Decimal` to pass when the pin is the kit's and to fail when only `datadesk.core` holds it.
 - [ ] Delete `BANNED_IMPORTS` and its two cases in `effect`. The pin refuses `random` and `builtins` with every other module.
 - [ ] Write `test_pure_imports_are_pinned`. For each pure package, the sorted pairs that `outside_imports` finds over `package_sources` equal `PURE_IMPORTS[package]`. A pinned pair that no file imports fails the test too.
-- [ ] Write `module_valued(pairs)` and `test_pinned_imports_are_not_modules`. `module_valued` returns each pair that does not resolve, or that resolves to a module. The test first asserts that `module_valued` returns `dataclasses.sys`, `statistics.random` and `re.no_such_name`, which does not resolve, and does not return `dataclasses.dataclass`. Then it asserts that no pinned pair is module valued.
-- [ ] Add these single-statement forms to `BANNED_FORMS`. `import sys`, `import os.path as p`, `import dataclasses`, `from io import FileIO`, `from collections import defaultdict`, `from dataclasses import sys`, `from re import *`, a `from uuid import uuid4` inside a function body, and a `from pathlib import Path` under `if TYPE_CHECKING`. Add `from ... import shell`, `from ...shell import run` and `import datadesk.core.tables`, read as `datadesk.core.tables.birt`.
+- [ ] Write `module_valued(pairs)` and `test_pinned_imports_are_not_modules`. `module_valued` returns each pair that does not resolve, or that resolves to a module, and each pair whose name is `*`, without asking the module. The test first asserts that `module_valued` returns `dataclasses.sys`, `statistics.random` and `re.no_such_name`, which does not resolve, and does not return `dataclasses.dataclass`. Then it asserts that no pinned pair is module valued. `test_star_import_from_outside_fails_whatever_the_pin_holds` pins `example_units.*` with `monkeypatch`, for a fake module whose `__getattr__` answers every name, and expects both the scan and `module_valued` to name it.
+- [ ] Add these single-statement forms to `BANNED_FORMS`. `import sys`, `import os.path as p`, `import dataclasses`, `from io import FileIO`, `from collections import defaultdict`, `from dataclasses import sys`, `from re import *`, a `from uuid import uuid4` inside a function body, a `from pathlib import Path` under `if TYPE_CHECKING`, `from . import refs`, and `__package__ = "email.mime"` followed by `from . import text` on the next line. Add `from . import catalog`, `from ... import core`, `from ... import shell`, `from ...shell import run`, `from datadesk import shell` and `import datadesk.core.tables`, read as `datadesk.core.tables.birt`. Each form gives one hit, on its last line.
 - [ ] Change the `try` form in `BANNED_FORMS` so that `pass` stands where `import tomllib` stood. The form tests mutable state under `try`, and the import would now be a second hit.
-- [ ] Add to `ALLOWED_FORMS`, read as `checkedtables.words`, the forms `from checkedtables.refs import Box`, `import checkedtables.lines` and `from . import refs`. Add `from . import catalog`, `from checkedtables.refs import Box` and `import datadesk.core.tables as tables`, read as `datadesk.core.tables.birt`.
+- [ ] Add to `ALLOWED_FORMS`, read as `checkedtables.words`, the forms `from checkedtables.refs import Box`, `import checkedtables.lines` and `from checkedtables.lines import *`. A star import from an inside module passes the purity scan, and ruff's `F403` reports it. Add `from checkedtables.refs import Box`, `import datadesk.core.tables as tables` and `from datadesk import core`, read as `datadesk.core.tables.birt`.
 - [ ] Add `test_planted_import_fails_purity_test` to `tests/test_gates.py`. It plants `from io import FileIO` at the end of `packages/datadesk/src/datadesk/core/tables/birt.py`, puts a copy of `tests/test_purity.py` in the workspace, runs the `uv run pytest` gate on that copy through `clean_then_planted`, and asserts exit code 1 and one output line that holds both `birt.py:` and `from io import FileIO`. The helper appends the plant, so the assertion names no line number.
 - [ ] Add the import rule to the Purity row of design section 11.1, and the paragraph that Appendix D quotes. The closed list of modules is empty for both packages at this head.
 - [ ] Add a Deviations entry to `docs/progress.md`. Rewrite the note "The pure packages can still reach effects the gates do not name" to say which of its ten plants now fail and which three still pass.
 
 **You see.**
 
-- [ ] `uv run pytest tests/test_purity.py` ends with `5 passed`.
+- [ ] `uv run pytest tests/test_purity.py` ends with `8 passed`.
 - [ ] With `from io import FileIO` appended to `datadesk/core/tables/birt.py`, the same command fails and prints a line that holds `birt.py:` and `from io import FileIO`.
 - [ ] `uv run pytest` exits 0, and `uv run lint-imports` prints `Contracts: 8 kept, 0 broken.`
 
 **Verify, unit.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
-- [ ] `tests/test_purity.py` gains `test_pure_imports_are_pinned` and `test_pinned_imports_are_not_modules`, and `test_scan_reports_each_banned_form` and `test_scan_allows_immutable_constants` read the new forms. Run `uv run pytest tests/test_purity.py`.
+- [ ] `tests/test_purity.py` gains `test_pure_imports_are_pinned`, `test_pinned_imports_are_not_modules`, `test_scan_reads_a_file_as_the_importer_does`, `test_star_import_from_outside_fails_whatever_the_pin_holds` and `test_scan_passes_a_name_its_own_package_pins`, and `test_scan_reports_each_banned_form` and `test_scan_allows_immutable_constants` read the new forms. Run `uv run pytest tests/test_purity.py`.
   - [ ] In a scratch copy, add `"dataclasses.dataclass"` to `PURE_IMPORTS["checkedtables"]` with no import behind it. `test_pure_imports_are_pinned` fails.
   - [ ] In a scratch copy, make `outside_imports` skip function bodies. `test_scan_reports_each_banned_form` fails on the `from uuid import uuid4` form, which only that function collects.
-  - [ ] In a scratch copy, make the scan treat every relative import as inside. `test_scan_reports_each_banned_form` fails on `from ... import shell`.
+  - [ ] In a scratch copy, make the scan treat every relative import as inside. `test_scan_reports_each_banned_form` fails on `from . import refs`, the first relative form it reads, and none of the six relative forms, `from ... import shell` included, gives a hit.
 - [ ] `tests/test_gates.py` gains `test_planted_import_fails_purity_test`. Run `uv run pytest tests/test_gates.py -k purity`.
 - [ ] The branch log shows the new forms and the planted test committed before the scan changes, and failing at that commit.
 
@@ -286,7 +287,7 @@ transcript.
 
 - [ ] Create `refs.py`, `kinds.py`, `labels.py`, `cells.py` and `table.py` in `packages/checkedtables/src/checkedtables/`.
 - [ ] Edit `words.py` and `columns.py` in that folder. Both are empty files today.
-- [ ] Create `test_refs.py`, `test_words.py`, `test_cells.py` and `test_table.py` in `packages/checkedtables/tests/`.
+- [ ] Create `test_refs.py`, `test_words.py`, `test_cells.py`, `test_columns.py` and `test_table.py` in `packages/checkedtables/tests/`.
 - [ ] Edit `packages/checkedtables/tests/test_library_shape.py`, `tests/test_purity.py`, `tests/test_workspace.py`, `tests/test_gates.py` and the root `conftest.py`.
 - [ ] Edit `pyproject.toml` and `uv.lock`.
 - [ ] Edit `docs/design.md` sections 2.1, 11.1 and 15, and `docs/progress.md`.
@@ -671,7 +672,7 @@ These stay unproven until the build.
 - **Join shape 1 can join two cells (S2-D).** In a money column on a text layer, a one-digit cell and a comma-grouped cell that fall in one lane read as one number, as `1 37,332,523` does. The old code joined them too (`tables/amounts.py:79-91`). A count column and an OCR page never join. Lanes come from geometry, so the test of the cut belongs to step 5 and its fixtures.
 - **A value word is defined twice (S2-C, S2-D).** `lines.py` has a loose predicate and `lex.py` a strict reader. The property `test_a_lexed_value_is_a_value_word` fails when the loose one stops covering the strict one. Step 5 decides whether `lanes_from_values` needs the predicate as a public name.
 - **The design's rule gives a sentence that ends in a number values (S2-C).** `has_values` is true for a note line that ends in "2025". The design's own uses at lines 3297 to 3318 pair it with a second test. The plan implements the rule as written.
-- **The import pin reads static imports (S2-A).** Pure code can still reach an effect with no import. `write = print`, `exec`, `getattr(__builtins__, "open")`, `dataclass.__globals__["sys"]` and a mutable class attribute all pass. A subprocess that a core test starts also passes. Review reads for these.
+- **The import pin reads static imports (S2-A).** Pure code can still reach an effect with no import. `write = print`, `exec`, `getattr(__builtins__, "open")`, `dataclass.__globals__["sys"]` and a mutable class attribute all pass. A subprocess that a core test starts also passes. So do the bare module globals `__loader__`, `__spec__` and `__builtins__`, and the same objects taken by absolute name, as in `from checkedtables import __loader__`. The relative spellings, such as `from . import __loader__`, fail the purity test, because it refuses every relative import. `getattr(__loader__, method)(path)`, with `method = "get_data"`, reads a file and passes all six gates, with `__loader__` bare or imported by absolute name. Written as `__loader__.get_data(path)`, it fails `ty check`. A function in `datadesk/core/__init__.py` that adds the standard library's folder to `__path__` makes `from datadesk.core import subprocess` bind the standard library's `subprocess`, and with a stub `subprocess.pyi` beside it all six gates pass. These are module globals that need no outside import, and a list of the builtin names pure code may use is a separate decision for the owner (Appendix B). Review reads for these.
 - **The pin makes every new import a two-line change (every PR).** A pull request that imports a new name edits `PURE_IMPORTS`, and one that imports from a new module also edits design section 11.1. That is the intent, and it costs each later step a few lines.
 - **`datadesk core is pure` forbids `urllib` (step 3 or 13).** The listing parsers may need `urllib.parse`. This plan does not touch the contract. The plan for the step that builds the listings decides.
 - **Design section 13 and `coverage.tsv` disagree on two counts (S2-C, S2-D).** Section 13 gives `lex_cell` 14 quirks and `parse_label` 9. `coverage.tsv` gives 16 and 10. Appendix F follows `coverage.tsv`. The plan changes neither file.
@@ -695,13 +696,20 @@ S2-A adds this paragraph to design section 11.1, after the paragraph on the audi
 ```text
 The pure packages import from outside themselves only by name. tests/test_purity.py pins, for
 each pure package, every module.name pair that it imports, and the test fails when the pairs in
-the source differ from the pin in either direction. An import statement that binds an outside
-module, a star import, and a pinned name that is itself a module all fail, so pure code never
-holds a module object from outside. checkedtables counts its own modules as inside.
-datadesk.core counts its own modules and checkedtables as inside. A relative import is resolved
-to its full module name first and then judged the same way. The modules each package
-imports from are a closed list, given below. A pull request that imports from a module outside
-the list changes the list and the pin together.
+the source differ from the pin in either direction. The scan reads each file as the importer
+does, coding cookie included. An import statement that binds an outside module, a star import
+from outside, and a pinned name that is itself a module all fail, so no import, read as written,
+gives pure code a module object from outside. A star import from outside fails whatever the pin
+holds. checkedtables counts its own modules as inside. datadesk.core counts its own modules and
+checkedtables as inside. A name taken from an outside module counts as inside when its full name is
+at or under an inside name, as from datadesk import core is. A relative import fails, inside or out.
+Python resolves it through the module global __package__, which source can rebind, so pure code
+imports by absolute name. The scan reads source as written. Source that changes a module global at
+run time, such as __path__, can still make an absolute import bind another module, and a static scan
+cannot see that change. The note "The pure packages can still reach effects the gates do not name"
+in docs/progress.md lists the routes found, and review reads for them. The modules each package
+imports from are a closed list, given below. A pull request that imports from a module outside the
+list changes the list and the pin together.
 ```
 
 No pull request in this plan needs `<pstack>/skills/how/SKILL.md`. Run

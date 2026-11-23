@@ -80,6 +80,10 @@ in section 11.4 enforces both rules.
 
 ### 2.1 `checkedtables` types
 
+A kit type refuses at construction, with `ValueError`, a value that breaks a fact its own block
+below states in a field comment or in a "What these make impossible" list. A check that no block
+states is not built.
+
 ```python
 # checkedtables/refs.py: Box and WordRef. Cells and checks import this module, never words.
 @dataclass(frozen=True, slots=True)
@@ -105,6 +109,9 @@ class WordRef:
     page: int                  # 1-based page in the publisher file, never a cut file
     index: int                 # extraction order on that page; evidence only, never a record key
     child: int | None = None   # set when split_numeric_runs made this word; its box is approximate
+
+    def __post_init__(self) -> None: ...    # ValueError: an empty doc_sha256, a page below 1,
+                                            # or an index or a child below 0
 
     # __lt__, __le__, __gt__, __ge__: by the four fields, a None child before every int child.
     # order=True would raise TypeError comparing a word with its child (None against int).
@@ -158,6 +165,8 @@ class Word:
     size: float | None
     confidence: float | None   # OCR only, 0 to 100
 
+    def __post_init__(self) -> None: ...    # ValueError: a confidence outside 0 to 100 or NaN
+
 
 @dataclass(frozen=True, slots=True)
 class Rule:
@@ -176,15 +185,29 @@ class Page:
     rules: tuple[Rule, ...] = ()
 
     def __post_init__(self) -> None:
+        if not self.doc_sha256:
+            raise ValueError(f"page {self.number} names no file")
+        if self.number < 1:
+            raise ValueError(f"a page has a number below 1: {self.number}")
+        seen: set[WordRef] = set()
         for w in self.words:
             if w.ref.doc_sha256 != self.doc_sha256 or w.ref.page != self.number:
                 raise ValueError(f"word {w.ref} does not belong to page {self.number}")
+            if w.ref in seen:
+                raise ValueError(f"two words on page {self.number} share the ref {w.ref}")
+            seen.add(w.ref)
+            if self.source.kind is SourceKind.TEXT_LAYER and w.confidence is not None:
+                raise ValueError(f"word {w.ref} has an OCR confidence on a text layer page")
 
 
 @dataclass(frozen=True, slots=True)
 class Document:
     sha256: str
     pages: tuple[Page, ...]    # pages extracted, ascending; need not be contiguous
+
+    def __post_init__(self) -> None: ...    # ValueError: an empty sha256, a page whose
+                                            # doc_sha256 is not sha256, or page numbers that are
+                                            # not strictly ascending
 
     def page(self, number: int) -> Page: ...
 ```
@@ -263,6 +286,8 @@ class ColumnSpec:
     fmt: NumberFormat = NumberFormat()
     presence: Presence = Presence.REQUIRED
     dash: DashMeaning = DashMeaning.NO_VALUE
+
+    def __post_init__(self) -> None: ...     # ValueError: an empty name or an empty caption
 
 
 @dataclass(frozen=True, slots=True)
@@ -354,6 +379,8 @@ class Amount:
     def __post_init__(self) -> None:
         if not self.words:
             raise ValueError("an Amount needs the words it was read from")
+        if self.review_id == "":
+            raise ValueError("an Amount names an empty review id")
         if (self.reading is Reading.REVIEWED) != (self.review_id is not None):
             raise ValueError("a reviewed Amount names its review, and only then")
 
@@ -364,6 +391,10 @@ class Dash:
     words: tuple[WordRef, ...]
     meaning: DashMeaning
     rule_id: str | None = None     # the DashRule that set ZERO, if any
+
+    def __post_init__(self) -> None:
+        if not self.words:
+            raise ValueError("a Dash needs the words it was read from")
 
 
 @dataclass(frozen=True, slots=True)
@@ -3727,7 +3758,7 @@ Determinism rules:
 | Adapter contracts | each port's fake and real adapter pass the same tests | network or MinIO for the real ones | nightly and before release |
 | Corpus | every archived edition parses and its gate passes | the archive | before release |
 | Canary | one full run from bytes to a staged release | fakes plus two archived PDFs | every commit |
-| Purity | AST scan of `checkedtables` and `datadesk.core` for `open`, `print`, `input`, `.now()`, `.today()`, `os.`, `random`, `time.`, `builtins`, `__import__`, and mutable module state: a module-level assignment of a list, dict or set display, a comprehension of one, or a call to `list`, `dict`, `set` or `bytearray`. The scan also fails every import from outside the package that the import pin below does not hold | nothing | every commit |
+| Purity | AST scan of `checkedtables` and `datadesk.core` for `open`, `print`, `input`, `.now()`, `.today()`, `os.`, `random`, `time.`, `builtins`, `__import__`, and mutable module state: a module-level assignment of a list, dict or set display, a comprehension of one, or a call to `list`, `dict`, `set` or `bytearray`. The scan also fails every relative import, and every import from outside the package that the import pin below does not hold | nothing | every commit |
 
 The core suites run under `pytest-socket` with sockets disabled and an empty temporary directory
 as the working directory (from A). Word fixtures of real pages are generated once by
@@ -3742,13 +3773,20 @@ folder, so a module-scoped fixture never sees the checkout.
 
 The pure packages import from outside themselves only by name. `tests/test_purity.py` pins, for
 each pure package, every `module.name` pair that it imports, and the test fails when the pairs in
-the source differ from the pin in either direction. An import statement that binds an outside
-module, a star import, and a pinned name that is itself a module all fail, so pure code never
-holds a module object from outside. `checkedtables` counts its own modules as inside.
-`datadesk.core` counts its own modules and `checkedtables` as inside. A relative import is
-resolved to its full module name first and then judged the same way. The modules each package
-imports from are a closed list, given below. A pull request that imports from a module outside
-the list changes the list and the pin together.
+the source differ from the pin in either direction. The scan reads each file as the importer
+does, coding cookie included. An import statement that binds an outside module, a star import
+from outside, and a pinned name that is itself a module all fail, so no import, read as written,
+gives pure code a module object from outside. A star import from outside fails whatever the pin
+holds. `checkedtables` counts its own modules as inside. `datadesk.core` counts its own modules and
+`checkedtables` as inside. A name taken from an outside module counts as inside when its full name
+is at or under an inside name, as `from datadesk import core` is. A relative import fails, inside or
+out. Python resolves it through the module global `__package__`, which source can rebind, so pure
+code imports by absolute name. The scan reads source as written. Source that changes a module global
+at run time, such as `__path__`, can still make an absolute import bind another module, and a static
+scan cannot see that change. The note "The pure packages can still reach effects the gates do not
+name" in `docs/progress.md` lists the routes found, and review reads for them. The modules each
+package imports from are a closed list, given below. A pull request that imports from a module
+outside the list changes the list and the pin together.
 
 | Package | Outside modules it imports from |
 |---|---|
