@@ -6,7 +6,7 @@ same branch as the work: status, the date the check passed, and anything a later
 | Step | What | Status | Branch | Check passed |
 |---|---|---|---|---|
 | 1 | Workspace, tooling, purity and shape tests | check passed | `step-01/a-workspace`, `step-01/b-import-contracts`, `step-01/c-kit-shape`, `step-01/d-test-isolation` | November 22, 2026, runs 45093444380, 45094817250, 45094829990 and 45092206629 |
-| 2 | Kit, words to cells | not started | | |
+| 2 | Kit, words to cells | in progress | `step-02/a-import-pin` | |
 | 3 | Archive for the QCMR from FY2022 | not started | | |
 | 4 | Words: PDF adapter with font repair, word cache, codec | not started | | |
 | 5 | QCMR positions parser, registry, row schemas, column vocabulary | not started | | |
@@ -137,6 +137,29 @@ Each entry: step, what changed, why, and the design section updated.
   unless the running test carries the `enable_socket` marker. Both package `conftest.py` files add
   a module-scoped fixture that moves each test module into an empty folder. The three plants now
   fail with `SocketBlockedError`, and the fixture finds no `pyproject.toml`. Design section 11.1.
+- **Step 2: the purity test pins the imports of the pure packages** (November 23, 2026, S2-A).
+  This is the owner's allow-list (see the note "The pure packages can still reach effects the
+  gates do not name"). `PURE_IMPORTS` in `tests/test_purity.py` maps `checkedtables` and
+  `datadesk.core` to the sorted `module.name` pairs that each imports from outside. Both are
+  empty, because every file in both packages is empty. The scan resolves a relative import first,
+  and it reads imports in function bodies and under `if TYPE_CHECKING`. It fails an `import`
+  statement that binds an outside module, a from-import of a pair the pin does not hold, and a
+  star import from outside, which it reads as a pair such as `re.*` that no pin can hold.
+  `checkedtables` counts itself as inside, and `datadesk.core` counts itself and `checkedtables`.
+  `test_pure_imports_are_pinned` fails when the pairs in the source and the pin differ in either
+  direction. `test_pinned_imports_are_not_modules` fails on a pinned pair that does not resolve
+  or that resolves to a module, such as `dataclasses.sys`. `BANNED_IMPORTS` is gone, because the
+  pin refuses `random` and `builtins` with every other module. Before the change, with
+  `from io import FileIO` appended to `datadesk/core/tables/birt.py`,
+  `uv run pytest tests/test_purity.py` printed `3 passed`. Now it fails and prints
+  `birt.py:1 from io import FileIO`, and `test_planted_import_fails_purity_test` in
+  `tests/test_gates.py` holds that plant. The plan said an `import` that names an outside module
+  fails. The build judges the module that the statement binds, as section 11.1 says.
+  `import datadesk.core.tables` names an inside module and binds `datadesk`, and once any code has
+  imported `datadesk.shell`, the shell is an attribute of that binding. So that import fails, and
+  `import datadesk.core.tables as tables` passes. A pull request that imports a new name adds its
+  pair to `PURE_IMPORTS`. One that imports from a new module also adds the module to the list in
+  section 11.1. Design section 11.1.
 
 ## Notes for later sessions
 
@@ -244,18 +267,20 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   still runs in the checkout. Probed at S1-D, fixtures of session and package scope found
   `pyproject.toml` in the working directory, and one of module scope did not.
 - **The pure packages can still reach effects the gates do not name** (November 22, 2026, step 1,
-  S1-D, found in the Codex review of the stack and the build). Planted one at a time in
-  `datadesk/core/tables/birt.py`, each of these passes every gate: `from io import FileIO` reading a
-  file, `sys.stdout.write("x")`, `uuid.uuid4()`, `write = print` then `write(1)`,
-  `exec("print(1)")`, `sys.modules["os"].getcwd()`, `import posix` with `posix.getcwd()`,
-  `import _socket` with `_socket.socket()`, `defaultdict(list)` assigned at module level, and a
-  mutable class attribute. A core test that starts a subprocess, which opens a socket, also passes
-  every gate. The forbidden lists and the purity scan name specific modules and calls, and every
-  review finds more, so naming more modules does not converge. An allow-list of the modules the pure
-  packages may import would close the import forms. That is a new closed list in the design. The
-  owner chose the allow-list on November 23, 2026. It lands as the first pull request of the step 2
-  plan, which pins the list and changes design section 11.1 in the same pull request (`CLAUDE.md`,
-  hard rule 6).
+  S1-D, found in the Codex review of the stack and the build. Rewritten November 23, 2026, S2-A).
+  At step 1, ten plants each passed every gate when planted alone in
+  `datadesk/core/tables/birt.py`. The forbidden lists and the purity scan named specific modules
+  and calls, and every review found more. The owner chose an allow-list on November 23, 2026, and
+  S2-A pins it (see Deviations). Each plant was run again in a scratch copy of the S2-A head. The
+  seven that import now fail `test_pure_packages_have_no_effects`, so `uv run pytest` fails. They
+  are `from io import FileIO` reading a file, `sys.stdout.write("x")`, `uuid.uuid4()`,
+  `sys.modules["os"].getcwd()`, `import posix` with `posix.getcwd()`, `import _socket` with
+  `_socket.socket()`, and `defaultdict(list)` assigned at module level. The three that import
+  nothing still pass all six gates: `write = print` then `write(1)`, `exec("print(1)")`, and a
+  mutable class attribute. A core test that starts a subprocess, which opens a socket, also still
+  passes all six gates. At `ad866a9`, before the pin, all ten passed `uv run pytest`. The pin reads
+  static imports only. A list of the builtin names pure code may use would be a second closed list
+  and a separate decision for the owner (Appendices B and C of `docs/plans/step-02.md`).
 - **Follow-ups after step 1** (November 22, 2026). The step 1 run found these and did not fix
   them.
   - Nothing tests a gate's own settings. In scratch copies of the S1-D head, each of
