@@ -284,7 +284,11 @@ Each entry: step, what changed, why, and the design section updated.
   The comment of `doc_of` also says that it sorts the pages by number and raises `ValueError`
   for no pages, for pages of two files and for a repeated page number. `text`, `lines`
   and `testing` import from `re`, `statistics` and `typing`, which join the list in section
-  11.1. Design sections 3.1 and 11.1.
+  11.1. The strategy `pages()` of `test_lines.py`, behind clause C1a, draws every field of
+  `Page` and of `Word`, so it covers the input type of `group_lines` (fix round 4). A mutation
+  that keys on one drawn value, such as dropping OCR words with a confidence above 99.5, can
+  still survive a run without the explicit examples, because a property test samples. Design
+  sections 3.1 and 11.1.
 
 ## Notes for later sessions
 
@@ -534,15 +538,15 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   of step 4 computes each hash from a file's bytes, and the record lint of step 5 reads the hashes
   that records cite, so those two own the form of a hash. Their plans say where the form is
   checked.
-- **What the step 2 line and label rules do on seven real pages, for the plans of steps 5, 8, 11
-  and 12** (November 23, 2026, step 2, S2-C, found in the Codex reviews). Codex read three PDFs of
-  `../gov-budget-data/data/phila/` with `pdftotext -bbox` and ran `group_lines`, `has_values` and
-  `parse_label` on their word boxes at `8846f05`. The S2-C fix round reran the command (the
-  block "PDF reproduction for findings 1-4" of `.codex-review/step-02-pr-8846f05c.md`) and
-  printed the same eight lines. Real pages enter this repository's tests only as word fixtures
-  that `datadesk fixture` writes, from step 4 on (`CLAUDE.md`, Tests), so S2-C changed none of
-  the three functions for them. The boxes are those of `pdftotext`, not those of the adapter
-  that step 4 builds.
+- **What the step 2 line and label rules do on eight real pages, for the plans of steps 5, 8, 10,
+  11 and 12** (November 23, 2026, step 2, S2-C, found in the Codex reviews). Codex read three
+  PDFs of `../gov-budget-data/data/phila/` with `pdftotext -bbox` and ran `group_lines`,
+  `has_values` and `parse_label` on their word boxes at `8846f05`. The S2-C fix round reran the
+  command (the block "PDF reproduction for findings 1-4" of
+  `.codex-review/step-02-pr-8846f05c.md`) and printed the same eight lines. Real pages enter
+  this repository's tests only as word fixtures that `datadesk fixture` writes, from step 4 on
+  (`CLAUDE.md`, Tests), so S2-C changed none of the three functions for them. The boxes are
+  those of `pdftotext`, not those of the adapter that step 4 builds.
   - A raised footnote mark leaves its row, for the step 5 plan and the owner. On page 2 of the
     FY2026 Q4 QCMR positions report (`qcmr/positions/FY26_Q4.pdf`), the mark of "Human Services
     (1)" is raised. The word `(1)` has top 357.95 and bottom 363.44, "Human" has bottom 367.62,
@@ -627,6 +631,20 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
     furniture or a line prefix, is for the step 5 plan. QPOS-Q10 left the origin of the leading
     numbers open, and `test_split_line_prefix_takes_leading_numbers` reads the same `24` and `25`
     before `Recreation`.
+  - A heading of ZIP codes has values, for the step 10 plan. On page 1 of the March 2013 realty
+    transfer report (`collections/realty-transfer-tax/2013_03.pdf`), the table "Realty Transfer
+    Tax by Location" opens its Center City section with a heading that lists ZIP codes and ends
+    in `92)` (finding 3 of `.codex-review/step-02-pr-7d1aa59d.md`). The S2-C fix round 4 reran
+    that command at `7d1aa59`, in a scratch worktree, with `pdftotext -layout` 26.07.0 and a line
+    built by `page_from_text`, and left out the part that loads the old `amounts.py`. It printed
+    `Center City (19102, 03, 06, 07, 08, 09, 10, 23, 30, 46, 47, 92)` and
+    `has_values: True last word: '92)'`. A value word may hold parentheses, and the heading's
+    last word holds a digit and a closing parenthesis, so `has_values` is true for it. The
+    risks "The design's rule gives a sentence that ends in a number values" and "A value word is
+    defined twice" of Appendix C of `docs/plans/step-02.md` accepted this kind of result. The
+    predicate in `lines.py` is loose by design, and step 5 decides whether `lanes_from_values`
+    needs a stricter one. Step 10 parses this report, and the RTT dossier finds a zone's columns
+    "from amount-bearing lines only" (section 4, rule 3).
 - **Constructor checks the kit does not make** (November 23, 2026, step 2, S2-B). Design section
   2.1 says that the checks a kit type makes at construction are the ones its block shows, and no
   others. Those checks guard what enters the kit from outside: an adapter's words, pages and
@@ -714,4 +732,22 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
     spelling gives `crédit`. The third Codex review of S2-C found it at `0df73f36` (finding 4 of
     `.codex-review/step-02-pr-0df73f36.md`). A rerun of its command in a scratch worktree at that
     head printed `'Cre\u0301dit' 'cre dit' 'credit'` and `'Cr\xe9dit' 'cr\xe9dit' 'cr\xe9dit'`.
-    No page is known to print one.
+    No page is known to print one. No step owns it, and the first step to meet a decomposed label
+    decides.
+  - `split_line_prefix` compiles the table's prefix pattern. For a pattern that Python itself
+    warns about, such as `[[]` (a `FutureWarning`, "Possible nested set"), Python's warnings
+    machinery reads the source file of `text.py` to format the warning and writes a
+    `__warningregistry__` dictionary into the module. The kit does no I/O of its own here, and no
+    table would declare such a pattern, but a table module that did would see the warning in its
+    tests. The fourth Codex review of S2-C found it at `7d1aa59d` (finding 1 of
+    `.codex-review/step-02-pr-7d1aa59d.md`). A rerun of its command in a scratch worktree at that
+    head printed the warning at `text.py:140`, then `registry before: False`,
+    `prefix: [ remainder: Revenue` and `read text.py: True registry after: dict`. Turning
+    warnings into errors for the tests of the pure packages would catch it. That is an idea, not
+    a plan.
+  - In Python `[^\W\d_]` matches a superscript digit. So `normalize_space` closes the hyphen of
+    `"\u00b9 - \u00b2"`, and `parse_label` takes the `2` of `"Total \u00b9 2"` as a mark. The
+    fourth Codex review of S2-C found it at `7d1aa59d` (finding 4). A rerun of its command in a
+    scratch worktree at that head printed `'\u00b9-\u00b2'` and
+    `Total \u00b9 2 'Total \u00b9' ('2',)`, with the superscripts written here as escapes. Both
+    inputs are made up.
