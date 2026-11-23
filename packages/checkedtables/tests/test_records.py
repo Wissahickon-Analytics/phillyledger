@@ -11,15 +11,25 @@ from checkedtables.cells import Amount, Blank, Dash, NotApplicable, Reading, Tex
 from checkedtables.columns import ColumnSpec, NumberFormat
 from checkedtables.kinds import DashMeaning, SourceKind, ValueKind
 from checkedtables.lex import lex_cell, transliteration_ok
-from checkedtables.records import ReviewedReading, apply_reading, reading_for
-from checkedtables.refs import Box
+from checkedtables.lines import group_lines
+from checkedtables.records import (
+    CellRecords,
+    DashRule,
+    EveryRow,
+    ReviewedReading,
+    apply_reading,
+    reading_for,
+)
+from checkedtables.refs import Box, WordRef
 from checkedtables.table import Finding, Severity
 from checkedtables.testing import page_from_text
 from checkedtables.words import Page, Word
 
 SHA = "0123456789abcdef" * 4
+OTHER_SHA = "f" * 64
 PAGE = 4
 OCR = SourceKind.OCR
+TEXT_LAYER = SourceKind.TEXT_LAYER
 CASH = ColumnSpec("cash", "Cash", ValueKind.MONEY, NumberFormat(decimals=1))
 MONEY = ColumnSpec("money", "Money", ValueKind.MONEY, NumberFormat(decimals=None))
 CONFUSABLE_GLYPHS = (
@@ -35,6 +45,7 @@ CONFUSABLE_GLYPHS = (
 )
 SEEN_SEPARATORS = ("", " ", ",", ".", ": ")
 SIGNED = ("{}", "({})", "-{}", "−{}", "–{}", "${}", "$({})", "(${})", "$-{}")
+DASH_RULE = DashRule("d1", "cash", ("cash",), EveryRow(), DashMeaning.ZERO, "confirmed on page 2")
 seen_parts = st.lists(
     st.tuples(
         st.sampled_from(SEEN_SEPARATORS),
@@ -57,6 +68,11 @@ def record(
     return ReviewedReading(review, SHA, PAGE, box, OCR, seen, reading, "read on the rendered page")
 
 
+def text_word(index: int, text: str, size: float, bottom: float) -> Word:
+    box = Box(12.0 * index, bottom - size, 12.0 * index + 6.0 * len(text), bottom)
+    return Word(WordRef(SHA, PAGE, index), text, box, False, size, None)
+
+
 def reviewed(text: str, reading: str | None, col: ColumnSpec = CASH) -> object:
     page, cell_words = cash_row(text)
     found = reading_for(cell_words, page.words, OCR, (record(text, reading, cell_words),))
@@ -64,9 +80,11 @@ def reviewed(text: str, reading: str | None, col: ColumnSpec = CASH) -> object:
     return apply_reading(lex_cell(cell_words, col, OCR), found)
 
 
-def assert_finding(result: object, code: str, review: str = "r1", page: int = PAGE) -> None:
+def assert_finding(
+    result: object, code: str, review: str = "r1", page: int = PAGE, sha: str = SHA
+) -> None:
     assert isinstance(result, Finding), result
-    subject = f"01234567:reading:{review}"
+    subject = f"{sha[:8]}:reading:{review}"
     assert (result.severity, result.code, result.subject, result.page) == (
         Severity.BLOCK,
         code,
@@ -153,13 +171,17 @@ def test_a_reading_on_another_page_or_source_is_no_candidate() -> None:
 def test_a_box_holds_a_word_within_one_point_of_it() -> None:
     page, cell_words = cash_row("2918")
     reading = record("2918", "291.8", cell_words)
-    for shift, found in ((0.5, True), (-0.5, True), (2.0, False), (-2.0, False)):
-        box = reading.box
-        moved = replace(
-            reading, box=Box(box.x0 + shift, box.top + shift, box.x1 + shift, box.bottom + shift)
-        )
-        expected = moved if found else None
-        assert reading_for(cell_words, page.words, OCR, (moved,)) == expected, shift
+    box = reading.box
+    for outside, found in ((1.0, True), (1.01, False)):
+        for side in (
+            replace(box, x0=box.x0 + outside),
+            replace(box, x1=box.x1 - outside),
+            replace(box, top=box.top + outside),
+            replace(box, bottom=box.bottom - outside),
+        ):
+            moved = replace(reading, box=side)
+            expected = moved if found else None
+            assert reading_for(cell_words, page.words, OCR, (moved,)) == expected, side
 
 
 def test_a_null_reading_accepts_an_unreadable_cell() -> None:
@@ -178,6 +200,8 @@ def test_a_box_that_holds_two_cells_is_stale() -> None:
         for cell_words in ((first,), (second,)):
             result = reading_for(cell_words, page.words, OCR, (reading,))
             assert_finding(result, "stale_reading")
+            assert isinstance(result, Finding)
+            assert result.message == "the words in the box, '7 7', are not the cell's words, '7'"
 
 
 def test_a_reading_never_lends_its_value_to_another_cell() -> None:
@@ -231,10 +255,124 @@ def test_a_reading_that_is_not_one_signed_number_is_refused() -> None:
         assert_finding(result, "reading_refused")
 
 
+def test_a_raised_footnote_digit_stays_out_of_a_reviewed_amount() -> None:
+    # VAL-Q28
+    cell_words = (
+        text_word(0, "$", 6.0, 12.0),
+        text_word(1, "2.8", 12.0, 12.0),
+        text_word(2, "1", 6.0, 6.0),
+    )
+    cell = lex_cell(cell_words, CASH, TEXT_LAYER)
+    assert isinstance(cell, Amount)
+    assert (cell.text, cell.marks) == ("$ 2.8 1", ("1",))
+    box = Box.around(word.box for word in cell_words)
+    reading = ReviewedReading("r1", SHA, PAGE, box, TEXT_LAYER, "$ 2.8 1", "2.8", "footnote 1")
+    assert reading_for(cell_words, cell_words, TEXT_LAYER, (reading,)) == reading
+    expected = Amount(
+        Decimal("2.8"), "$ 2.8 1", cell.words, TEXT_LAYER, Reading.REVIEWED, "r1", ("1",)
+    )
+    assert apply_reading(cell, reading) == expected
+    assert_finding(apply_reading(cell, replace(reading, reading="2.81")), "reading_refused")
+
+
+def test_a_reviewed_amount_keeps_the_marks_of_its_cell() -> None:
+    # VAL-Q28
+    for text, col, reading, marks in (
+        ("242,096*", MONEY, "242096", ("*",)),
+        ("2.8 `", CASH, "2.8", ("`",)),
+        ("65.8", CASH, "65.8", ()),
+    ):
+        result = reviewed(text, reading, col)
+        assert isinstance(result, Amount), (text, result)
+        assert (result.printed, result.marks) == (Decimal(reading), marks), text
+
+
+def test_a_reading_joins_the_cell_words_in_the_order_given() -> None:
+    page, (seven, eight) = cash_row("7 8")
+    page = replace(
+        page,
+        words=(
+            replace(seven, box=Box(36.0, 1.0, 42.0, 13.0)),
+            replace(eight, box=Box(36.0, 0.0, 42.0, 12.0)),
+        ),
+    )
+    (line,) = group_lines(page)
+    cell = lex_cell(line.words, CASH, OCR)
+    assert isinstance(cell, Unreadable)
+    assert cell.text == "8 7"
+    accepted = record("8 7", None, line.words)
+    assert reading_for(line.words, page.words, OCR, (accepted,)) == accepted
+    assert apply_reading(cell, accepted) == replace(cell, accepted_by="r1")
+    stale = record("7 8", None, line.words)
+    assert_finding(reading_for(line.words, page.words, OCR, (stale,)), "stale_reading")
+
+
+def test_a_word_given_twice_is_not_the_cell() -> None:
+    page, (word,) = cash_row("7")
+    reading = record("7", None, (word,))
+    assert reading_for((word,), page.words, OCR, (reading,)) == reading
+    assert_finding(reading_for((word, word), page.words, OCR, (reading,)), "stale_reading")
+    assert_finding(reading_for((word,), (*page.words, word), OCR, (reading,)), "stale_reading")
+
+
+def test_a_reading_cannot_drop_or_add_a_digit_of_another_script() -> None:
+    for seen, reading in (
+        ("１,234", "234"),
+        ("1234", "１２３４"),
+        ("１２３４", "１２３４"),
+    ):
+        assert_finding(reviewed(seen, reading, MONEY), "reading_refused")
+
+
+def test_a_null_reading_of_other_text_is_stale() -> None:
+    _, cell_words = cash_row("65.8")
+    cell = lex_cell(cell_words, CASH, OCR)
+    assert_finding(apply_reading(cell, record("85.8", None, cell_words)), "stale_reading")
+
+
+def test_a_reading_of_another_file_is_stale() -> None:
+    _, cell_words = cash_row("65.8")
+    cell = lex_cell(cell_words, CASH, OCR)
+    elsewhere = replace(record("65.8", "65.8", cell_words), doc_sha256=OTHER_SHA)
+    assert_finding(apply_reading(cell, elsewhere), "stale_reading", sha=OTHER_SHA)
+
+
+def test_a_cell_with_a_word_on_another_page_is_stale() -> None:
+    _, here = cash_row("(29 1)")
+    _, there = cash_row("(29 1)", PAGE + 1)
+    cell = lex_cell((here[0], there[1]), CASH, OCR)
+    for page in (PAGE, PAGE + 1):
+        reading = replace(record("(29 1)", "(29.1)", here), page=page)
+        assert_finding(apply_reading(cell, reading), "stale_reading", page=page)
+
+
 def test_a_reading_needs_an_id() -> None:
     _, cell_words = cash_row("2918")
     with pytest.raises(ValueError, match="id"):
         record("2918", "291.8", cell_words, "")
+
+
+def test_a_reading_needs_a_reason() -> None:
+    _, cell_words = cash_row("2918")
+    with pytest.raises(ValueError, match="reason"):
+        replace(record("2918", "291.8", cell_words), reason="")
+
+
+def test_a_dash_rule_needs_an_id() -> None:
+    with pytest.raises(ValueError, match="id"):
+        replace(DASH_RULE, id="")
+
+
+def test_one_id_names_one_record() -> None:
+    _, cell_words = cash_row("2918")
+    reading = record("2918", "291.8", cell_words)
+    CellRecords(
+        (reading, replace(reading, id="r2")), (DASH_RULE, replace(DASH_RULE, id="d2")), 90.0
+    )
+    with pytest.raises(ValueError, match="r1"):
+        CellRecords((reading, replace(reading, reading="29.18")), (), 90.0)
+    with pytest.raises(ValueError, match="d1"):
+        CellRecords((), (DASH_RULE, replace(DASH_RULE, columns=("other",))), 90.0)
 
 
 @given(seen_parts, st.integers(1, 16), st.sampled_from(("", ",")), st.sampled_from(SIGNED))
