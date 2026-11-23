@@ -62,6 +62,31 @@ JOIN_FORMS = (
     ("$ $67,215,504.0 0", "None", "None", "Unreadable grouping"),
     ("$ -$67,215,504.0 0", "None", "None", "Unreadable grouping"),
 )
+MARKED_JOIN_FORMS = (
+    ("1 23,456\xb9", "1 23,456", "123456.0", "123456", "Amount 123456"),
+    ("1 23,456 *", "1 23,456", "123456.0", "123456", "Amount 123456"),
+    ("1 23,456\xb9\xb2 **", "1 23,456", "123456.0", "123456", "Amount 123456"),
+    ("(1 23,456)†", "(1 23,456)", "-123456.0", "-123456", "Amount -123456"),
+    ("-1 23,456 \xb9", "-1 23,456", "None", "None", "Unreadable two_tokens"),
+    ("$1 23,456*", "$1 23,456", "None", "None", "Unreadable two_tokens"),
+    ("1.2 3\xb2", "1.2 3", "1.23", "1.23", "Unreadable two_tokens"),
+    ("1.2 3*", "1.2 3", "1.23", "1.23", "Unreadable two_tokens"),
+    ("1.2 3 *", "1.2 3", "1.23", "1.23", "Amount 1.23"),
+    ("-$1.2 3 ‡", "-$1.2 3", "None", "-1.23", "Amount -1.23"),
+    ("$ 1.2 3 #", "$ 1.2 3", "1.23", "1.23", "Amount 1.23"),
+    ("$ (1.2 3) *", "$ (1.2 3)", "None", "None", "Unreadable two_tokens"),
+    ("67,215,504.0 0 `", "67,215,504.0 0", "67215504.0", "67215504.00", "Amount 67215504.00"),
+    ("67,215,504.0 0\xb9", "67,215,504.0 0", "67215504.0", "67215504.00", "Unreadable two_tokens"),
+    (
+        "(67,215,504.0 0)\xb9",
+        "(67,215,504.0 0)",
+        "-67215504.0",
+        "-67215504.00",
+        "Amount -67215504.00",
+    ),
+    ("1234.5 6 *", "1234.5 6", "None", "None", "Unreadable two_tokens"),
+)
+RAISED_MARKS = ("", "*", "**", "`", "\xb9", "†")
 CONFUSABLE_GLYPHS = (
     ("B", "8"),
     ("b", "8"),
@@ -136,6 +161,9 @@ number_words = st.builds(
 )
 word_texts = number_words | st.lists(st.sampled_from(FRAGMENTS), max_size=4).map("".join)
 value_words = number_words | st.sampled_from((*DASHES, "N/A", "NA", "\u2212", "B", "%"))
+raised_words = st.just("") | st.builds(
+    str.__add__, st.sampled_from(digits), st.sampled_from(RAISED_MARKS)
+)
 
 
 def words(*texts: str) -> tuple[Word, ...]:
@@ -232,7 +260,7 @@ def test_lexer_round_trip(
 @settings(max_examples=500)
 @given(
     number_words.map(lambda text: [text]) | st.lists(word_texts, min_size=1, max_size=3),
-    st.sampled_from(("", "1")),
+    raised_words,
     st.sampled_from((MONEY, CASH, COUNT_COLUMN, PERCENT)),
     st.sampled_from(tuple(SourceKind)),
 )
@@ -240,6 +268,8 @@ def test_lexer_round_trip(
 @example(["1", "37,332,523"], "", MONEY, SourceKind.TEXT_LAYER)
 @example(["67,215,504.0", "0"], "", MONEY, SourceKind.TEXT_LAYER)
 @example(["$", "2.8"], "1", CASH, SourceKind.TEXT_LAYER)
+@example(["2.8"], "2", MONEY, SourceKind.TEXT_LAYER)
+@example(["2.8"], "1*", MONEY, SourceKind.TEXT_LAYER)
 @example(["0.05%*"], "", PERCENT, SourceKind.TEXT_LAYER)
 @example(["5%"], "", PERCENT, SourceKind.TEXT_LAYER)
 def test_amount_digits_are_the_digits_of_its_words(
@@ -280,16 +310,23 @@ def test_a_cell_keeps_the_text_and_ref_of_every_word(
     st.sampled_from(("", "$")),
     value_words.map(lambda text: [text]) | st.lists(value_words, min_size=1, max_size=2),
     st.sampled_from(("", "*", "`", "\xb9", "\u2020", "**")),
+    st.sampled_from(("words", "one word")),
 )
-@example("$", ["1", "37,332,523"], "*")
-@example("", ["2.8"], "`")
-def test_a_lexed_value_is_a_value_word(dollar: str, numbers: list[str], mark: str) -> None:
+@example("$", ["1", "37,332,523"], "*", "words")
+@example("", ["2.8"], "`", "words")
+@example("$", ["-"], "", "one word")
+def test_a_lexed_value_is_a_value_word(
+    dollar: str, numbers: list[str], mark: str, spacing: str
+) -> None:
     cell_text = " ".join(text for text in (dollar, *numbers, mark) if text)
     page = page_from_text(f"Taxes {cell_text}", SHA, 1)
-    (line,) = group_lines(page)
+    label, *cell_words = page.words
+    if spacing == "one word":
+        cell_words = [replace(cell_words[0], text=cell_text)]
+    (line,) = group_lines(replace(page, words=(label, *cell_words)))
     cell = lex_cell(line.words[1:], PERCENT, page.source.kind)
     if isinstance(cell, Amount | Dash | NotApplicable):
-        assert has_values(line), cell_text
+        assert has_values(line), (cell_text, spacing)
 
 
 def test_transliteration_refuses_a_digit_swap() -> None:
@@ -365,11 +402,18 @@ def test_count_and_ocr_cells_never_join() -> None:
 
 
 def test_no_cell_joins_that_both_old_readers_refuse() -> None:
-    # VAL-Q09
+    # VAL-Q09, VAL-Q28
     for text, old_amount, old_decimal, new in JOIN_FORMS:
         cell = lexed(text)
         assert described(cell) == new, text
         assert isinstance(cell, Unreadable) or (old_amount, old_decimal) != ("None", "None"), text
+    for text, unmarked, old_amount, old_decimal, new in MARKED_JOIN_FORMS:
+        cell = lexed(text)
+        assert text.startswith(unmarked), text
+        assert described(cell) == new, text
+        assert isinstance(cell, Unreadable) or (old_amount, old_decimal) != ("None", "None"), text
+        if isinstance(cell, Amount):
+            assert "".join(cell.marks) == text.removeprefix(unmarked).replace(" ", ""), text
 
 
 def test_spaces_after_commas_never_join() -> None:
@@ -421,6 +465,49 @@ def test_a_digit_that_is_not_small_and_raised_is_no_mark() -> None:
         assert (cell.printed, cell.marks) == (Decimal("2.81"), ()), (size, bottom)
     ocr = tuple(replace(word, size=None) for word in cell_words)
     assert isinstance(lex_cell(ocr, MONEY, SourceKind.OCR), Unreadable)
+
+
+def test_a_raised_footnote_reads_the_same_as_one_word_or_two() -> None:
+    # VAL-Q28
+    number = Word(WordRef(SHA, 1, 0), "2.8", Box(0.0, 0.0, 18.0, 12.0), False, 12.0, None)
+    digit = Word(WordRef(SHA, 1, 1), "1", Box(18.0, 1.0, 21.0, 7.0), False, 6.0, None)
+    star = Word(WordRef(SHA, 1, 2), "*", Box(21.0, 1.0, 24.0, 7.0), False, 6.0, None)
+    fused = replace(digit, text="1*", box=Box(18.0, 1.0, 24.0, 7.0))
+    for cell_words, marks in (((number, digit, star), ("1", "*")), ((number, fused), ("1*",))):
+        cell = lex_cell(cell_words, MONEY, SourceKind.TEXT_LAYER)
+        assert isinstance(cell, Amount), cell_words
+        assert (cell.printed, cell.marks) == (Decimal("2.8"), marks)
+        assert decimal_digits(format(cell.printed, "f")) == decimal_digits(number.text)
+        assert cell.words == tuple(word.ref for word in cell_words)
+
+
+def test_a_raised_footnote_of_any_digit_and_mark_is_one_mark() -> None:
+    # VAL-Q28
+    number = placed(0, "2.8", 12.0, 12.0)
+    for digit, mark in product(digits, RAISED_MARKS):
+        footnote = placed(1, f"{digit}{mark}", 6.0, 6.0)
+        cell = lex_cell((number, footnote), MONEY, SourceKind.TEXT_LAYER)
+        assert isinstance(cell, Amount), footnote.text
+        assert (cell.printed, cell.marks) == (Decimal("2.8"), (footnote.text,)), footnote.text
+    for text in ("12*", "12", "*1"):
+        footnote = placed(1, text, 6.0, 6.0)
+        assert isinstance(lex_cell((number, footnote), MONEY, SourceKind.TEXT_LAYER), Unreadable)
+
+
+def test_a_full_size_digit_with_a_mark_joins_no_number() -> None:
+    # VAL-Q28
+    number = placed(0, "2.8", 12.0, 12.0)
+    for size, bottom in ((12.0, 12.0), (6.0, 12.0), (12.0, 6.0), (9.0, 6.0)):
+        footnote = Word(
+            WordRef(SHA, 1, 1), "1*", Box(18.0, bottom - size, 30.0, bottom), False, size, None
+        )
+        cell = lex_cell((number, footnote), MONEY, SourceKind.TEXT_LAYER)
+        assert cell == Unreadable("2.8 1*", (number.ref, footnote.ref), "two_tokens"), (
+            size,
+            bottom,
+        )
+    assert (amount("1*").printed, amount("1*").marks) == (Decimal("1"), ("*",))
+    assert (amount("$ 1*").printed, amount("$ 1*").marks) == (Decimal("1"), ("*",))
 
 
 def test_footnote_marks_leave_the_amount() -> None:
@@ -563,6 +650,19 @@ def test_a_dollar_word_before_a_dash_is_a_dash() -> None:
     for text in ("$ - *", "- *", "$ N/A", "$ - -", "$ $ -", "- $"):
         assert reason(text) == "not_a_number", text
     assert reason("- 0") == "two_tokens"
+
+
+def test_a_dash_and_n_a_are_read_from_whole_words() -> None:
+    # VAL-Q09, RTT-Q39, MCITY-Q34
+    (word,) = words("x")
+    for text in (*(f"$ {dash}" for dash in DASHES), "N/A N/A", "NA NA", "$ N/A"):
+        cell = lex_cell((replace(word, text=text),), MONEY, SourceKind.TEXT_LAYER)
+        assert cell == Unreadable(text, (word.ref,), "not_a_number"), text
+    for text in ("N/A", "NA", *DASHES):
+        cell = lex_cell((replace(word, text=text),), MONEY, SourceKind.TEXT_LAYER)
+        assert isinstance(cell, NotApplicable | Dash), text
+    for text in ("N/A NA", "NA N/A", "N/A *"):
+        assert reason(text) == "not_a_number", text
 
 
 def test_a_trailing_minus_or_a_plus_sign_is_unreadable() -> None:
