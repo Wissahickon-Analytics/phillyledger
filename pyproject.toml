@@ -17,6 +17,7 @@ dev = [
   "import-linter>=2.16",
   "prek==0.5.10",
   "pytest>=9",
+  "pytest-socket>=0.8",
   "ruff>=0.17",
   "ty==0.0.104",
 ]
@@ -64,8 +65,8 @@ ignore = ["ANN401", "D100", "D104"]
 convention = "numpy"
 
 [tool.pytest.ini_options]
-testpaths = ["tests", "packages/checkedtables/tests"]
-addopts = "--import-mode=importlib"
+testpaths = ["tests", "packages/checkedtables/tests", "packages/datadesk/tests"]
+addopts = "--import-mode=importlib --disable-socket"
 
 [tool.ty.environment]
 python-version = "3.12"

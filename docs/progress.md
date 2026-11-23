@@ -5,7 +5,7 @@ same branch as the work: status, the date the check passed, and anything a later
 
 | Step | What | Status | Branch | Check passed |
 |---|---|---|---|---|
-| 1 | Workspace, tooling, purity and shape tests | in progress | `step-01/a-workspace` | |
+| 1 | Workspace, tooling, purity and shape tests | check passed | `step-01/a-workspace`, `step-01/b-import-contracts`, `step-01/c-kit-shape`, `step-01/d-test-isolation` | November 22, 2026, runs 45093444380, 45094817250, 45094829990 and 45092206629 |
 | 2 | Kit, words to cells | not started | | |
 | 3 | Archive for the QCMR from FY2022 | not started | | |
 | 4 | Words: PDF adapter with font repair, word cache, codec | not started | | |
@@ -19,6 +19,24 @@ same branch as the work: status, the date the check passed, and anything a later
 | 12 | Supplemental reports, one statement at a time | not started | | |
 | 13 | `watch`, the reader, first full release | not started | | |
 | 14 | QSMR, the held-out test of the kit | not started | | |
+
+The step 1 check passed in four `pull_request` runs of `.github/workflows/ci.yml`:
+
+- Clean: run 45093444380 at `d3a9477dad72aa38751277fd2d4f3ee684b49ce1`, the head of
+  `step-01/d-test-isolation` after the restack and before the commit that set this row. Every
+  gate passed on Python 3.12 and 3.14.
+- C2: run 45094817250 at `57b19ab8a77c2756903ea7479706838000c477ce`, with `import boto3` planted
+  in `datadesk.core`. The `uv run lint-imports` step failed with `datadesk core is pure BROKEN`.
+- C3: run 45094829990 at `b843fa8f426df090c28213c6bf6898d5b83bb935`, with a `bool` parameter
+  planted in `checkedtables`. The `uv run pytest` step failed with `AssertionError: planted`.
+- C4: run 45092206629 at `71a76f3d16b74a8bb5c604dac03a3c170f7d8636`, with a `socket.socket()`
+  call planted in a core test. The `uv run pytest` step failed with `SocketBlockedError`.
+
+The three plant runs came from temporary pull requests 14, 15 and 13, which are closed. Each plant
+is one commit on a stack head. C2 ran on `8979428`, the final head of
+`step-01/b-import-contracts`, and C3 on `7189a67`, the final head of `step-01/c-kit-shape`. C4
+ran on `b4eda02` of `step-01/d-test-isolation`, which has the same patch id as `d3a9477`, the
+restacked S1-D head that the clean run used.
 
 ## Deviations from the design
 
@@ -88,6 +106,37 @@ Each entry: step, what changed, why, and the design section updated.
   copies, the inherited method, the inherited `__init__` and an inherited method with five
   parameters each fail, and a subclass of `json.JSONEncoder`, whose `__init__` takes eight
   parameters, passes. Design section 11.4.
+- **Step 1: the purity scan reports `builtins`, `__import__` and mutable module state**
+  (November 22, 2026, S1-D, found in the Codex review and the build). The design's scan lists
+  eight names. With `impurities` cut back to those eight, `uv run pytest tests/test_purity.py`
+  passed with `builtins.open("x")`, `__import__("boto3")` and `CACHE: dict[str, str] = {}`
+  appended to `checkedtables/words.py`. `CLAUDE.md` hard rule 3 says the purity test enforces the
+  ban on mutable module state, and `__import__` gets past the `importlib` ban of S1-B with no
+  import. The scan now also reports any import of `builtins` or read on it, a call to
+  `__import__`, and a module-level assignment of a list, dict or set display, a comprehension of
+  one, or a call to `list`, `dict`, `set` or `bytearray`. `__all__` gets no exemption, so a
+  package writes it as a tuple. The same three lines now fail the test. The Codex review of the
+  stack found that the scan read only the direct children of the module body. With
+  `if __debug__:` and `CACHE = {}` under it, a `try:` block that holds `CACHE = {}`, or
+  `CACHE, SEEN = {}, set()` appended to `checkedtables/words.py`,
+  `test_pure_packages_have_no_effects` passed. An `if` opens no scope, so each makes mutable
+  module state. The scan now reads every assignment at module scope, inside any nesting of `if`,
+  `try`, `with`, `for`, `while` and `match` blocks but not in a function or class body, and it
+  counts a tuple that holds a mutable display or call. Each of the three forms now fails the
+  test, and a list assigned inside a function passes. Design section 11.1.
+- **Step 1: an audit hook refuses socket events, and each core test module starts in an empty
+  folder** (November 22, 2026, S1-D, found in the Codex review of the stack). pytest-socket
+  replaces only the names `socket.socket`, `socket.getaddrinfo` and `socket.gethostbyname`, and
+  its teardown hook lifts the block before fixture finalizers run. In
+  `packages/datadesk/tests/core`, a test that called `socket.SocketType()` passed, and so did one
+  that called `_socket.socket()` and a module-scoped fixture that called `socket.socket()` after
+  its `yield`. A module-scoped fixture there also found `pyproject.toml` in the working
+  directory, because `_empty_working_directory` has function scope. The root `conftest.py` now
+  installs an audit hook that raises `SocketBlockedError` for `socket.__new__`,
+  `socket.getaddrinfo`, `socket.gethostbyname`, `socket.gethostbyaddr` and `socket.getnameinfo`
+  unless the running test carries the `enable_socket` marker. Both package `conftest.py` files add
+  a module-scoped fixture that moves each test module into an empty folder. The three plants now
+  fail with `SocketBlockedError`, and the fixture finds no `pyproject.toml`. Design section 11.1.
 
 ## Notes for later sessions
 
@@ -150,3 +199,81 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
 - **`test_closed_lists_are_pinned` is not written yet** (November 22, 2026, step 1, S1-C). None
   of the lists it pins exists at step 1. Each list's pin lands in the pull request that creates
   the list, in the same test file (`CLAUDE.md`, hard rule 6).
+- **Every test runs with sockets blocked** (November 22, 2026, step 1, S1-D). `--disable-socket`
+  and the audit hook in the root `conftest.py` apply to every test, so a later adapter contract
+  test that needs the network opts in with the `enable_socket` marker of pytest-socket. The
+  marker reopens calls to `socket.socket()`, and an unmarked test after a marked one is blocked
+  again. The marker is the only way in. The audit hook reads the marker alone, so a test that
+  asks for pytest-socket's `socket_enabled` fixture still fails with `SocketBlockedError`. A name
+  that a module binds with `from socket import socket` stays blocked under the marker, because
+  the root `conftest.py` installs pytest-socket's block before that import runs. Probed at S1-D,
+  under the marker `socket.socket().close()` passes and the early-bound `socket().close()` fails
+  with `SocketBlockedError`.
+  - pytest-socket 0.8.1 replaces only the names `socket.socket`, `socket.getaddrinfo` and
+    `socket.gethostbyname`, and lifts its block before fixture finalizers run. The audit hook
+    covers the rest. In a core test, `socket.SocketType()`, `_socket.socket()`,
+    `pytest_socket._true_socket()`, a reloaded `socket` module, `_socket.getaddrinfo`,
+    `_socket.gethostbyname`, `socket.gethostbyname_ex`, `socket.getnameinfo`, the
+    `socket.gethostbyaddr` audit event, and a socket opened after the `yield` of a function- or
+    module-scoped fixture each fail with `SocketBlockedError`. `socket.gethostname()` and
+    `platform.node()` still work. The probes used unconnected sockets, numeric loopback input
+    with numeric flags, and `sys.audit` for `gethostbyaddr`.
+  - Two routes still pass. CPython raises no audit event for `_socket.socketpair()`, which makes
+    a pair of local sockets, and a subprocess that a test starts opens sockets freely.
+  - pytest runs a session-scoped fixture's finalizer inside the last test's protocol, so when
+    that test carries `enable_socket`, the finalizer can open a socket even though an unmarked
+    test requested the fixture. Probed at S1-D on an unconnected socket, the finalizer opened it
+    and the run ended `5 passed`, and with the marker removed it failed with
+    `SocketBlockedError` at teardown.
+  - A class that a module defines on `socket.socket` keeps the block for the whole session when
+    the module is first imported after the root `conftest.py` blocks sockets. `ssl` is one.
+    `ssl.SSLSocket` subclasses pytest-socket's guard, so under the marker
+    `ssl.create_default_context().wrap_socket(...)` fails with `SocketBlockedError`. With
+    `import ssl` at the top of the root `conftest.py`, the same probe passes and the isolation
+    tests still pass. Probed at S1-D with the audit hook in place, on an unconnected socket. The
+    first contract test that needs TLS makes that change.
+  - Each blocked call also prints the `UserWarning` that `SocketBlockedError` issues when it is
+    created, so `uv run pytest` reports six warnings, one per blocked call in the isolation
+    tests.
+- **A core test's package- or session-scoped fixture sees the checkout** (November 22, 2026,
+  step 1, S1-D). `_empty_module_working_directory` gives each core test module an empty folder,
+  but pytest sets up a package- or session-scoped fixture first, so one that a core test requests
+  still runs in the checkout. Probed at S1-D, fixtures of session and package scope found
+  `pyproject.toml` in the working directory, and one of module scope did not.
+- **The pure packages can still reach effects the gates do not name** (November 22, 2026, step
+  1, S1-D, found in the Codex review of the stack and the build). Planted one at a time in
+  `datadesk/core/tables/birt.py`, each of these passes every gate: `from io import FileIO`
+  reading a file, `sys.stdout.write("x")`, `uuid.uuid4()`, `write = print` then `write(1)`,
+  `exec("print(1)")`, `sys.modules["os"].getcwd()`, `import posix` with `posix.getcwd()`,
+  `import _socket` with `_socket.socket()`, `defaultdict(list)` assigned at module level, and a
+  mutable class attribute. A core test that starts a subprocess, which opens a socket, also
+  passes every gate. The forbidden lists and the purity scan name specific modules and calls,
+  and every review finds more, so naming more modules does not converge. An allow-list of the
+  modules the pure packages may import would close the import forms. That is a new closed list
+  in the design, so it is an open decision for the owner.
+- **Follow-ups after step 1** (November 22, 2026). The step 1 run found these and did not fix
+  them.
+  - Nothing tests a gate's own settings. In scratch copies of the S1-D head, each of
+    `--collect-only` in pytest's `addopts`, a root `conftest.py` hook that skips every test,
+    `"*.py"` in ruff's `extend-exclude` and `"**"` in ty's `exclude` made its gate pass on a plant
+    it had failed, with `uv run pytest` exiting 0. The `verify-step` audit for weakened checks
+    reads each diff for these settings.
+  - Only the gates behind C2, C3 and C4 have a planted test. The ruff check, ruff format and ty
+    gates failed on a plant only in temporary pull requests at S1-A: runs 45077882205 (`F401`),
+    45077856003 (a file to reformat) and 45077874284 (`invalid-assignment`).
+  - A checkout with `core.autocrlf=true` fails `test_ci_runs_every_gate`, because Git writes
+    `ci.yml` with CRLF line endings and the test compares bytes (see "`ci.yml` is pinned").
+    `git -c core.autocrlf=true cat-file --filters HEAD:.github/workflows/ci.yml | file -` prints
+    `CRLF line terminators`. A `.gitattributes` rule that keeps the file LF would fix it at the
+    cause.
+  - CI does not pin uv. `setup-uv` found no version in `pyproject.toml` and installed the latest,
+    uv 0.13.9, where the lock was written with 0.13.6.
+  - Codex reviewed the stack once, at `76aa7250`, before the last fix round. Verifier lanes
+    checked the socket audit hook, the shape test's new annotation and inheritance handling, and
+    `test_source_folders_are_packages`, and Codex did not review them.
+  - `.claude/skills/codex-review/run.sh` takes the reference repository's path from the parent of
+    the checkout. From a worktree under `.claude/worktrees/`, it names a
+    `.claude/worktrees/gov-budget-data` that does not exist.
+  - The import contracts, the purity scan and the shape test name specific modules, calls and
+    forms. Appendix C of `docs/plans/step-01.md` lists the limits found, and the allow-list is
+    the owner's open decision in the note above.

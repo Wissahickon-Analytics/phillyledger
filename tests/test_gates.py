@@ -63,6 +63,26 @@ SRC_FOLDERS = (
 )
 SHAPE_TEST = "packages/checkedtables/tests/test_library_shape.py"
 PLANTED_BOOL_PARAMETER = "def planted(flag: bool) -> None: ...\n"
+DATADESK_CORE_TESTS = "packages/datadesk/tests/core"
+PLANTED_SOCKET_TEST = f"{DATADESK_CORE_TESTS}/test_planted_socket.py"
+PLANTED_SOCKET_SUMMARY = (f"FAILED {PLANTED_SOCKET_TEST}::", f"ERROR {PLANTED_SOCKET_TEST}::")
+SOCKET_IN_TEST = "import socket\n\n\ndef test_planted():\n    {}\n"
+EARLY_BOUND_SOCKET_IN_TEST = "from socket import socket\n\n\ndef test_planted():\n    {}\n"
+SOCKET_AFTER_MODULE_FIXTURE_YIELD = """\
+import socket
+
+import pytest
+
+
+@pytest.fixture(scope="module", autouse=True)
+def planted_fixture():
+    yield
+    {}
+
+
+def test_planted():
+    pass
+"""
 
 
 def run_gate(
@@ -71,6 +91,7 @@ def run_gate(
     assert gate in GATES, f"{gate!r} is not a gate that CI runs"
     shutil.copytree(REPO / "packages", workspace / "packages")
     shutil.copy(REPO / "pyproject.toml", workspace / "pyproject.toml")
+    shutil.copy(REPO / "conftest.py", workspace / "conftest.py")
     for path, text in plants.items():
         planted_path = workspace / path
         planted_path.parent.mkdir(parents=True, exist_ok=True)
@@ -187,3 +208,40 @@ def test_planted_family_helper_parameter_fails_shape_test(tmp_path: Path) -> Non
     )
     assert result.returncode == 1, result.stdout
     assert "AssertionError: planted" in result.stdout, result.stdout
+
+
+def run_socket_plant(
+    tmp_path: Path, module: str, constructor: str
+) -> subprocess.CompletedProcess[str]:
+    return clean_then_planted(
+        tmp_path,
+        {PLANTED_SOCKET_TEST: module.format(f"assert {constructor}")},
+        {PLANTED_SOCKET_TEST: module.format(f"{constructor}()")},
+        "uv run pytest",
+        ("-p", "no:cacheprovider", DATADESK_CORE_TESTS),
+    )
+
+
+def planted_socket_summary(result: subprocess.CompletedProcess[str]) -> list[str]:
+    lines = result.stdout.splitlines()
+    return [line for line in lines if line.startswith(PLANTED_SOCKET_SUMMARY)]
+
+
+def test_planted_socket_call_fails_pytest(tmp_path: Path) -> None:
+    plants = (
+        (SOCKET_IN_TEST, "socket.socket"),
+        (SOCKET_IN_TEST, "socket.SocketType"),
+        (SOCKET_AFTER_MODULE_FIXTURE_YIELD, "socket.socket"),
+    )
+    for number, (module, constructor) in enumerate(plants):
+        result = run_socket_plant(tmp_path / str(number), module, constructor)
+        assert result.returncode == 1, result.stdout
+        summary = planted_socket_summary(result)
+        assert any("SocketBlockedError" in line for line in summary), result.stdout
+
+
+def test_planted_early_bound_socket_fails_pytest(tmp_path: Path) -> None:
+    result = run_socket_plant(tmp_path, EARLY_BOUND_SOCKET_IN_TEST, "socket")
+    assert result.returncode == 1, result.stdout
+    summary = planted_socket_summary(result)
+    assert any("SocketBlockedError" in line for line in summary), result.stdout

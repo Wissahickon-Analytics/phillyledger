@@ -3698,12 +3698,18 @@ Determinism rules:
 | Adapter contracts | each port's fake and real adapter pass the same tests | network or MinIO for the real ones | nightly and before release |
 | Corpus | every archived edition parses and its gate passes | the archive | before release |
 | Canary | one full run from bytes to a staged release | fakes plus two archived PDFs | every commit |
-| Purity | AST scan of `checkedtables` and `datadesk.core` for `open`, `print`, `input`, `.now()`, `.today()`, `os.`, `random`, `time.` | nothing | every commit |
+| Purity | AST scan of `checkedtables` and `datadesk.core` for `open`, `print`, `input`, `.now()`, `.today()`, `os.`, `random`, `time.`, `builtins`, `__import__`, and mutable module state: a module-level assignment of a list, dict or set display, a comprehension of one, or a call to `list`, `dict`, `set` or `bytearray` | nothing | every commit |
 
 The core suites run under `pytest-socket` with sockets disabled and an empty temporary directory
 as the working directory (from A). Word fixtures of real pages are generated once by
 `datadesk fixture <sha> <pages>` into `tests/fixtures/words/<series>_<edition>_p<n>.py` as Python
 literals, so importing them is not I/O.
+
+pytest-socket replaces only the names `socket.socket`, `socket.getaddrinfo` and
+`socket.gethostbyname` and lifts its block before fixture finalizers run, so an audit hook in the
+root `conftest.py` also refuses the `socket.__new__` and resolver audit events unless the running
+test carries the `enable_socket` marker. Each core test module also starts in its own empty
+folder, so a module-scoped fixture never sees the checkout.
 
 ### 11.2 Property tests
 
