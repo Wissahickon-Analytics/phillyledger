@@ -29,6 +29,39 @@ GROUPINGS = ("", ",")
 NEGATIVES = ("()", *MINUS_GLYPHS)
 DOLLARS = (("", ""), ("$", ""), ("", "$"), ("$ ", ""))
 EDGE_VALUES = (Decimal("-0.00"), Decimal("12345678901234567890.123456789"))
+FIRST_LINE = {SourceKind.TEXT_LAYER: "", SourceKind.OCR: "#ocr\n"}
+JOIN_FORMS = (
+    ("1 23,456", "123456.0", "123456", "Amount 123456"),
+    ("(1 23,456)", "-123456.0", "-123456", "Amount -123456"),
+    ("-1 23,456", "None", "None", "Unreadable two_tokens"),
+    ("$1 23,456", "None", "None", "Unreadable two_tokens"),
+    ("-$1 23,456", "None", "-123456", "Unreadable two_tokens"),
+    ("1.2 3", "1.23", "1.23", "Amount 1.23"),
+    ("(1.2 3)", "-1.23", "-1.23", "Amount -1.23"),
+    ("-1.2 3", "-1.23", "-1.23", "Amount -1.23"),
+    ("$1.2 3", "1.23", "1.23", "Amount 1.23"),
+    ("-$1.2 3", "None", "-1.23", "Amount -1.23"),
+    ("67,215,504.0 0", "67215504.0", "67215504.00", "Amount 67215504.00"),
+    ("(67,215,504.0 0)", "-67215504.0", "-67215504.00", "Amount -67215504.00"),
+    ("-67,215,504.0 0", "-67215504.0", "-67215504.00", "Amount -67215504.00"),
+    ("$67,215,504.0 0", "67215504.0", "67215504.00", "Amount 67215504.00"),
+    ("-$67,215,504.0 0", "None", "-67215504.00", "Amount -67215504.00"),
+    ("$ 1 23,456", "123456.0", "123456", "Amount 123456"),
+    ("$ (1 23,456)", "None", "None", "Unreadable two_tokens"),
+    ("$ -1 23,456", "-123456.0", "-123456", "Unreadable two_tokens"),
+    ("$ $1 23,456", "None", "None", "Unreadable two_tokens"),
+    ("$ -$1 23,456", "None", "None", "Unreadable two_tokens"),
+    ("$ 1.2 3", "1.23", "1.23", "Amount 1.23"),
+    ("$ (1.2 3)", "None", "None", "Unreadable two_tokens"),
+    ("$ -1.2 3", "-1.23", "-1.23", "Amount -1.23"),
+    ("$ $1.2 3", "None", "None", "Unreadable grouping"),
+    ("$ -$1.2 3", "None", "None", "Unreadable grouping"),
+    ("$ 67,215,504.0 0", "67215504.0", "67215504.00", "Amount 67215504.00"),
+    ("$ (67,215,504.0 0)", "None", "None", "Unreadable two_tokens"),
+    ("$ -67,215,504.0 0", "-67215504.0", "-67215504.00", "Amount -67215504.00"),
+    ("$ $67,215,504.0 0", "None", "None", "Unreadable grouping"),
+    ("$ -$67,215,504.0 0", "None", "None", "Unreadable grouping"),
+)
 CONFUSABLE_GLYPHS = (
     ("B", "8"),
     ("b", "8"),
@@ -126,9 +159,26 @@ def reason(text: str, col: ColumnSpec = MONEY) -> str:
     return cell.reason
 
 
+def described(cell: Cell) -> str:
+    match cell:
+        case Amount(printed=printed):
+            return f"Amount {printed}"
+        case Unreadable(reason=reason):
+            return f"Unreadable {reason}"
+        case _:
+            return type(cell).__name__
+
+
 def placed(index: int, text: str, size: float, bottom: float) -> Word:
     box = Box(12.0 * index, bottom - size, 12.0 * index + 6.0 * len(text), bottom)
     return Word(WordRef(SHA, 1, index), text, box, False, size, None)
+
+
+def placed_cell(texts: list[str], raised: str) -> list[Word]:
+    cell_words = [placed(index, text, 12.0, 12.0) for index, text in enumerate(texts)]
+    if raised and decimal_digits(texts[-1]):
+        cell_words.append(placed(len(texts), raised, 6.0, 6.0))
+    return cell_words
 
 
 def printed(value: Decimal, grouping: str, negative: str, dollar: tuple[str, str]) -> str:
@@ -152,7 +202,7 @@ def prints_a_sign(text: str) -> bool:
 
 
 def in_every_printed_form(test: Callable[..., None]) -> Callable[..., None]:
-    for form in product(EDGE_VALUES, GROUPINGS, NEGATIVES, DOLLARS):
+    for form in product(EDGE_VALUES, GROUPINGS, NEGATIVES, DOLLARS, SourceKind):
         test = example(*form)(test)
     return test
 
@@ -162,16 +212,21 @@ def in_every_printed_form(test: Callable[..., None]) -> Callable[..., None]:
     st.sampled_from(GROUPINGS),
     st.sampled_from(NEGATIVES),
     st.sampled_from(DOLLARS),
+    st.sampled_from(tuple(SourceKind)),
 )
 @in_every_printed_form
-@example(Decimal("0.00001"), "", "-", ("", ""))
-@example(Decimal("1234.567890"), ",", "()", ("$", ""))
-@example(Decimal("-1234.567890"), "", "\u2014", ("", "$"))
+@example(Decimal("0.00001"), "", "-", ("", ""), SourceKind.TEXT_LAYER)
+@example(Decimal("1234.567890"), ",", "()", ("$", ""), SourceKind.TEXT_LAYER)
+@example(Decimal("-1234.567890"), "", "\u2014", ("", "$"), SourceKind.TEXT_LAYER)
+@example(Decimal("-3.0"), "", "()", ("", ""), SourceKind.OCR)
 def test_lexer_round_trip(
-    value: Decimal, grouping: str, negative: str, dollar: tuple[str, str]
+    value: Decimal, grouping: str, negative: str, dollar: tuple[str, str], source: SourceKind
 ) -> None:
     text = printed(value, grouping, negative, dollar)
-    assert amount(text).printed.as_tuple() == value.as_tuple(), text
+    page = page_from_text(f"{FIRST_LINE[source]}{text}", SHA, 1)
+    cell = lex_cell(page.words, MONEY, page.source.kind)
+    assert isinstance(cell, Amount), (text, source)
+    assert (cell.printed.as_tuple(), cell.source) == (value.as_tuple(), source), (text, source)
 
 
 @settings(max_examples=500)
@@ -190,16 +245,34 @@ def test_lexer_round_trip(
 def test_amount_digits_are_the_digits_of_its_words(
     texts: list[str], raised: str, col: ColumnSpec, source: SourceKind
 ) -> None:
-    cell_words = [placed(index, text, 12.0, 12.0) for index, text in enumerate(texts)]
-    if raised and decimal_digits(texts[-1]):
-        cell_words.append(placed(len(texts), raised, 6.0, 6.0))
-    cell = lex_cell(cell_words, col, source)
+    cell = lex_cell(placed_cell(texts, raised), col, source)
     if isinstance(cell, Amount):
         joined = " ".join(texts)
         fraction = joined.rpartition(".")[2] if "." in joined else ""
         assert decimal_digits(format(cell.printed.copy_abs(), "f")) == decimal_digits(joined)
         assert cell.printed.as_tuple().exponent == -len(decimal_digits(fraction))
-        assert prints_a_sign(joined) or not cell.printed.is_signed(), joined
+        assert cell.printed.is_signed() == prints_a_sign(joined), (joined, source)
+
+
+@settings(max_examples=500)
+@given(
+    st.lists(word_texts, min_size=1, max_size=3),
+    st.sampled_from(("", "1")),
+    st.sampled_from((MONEY, CASH, COUNT_COLUMN, PERCENT)),
+    st.sampled_from(tuple(SourceKind)),
+)
+@example(["(29", "1)"], "", CASH, SourceKind.TEXT_LAYER)
+@example(["$", "1", "37,332,523"], "1", MONEY, SourceKind.TEXT_LAYER)
+@example(["$", "2.8", "`"], "", CASH, SourceKind.OCR)
+@example(["10,", "936,", "234"], "", MONEY, SourceKind.TEXT_LAYER)
+def test_a_cell_keeps_the_text_and_ref_of_every_word(
+    texts: list[str], raised: str, col: ColumnSpec, source: SourceKind
+) -> None:
+    cell_words = placed_cell(texts, raised)
+    cell = lex_cell(cell_words, col, source)
+    if isinstance(cell, Amount | Unreadable):
+        assert cell.text == " ".join(word.text for word in cell_words), (texts, cell)
+        assert cell.words == tuple(word.ref for word in cell_words), (texts, cell)
 
 
 @settings(max_examples=500)
@@ -237,6 +310,14 @@ def test_transliteration_refuses_digits_that_are_not_ascii() -> None:
         assert not transliteration_ok("7", seven), seven
     assert transliteration_ok("1,234\xb9", "1234")
     assert transliteration_ok("1234", "1,234\xb9")
+
+
+def test_a_font_code_is_no_evidence_of_a_digit() -> None:
+    # VAL-Q05
+    for reading in ("109", "10028", "1028", "10"):
+        assert not transliteration_ok("10(cid:28)", reading), reading
+    for reading in ("021", "21", "0", ""):
+        assert not transliteration_ok("(cid:21)", reading), reading
 
 
 def test_confusable_glyphs_are_pinned() -> None:
@@ -281,6 +362,14 @@ def test_count_and_ocr_cells_never_join() -> None:
     assert reason("$1 37,332,523") == "two_tokens"
     assert amount("1 23,456").printed == Decimal("123456")
     assert amount("67,215,504.0 0").printed.as_tuple() == Decimal("67215504.00").as_tuple()
+
+
+def test_no_cell_joins_that_both_old_readers_refuse() -> None:
+    # VAL-Q09
+    for text, old_amount, old_decimal, new in JOIN_FORMS:
+        cell = lexed(text)
+        assert described(cell) == new, text
+        assert isinstance(cell, Unreadable) or (old_amount, old_decimal) != ("None", "None"), text
 
 
 def test_spaces_after_commas_never_join() -> None:

@@ -1773,7 +1773,9 @@ def lex_cell(words: Sequence[Word], col: ColumnSpec, source: SourceKind) -> Cell
     # Shape 2: a number with a point whose integer part is 1 to 3 digits or comma-grouped, which
     # may carry a "$" and a minus glyph, then one digit ("67,215,504.0 0"). So two bare integers
     # never join (QPOS-Q27), and neither do "1234.5 6", "$1 37,332,523", a detached minus or %,
-    # or tokens that end in a comma ("10, 936, 234", decision 12).
+    # or tokens that end in a comma ("10, 936, 234", decision 12). Parentheses after a "$" word
+    # do not wrap the whole cell, so "$ (1 23,456)" and "$ (1.2 3)" do not join, and neither
+    # old reader joins them.
     # A "%" follows col.fmt.percent, and printed decimals equal col.fmt.decimals unless None.
     # Anything else -> Unreadable with the first reason that applies: not_a_number (a glyph no
     # number, sign, mark or separator uses, or no digit), two_tokens (tokens that fit no join
@@ -1786,7 +1788,9 @@ def transliteration_ok(seen: str, reading: str) -> bool: ...
     # B and b read as 8, D, d, O, o, Q and q as 0, & as 6, and every other glyph as nothing,
     # except that a decimal digit that is not ASCII (str.isdecimal, so not a superscript) in
     # either text fails ("1o4.o" -> "104.0" passes; "2918" -> "291.8" passes; "65.8" -> "85.8"
-    # fails; "77,500,000" -> "7,500,000" fails; "７7,500,000" -> "7,500,000" fails)
+    # fails; "77,500,000" -> "7,500,000" fails; "７7,500,000" -> "7,500,000" fails). A `seen`
+    # that holds "(cid:" fails against every reading, since a font code that extraction could
+    # not decode is no evidence of any digit ("10(cid:28)" -> "10028" and -> "109" fail, VAL-Q05)
 
 
 # checkedtables/records.py
