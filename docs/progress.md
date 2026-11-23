@@ -1184,7 +1184,12 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
     `f82950e`, a page of the word `1,234` and its children `1,` and `234` builds, and
     `group_lines` keeps all three words. In a scratch copy with `group_lines` changed to drop
     such a parent, the same page gave only the two children, and the property and the other 11
-    tests of `test_lines.py` passed.
+    tests of `test_lines.py` passed. Pull request #27 (`step-02/f-test-gaps`) closes it.
+    `pages()` may now draw a word with its children, and
+    `test_every_word_lands_in_exactly_one_line` gains the example `PARENT_WITH_CHILDREN`, the
+    word `TAX434,605,553` with `TAX` and `434,605,553`. With `group_lines` changed in a scratch
+    copy to drop each word with no child whose index a child on the page shares, the property
+    fails with its examples and without them, and so do the ten breaks of the S2-C verifier.
   - A label whose words are `Sheriff` ending in a non-breaking space and then `2` gives the
     norm `sheriff 2` with no mark, where `Sheriff 2` gives `sheriff` with the mark `2`. The
     bare-digit form needs exactly one whitespace character before the digit. The input is
@@ -1206,7 +1211,15 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
     them (the table in section 1 of `docs/evidence/dossiers/QCASH.md`), and the tests' own cash
     column is the one-decimal column of VAL-Q35, so this is a path the cash parser of step 8
     reads. Close the gap before then, with an OCR draw in a fixed-decimal column in both
-    properties.
+    properties. Pull request #27 (`step-02/f-test-gaps`) closes it. Both properties now also lex
+    each cell in the column that declares its printed decimals, on both sources.
+    `test_amount_digits_are_the_digits_of_its_words` also draws printed numbers and gives each
+    OCR word a confidence of None or 0 to 100. The plain test
+    `test_an_ocr_amount_keeps_the_decimals_it_prints` reads `65.8` in the one-decimal column and
+    `828,904.89` in a two-decimal column on an OCR page. Three lexers patched in memory each fail
+    all three tests: one that rounds every OCR `Amount` in a one-decimal column, one that does so
+    only when the first word has a confidence, and one that rounds every OCR `Amount` in a
+    two-decimal column. Each passes the 89 tests of the old run at `2638173a`.
   - `transliteration_ok` counts a footnote digit, because it sees text only. The Codex review of
     S2-D at `4fa19584` found it (finding 2). At `73d428e2`, `transliteration_ok("2.8 1*", "2.8")`
     is false and `transliteration_ok("2.8 1*", "2.81")` is true. `apply_reading` removes the mark
@@ -1240,6 +1253,10 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
     (finding 2), with an in-memory mutant that left all 37 tests passing. At `73d428e2`, a record
     with the id `cash-fy07-q3` on the OCR cell `2918` in the one-decimal column gives that id as
     `Amount.review_id` for the reading `291.8` and as `Unreadable.accepted_by` for a null reading.
+    Pull request #27 (`step-02/f-test-gaps`) closes it with
+    `test_a_reviewed_cell_names_the_record_that_was_applied`, which applies records of the ids
+    `cash-fy07-q3` and `cash-fy08-q1` to that cell. With `apply_reading` patched in memory to
+    write `r1` in place of the reading's id, that test fails.
   - The signed-value property of `test_records.py` compares the value and the exponent, which are
     equal for `Decimal("-0.0")` and `Decimal("0.0")`. The Codex review of S2-E at `73d428e2` found
     it (finding 3), with an in-memory mutant that dropped the sign of a reviewed zero and left all
@@ -1248,4 +1265,8 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
     the run printed `True` for its equality with `Decimal("0.0")`. Comparing `as_tuple()` would
     catch a lost sign, as `test_lexer_round_trip` does. Codex states that page 1 of the FY2010 Q2
     cash report (`qcmr/cash/FY10_Q2.pdf`) prints `(0.0)` in `Total Current Revenue`. That is
-    Codex's statement, not checked here.
+    Codex's statement, not checked here. Pull request #27 (`step-02/f-test-gaps`) closes it.
+    `test_a_reviewed_amount_keeps_the_digits_seen` now compares `as_tuple()` and gains the
+    example `0.0` read as `(0.0)`, since the words it draws hold no parenthesis, and
+    `test_a_reviewed_zero_keeps_its_sign` reads `(0.0)` as `(0.0)`. With `apply_reading` patched
+    in memory so that a reviewed zero loses its sign, both tests fail.
