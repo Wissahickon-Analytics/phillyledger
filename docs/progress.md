@@ -35,13 +35,17 @@ Each entry: step, what changed, why, and the design section updated.
   `from pathlib import Path`, `import logging`, `import time` and `import random` each broke
   `datadesk core is pure` under import-linter 2.16. Section 12.5 now states the result, and the
   item leaves the list in section 17.4.
-- **Step 1: ruff fails a source folder with no `__init__.py`** (November 22, 2026, S1-B, found
-  in the Codex review). import-linter does not scan a folder with no `__init__.py`, and Python
+- **Step 1: a test fails a source folder with no `__init__.py`** (November 22, 2026, S1-B, found
+  in the Codex reviews). import-linter does not scan a folder with no `__init__.py`, and Python
   still imports the modules in it. With `import subprocess` in a new
   `datadesk/core/sneaky/mod.py`, `uv run lint-imports --no-cache` printed `Contracts: 8 kept, 0
-  broken.` and `uv run ruff check .` passed. ruff's `INP001` now runs under the three
-  `packages/*/src` trees, scoped by one negated `per-file-ignores` entry, and
-  `test_planted_namespace_folder_fails_ruff_check` plants such a folder. Design section 12.5.
+  broken.` and `uv run ruff check .` passed. `test_source_folders_are_packages` in
+  `tests/test_gates.py` now fails, naming the folder, when a folder under the three
+  `packages/*/src` trees holds a `.py` file, directly or below it, and has no `__init__.py`. It
+  first proves its own check on small trees. A first fix used ruff's `INP001`, dropped because
+  ruff printed `All checks passed!` for `core/reports/probe.py` with `#!/usr/bin/env python3`
+  above `import boto3`, and passed `import subprocess` in `core/venv/mod.py`, a folder it excludes
+  by name, with all eight contracts kept. Design section 12.5.
 - **Step 1: the pure packages forbid `importlib`** (November 22, 2026, S1-B, found in the Codex
   review). With `from importlib import import_module` and `import_module("boto3")` in
   `datadesk/core/tables/birt.py`, `uv run lint-imports --no-cache` printed `Contracts: 8 kept, 0

@@ -56,8 +56,8 @@ Three pull requests change `docs/design.md`. Each change is also an entry under 
 
 The build added two more after the audit and the Codex review, and the owner has not ruled on
 them yet. S1-B adds `importlib` to the contracts that guard `checkedtables` and `datadesk.core`,
-and a sentence on ruff's `INP001` to section 12.5. With them, S1-D also names `__import__` in the
-purity row of section 11.1.
+and a sentence on `test_source_folders_are_packages` to section 12.5. With them, S1-D also names
+`__import__` in the purity row of section 11.1.
 
 ## Program checklist
 
@@ -273,15 +273,16 @@ transcript.
 - [ ] Create the 46 empty files that the contracts name. import-linter refuses a contract that names a module that does not exist (Appendix A). The evidence is that `git ls-files 'packages/*/src/*.py' | wc -l` prints 51 and every one of those files has size 0.
 - [ ] Add `TID251` to the ruff `select` list, and add the `banned-api` table with `datetime.datetime.now`, `datetime.date.today` and `tomllib.load`.
 - [ ] Scope the ban with one `per-file-ignores` entry, `"!packages/{checkedtables/src/checkedtables,datadesk/src/datadesk/core}/**" = ["TID251"]`.
-- [ ] Add `INP001` to the ruff `select` list, and scope it with one `per-file-ignores` entry, `"!packages/{checkedtables,phillyledger,datadesk}/src/**" = ["INP001"]`. import-linter does not scan a folder with no `__init__.py`, so `import subprocess` in a new `datadesk/core/sneaky/mod.py` kept all eight contracts and passed `uv run ruff check .`. Add a sentence on it to design section 12.5, and record the change under Deviations in `docs/progress.md`. Found in the build.
+- [ ] Write `test_source_folders_are_packages`. import-linter does not scan a folder with no `__init__.py`, so `import subprocess` in a new `datadesk/core/sneaky/mod.py` kept all eight contracts and passed `uv run ruff check .`. The test reads the file system in process and fails, naming the folder, when a folder under the three `packages/*/src` trees holds a `.py` file, directly or in a subfolder, and has no `__init__.py`. The source root needs none. Add a sentence on it to design section 12.5, and record the change under Deviations in `docs/progress.md`. Found in the build.
+- [ ] Make the same test prove its own check on trees under `tmp_path`. It finds the missing `__init__.py` for a plain module, a module that starts with a shebang line, a folder named `venv` and a parent folder whose child is a package, and finds nothing in a tree where every folder has one. Keep it one test function. A first fix used ruff's `INP001`, which passed the shebang module and the `venv` folder. Found in the build.
 - [ ] Add `uv run lint-imports` to `GATES` in `tests/test_gates.py`, and add the step `run: uv run lint-imports` to `ci.yml` with the same `if` as the other gates.
 - [ ] Write `run_gate(workspace, plants, gate, extra)` in `tests/test_gates.py`. It copies `packages/` and `pyproject.toml` into `workspace`, appends each plant to its file, creating the file's folder when it is missing, and runs the gate with the copy as the working directory. `extra` holds the arguments that follow the gate's own.
 - [ ] Make `run_gate` pass a fixed `COLUMNS` of 200 to the gate. import-linter wraps a long contract name to the terminal width, and under `COLUMNS=20` the planted test failed. Found in the build.
+- [ ] Make `run_gate` pass `NO_COLOR=1`, `PY_COLORS=0` and `TERM=dumb` to the gate. Under `FORCE_COLOR=1 TERM=xterm-256color`, import-linter colored `BROKEN` and the planted test failed. Found in the build.
 - [ ] Make `run_gate` take a member of `GATES`, drop the `uv run` prefix, and run that executable from the folder of `sys.executable`. It sets `PYTHONPATH` to the three `src` folders of the copy, so the gate reads the copy and not the installed packages.
 - [ ] Write `clean_then_planted(tmp_path, clean, planted, gate, extra)` in `tests/test_gates.py`. It runs the gate on a clean copy, asserts exit code 0, then returns the result of the planted copy.
 - [ ] Write `test_planted_boto3_import_fails_lint_imports`. It plants `import boto3` at the end of `packages/datadesk/src/datadesk/core/__init__.py`, runs the `uv run lint-imports` gate with `--no-cache`, and asserts a non-zero exit code and the text `datadesk core is pure BROKEN`.
 - [ ] Make the same test plant, each in its own clean copy, `import boto3` and then `from importlib import import_module` at the end of `packages/datadesk/src/datadesk/core/tables/birt.py`, with the same assertions. With `as_packages = false` on the core contract, the `__init__.py` plant alone still broke it. Keep it one test function. Found in the build.
-- [ ] Write `test_planted_namespace_folder_fails_ruff_check`. Its clean copy gets `packages/datadesk/src/datadesk/core/planted/__init__.py` and `planted/module.py` holding `X = 1`. Its planted copy gets only the module. It runs the `uv run ruff check .` gate and asserts a non-zero exit code and the text `INP001`. Found in the build.
 - [ ] Add `.import_linter_cache/` to `.gitignore`.
 - [ ] Replace the "Not verified" note on standard-library modules in design sections 12.5 and 17.4 with the observed result. import-linter 2.16 treats `os`, `pathlib`, `logging` and `time` as external packages and fails the contract.
 - [ ] Add a note to `docs/progress.md`. The 46 empty modules exist because import-linter refuses a contract that names a missing module, and later steps fill them.
@@ -300,11 +301,13 @@ transcript.
   - [ ] In a scratch copy, add `as_packages = false` to the contract `datadesk core is pure`. The test fails on the `birt.py` plant. Found in the build.
   - [ ] In a scratch copy, drop `"importlib"` from the contract `datadesk core is pure`. The test fails on the `import_module` plant. Found in the build.
   - [ ] Run `COLUMNS=20 uv run pytest`. It ends with `4 passed`. Found in the build.
-- [ ] `tests/test_gates.py` gains `test_planted_namespace_folder_fails_ruff_check`. Run `uv run pytest tests/test_gates.py::test_planted_namespace_folder_fails_ruff_check`.
-  - [ ] In a scratch copy, drop `INP001` from the ruff `select` list. The test fails. Found in the build.
+  - [ ] Run `FORCE_COLOR=1 TERM=xterm-256color uv run pytest`. It ends with `4 passed`. Found in the build.
+- [ ] `tests/test_gates.py` gains `test_source_folders_are_packages`. Run `uv run pytest tests/test_gates.py::test_source_folders_are_packages`. Found in the build.
+  - [ ] In scratch copies, add a module with no `__init__.py` beside it in `datadesk/core/sneaky/`, the same module with a shebang first line, and a module in `datadesk/core/venv/`. `uv run pytest` fails on each and names the folder. Found in the build.
 - [ ] `test_ci_runs_every_gate` now covers `uv run lint-imports`. In a scratch copy, delete that step from `ci.yml`. The test fails.
 - [ ] The branch log shows the planted test committed before the contracts, and failing at that commit.
-- [ ] The branch log shows the `birt.py` plants and the namespace test committed before `importlib` and `INP001`, with the `import_module` plant and the namespace test failing at that commit. Found in the build.
+- [ ] The branch log shows the `birt.py` plants committed before `importlib`, with the `import_module` plant failing at that commit. Found in the build.
+- [ ] The branch log shows `test_source_folders_are_packages` and the color settings of `run_gate` committed before `INP001` and its test were removed. Found in the build.
 
 **Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked. Ten lanes on `opus high` at the PR head, per the boot recipe.
 
@@ -611,6 +614,11 @@ These stay unproven until the build.
 - **The purity scan matches names (S1-D).** It flags a parameter named `time` and a variable
   named `random`. It misses a renamed import such as `from os import environ`, which the import
   contract catches. It reads module-level assignments only, so a mutable class attribute passes.
+- **The import contracts read static imports (S1-B).** The pure packages forbid `importlib`, and
+  the purity scan reports `__import__`. `pkgutil.resolve_name("subprocess")`,
+  `pydoc.locate("subprocess")` and `runpy.run_module("subprocess")` in `core/tables/birt.py`
+  pass every gate. A list of loaders cannot be complete, so the contracts name none of them.
+  Found in the build.
 - **`../gov-budget-data` already has six uncommitted entries (every PR).** Audit 7 of
   `verify-step` expects an empty status and uses a plain `git status`, which can rewrite the
   reference's index. Lanes run this plan's snapshot commands in its place. The skill itself is

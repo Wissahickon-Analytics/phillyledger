@@ -4149,8 +4149,8 @@ in build step 14, and `qsmr_common` joins the helper contract's sources. Ruff's
 `flake8-tidy-imports.banned-api` bans `datetime.datetime.now`, `datetime.date.today` and
 `tomllib.load` (only `tomllib.loads` on text) under `checkedtables/` and `datadesk/core/`. The
 purity test of section 11.1 catches builtins that neither tool can ban. import-linter skips a
-folder with no `__init__.py`, and ruff's `INP001` fails such a folder under the three
-`packages/*/src` trees.
+folder with no `__init__.py`, and `test_source_folders_are_packages` fails such a folder under
+the three `packages/*/src` trees.
 
 import-linter 2.16 treats a listed standard-library module as an external package and fails the
 contract. Build step 1 planted `import os`, `from pathlib import Path`, `import logging`,

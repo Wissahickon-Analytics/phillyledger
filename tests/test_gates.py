@@ -159,16 +159,3 @@ def test_source_folders_are_packages(tmp_path: Path) -> None:
 
     missing = [folder for src in SRC_FOLDERS for folder in folders_missing_init(REPO / src)]
     assert missing == [], f"import-linter skips these folders, add __init__.py: {missing}"
-
-
-def test_planted_namespace_folder_fails_ruff_check(tmp_path: Path) -> None:
-    folder = "packages/datadesk/src/datadesk/core/planted"
-    result = clean_then_planted(
-        tmp_path,
-        {f"{folder}/__init__.py": "", f"{folder}/module.py": "X = 1\n"},
-        {f"{folder}/module.py": "X = 1\n"},
-        "uv run ruff check .",
-        (),
-    )
-    assert result.returncode != 0, result.stdout
-    assert "INP001" in result.stdout, result.stdout
