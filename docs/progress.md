@@ -631,7 +631,7 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   `(cid:`, so a reviewed reading cannot supply a digit that a font code hides, and such a cell can
   only be accepted as null. The step 4 plan also decides how a reviewed reading can supply a
   glyph that a font code hides, if the font repair leaves one.
-- **What the step 2 line and label rules do on four real pages, for the plans of steps 5, 8, 11
+- **What the step 2 rules do on real pages, for the plans of steps 5, 8, 10, 11
   and 12** (November 23, 2026, step 2, S2-C, found in the Codex reviews). Codex read three PDFs of
   `../gov-budget-data/data/phila/` with `pdftotext -bbox` and ran `group_lines`, `has_values` and
   `parse_label` on their word boxes at `8846f05`. The S2-C fix round reran the command (the
@@ -701,6 +701,40 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
     7.1), and `Label.text` and `Label.norm` drop the phase number that the label prints. The
     owner decides whether the bare-digit form stays in the kit or becomes a rule that a table
     declares.
+  - A hyphen U+2010 printed as a dash placeholder hides two valued rows, for the owner and the
+    step 12 plan. Page 17 of the FY2021 supplemental report (`supplemental-report/FY21.pdf`)
+    prints U+2010 in the last cell of two revenue rows (finding 3 of
+    `.codex-review/step-02-pr-0df73f36.md`). The S2-C fix round 3 reran that command at
+    `0df73f3`, in a scratch worktree, with `pdftotext -layout` 26.07.0 and lines built by
+    `page_from_text`. It printed `Disposal of Salvage (Recyclables) 10,000.00 - - - - -
+    '\u2010' False` and `Reimbursement-Other Expenditures 25,000.00 12,000.00 0.00 0.00% 0.00 -
+    '\u2010' False`. `Line.text` shows the glyph as `-`, because `normalize_space` reads U+2010
+    as a hyphen. `has_values` tests the raw word, and its dash placeholders are `-`, `--`, an en
+    dash and an em dash, as design section 3.1 lists them. So `has_values` is false for both
+    rows, and the lexer's dash list in S2-D is the same four. Codex says it saw the same with
+    `pdfplumber` word boxes, which this repository cannot run until step 4. This is the same kind
+    of decision as the lower-case `n/a` above. The design names a closed list, and a real page
+    prints another glyph. A dash means no value in this report (SUPOP-Q24), and the same edition
+    prints U+2010 for the hyphens of its labels (SUPOP-Q32). The owner decides whether U+2010 and
+    U+2011 join the dash placeholders of `has_values` and `lex_cell`. A change would touch both
+    `lines.py` of S2-C and `lex.py` of S2-D, and the two lists of design section 3.1.
+  - A number in the left margin reads as a recap line number, for the step 5 plan.
+    `test_split_line_prefix_takes_recap_line_numbers` (ENT-Q08) and
+    `test_split_line_prefix_takes_numbered_recap_labels` (QOBL-Q55) use the text `24 First
+    Judicial District`, and ENT-Q08 reads the `24` as a printed line number. `pdftotext -layout`
+    prints that text on page 1 of the FY2021 Q1 QCMR positions report
+    (`qcmr/positions/FY21_Q1.pdf`) and `25 Records` on page 2, each on line 28 of its page. The
+    S2-C fix round 3 reran that and added `pdftotext -bbox`, which puts the `24` of page 1 and
+    the `25` of page 2 in the same box, x 9.19 to 18.12 and y 301.55 to 310.45. Finding 2 of
+    `.codex-review/step-02-pr-0df73f36.md` says that with `pdfplumber` word boxes the two are
+    the only rotated words on their pages, so they are page numbers and not line numbers of the
+    departments. That is Codex's statement and not a run of ours, because `pdfplumber` is not
+    installed in this repository until step 4. The tests check what `split_line_prefix` and
+    `parse_label` do with a declared pattern, and that stays right, so S2-C changed no test for
+    this. What the number is, and whether the positions parser of step 5 declares it page
+    furniture or a line prefix, is for the step 5 plan. QPOS-Q10 left the origin of the leading
+    numbers open, and `test_split_line_prefix_takes_leading_numbers` reads the same `24` and `25`
+    before `Recreation`.
   - Join shape 1 joins two printed amounts, for the owner and the plans of steps 5 and 11
     (finding 2 of `.codex-review/step-02-pr-0603fce3.md`). On page 1 of the adopted FY2006 Budget
     in Brief (`budget-in-brief/adopted/FY06.pdf`), the row "Purchase of Services" of the Board of
@@ -813,3 +847,9 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
     review of S2-B found it at `aec4c6c8`. Its command, which patches `os.lstat` to raise
     `PermissionError`, printed `cleanup failed: True teardown returned normally` in a scratch copy
     of that head.
+  - `normalize_label` turns a combining accent into a space. So the decomposed spelling of
+    "Crédit" gives `cre dit`, with the squash `credit` of the unaccented word, where the composed
+    spelling gives `crédit`. The third Codex review of S2-C found it at `0df73f36` (finding 4 of
+    `.codex-review/step-02-pr-0df73f36.md`). A rerun of its command in a scratch worktree at that
+    head printed `'Cre\u0301dit' 'cre dit' 'credit'` and `'Cr\xe9dit' 'cr\xe9dit' 'cr\xe9dit'`.
+    No page is known to print one.
