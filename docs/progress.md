@@ -411,8 +411,8 @@ Each entry: step, what changed, why, and the design section updated.
     and a reason (`CLAUDE.md`, hard rule 4). Before, a reading with no reason changed `2918` to
     `291.8`. `DashRule` refuses an empty `id`, so a `Dash` that a rule sets to zero can name the
     rule. `CellRecords` refuses two readings with one id and two dash rules with one id, because
-    `Assembly.used` holds ids and a used id must name the record that was used. A reading and a
-    dash rule may still share an id, since the fix round added no other check. The opening of
+    `Assembly.used` holds ids and a used id must name the record that was used. Fix round 2
+    refuses a reading and a dash rule that share an id too (the entry below). The opening of
     design section 2.1 now names a record file's reasons beside its ids.
   - `reading_for` counts the words the box holds against the cell's words, and joins the cell's
     words in the order given, which is the order `lex_cell` joins a cell's text in. Before, it
@@ -433,6 +433,29 @@ Each entry: step, what changed, why, and the design section updated.
     and a slack of 0.6 or 1.9. Three tests show that a reading cannot drop or add a decimal
     digit of another script, such as a fullwidth one before `,234` read as `234`, which S2-D
     fixed in `transliteration_ok`.
+- **Step 2: one id names one record of either kind, and a blank id or reason is no id or
+  reason** (November 23, 2026, S2-E fix round 2, found in the second Codex review of S2-E, at
+  `61704909`, and the verification lanes). Each change has a test that failed before it. Design
+  section 2.1 and the S2-E boxes of `docs/plans/step-02.md` say the same.
+  - `CellRecords` refuses an id that two of its records share: two readings, two dash rules, or
+    a reading and a dash rule. `Assembly.used` is one `frozenset[str]` of ids, so before, a used
+    reading `d1` made an unused dash rule `d1` look used, and no `unused_record` finding could
+    name the rule.
+  - `ReviewedReading` refuses an `id` or a `reason` that is empty after `strip()`, and `DashRule`
+    such an `id`. Before, a reason of two spaces and a tab let a reading change `2918` to
+    `291.8`. The tests try a space, a tab and a newline.
+  - A font code cannot become a reviewed number. The count cell `10(cid:28)`, read as `109` or as
+    `10028`, gives `reading_refused` through `reading_for` and `apply_reading`, and a null reading
+    of it is accepted. Codex found the word on page 1 of the FY2023 Q1 positions report, where
+    the page prints 109. S2-D fixed `transliteration_ok`, and this round adds the records test.
+    With the S2-D check removed in a scratch copy, the tests of `61704909` pass and the new test
+    fails.
+  - Four mutants of `records.py` passed all 191 tests of `61704909`, and each now fails a new
+    test: removing only the last mark word, removing the mark words wherever they appear in the
+    text, joining the cell's words by left edge, and comparing only how many words the box
+    holds. So a cell of `2.8`, a raised `1` and a `*` reads as `2.8` with both marks. A cell of
+    `$`, `10` and a raised `1` reads as `10`, where removing every ` 1` would leave `$0`. A box
+    over `29` and a `7` on the next line is stale for the cell `29 1`.
 
 ## Notes for later sessions
 
@@ -463,6 +486,18 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   `split_numeric_runs`, and not the page's raw words. Probed at S2-E: for "TAX434,605,553" on an
   OCR page, a reading around the child "434,605,553" gives `stale_reading` with the raw word as
   `page_words`, and the reading itself with the two children.
+- **The loader's digit check and a footnoted reading disagree, a note for the step 5 plan**
+  (November 23, 2026, step 2, S2-E fix round 2, finding 3 of the second Codex review of S2-E).
+  Design section 3.2 says that `load_records`, which step 5 builds in `datadesk`, refuses "a
+  reading whose digits fail transliteration_ok" (`docs/design.md`, lines 2068 and 2069 at the
+  S2-E head). The loader has only the record's text, so it cannot tell that the last `1` of the
+  footnoted cell `$ 2.8 1` is a small raised mark. Run in a scratch copy of `64560f3`:
+  `transliteration_ok("$ 2.8 1", "2.8")` is false, and `apply_reading` gives that cell, an
+  `Amount` with the mark `1`, a reviewed `Amount` of 2.8 that keeps the mark. The reverse also
+  holds: `transliteration_ok("$ 2.8 1", "2.81")` is true, and `apply_reading` gives
+  `reading_refused`. So the loader as the design words it would refuse a record that the
+  cell-level check accepts, and pass one that it refuses. The step 5 plan decides: either the
+  loader leaves the digit check to `apply_reading`, or the record carries what the loader needs.
 - **`uv.lock` and `exclude-newer`** (November 22, 2026, step 1). The owner's uv config and
   `UV_EXCLUDE_NEWER` set `exclude-newer = "1 week"`, and `uv lock` records that span in
   `uv.lock`. A machine without the setting, such as a CI runner, rejects the lock: `uv lock
@@ -664,8 +699,8 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   in a workspace copy and fails when a `.hypothesis` folder appears there.
 - **Docstrings put `refs` past its estimate** (November 23, 2026, step 2, S2-B). The kit size
   report counts every line that is not blank or a comment, docstrings included. At the S2-B head
-  it prints 592 lines. At the S2-E head after its fix round it prints 1,415, and `records`
-  counts 241 lines against its estimate of 140, and 118 without docstrings. Against design
+  it prints 592 lines. At the S2-E head after its fix round 2 it prints 1,420, and `records`
+  counts 239 lines against its estimate of 140, and 115 without docstrings. Against design
   section 12.1: `refs` 121 (estimate 60), `kinds` 29 (40),
   `words` 147 (90), `labels` 25 (30), `cells` 108 (90). `columns` holds 49 lines for two of its
   ten names (330). `table` holds 113 lines (190) for two of the eight names its row lists,
@@ -899,6 +934,16 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
     `2918` give `reading_refused`, and `2918.1` and `291.81` give reviewed amounts, so the cell
     reads only as a number that ends in 1. `Unreadable` has no marks field. The step 5 plan
     decides whether the cut stage keeps a raised mark out of an unreadable cell.
+  - A glyph of `seen` that is not an ASCII digit and not one of the nine pinned confusables
+    counts as nothing, so a reading can skip it (found in the verification lanes of fix round
+    2, run in a scratch copy of `64560f3`). For the OCR cell `29l8`, where OCR returned a
+    lower-case L for a 1, the reading `29.8` gives a reviewed `Amount` of 29.8, and `291.8` gives
+    `reading_refused`. For `¹,234` and `①,234`, the reading `234` gives a reviewed `Amount` of
+    234, and `1,234` gives `reading_refused`. The confusable glyphs are a pinned closed list
+    (`test_confusable_glyphs_are_pinned`, design section 3.1) with no `l` or `I` for 1, so a
+    change is the owner's decision under hard rule 6 of `CLAUDE.md`. An idea, not a plan: a
+    stricter rule would refuse a reading when `seen` holds a letter that is not a pinned
+    confusable.
 - **Follow-ups after step 2** (November 23, 2026). The step 2 run found these and did not fix
   them.
   - Nothing ties the module table of design section 11.1 to `PURE_IMPORTS`. A pin can hold a pair
@@ -945,3 +990,5 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
     `.codex-review/step-02-pr-0df73f36.md`). A rerun of its command in a scratch worktree at that
     head printed `'Cre\u0301dit' 'cre dit' 'credit'` and `'Cr\xe9dit' 'cr\xe9dit' 'cr\xe9dit'`.
     No page is known to print one.
+  - `apply_reading`'s message for a word that is not on the reading's file and page has no test
+    that reads the message. The S2-E fix round 2 found it.
