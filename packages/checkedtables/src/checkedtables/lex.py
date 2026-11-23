@@ -13,7 +13,6 @@ _MINUS = "-\u2212\u2013\u2014"
 _MARKS = "*\u2020\u2021\xa7#`\u2070\xb9\xb2\xb3\u2074\u2075\u2076\u2077\u2078\u2079"
 _GLYPHS = f"{_DIGITS},.$%()+{_MINUS}{_MARKS}"
 _DASHES = ("-", "--", "\u2013", "\u2014")
-_DOLLAR_DASHES = ("$ -", "$ --", "$ \u2013", "$ \u2014")
 _NOT_APPLICABLE = ("N/A", "NA")
 _TEXT_KINDS = (ValueKind.YEAR, ValueKind.CODE, ValueKind.TEXT)
 _JOIN_KINDS = (ValueKind.MONEY, ValueKind.PERCENT)
@@ -40,6 +39,7 @@ _NUMBER = compile(
     r"(?P<digits>(?:0|[1-9][0-9]{0,2}(?:,[0-9]{3})*|[1-9][0-9]*)(?:\.[0-9]+)?)%?(?(open)\))"
 )
 _MARK_WORD = compile(f"[{_MARKS}]+")
+_FOOTNOTE = compile(f"[0-9][{_MARKS}]*")
 _ONE_DIGIT = compile("[0-9]")
 _JOINS = (
     (_ONE_DIGIT, compile("[0-9]{1,2}(?:,[0-9]{3})+")),
@@ -63,7 +63,7 @@ def _is_raised_digit(words: Sequence[Word]) -> bool:
         return False
     number, digit = words[-2], words[-1]
     return (
-        _ONE_DIGIT.fullmatch(digit.text) is not None
+        _FOOTNOTE.fullmatch(digit.text) is not None
         and any(glyph in _DIGITS for glyph in number.text)
         and digit.size is not None
         and number.size is not None
@@ -75,11 +75,14 @@ def _is_raised_digit(words: Sequence[Word]) -> bool:
 def _tokens_and_marks(words: Sequence[Word]) -> tuple[tuple[str, ...], tuple[str, ...]]:
     kept = list(words)
     marks: list[str] = []
-    # VAL-Q28: footnote marks, superscript digits and a small raised digit end the cell.
+    # VAL-Q28: footnote marks, superscript digits and a small raised digit, alone or with marks
+    # after it, end the cell.
     while kept and (_MARK_WORD.fullmatch(kept[-1].text) or _is_raised_digit(kept)):
         marks.insert(0, kept.pop().text)
     tokens = [word.text for word in kept]
-    if tokens and (number := tokens[-1].rstrip(_MARKS)) != tokens[-1]:
+    # VAL-Q28: a full-size "1*" after a number keeps its mark, so no join takes it.
+    footnote = tokens[:-1] not in ([], ["$"]) and _FOOTNOTE.fullmatch(tokens[-1]) is not None
+    if tokens and not footnote and (number := tokens[-1].rstrip(_MARKS)) != tokens[-1]:
         marks.insert(0, tokens[-1][len(number) :])
         tokens[-1] = number
     return tuple(tokens), tuple(marks)
@@ -192,13 +195,16 @@ def lex_cell(words: Sequence[Word], col: ColumnSpec, source: SourceKind) -> Cell
     """Read the words of one cell as a typed cell, only from what the words print.
 
     The rules apply in order. No words give `Blank`, and a year, code or text column gives
-    `Text`. The text "N/A" or "NA" gives `NotApplicable`, and "-", "--", an en dash or an em
-    dash, alone or after one ``$`` word, gives a `Dash` with the column's meaning. A number may
-    end in marks, which the `Amount` keeps apart from its value: the glyphs ``*``, ``†``,
-    ``‡``, ``§``, ``#``, a backtick and superscript digits, and a last one-digit word under 0.7
-    of the size of the number word just before it whose bottom is above that word's bottom. A
-    ``$`` word may stand first in the cell. It is the one ``$`` that the number may print, so
-    "$ $1,234" prints two.
+    `Text`. One word "N/A" or "NA" gives `NotApplicable`, and one word "-", "--", an en dash or
+    an em dash, alone or after one ``$`` word, gives a `Dash` with the column's meaning, so one
+    word that holds a space, such as "$ -", is neither. A number may end in marks, which the
+    `Amount` keeps apart from its value: the glyphs ``*``, ``†``, ``‡``, ``§``, ``#``, a
+    backtick and superscript digits, and a last word of one digit, alone or with those glyphs
+    after it as in "1*", under 0.7 of the size of the number word just before it whose bottom is
+    above that word's bottom. That word is one mark as it prints. A last word of one digit with
+    those glyphs after it that is not small and raised keeps them when a number word comes
+    before it, so "2.8 1*" fits no join. A ``$`` word may stand first in the cell. It is the one
+    ``$`` that the number may print, so "$ $1,234" prints two.
 
     A word reads as a number when paired parentheses around it or one leading minus glyph
     (``-``, U+2212, an en dash or an em dash) give its sign, a ``$`` stands at most once before
@@ -239,13 +245,14 @@ def lex_cell(words: Sequence[Word], col: ColumnSpec, source: SourceKind) -> Cell
     """
     if not words:
         return Blank()
-    text = " ".join(word.text for word in words)
+    texts = tuple(word.text for word in words)
+    text = " ".join(texts)
     refs = tuple(word.ref for word in words)
     if col.kind in _TEXT_KINDS:
         return Text(text, refs)
-    if text in _NOT_APPLICABLE:
+    if len(texts) == 1 and text in _NOT_APPLICABLE:
         return NotApplicable(text, refs)
-    if text in _DASHES or text in _DOLLAR_DASHES:
+    if texts[-1] in _DASHES and texts[:-1] in ((), ("$",)):
         return Dash(text, refs, col.dash)
     tokens, marks = _tokens_and_marks(words)
     number = _read_cell(tokens, col, source)
