@@ -54,14 +54,16 @@ Three pull requests change `docs/design.md`. Each change is also an entry under 
   `Optional[bool]`.
 - S1-D adds `builtins` and mutable module state to the purity row of section 11.1.
 
-The build added three more after the audit and the Codex review, and the owner has not ruled on
+The build added four more after the audit and the Codex reviews, and the owner has not ruled on
 them yet. S1-B adds `importlib` to the contracts that guard `checkedtables` and `datadesk.core`,
 and a sentence on `test_source_folders_are_packages` to section 12.5. With them, S1-D also names
 `__import__` in the purity row of section 11.1. S1-C makes the shape test of section 11.4 also
 read a function that a public name re-exports from a private module, the methods and the
 `__init__` that a public class writes or inherits from a base class in the package, and a `bool`
 quoted inside `Optional[...]`. It reads past a name imported only under `TYPE_CHECKING` instead
-of raising.
+of raising. S1-D adds two sentences after the table of section 11.1. An audit hook refuses socket
+and resolver events outside a test marked `enable_socket`, and each core test module starts in
+its own empty folder. Found in the build.
 
 ## Program checklist
 
@@ -450,38 +452,46 @@ tomllib.loads("")
 - [ ] Add `pytest-socket>=0.8` to the `dev` group and run `uv lock`.
 - [ ] Set `addopts = "--import-mode=importlib --disable-socket"` and add `packages/datadesk/tests` to `testpaths` in `pyproject.toml`.
 - [ ] Write `pytest_configure` in the root `conftest.py`. It calls `pytest_socket.disable_socket()`, so the guard is in place before pytest imports any test module. With `--disable-socket` alone, a test module that runs `from socket import socket` keeps the real constructor and its test passes (Appendix A).
+- [ ] Make `pytest_configure` also install an audit hook with `sys.addaudithook`. It raises `pytest_socket.SocketBlockedError` for the audit events `socket.__new__`, `socket.getaddrinfo`, `socket.gethostbyname`, `socket.gethostbyaddr` and `socket.getnameinfo` unless the running test carries the `enable_socket` marker. A hook wrapper around `pytest_runtest_protocol` records whether it does. pytest-socket replaces only module names such as `socket.socket` and lifts its block in its own teardown hook, so `socket.SocketType()`, `_socket.socket()` and a socket opened after the `yield` of a module-scoped fixture passed. `socket.gethostname` stays open, and `platform.node()` still works in a test. Found in the build.
 - [ ] Make `run_gate` in `tests/test_gates.py` copy the root `conftest.py` into the workspace too.
 - [ ] Write the autouse fixture `_empty_working_directory` in both package `conftest.py` files. It takes `tmp_path` and `monkeypatch` and calls `monkeypatch.chdir(tmp_path)`.
-- [ ] Write three tests in both `test_isolation.py` files. `test_working_directory_is_empty` asserts that `Path.cwd()` holds no entry. `test_sockets_are_blocked` expects `pytest_socket.SocketBlockedError` from `socket.socket()`. `test_early_bound_socket_is_blocked` expects the same error from a `socket` name that the module imports at its top with `from socket import socket`. The module also runs `import socket`, so the name is bound as `early_bound_socket`. Found in the build.
+- [ ] Write the module-scoped autouse fixture `_empty_module_working_directory` in both package `conftest.py` files. It moves the working directory to an empty folder from `tmp_path_factory` for each test module and restores it when the module's tests end, so a module-scoped fixture never sees the checkout. A package-scoped fixture would stay in place after the folder's tests, because the test folders are not packages and pytest scopes it to the session. Found in the build.
+- [ ] Write three tests in both `test_isolation.py` files. `test_working_directory_is_empty` asserts that `Path.cwd()` holds no entry, and that the module-scoped fixture `module_setup_listing` recorded no entry at module setup. `test_sockets_are_blocked` expects `pytest_socket.SocketBlockedError` from `socket.socket()` and from `socket.SocketType()`. `test_early_bound_socket_is_blocked` expects the same error from a `socket` name that the module imports at its top with `from socket import socket`. The module also runs `import socket`, so the name is bound as `early_bound_socket`. Found in the build.
 - [ ] Write `package_sources(name)` in `tests/test_purity.py`, with `PURE_PACKAGES = ("checkedtables", "datadesk.core")`. It finds each package's folder through `importlib.util.find_spec(name).submodule_search_locations`, so the scan does not depend on the working directory.
 - [ ] Write `impurities(tree)` in `tests/test_purity.py` for the eight names of design section 11.1. It reports a call to `open`, `print` or `input`, a call to `.now()` or `.today()`, an attribute read on `os` or `time`, and any use or import of `random`.
 - [ ] Make `impurities` also report any import of `builtins` and any attribute read on it.
 - [ ] Make `impurities` also report a call to the builtin `__import__`. S1-B forbids `importlib` in the pure packages, and `__import__` needs no import, so import-linter cannot see it. Found in the build.
 - [ ] Make `impurities` also report mutable module state. That is an assignment at module level whose value is a list, dict or set display, a comprehension of one of those, or a call to `list`, `dict`, `set` or `bytearray`. `__all__` gets no exemption, so a package writes it as a tuple. Design section 3 allows tuples, frozen dataclasses and `MappingProxyType` as module constants.
+- [ ] Make `impurities` read module state inside any nesting of `if`, `try`, `with`, `for`, `while` and `match` blocks, which open no scope, but not inside a function or class body. A tuple that holds one of those values is module state too. Found in the build.
 - [ ] Add `builtins`, `__import__` and mutable module state to the purity row of design section 11.1, and record the change under Deviations in `docs/progress.md`. `CLAUDE.md` hard rule 3 says the purity test enforces the ban on mutable module state.
 - [ ] Write `test_pure_packages_have_no_effects` in `tests/test_purity.py`. It fails with one `path:line` entry per hit.
-- [ ] Write `test_scan_reports_each_banned_form` in `tests/test_purity.py`. It parses one source string per banned form and asserts one hit for each. The forms are the eight names, `import builtins`, `builtins.open("x")`, `__import__("boto3")`, `CACHE: dict[str, str] = {}`, `ITEMS = []` and `SEEN = set()`. `__import__` was found in the build.
-- [ ] Write `test_scan_allows_immutable_constants` in `tests/test_purity.py`. It asserts no hit for `NAMES = ("a", "b")`, for `LOOKUP = MappingProxyType({"a": 1})`, and for a list assigned inside a function.
-- [ ] Add `test_planted_socket_call_fails_pytest` to `tests/test_gates.py`. The clean copy gets a core test, `packages/datadesk/tests/core/test_planted_socket.py`, that only names `socket.socket`. The planted copy gets the same test with the call `socket.socket()`. It runs the `uv run pytest` gate with the extra arguments `-p no:cacheprovider` and `packages/datadesk/tests/core`, and asserts exit code 1 and the text `SocketBlockedError` for the planted copy.
+- [ ] Write `test_scan_reports_each_banned_form` in `tests/test_purity.py`. It parses one source string per banned form and asserts one hit for each, on the form's last line. The forms are the eight names, `import builtins`, `builtins.open("x")`, `__import__("boto3")`, `CACHE: dict[str, str] = {}`, `ITEMS = []` and `SEEN = set()`, and `CACHE = {}` in a tuple and inside `if`, `try`, `match`, and nested `with`, `for` and `while` blocks. `__import__`, the tuple and the blocks were found in the build.
+- [ ] Write `test_scan_allows_immutable_constants` in `tests/test_purity.py`. It asserts no hit for `NAMES = ("a", "b")`, for `LOOKUP = MappingProxyType({"a": 1})`, and for a list assigned inside a function, at module level or inside an `if` block.
+- [ ] Add `test_planted_socket_call_fails_pytest` to `tests/test_gates.py`. It plants three things in a core test, `packages/datadesk/tests/core/test_planted_socket.py`, each from its own clean copy: `socket.socket()` in the test body, `socket.SocketType()` in the test body, and a module-scoped fixture that calls `socket.socket()` after its `yield`. Each clean copy only names the constructor. It runs the `uv run pytest` gate with the extra arguments `-p no:cacheprovider` and `packages/datadesk/tests/core`, and asserts exit code 1 and that the planted file's own line in pytest's short summary names `SocketBlockedError`, as a failed test or as an error at teardown. The passing isolation tests put that text in the warnings summary, so a search of all of stdout passed a plant that raised `ValueError`. Found in the build.
 - [ ] Add `test_planted_early_bound_socket_fails_pytest` to `tests/test_gates.py`. It is the same test with `from socket import socket` at the top of the planted module and the call `socket()`.
-- [ ] Add a note to `docs/progress.md`. `--disable-socket` applies to every test, so a later adapter contract test that needs the network opts in with the `enable_socket` marker of pytest-socket. The marker reopens calls to `socket.socket()`. A name that a module binds with `from socket import socket` stays blocked under the marker, because the root `conftest.py` installs the block before that import runs (Appendix A).
+- [ ] Add a note to `docs/progress.md`. `--disable-socket` applies to every test, so a later adapter contract test that needs the network opts in with the `enable_socket` marker of pytest-socket. The marker reopens calls to `socket.socket()`, and it is the only way in, because the audit hook reads the marker alone. A name that a module binds with `from socket import socket` stays blocked under the marker, because the root `conftest.py` installs the block before that import runs (Appendix A).
 - [ ] Leave the step 1 row of `docs/progress.md` at `in progress`. The row changes only after the verdict, in the Merge block below.
 
 **You see.**
 
-- [ ] `uv run pytest` ends with `22 passed, 4 warnings`. Found in the build. Each warning is the `UserWarning` that pytest-socket prints when an isolation test triggers a block on purpose.
+- [ ] `uv run pytest` ends with `22 passed, 6 warnings`. Found in the build. Each warning is the `UserWarning` that `SocketBlockedError` prints when an isolation test triggers a block on purpose, one per blocked call.
 - [ ] A core test that calls `socket.socket()` fails with `pytest_socket.SocketBlockedError: A test tried to use socket.socket.`
+- [ ] A core test that calls `socket.SocketType()` or `_socket.socket()` fails with `pytest_socket.SocketBlockedError: A test tried to use socket.__new__.`, and so does a module-scoped fixture that calls `socket.socket()` after its `yield`, as an error at teardown. Found in the build.
 - [ ] With `print(1)` appended to `packages/checkedtables/src/checkedtables/words.py`, `uv run pytest tests/test_purity.py` fails and names `words.py:1` and `print()`.
 
 **Verify, unit.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
 - [ ] `tests/test_gates.py` gains `test_planted_socket_call_fails_pytest` and `test_planted_early_bound_socket_fails_pytest`. Run `uv run pytest tests/test_gates.py -k socket`.
   - [ ] In a scratch copy, remove `--disable-socket` from `addopts` and empty the root `conftest.py`. Both planted tests fail, and so do the socket tests in `test_isolation.py`. `run_gate` copies the root `conftest.py`, so deleting it fails both planted tests with `FileNotFoundError` instead. Found in the build.
-  - [ ] In a scratch copy, empty only the root `conftest.py`. Both `test_early_bound_socket_is_blocked` tests fail. Both planted tests fail too, because the clean copy runs the core `test_isolation.py`. Then also delete the core `test_isolation.py`. Only `test_planted_early_bound_socket_fails_pytest` fails, and its planted copy passes. Found in the build.
+  - [ ] In a scratch copy, empty only the root `conftest.py`. Both `test_sockets_are_blocked` and both `test_early_bound_socket_is_blocked` tests fail. Both planted tests fail too, because the clean copy runs the core `test_isolation.py`. Then also delete the core `test_isolation.py`. Both planted tests still fail, because the `socket.SocketType()` plant and the early-bound plant pass in their planted copies. Found in the build.
+  - [ ] In a scratch copy, remove only the `sys.addaudithook` call from the root `conftest.py`. Both `test_sockets_are_blocked` tests fail, and both planted tests fail because their clean copy runs the core `test_isolation.py`. With the core `test_isolation.py` also deleted, only `test_planted_socket_call_fails_pytest` fails. Found in the build.
+  - [ ] In a scratch copy, change the planted body in `tests/test_gates.py` to `raise ValueError("wrong reason")`. `test_planted_socket_call_fails_pytest` fails. With the assertion that searched all of stdout for `SocketBlockedError`, the same plant passed. Found in the build.
 - [ ] Both `test_isolation.py` files gain their three tests. Run `uv run pytest packages/checkedtables/tests packages/datadesk/tests/core`.
   - [ ] In a scratch copy, delete one package `conftest.py`. `test_working_directory_is_empty` fails in that folder. Run it without `-k socket`, which deselects that test. Deleting the core one also fails both planted tests, because their clean copy runs that folder. Found in the build.
+  - [ ] In a scratch copy, delete only `_empty_module_working_directory` from one package `conftest.py`. `test_working_directory_is_empty` fails in that folder, on the record that `module_setup_listing` made at module setup. Found in the build.
 - [ ] `tests/test_purity.py` gains `test_pure_packages_have_no_effects`, `test_scan_reports_each_banned_form` and `test_scan_allows_immutable_constants`. Run `uv run pytest tests/test_purity.py`.
-- [ ] The branch log shows the planted tests and the isolation tests committed before `--disable-socket`, the root `conftest.py` and the fixtures, and failing at that commit.
+  - [ ] In a scratch copy, append `if __debug__:` with `CACHE = {}` under it, a `try:` block that holds `CACHE = {}`, and `CACHE, SEEN = {}, set()` to `checkedtables/words.py`, one at a time. Each run fails and names the line of the assignment. A list assigned inside a function passes. Found in the build.
+- [ ] The branch log shows the planted tests and the isolation tests committed before `--disable-socket`, the root `conftest.py` and the fixtures, and failing at that commit. In the fix round after the Codex review of the stack, it shows the new plants, isolation checks and scan forms committed before the audit hook, the module fixtures and the nested scan, and failing at that commit.
 
 **Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked. Ten lanes on `opus high` at the PR head, per the boot recipe.
 
@@ -624,6 +634,17 @@ These stay unproven until the build.
 - **The purity scan matches names (S1-D).** It flags a parameter named `time` and a variable
   named `random`. It misses a renamed import such as `from os import environ`, which the import
   contract catches. It reads module-level assignments only, so a mutable class attribute passes.
+- **The purity scan and the import contracts name modules and calls one at a time (S1-D).**
+  Planted one at a time in `datadesk/core/tables/birt.py` of scratch copies of the S1-D head,
+  each of these passes every gate: `from io import FileIO` reading a file, `sys.stdout.write("x")`,
+  `uuid.uuid4()`, `write = print` then `write(1)`, `exec("print(1)")`,
+  `sys.modules["os"].getcwd()`, `import posix` with `posix.getcwd()`, `import _socket` with
+  `_socket.socket()`, `defaultdict(list)` assigned at module level, and a mutable class
+  attribute. A core test that starts a subprocess, which opens a socket, also passes every gate.
+  Every review finds more forms, so naming more modules does not converge. An allow-list of the
+  modules the pure packages may import would close the import forms. It is a new closed list in
+  the design, so it is the owner's decision. Found in the Codex review of the stack and the
+  build.
 - **The import contracts read static imports (S1-B).** The pure packages forbid `importlib`, and
   the purity scan reports `__import__`. `pkgutil.resolve_name("subprocess")`,
   `pydoc.locate("subprocess")` and `runpy.run_module("subprocess")` in `core/tables/birt.py`
