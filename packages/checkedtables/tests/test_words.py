@@ -1,3 +1,5 @@
+from dataclasses import replace
+
 import pytest
 
 from checkedtables.kinds import SourceKind
@@ -7,6 +9,7 @@ from checkedtables.words import Document, Page, Word, WordSource
 SHA = "a" * 64
 OTHER_SHA = "b" * 64
 TEXT_LAYER = WordSource(SourceKind.TEXT_LAYER, "pdfplumber==0.11.4;dedupe_chars")
+OCR = WordSource(SourceKind.OCR, "textract:AnalyzeDocument;dpi=300")
 
 
 def word(sha: str, page: int, index: int) -> Word:
@@ -28,6 +31,14 @@ def test_page_refuses_a_word_from_another_document() -> None:
         page(1, (word(OTHER_SHA, 1, 0),))
 
 
+def test_text_layer_page_refuses_an_ocr_confidence() -> None:
+    # QCASH-Q22: the text layer prints 85.8 where Textract read 65.8.
+    ocr_word = replace(word(SHA, 1, 1), text="65.8", confidence=99.0)
+    with pytest.raises(ValueError, match="OCR confidence on a text layer page"):
+        page(1, (replace(word(SHA, 1, 0), text="85.8"), ocr_word))
+    assert Page(SHA, 1, 612.0, 792.0, 0, OCR, (ocr_word,)).words == (ocr_word,)
+
+
 def test_document_page_returns_the_page() -> None:
     first, third = page(1, (word(SHA, 1, 0),)), page(3, ())
     document = Document(SHA, (first, third))
@@ -35,6 +46,18 @@ def test_document_page_returns_the_page() -> None:
     assert document.page(3) is third
     with pytest.raises(KeyError):
         document.page(2)
+
+
+def test_document_refuses_a_page_of_another_file() -> None:
+    with pytest.raises(ValueError, match="does not belong to document"):
+        Document(OTHER_SHA, (page(1, (word(SHA, 1, 0),)),))
+
+
+def test_document_refuses_pages_out_of_order() -> None:
+    first, third = page(1, ()), page(3, ())
+    for pages in ((third, first), (first, first)):
+        with pytest.raises(ValueError, match="strictly ascending"):
+            Document(SHA, pages)
 
 
 def test_word_source_keeps_the_tool_string() -> None:

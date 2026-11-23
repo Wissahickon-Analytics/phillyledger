@@ -66,6 +66,18 @@ def test_box_contains_with_slack() -> None:
     assert not cell.contains(Box(21.0, 10.0, 22.0, 20.0), 0.5)
 
 
+def test_word_ref_cites_a_file_and_a_page() -> None:
+    for doc_sha256, page, index, child, message in (
+        ("", 1, 0, None, "names no file"),
+        ("a" * 64, 0, 0, None, "page below 1"),
+        ("a" * 64, 1, -1, None, "index below 0"),
+        ("a" * 64, 1, 0, -1, "child below 0"),
+    ):
+        with pytest.raises(ValueError, match=message):
+            WordRef(doc_sha256, page, index, child)
+    assert WordRef("a" * 64, 1, 0, 0).child == 0
+
+
 @given(st.lists(word_refs))
 def test_word_refs_sort_with_and_without_child(refs: list[WordRef]) -> None:
     assert sorted(refs) == sorted(refs, key=child_first_key)
