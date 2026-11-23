@@ -151,7 +151,8 @@ def test_a_row_that_ends_in_a_dash_has_values() -> None:
 
 def test_a_row_that_ends_in_a_mark_word_has_values() -> None:
     assert has_values(line("Debt Service 2.8 `"))
-    for mark in ("*", "\u2020", "\u2021", "\xa7", "#", "`", "\xb9", "\xb2\xb3", "**"):
+    superscripts = ("\xb9", "\xb2\xb3", "\u2070", "\u2074", "\u2079")
+    for mark in ("*", "\u2020", "\u2021", "\xa7", "#", "`", "**", *superscripts):
         assert has_values(line(f"Debt Service 2.8 {mark}")), mark
         assert not has_values(line(f"Debt Service {mark}")), mark
 
@@ -171,6 +172,8 @@ def test_value_words_end_a_row_with_values() -> None:
         "\u20147",
         "242,096*",
         "1,234\xb9",
+        "1,234⁰",
+        "1,234⁹",
     )
     for value in values:
         assert has_values(line(f"Taxes {value}")), value
