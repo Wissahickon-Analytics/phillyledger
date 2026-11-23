@@ -6,7 +6,7 @@ same branch as the work: status, the date the check passed, and anything a later
 | Step | What | Status | Branch | Check passed |
 |---|---|---|---|---|
 | 1 | Workspace, tooling, purity and shape tests | check passed | `step-01/a-workspace`, `step-01/b-import-contracts`, `step-01/c-kit-shape`, `step-01/d-test-isolation` | November 22, 2026, runs 45093444380, 45094817250, 45094829990 and 45092206629 |
-| 2 | Kit, words to cells | in progress | `step-02/a-import-pin`, `step-02/b-value-types` | |
+| 2 | Kit, words to cells | in progress | `step-02/a-import-pin`, `step-02/b-value-types`, `step-02/c-words-to-lines` | |
 | 3 | Archive for the QCMR from FY2022 | not started | | |
 | 4 | Words: PDF adapter with font repair, word cache, codec | not started | | |
 | 5 | QCMR positions parser, registry, row schemas, column vocabulary | not started | | |
@@ -253,6 +253,42 @@ Each entry: step, what changed, why, and the design section updated.
 
   The `ColumnSpec` test is in a new `test_columns.py`, and the S2-B file lists of
   `docs/plans/step-02.md` now name it. Design section 2.1.
+- **Step 2: `text` and `lines` state four rules and a ninth mark form** (November 23, 2026,
+  S2-C). Design section 3.1 left four rules open, and its comments now state them.
+  `group_lines` takes words by bottom, then `x0`, then ref, and a word that does not join the
+  open line opens the next. A line's words sort by `x0` and lines by top. `has_values` reads the
+  last word that is not a mark word. A value word is `N/A`, `NA`, a dash placeholder, or a digit
+  with only `,`, `.`, `$`, `%`, parentheses, minus glyphs and trailing marks. `split_line_prefix`
+  keeps the line's box, and a line of only prefix words comes back with no words, so a column of
+  line numbers seeds no lane. `lines_text` joins the lines' text with a newline. `parse_label`
+  also takes one bare digit after a word as a mark, as `entities.py:54-61` of the old code did
+  (ENT-Q07). So "Sheriff 2" gives the text "Sheriff" and the mark "2", and "CLASS 100" and
+  "10 COMMUNITY DEVELOPMENT" keep every word. With that form removed in a scratch copy, the
+  "Sheriff 2" test fails and the "Human Services (1)" test passes. The mark "see note" takes any
+  one space between its words, or none, where the design named only "see note" and "seenote".
+  With a non-breaking space the mark stayed in the label, so two labels that print the same got
+  different `norm` values (WAGE-Q44, found in the second Codex review). The comments also say
+  three smaller things. `normalize_label` turns punctuation into a space where the design said
+  "drop", as `entities.py:95` did, so "Delivery/couriers" gives "delivery couriers" (BSALES-Q47).
+  `normalize_space` trims the ends. `page_from_text` keeps a `**` that opens no bold span, so
+  the label "Total RTT records **1" (RTT-Q38) can be built with it. A `**` that starts a word
+  opens a span when the word's next character is not `*`, and a `**` that ends a word closes
+  one when the character before it is not `*`. Each closer pairs with the nearest unpaired
+  opener to its left on the same line, and every other `**` stays in the text. The first build
+  paired the first two `**` on a line, so "Total RTT records **1  **1,234**" gave the words
+  `1`, bold, and `1,234**` (found in the Codex review). It now gives `**1` and a bold `1,234`.
+  A word is a run of characters with no ASCII space, and a `**` opens or closes a span only at
+  an ASCII space or a line end. The second Codex review found that a `**` after a non-breaking
+  space opened a span inside a word, so `Tax`, a non-breaking space and `**1,234**` lost the
+  asterisks and 24 points of the word's box. That word now keeps them and is not bold.
+  The comment of `doc_of` also says that it sorts the pages by number and raises `ValueError`
+  for no pages, for pages of two files and for a repeated page number. `text`, `lines`
+  and `testing` import from `re`, `statistics` and `typing`, which join the list in section
+  11.1. The strategy `pages()` of `test_lines.py`, behind clause C1a, draws every field of
+  `Page` and of `Word`, so it covers the input type of `group_lines` (fix round 4). A mutation
+  that keys on one drawn value, such as dropping OCR words with a confidence above 99.5, can
+  still survive a run without the explicit examples, because a property test samples. Design
+  sections 3.1 and 11.1.
 
 ## Notes for later sessions
 
@@ -502,6 +538,113 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   of step 4 computes each hash from a file's bytes, and the record lint of step 5 reads the hashes
   that records cite, so those two own the form of a hash. Their plans say where the form is
   checked.
+- **What the step 2 line and label rules do on eight real pages, for the plans of steps 5, 8, 10,
+  11 and 12** (November 23, 2026, step 2, S2-C, found in the Codex reviews). Codex read three
+  PDFs of `../gov-budget-data/data/phila/` with `pdftotext -bbox` and ran `group_lines`,
+  `has_values` and `parse_label` on their word boxes at `8846f05`. The S2-C fix round reran the
+  command (the block "PDF reproduction for findings 1-4" of
+  `.codex-review/step-02-pr-8846f05c.md`) and printed the same eight lines. Real pages enter
+  this repository's tests only as word fixtures that `datadesk fixture` writes, from step 4 on
+  (`CLAUDE.md`, Tests), so S2-C changed none of the three functions for them. The boxes are
+  those of `pdftotext`, not those of the adapter that step 4 builds.
+  - A raised footnote mark leaves its row, for the step 5 plan and the owner. On page 2 of the
+    FY2026 Q4 QCMR positions report (`qcmr/positions/FY26_Q4.pdf`), the mark of "Human Services
+    (1)" is raised. The word `(1)` has top 357.95 and bottom 363.44, "Human" has bottom 367.62,
+    and the tolerance of `group_lines` is 2.906, 0.35 of the median word height of 8.303. The
+    mark's bottom is 4.18 above the row's, so `group_lines` makes `(1)` a line of its own. The
+    run printed `(1) True` and `Human Services 438 1,059 1,497 532 1,323 1,855 448 1,045 1,493
+    362 True`. So `has_values` is true for the lone mark, and `parse_label` never sees it with
+    its label (QPOS-Q11). `group_lines` is the design's rule as written. FY2026 Q4 is one of the
+    20 editions step 5 parses, so the step 5 plan tests this page with the real adapter's words
+    and decides the rule. The same rule would keep a raised footnote digit out of its cell, and
+    the lexer's rule for VAL-Q28 expects to find that digit in the cell. The second Codex review
+    says that it reproduced this raised `(1)` and the lower-case `n/a` row below with
+    `pdfplumber` word boxes as well (`.codex-review/step-02-pr-6442b4eb.md`, "What I checked"),
+    which is Codex's statement and not a run of ours, because `pdfplumber` is not installed in
+    this repository until step 4.
+  - Margin debris joins a cash row, for the step 8 plan.
+    `test_debris_between_two_rows_joins_neither` (QCASH-Q16, VAL-Q13) uses made-up boxes. On
+    page 1 of the FY2008 Q4 QCMR cash report (`qcmr/cash/FY08_Q4.pdf`), the run printed the
+    words left of x 115 on three lines as `['~']`, `['Debt', 'Service-Long', 'Term']` and
+    `['co', 'lnterfund', 'Charges']`. So the debris `~` is a line of its own, and the debris
+    `co`, bottom 323.32, lands on the line of "lnterfund Charges", bottom 323.89, inside the
+    page's tolerance of 1.859. The step that parses cash tests the real page.
+  - A lower-case `n/a` hides a row, for the owner and the step 11 plan. Page 19 of the adopted
+    FY2009 Budget in Brief (`budget-in-brief/adopted/FY09.pdf`) prints `n/a` in the last
+    column of row 7. The run printed `7 Other Sources 57,353 69,000 0 0 0 n/a False`. The
+    design names `N/A` and `NA` only, so `has_values` is false for that row. Under the lexer
+    rules of the S2-D section of `docs/plans/step-02.md`, read and not run, the cell would be
+    `Unreadable`, which blocks and publishes nothing. The old reader took the marker in any case
+    (`tables/amounts.py:26`). Whether a lower-case `n/a` means not applicable is the owner's
+    decision.
+  - Line formulas other than `(19+20)` stay in the label, for the step 11 plan. On the same
+    page, the run printed `Subtotal (12 thru 17) ()` and `Operating Surplus (Deficit) for Fiscal
+    Year (8-21) ()`. So rows 19 and 22 keep their line formulas in `Label.text`, because
+    `parse_label` reads only the `(19+20)` form (BIB-Q38). The RTT reports print a class code in
+    the same shape, "General Commercial (88-2)" (RTT dossier, "Legacy property labels"), so the
+    kit cannot take `(8-21)` as a mark unless a table tells it to.
+  - A bare digit after a word leaves a capital project's name, for the owner and the step 12
+    plan. Page 107 of the FY2023 supplemental report (`supplemental-report/FY23.pdf`) prints the
+    project heading `12-CENTER CITY TRAFFIC SIGNALS - PHASE 2` (finding 2 of
+    `.codex-review/step-02-pr-6442b4eb.md`). The S2-C fix round 2 reran that command at
+    `b6013a6`, in a scratch worktree, with `pdftotext -layout` 26.07.0 and a label built by
+    `page_from_text`. It printed `12-CENTER CITY TRAFFIC SIGNALS - PHASE 2` as `Label.printed`,
+    `12-CENTER CITY TRAFFIC SIGNALS - PHASE` as `Label.text` and `('2',)` as `Label.marks`. This
+    is the bare-digit form that S2-C took from ENT-Q07 for "Sheriff 2", and the risk "A bare
+    digit after a word becomes a mark" of Appendix C of `docs/plans/step-02.md` now has a real
+    page. `Label.printed` keeps every word, and S2-C keeps the bare-digit form as it is. The
+    supplemental capital tables of step 12 key a project by its label as printed (design section
+    7.1), and `Label.text` and `Label.norm` drop the phase number that the label prints. The
+    owner decides whether the bare-digit form stays in the kit or becomes a rule that a table
+    declares.
+  - A hyphen U+2010 printed as a dash placeholder hides two valued rows, for the owner and the
+    step 12 plan. Page 17 of the FY2021 supplemental report (`supplemental-report/FY21.pdf`)
+    prints U+2010 in the last cell of two revenue rows (finding 3 of
+    `.codex-review/step-02-pr-0df73f36.md`). The S2-C fix round 3 reran that command at
+    `0df73f3`, in a scratch worktree, with `pdftotext -layout` 26.07.0 and lines built by
+    `page_from_text`. It printed `Disposal of Salvage (Recyclables) 10,000.00 - - - - -
+    '\u2010' False` and `Reimbursement-Other Expenditures 25,000.00 12,000.00 0.00 0.00% 0.00 -
+    '\u2010' False`. `Line.text` shows the glyph as `-`, because `normalize_space` reads U+2010
+    as a hyphen. `has_values` tests the raw word, and its dash placeholders are `-`, `--`, an en
+    dash and an em dash, as design section 3.1 lists them. So `has_values` is false for both
+    rows, and the lexer's dash list in S2-D is the same four. Codex says it saw the same with
+    `pdfplumber` word boxes, which this repository cannot run until step 4. This is the same kind
+    of decision as the lower-case `n/a` above. The design names a closed list, and a real page
+    prints another glyph. A dash means no value in this report (SUPOP-Q24), and the same edition
+    prints U+2010 for the hyphens of its labels (SUPOP-Q32). The owner decides whether U+2010 and
+    U+2011 join the dash placeholders of `has_values` and `lex_cell`. A change would touch both
+    `lines.py` of S2-C and `lex.py` of S2-D, and the two lists of design section 3.1.
+  - A number in the left margin reads as a recap line number, for the step 5 plan.
+    `test_split_line_prefix_takes_recap_line_numbers` (ENT-Q08) and
+    `test_split_line_prefix_takes_numbered_recap_labels` (QOBL-Q55) use the text `24 First
+    Judicial District`, and ENT-Q08 reads the `24` as a printed line number. `pdftotext -layout`
+    prints that text on page 1 of the FY2021 Q1 QCMR positions report
+    (`qcmr/positions/FY21_Q1.pdf`) and `25 Records` on page 2, each on line 28 of its page. The
+    S2-C fix round 3 reran that and added `pdftotext -bbox`, which puts the `24` of page 1 and
+    the `25` of page 2 in the same box, x 9.19 to 18.12 and y 301.55 to 310.45. Finding 2 of
+    `.codex-review/step-02-pr-0df73f36.md` says that with `pdfplumber` word boxes the two are
+    the only rotated words on their pages, so they are page numbers and not line numbers of the
+    departments. That is Codex's statement and not a run of ours, because `pdfplumber` is not
+    installed in this repository until step 4. The tests check what `split_line_prefix` and
+    `parse_label` do with a declared pattern, and that stays right, so S2-C changed no test for
+    this. What the number is, and whether the positions parser of step 5 declares it page
+    furniture or a line prefix, is for the step 5 plan. QPOS-Q10 left the origin of the leading
+    numbers open, and `test_split_line_prefix_takes_leading_numbers` reads the same `24` and `25`
+    before `Recreation`.
+  - A heading of ZIP codes has values, for the step 10 plan. On page 1 of the March 2013 realty
+    transfer report (`collections/realty-transfer-tax/2013_03.pdf`), the table "Realty Transfer
+    Tax by Location" opens its Center City section with a heading that lists ZIP codes and ends
+    in `92)` (finding 3 of `.codex-review/step-02-pr-7d1aa59d.md`). The S2-C fix round 4 reran
+    that command at `7d1aa59`, in a scratch worktree, with `pdftotext -layout` 26.07.0 and a line
+    built by `page_from_text`, and left out the part that loads the old `amounts.py`. It printed
+    `Center City (19102, 03, 06, 07, 08, 09, 10, 23, 30, 46, 47, 92)` and
+    `has_values: True last word: '92)'`. A value word may hold parentheses, and the heading's
+    last word holds a digit and a closing parenthesis, so `has_values` is true for it. The
+    risks "The design's rule gives a sentence that ends in a number values" and "A value word is
+    defined twice" of Appendix C of `docs/plans/step-02.md` accepted this kind of result. The
+    predicate in `lines.py` is loose by design, and step 5 decides whether `lanes_from_values`
+    needs a stricter one. Step 10 parses this report, and the RTT dossier finds a zone's columns
+    "from amount-bearing lines only" (section 4, rule 3).
 - **Constructor checks the kit does not make** (November 23, 2026, step 2, S2-B). Design section
   2.1 says that the checks a kit type makes at construction are the ones its block shows, and no
   others. Those checks guard what enters the kit from outside: an adapter's words, pages and
@@ -564,6 +707,15 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
     and `AssertionError: from collections import defaultdict` on Python 3.12.15. Both pins are
     empty, so no pin names one today. A later pull request that pins a name that one of the banned
     forms imports, such as `collections.defaultdict`, must also edit that form.
+  - `page_from_text` splits lines at `\n` only and words at an ASCII space only. So a block with
+    `\r\n` line ends keeps `\r` in its words and in the `#ocr` line, which then reads as text
+    layer, and a non-breaking space stays inside a word. The Codex review of S2-C found both at
+    `8846f05c`, and a rerun of its command at `7c1eb0b` printed `text_layer ['#ocr\r', 'Taxes',
+    '1,234\r']` for `#ocr\r\nTaxes 1,234\r\n` and `['Taxes\xa01,234'] False` for
+    `Taxes\u00a01,234`. The second is what a page test of `normalize_space` needs.
+    `test_page_lines_carry_the_source_and_the_text` builds `CASH\xa0FLOW` so that `Line.text`
+    must collapse the space. With words split at any whitespace in a scratch copy, the 80 kit
+    tests still passed, and that space never reached `Line.text`.
   - `test_hypothesis_profile_is_derandomized` in `tests/test_workspace.py` asserts the name of the
     active Hypothesis profile. Hypothesis renames the active profile when a run sets
     `--hypothesis-verbosity=verbose`, so that one diagnostic flag fails the test. The third Codex
@@ -575,3 +727,27 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
     review of S2-B found it at `aec4c6c8`. Its command, which patches `os.lstat` to raise
     `PermissionError`, printed `cleanup failed: True teardown returned normally` in a scratch copy
     of that head.
+  - `normalize_label` turns a combining accent into a space. So the decomposed spelling of
+    "Crédit" gives `cre dit`, with the squash `credit` of the unaccented word, where the composed
+    spelling gives `crédit`. The third Codex review of S2-C found it at `0df73f36` (finding 4 of
+    `.codex-review/step-02-pr-0df73f36.md`). A rerun of its command in a scratch worktree at that
+    head printed `'Cre\u0301dit' 'cre dit' 'credit'` and `'Cr\xe9dit' 'cr\xe9dit' 'cr\xe9dit'`.
+    No page is known to print one. No step owns it, and the first step to meet a decomposed label
+    decides.
+  - `split_line_prefix` compiles the table's prefix pattern. For a pattern that Python itself
+    warns about, such as `[[]` (a `FutureWarning`, "Possible nested set"), Python's warnings
+    machinery reads the source file of `text.py` to format the warning and writes a
+    `__warningregistry__` dictionary into the module. The kit does no I/O of its own here, and no
+    table would declare such a pattern, but a table module that did would see the warning in its
+    tests. The fourth Codex review of S2-C found it at `7d1aa59d` (finding 1 of
+    `.codex-review/step-02-pr-7d1aa59d.md`). A rerun of its command in a scratch worktree at that
+    head printed the warning at `text.py:140`, then `registry before: False`,
+    `prefix: [ remainder: Revenue` and `read text.py: True registry after: dict`. Turning
+    warnings into errors for the tests of the pure packages would catch it. That is an idea, not
+    a plan.
+  - In Python `[^\W\d_]` matches a superscript digit. So `normalize_space` closes the hyphen of
+    `"\u00b9 - \u00b2"`, and `parse_label` takes the `2` of `"Total \u00b9 2"` as a mark. The
+    fourth Codex review of S2-C found it at `7d1aa59d` (finding 4). A rerun of its command in a
+    scratch worktree at that head printed `'\u00b9-\u00b2'` and
+    `Total \u00b9 2 'Total \u00b9' ('2',)`, with the superscripts written here as escapes. Both
+    inputs are made up.
