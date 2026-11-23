@@ -672,7 +672,7 @@ These stay unproven until the build.
 - **Join shape 1 can join two cells (S2-D).** In a money column on a text layer, a one-digit cell and a comma-grouped cell that fall in one lane read as one number, as `1 37,332,523` does. The old code joined them too (`tables/amounts.py:79-91`). A count column and an OCR page never join. Lanes come from geometry, so the test of the cut belongs to step 5 and its fixtures.
 - **A value word is defined twice (S2-C, S2-D).** `lines.py` has a loose predicate and `lex.py` a strict reader. The property `test_a_lexed_value_is_a_value_word` fails when the loose one stops covering the strict one. Step 5 decides whether `lanes_from_values` needs the predicate as a public name.
 - **The design's rule gives a sentence that ends in a number values (S2-C).** `has_values` is true for a note line that ends in "2025". The design's own uses at lines 3297 to 3318 pair it with a second test. The plan implements the rule as written.
-- **The import pin reads static imports (S2-A).** Pure code can still reach an effect with no import. `write = print`, `exec`, `getattr(__builtins__, "open")`, `dataclass.__globals__["sys"]` and a mutable class attribute all pass. A subprocess that a core test starts also passes. So do the bare module globals `__loader__`, `__spec__` and `__builtins__`, and the same objects taken by absolute name, as in `from checkedtables import __loader__`. The relative spellings, such as `from . import __loader__`, fail the purity test, because it refuses every relative import. `getattr(__loader__, method)(path)`, with `method = "get_data"`, reads a file and passes all six gates, with `__loader__` bare or imported by absolute name. Written as `__loader__.get_data(path)`, it fails `ty check`. These are module globals that need no outside import, and a list of the builtin names pure code may use is a separate decision for the owner (Appendix B). Review reads for these.
+- **The import pin reads static imports (S2-A).** Pure code can still reach an effect with no import. `write = print`, `exec`, `getattr(__builtins__, "open")`, `dataclass.__globals__["sys"]` and a mutable class attribute all pass. A subprocess that a core test starts also passes. So do the bare module globals `__loader__`, `__spec__` and `__builtins__`, and the same objects taken by absolute name, as in `from checkedtables import __loader__`. The relative spellings, such as `from . import __loader__`, fail the purity test, because it refuses every relative import. `getattr(__loader__, method)(path)`, with `method = "get_data"`, reads a file and passes all six gates, with `__loader__` bare or imported by absolute name. Written as `__loader__.get_data(path)`, it fails `ty check`. A function in `datadesk/core/__init__.py` that adds the standard library's folder to `__path__` makes `from datadesk.core import subprocess` bind the standard library's `subprocess`, and with a stub `subprocess.pyi` beside it all six gates pass. These are module globals that need no outside import, and a list of the builtin names pure code may use is a separate decision for the owner (Appendix B). Review reads for these.
 - **The pin makes every new import a two-line change (every PR).** A pull request that imports a new name edits `PURE_IMPORTS`, and one that imports from a new module also edits design section 11.1. That is the intent, and it costs each later step a few lines.
 - **`datadesk core is pure` forbids `urllib` (step 3 or 13).** The listing parsers may need `urllib.parse`. This plan does not touch the contract. The plan for the step that builds the listings decides.
 - **Design section 13 and `coverage.tsv` disagree on two counts (S2-C, S2-D).** Section 13 gives `lex_cell` 14 quirks and `parse_label` 9. `coverage.tsv` gives 16 and 10. Appendix F follows `coverage.tsv`. The plan changes neither file.
@@ -698,15 +698,18 @@ The pure packages import from outside themselves only by name. tests/test_purity
 each pure package, every module.name pair that it imports, and the test fails when the pairs in
 the source differ from the pin in either direction. The scan reads each file as the importer
 does, coding cookie included. An import statement that binds an outside module, a star import
-from outside, and a pinned name that is itself a module all fail, so pure code never holds a
-module object from outside. A star import from outside fails whatever the pin holds.
-checkedtables counts its own modules as inside. datadesk.core counts its own modules and
-checkedtables as inside. A name taken from an outside module counts as inside when its full name
-is at or under an inside name, as from datadesk import core is. A relative import fails, inside
-or out. Python resolves it through the module global __package__, which source can rebind, so
-pure code imports by absolute name. The modules each package imports from are a closed list,
-given below. A pull request that imports from a module outside the list changes the list and the
-pin together.
+from outside, and a pinned name that is itself a module all fail, so no import, read as written,
+gives pure code a module object from outside. A star import from outside fails whatever the pin
+holds. checkedtables counts its own modules as inside. datadesk.core counts its own modules and
+checkedtables as inside. A name taken from an outside module counts as inside when its full name is
+at or under an inside name, as from datadesk import core is. A relative import fails, inside or out.
+Python resolves it through the module global __package__, which source can rebind, so pure code
+imports by absolute name. The scan reads source as written. Source that changes a module global at
+run time, such as __path__, can still make an absolute import bind another module, and a static scan
+cannot see that change. The note "The pure packages can still reach effects the gates do not name"
+in docs/progress.md lists the routes found, and review reads for them. The modules each package
+imports from are a closed list, given below. A pull request that imports from a module outside the
+list changes the list and the pin together.
 ```
 
 No pull request in this plan needs `<pstack>/skills/how/SKILL.md`. Run
