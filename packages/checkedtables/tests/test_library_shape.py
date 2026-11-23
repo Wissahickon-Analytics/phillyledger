@@ -126,16 +126,34 @@ def test_bool_parameters_reads_each_spelling() -> None:
     def plain(flag: bool) -> None: ...
     def optional(flag: bool | None) -> None: ...
     def typing_optional(flag: Optional[bool]) -> None: ...  # noqa: UP045
+    def quoted_in_optional(flag: Optional["bool"]) -> None: ...
     def keyword_only(*, flag: bool = False) -> None: ...
     def plain_string(flag: "bool") -> None: ...
     def optional_string(flag: "bool | None") -> None: ...
+    def unresolved_member(flag: "bool | DataclassInstance") -> None: ...
     def flags(flags: tuple[bool, ...]) -> None: ...
     def count(count: int | None) -> None: ...
+    def unresolved_beside(row: "DataclassInstance", flag: bool) -> "DataclassInstance":
+        return row
 
-    for fn in (plain, optional, typing_optional, keyword_only, plain_string, optional_string):
+    def unresolved_return() -> "DataclassInstance":
+        raise NotImplementedError
+
+    for fn in (
+        plain,
+        optional,
+        typing_optional,
+        quoted_in_optional,
+        keyword_only,
+        plain_string,
+        optional_string,
+        unresolved_beside,
+        unresolved_member,
+    ):
         assert bool_parameters(fn) == ["flag"], fn.__name__
     assert bool_parameters(flags) == []
     assert bool_parameters(count) == []
+    assert bool_parameters(unresolved_return) == []
 
 
 def test_public_functions_reaches_reexports_and_constructors() -> None:
@@ -145,19 +163,33 @@ def test_public_functions_reaches_reexports_and_constructors() -> None:
     class Reader:
         def __init__(self, strict: bool) -> None: ...
 
+    class Outside:
+        def write(self, verbose: bool) -> None: ...
+
+    class _Base:
+        def __init__(self, source: bool) -> None: ...
+        def read(self, lenient: bool) -> None: ...
+        def close(self, force: bool) -> None: ...
+
+    class Child(_Base, Outside):
+        def close(self, force: bool, quiet: bool = False) -> None: ...
+
     @dataclasses.dataclass(frozen=True, slots=True)
     class Row:
         bold: bool | None
 
-    parse.__module__ = unreached.__module__ = "planted._impl"
-    Reader.__module__ = Row.__module__ = "planted"
+    parse.__module__ = unreached.__module__ = _Base.__module__ = "planted._impl"
+    Reader.__module__ = Child.__module__ = Row.__module__ = "planted"
+    Outside.__module__ = "elsewhere"
     private = ModuleType("planted._impl")
     vars(private).update(parse=parse, unreached=unreached)
     package = ModuleType("planted")
-    vars(package).update(_impl=private, parse=parse, parse_again=parse, Reader=Reader, Row=Row)
+    vars(package).update(
+        _impl=private, parse=parse, parse_again=parse, Reader=Reader, Child=Child, Row=Row
+    )
 
-    found = public_functions(package)
-    assert [list(inspect.signature(fn).parameters) for fn in found] == [["flag"], ["strict"]]
+    found = [list(inspect.signature(fn).parameters) for fn in public_functions(package)]
+    assert found == [["flag"], ["strict"], ["source"], ["lenient"], ["force", "quiet"]]
 
 
 def test_kit_dataclass_fields_are_pinned() -> None:
