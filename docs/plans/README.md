@@ -25,18 +25,28 @@ and the Build run spawns no agent for them.
 - [ ] Metric. Not used. The design names no time or size budget for this pull request.
 ```
 
-The reason is the Build run of step 1 on November 22, 2026. Its decision trail,
+The reason is the Build run of step 1 on November 22 and 23, 2026. Its decision trail,
 `.audit/step-01.tsv`, is kept out of git, so the counts are recorded here.
+
+The first two pull requests ran every lane the format has.
 
 - The root's read of the diff found one hole in the first pull request before any lane ran.
 - The check and audit lanes found eight workflow edits that left the CI test green, a folder
   without `__init__.py` that import-linter did not see, and one wrong sentence in a note.
-- Codex raised six findings on the first two pull requests, and all six held. Each review took
-  under ten minutes.
 - The twenty live lanes on those two pull requests found no defect. The lanes that own a clause
   still produced the red CI run the check asks for, which is why those stay.
 - The two timing lanes measured gates that ran in 0.59 s and 1.53 s, against a budget of 5.0 s
   and an allowance of 3.0 s over the base.
+
+The last two pull requests each got a swarm of four lanes: the gates, the live lane for the
+clause, and two audit lanes. An audit lane found a socket that a fixture could open during
+teardown, and the step's check passed.
+
+Codex ran four reviews: one of the first pull request, two of the second, and one of the whole
+stack at its top, which was the only one to cover the last two pull requests. It raised eighteen
+findings, and all eighteen were confirmed. Each review took under ten minutes. The stack review
+raised ten of the eighteen and ran before the last fix round, so Codex did not review those
+fixes. That is why Codex reviews every pull request.
 
 ## Which track a step runs on
 
