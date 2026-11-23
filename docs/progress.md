@@ -24,7 +24,36 @@ same branch as the work: status, the date the check passed, and anything a later
 
 Each entry: step, what changed, why, and the design section updated.
 
-None yet.
+- **Step 1: the helper contract forbids the 20 table modules** (November 22, 2026, S1-B). The
+  contract "family helpers do not import table modules" forbade only
+  `datadesk.core.tables.catalog`. A planted `from datadesk.core.tables import birt` in
+  `qcmr_common.py` kept all eight contracts. With the 20 table modules of the independence
+  contract added to `forbidden_modules`, the same plant breaks the helper contract. The QSMR table
+  modules join the list in step 14, and `qsmr_common` joins the sources. Design section 12.5.
+- **Step 1: import-linter forbids listed standard-library modules** (November 22, 2026, S1-B).
+  The design marked this "Not verified". Planted one at a time in `datadesk.core`, `import os`,
+  `from pathlib import Path`, `import logging`, `import time` and `import random` each broke
+  `datadesk core is pure` under import-linter 2.16. Section 12.5 now states the result, and the
+  item leaves the list in section 17.4.
+- **Step 1: a test fails a source folder with no `__init__.py`** (November 22, 2026, S1-B, found
+  in the Codex reviews). import-linter does not scan a folder with no `__init__.py`, and Python
+  still imports the modules in it. With `import subprocess` and `RUN = subprocess.run` in a new
+  `datadesk/core/sneaky/mod.py`, `uv run lint-imports --no-cache` printed `Contracts: 8 kept, 0
+  broken.` and `uv run ruff check .` passed. `test_source_folders_are_packages` in
+  `tests/test_gates.py` now fails, naming the folder, when a folder under the three
+  `packages/*/src` trees holds a `.py` file, directly or below it, and has no `__init__.py`. It
+  first proves its own check on small trees. A first fix used ruff's `INP001`. The build dropped
+  it because ruff passed two modules. For `core/reports/probe.py` with `import boto3` and
+  `SDK = boto3`, ruff reported `INP001`, and with `#!/usr/bin/env python3` as the first line it
+  printed `All checks passed!`. Ruff also passed `import subprocess` in `core/venv/mod.py`, a
+  folder it excludes by name, with all eight contracts kept. Design section 12.5.
+- **Step 1: the pure packages forbid `importlib`** (November 22, 2026, S1-B, found in the Codex
+  review). With `from importlib import import_module` and `import_module("boto3")` in
+  `datadesk/core/tables/birt.py`, `uv run lint-imports --no-cache` printed `Contracts: 8 kept, 0
+  broken.` The contracts `checkedtables holds no I/O and no Philadelphia` and `datadesk core is
+  pure` now forbid `importlib`, and the same plant breaks `datadesk core is pure`. The design
+  never uses `importlib`, `import_module` or `__import__`. The purity test that S1-D writes
+  reports a call to the builtin `__import__`. Design section 12.5.
 
 ## Notes for later sessions
 
@@ -51,6 +80,15 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   `uv.lock`. A machine without the setting, such as a CI runner, rejects the lock: `uv lock
   --check` exits 1 with "removal of global exclude newer". The root `pyproject.toml` sets the
   same span under `[tool.uv]`, so the lock checks the same everywhere. Change both together.
+  `UV_NO_CONFIG=1` and `UV_CONFIG_FILE` also drop that `[tool.uv]` table. Under either,
+  `uv lock --check` fails when `UV_EXCLUDE_NEWER` is not set in the environment, and exits 0
+  when it is. To test the lock without the owner's config, read the CI run's `uv sync --locked`
+  step.
+- **46 empty modules** (November 22, 2026, step 1, S1-B). import-linter refuses a contract that
+  names a module that does not exist (`Module 'checkedtables.checks' does not exist.`, exit 1),
+  and a wildcard that matches nothing keeps its contract with no warning. So the modules that the
+  eight contracts name exist as empty files: 14 in `checkedtables`, 6 in `phillyledger` and 26 in
+  `datadesk.core.tables`. Later steps fill them. Deleting one breaks `uv run lint-imports`.
 - **ruff skips Markdown** (November 22, 2026, step 1). ruff 0.17 includes `*.md` by default and
   formats the Python blocks in it. `uv run ruff format --check .` failed on `docs/design.md`,
   whose code blocks align their comments on purpose. The root `pyproject.toml` excludes `*.md`.

@@ -4069,7 +4069,7 @@ source_modules = ["checkedtables"]
 forbidden_modules = ["phillyledger", "datadesk", "pdfplumber", "pypdfium2", "fitz", "boto3",
                      "botocore", "httpx", "requests", "urllib", "http", "pyarrow", "logging",
                      "subprocess", "socket", "asyncio", "threading", "os", "pathlib", "time",
-                     "random", "tempfile", "shutil", "pytest", "hypothesis"]
+                     "random", "tempfile", "shutil", "pytest", "hypothesis", "importlib"]
 
 [[tool.importlinter.contracts]]
 name = "arithmetic never sees words"
@@ -4103,7 +4103,7 @@ source_modules = ["datadesk.core"]
 forbidden_modules = ["datadesk.shell", "pdfplumber", "pypdfium2", "fitz", "boto3", "botocore",
                      "httpx", "requests", "urllib", "http", "logging", "subprocess", "socket",
                      "asyncio", "threading", "os", "pathlib", "time", "random", "tempfile",
-                     "shutil"]
+                     "shutil", "importlib"]
 
 [[tool.importlinter.contracts]]
 name = "shell over core"
@@ -4129,17 +4129,33 @@ name = "family helpers do not import table modules"
 type = "forbidden"
 source_modules = ["datadesk.core.tables.qcmr_common", "datadesk.core.tables.collections_common",
                   "datadesk.core.tables.bib_common", "datadesk.core.tables.supp_common"]
-forbidden_modules = ["datadesk.core.tables.catalog"]
+forbidden_modules = ["datadesk.core.tables.catalog", "datadesk.core.tables.qcmr_cash",
+                     "datadesk.core.tables.qcmr_obligations",
+                     "datadesk.core.tables.qcmr_personal_services",
+                     "datadesk.core.tables.qcmr_positions", "datadesk.core.tables.collections_city",
+                     "datadesk.core.tables.collections_school",
+                     "datadesk.core.tables.wage_industry", "datadesk.core.tables.wage_residency",
+                     "datadesk.core.tables.birt", "datadesk.core.tables.sales",
+                     "datadesk.core.tables.rtt", "datadesk.core.tables.bib_history",
+                     "datadesk.core.tables.bib_fund_summary",
+                     "datadesk.core.tables.bib_revenue_schedule", "datadesk.core.tables.bib_cross",
+                     "datadesk.core.tables.supp_activity", "datadesk.core.tables.supp_revenues",
+                     "datadesk.core.tables.supp_by_source", "datadesk.core.tables.supp_summaries",
+                     "datadesk.core.tables.supp_capital"]
 ```
 
-The QSMR modules join the independence list in build step 14. Ruff's
+The QSMR table modules join the independence list and the forbidden list of the helper contract
+in build step 14, and `qsmr_common` joins the helper contract's sources. Ruff's
 `flake8-tidy-imports.banned-api` bans `datetime.datetime.now`, `datetime.date.today` and
 `tomllib.load` (only `tomllib.loads` on text) under `checkedtables/` and `datadesk/core/`. The
-purity test of section 11.1 catches builtins that neither tool can ban.
+purity test of section 11.1 catches builtins that neither tool can ban. import-linter skips a
+folder with no `__init__.py`, and `test_source_folders_are_packages` fails such a folder under
+the three `packages/*/src` trees.
 
-Not verified: whether import-linter treats a listed standard-library module such as `os` as an
-external package in a `forbidden` contract. If it does not, the ruff ban and the AST purity test
-still cover those names. Design C left `os`, `pathlib`, `time` and `random` out of its lists (R2).
+import-linter 2.16 treats a listed standard-library module as an external package and fails the
+contract. Build step 1 planted `import os`, `from pathlib import Path`, `import logging`,
+`import time` and `import random` in `datadesk.core`, one at a time, and each broke
+`datadesk core is pure`. Design C left `os`, `pathlib`, `time` and `random` out of its lists (R2).
 
 ## 13. Quirk coverage
 
@@ -4609,7 +4625,6 @@ here with the section that answers it.
 - Whether City pages shift x positions between pages. Binding per page with the page agreement
   check handles either case (R2).
 - Whether pdfplumber's font names give a reliable bold flag on these text layers.
-- Whether import-linter forbids listed standard-library modules (section 12.5).
 - Whether any family prints superscript footnote digits on amounts (VAL section 3).
 
 ## 18. The Codex review of November 22, 2026

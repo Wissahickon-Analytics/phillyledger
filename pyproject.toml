@@ -14,6 +14,7 @@ dev = [
   "checkedtables",
   "phillyledger",
   "datadesk",
+  "import-linter>=2.16",
   "prek==0.5.10",
   "pytest>=9",
   "ruff>=0.17",
@@ -45,12 +46,19 @@ select = [
   "RUF100",
   "ANN",
   "PYI",
+  "TID251",
 ]
 ignore = ["ANN401", "D100", "D104"]
 
 [tool.ruff.lint.per-file-ignores]
 "!packages/{checkedtables,phillyledger}/src/**" = ["D"]
+"!packages/{checkedtables/src/checkedtables,datadesk/src/datadesk/core}/**" = ["TID251"]
 "**/tests/**" = ["ANN", "D"]
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"datetime.datetime.now".msg = "Pure code reads no clock. Take the time as an argument."
+"datetime.date.today".msg = "Pure code reads no clock. Take the date as an argument."
+"tomllib.load".msg = "Pure code reads no files. Parse the text with tomllib.loads."
 
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
@@ -65,3 +73,88 @@ root = ["packages/checkedtables/src", "packages/phillyledger/src", "packages/dat
 
 [tool.ty.src]
 exclude = ["docs/prototype", ".claude"]
+
+[tool.importlinter]
+root_packages = ["checkedtables", "phillyledger", "datadesk"]
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "checkedtables holds no I/O and no Philadelphia"
+type = "forbidden"
+source_modules = ["checkedtables"]
+forbidden_modules = ["phillyledger", "datadesk", "pdfplumber", "pypdfium2", "fitz", "boto3",
+                     "botocore", "httpx", "requests", "urllib", "http", "pyarrow", "logging",
+                     "subprocess", "socket", "asyncio", "threading", "os", "pathlib", "time",
+                     "random", "tempfile", "shutil", "pytest", "hypothesis", "importlib"]
+
+[[tool.importlinter.contracts]]
+name = "arithmetic never sees words"
+type = "forbidden"
+source_modules = ["checkedtables.checks"]
+forbidden_modules = ["checkedtables.words", "checkedtables.lines", "checkedtables.text",
+                     "checkedtables.pages", "checkedtables.columns", "checkedtables.pipeline",
+                     "checkedtables.lex", "checkedtables.records", "checkedtables.rows",
+                     "checkedtables.grammar", "checkedtables.assemble", "checkedtables.suggest",
+                     "checkedtables.testing"]
+
+[[tool.importlinter.contracts]]
+name = "the reader stands alone"
+type = "forbidden"
+source_modules = ["phillyledger"]
+forbidden_modules = ["datadesk", "checkedtables", "pdfplumber", "boto3", "botocore", "logging",
+                     "subprocess"]
+
+[[tool.importlinter.contracts]]
+name = "the reader's core is pure"
+type = "forbidden"
+source_modules = ["phillyledger.manifest", "phillyledger.plan", "phillyledger.pin",
+                  "phillyledger.lineage"]
+forbidden_modules = ["phillyledger.api", "phillyledger._shell", "httpx", "urllib", "http", "os",
+                     "pathlib", "socket", "time", "random", "logging"]
+
+[[tool.importlinter.contracts]]
+name = "datadesk core is pure"
+type = "forbidden"
+source_modules = ["datadesk.core"]
+forbidden_modules = ["datadesk.shell", "pdfplumber", "pypdfium2", "fitz", "boto3", "botocore",
+                     "httpx", "requests", "urllib", "http", "logging", "subprocess", "socket",
+                     "asyncio", "threading", "os", "pathlib", "time", "random", "tempfile",
+                     "shutil", "importlib"]
+
+[[tool.importlinter.contracts]]
+name = "shell over core"
+type = "layers"
+layers = ["datadesk.shell", "datadesk.core"]
+
+[[tool.importlinter.contracts]]
+name = "table modules do not import each other"
+type = "independence"
+modules = ["datadesk.core.tables.qcmr_cash", "datadesk.core.tables.qcmr_obligations",
+           "datadesk.core.tables.qcmr_personal_services", "datadesk.core.tables.qcmr_positions",
+           "datadesk.core.tables.collections_city", "datadesk.core.tables.collections_school",
+           "datadesk.core.tables.wage_industry", "datadesk.core.tables.wage_residency",
+           "datadesk.core.tables.birt", "datadesk.core.tables.sales", "datadesk.core.tables.rtt",
+           "datadesk.core.tables.bib_history", "datadesk.core.tables.bib_fund_summary",
+           "datadesk.core.tables.bib_revenue_schedule", "datadesk.core.tables.bib_cross",
+           "datadesk.core.tables.supp_activity", "datadesk.core.tables.supp_revenues",
+           "datadesk.core.tables.supp_by_source", "datadesk.core.tables.supp_summaries",
+           "datadesk.core.tables.supp_capital"]
+
+[[tool.importlinter.contracts]]
+name = "family helpers do not import table modules"
+type = "forbidden"
+source_modules = ["datadesk.core.tables.qcmr_common", "datadesk.core.tables.collections_common",
+                  "datadesk.core.tables.bib_common", "datadesk.core.tables.supp_common"]
+forbidden_modules = ["datadesk.core.tables.catalog", "datadesk.core.tables.qcmr_cash",
+                     "datadesk.core.tables.qcmr_obligations",
+                     "datadesk.core.tables.qcmr_personal_services",
+                     "datadesk.core.tables.qcmr_positions", "datadesk.core.tables.collections_city",
+                     "datadesk.core.tables.collections_school",
+                     "datadesk.core.tables.wage_industry", "datadesk.core.tables.wage_residency",
+                     "datadesk.core.tables.birt", "datadesk.core.tables.sales",
+                     "datadesk.core.tables.rtt", "datadesk.core.tables.bib_history",
+                     "datadesk.core.tables.bib_fund_summary",
+                     "datadesk.core.tables.bib_revenue_schedule", "datadesk.core.tables.bib_cross",
+                     "datadesk.core.tables.supp_activity", "datadesk.core.tables.supp_revenues",
+                     "datadesk.core.tables.supp_by_source", "datadesk.core.tables.supp_summaries",
+                     "datadesk.core.tables.supp_capital"]
