@@ -81,9 +81,6 @@ def _tokens_and_marks(words: Sequence[Word]) -> tuple[tuple[str, ...], tuple[str
     if tokens and (number := tokens[-1].rstrip(_MARKS)) != tokens[-1]:
         marks.insert(0, tokens[-1][len(number) :])
         tokens[-1] = number
-    # VAL-Q09: a "$" set as its own word before the number.
-    if tokens[:1] == ["$"]:
-        tokens = tokens[1:]
     return tuple(tokens), tuple(marks)
 
 
@@ -110,6 +107,7 @@ def _sign_trouble(token: str) -> bool:
         or opens != token.count(")")
         or "(" in rest
         or ")" in lead
+        or any(glyph in _DIGITS for glyph in rest.partition(")")[2])
         or opens + sum(lead.count(glyph) for glyph in _MINUS) > 1
     )
 
@@ -118,9 +116,13 @@ def _read_cell(tokens: Sequence[str], col: ColumnSpec, source: SourceKind) -> De
     glyphs = "".join(tokens)
     if not any(glyph in _DIGITS for glyph in glyphs) or any(g not in _GLYPHS for g in glyphs):
         return "not_a_number"
-    token = tokens[0] if len(tokens) == 1 else _joined(tokens, col, source)
-    if token is None:
+    # VAL-Q09: a "$" set as its own word before the number.
+    dollar = "$" if tokens[0] == "$" else ""
+    number_tokens = tokens[len(dollar) :]
+    joined = number_tokens[0] if len(number_tokens) == 1 else _joined(number_tokens, col, source)
+    if joined is None:
         return "two_tokens"
+    token = dollar + joined
     if _sign_trouble(token):
         return "sign"
     if (col.fmt.percent, "%" in token) not in _PERCENT_ALLOWED:
@@ -140,7 +142,8 @@ def split_numeric_runs(word: Word) -> tuple[Word, ...]:
     stays one word. Before the number a ``(`` or ``$`` may follow the letter, as in
     "TAX$434,605", and after it a decimal part and a ``)`` may come before the letter, as in
     "(408,491.2)NET". A cut also falls after a ``%`` or a ``)`` that a digit, a ``(`` or a
-    ``$`` follows.
+    ``$`` follows. A word that still holds a font code, ``(cid:`` followed by a number and
+    ``)``, is never cut.
 
     Parameters
     ----------
@@ -156,6 +159,9 @@ def split_numeric_runs(word: Word) -> tuple[Word, ...]:
         characters take, in proportion to the character count, so its box is approximate.
     """
     text = word.text
+    # VAL-Q05: a font code that repair left in the word holds a ")" that no number printed.
+    if "(cid:" in text:
+        return (word,)
     cuts = sorted(
         {found.start() for found in _LABEL_THEN_NUMBER.finditer(text)}
         | {found.end() for found in _NUMBER_THEN_LABEL.finditer(text)}
@@ -184,11 +190,12 @@ def lex_cell(words: Sequence[Word], col: ColumnSpec, source: SourceKind) -> Cell
 
     The rules apply in order. No words give `Blank`, and a year, code or text column gives
     `Text`. The text "N/A" or "NA" gives `NotApplicable`, and "-", "--", an en dash or an em
-    dash gives a `Dash` with the column's meaning. A number may end in marks, which the
-    `Amount` keeps apart from its value: the glyphs ``*``, ``†``, ``‡``, ``§``, ``#``, a
-    backtick and superscript digits, and a last one-digit word under 0.7 of the size of the
-    number word just before it whose bottom is above that word's bottom. A ``$`` word may stand
-    first in the cell.
+    dash, alone or after one ``$`` word, gives a `Dash` with the column's meaning. A number may
+    end in marks, which the `Amount` keeps apart from its value: the glyphs ``*``, ``†``,
+    ``‡``, ``§``, ``#``, a backtick and superscript digits, and a last one-digit word under 0.7
+    of the size of the number word just before it whose bottom is above that word's bottom. A
+    ``$`` word may stand first in the cell. It is the one ``$`` that the number may print, so
+    "$ $1,234" prints two.
 
     A word reads as a number when paired parentheses around it or one leading minus glyph
     (``-``, U+2212, an en dash or an em dash) give its sign, a ``$`` stands at most once before
@@ -221,9 +228,9 @@ def lex_cell(words: Sequence[Word], col: ColumnSpec, source: SourceKind) -> Cell
         digit), "two_tokens" (two or more words in no form that reads as one number), "sign" (a
         plus sign, a minus after a digit, an unpaired or misplaced parenthesis, or two signs),
         "percent_sign", "grouping" (what is left is not one strictly grouped number, a
-        misplaced ``$`` or ``%`` included) and "decimals". An `Amount` and an `Unreadable` keep
-        the word texts joined by one space and the ref of every word, the ``$`` and mark words
-        included.
+        misplaced ``$``, ``%`` or mark included) and "decimals". An `Amount` and an
+        `Unreadable` keep the word texts joined by one space and the ref of every word, the
+        ``$`` and mark words included.
     """
     if not words:
         return Blank()
@@ -233,7 +240,8 @@ def lex_cell(words: Sequence[Word], col: ColumnSpec, source: SourceKind) -> Cell
         return Text(text, refs)
     if text in _NOT_APPLICABLE:
         return NotApplicable(text, refs)
-    if text in _DASHES:
+    # RTT-Q39, VAL-Q09: an accounting format prints a "$" word and a dash in an empty cell.
+    if text in _DASHES or (len(words) == 2 and words[0].text == "$" and words[1].text in _DASHES):
         return Dash(text, refs, col.dash)
     tokens, marks = _tokens_and_marks(words)
     number = _read_cell(tokens, col, source)
@@ -247,8 +255,10 @@ def transliteration_ok(seen: str, reading: str) -> bool:
 
     Each glyph of `seen` counts as its digit when it is an ASCII digit or one of the OCR
     confusables ``B`` and ``b`` for 8, ``D``, ``d``, ``O``, ``o``, ``Q`` and ``q`` for 0, and
-    ``&`` for 6. Every other glyph of either text counts as nothing. So a reading may add or
-    drop any glyph that is not a digit, such as a point or a sign, and may never change, drop
+    ``&`` for 6. A decimal digit of another script, such as a fullwidth or an Arabic-Indic
+    seven, in either text fails the check, since no ASCII digit can stand for it. Every other
+    glyph of either text counts as nothing, a superscript digit included. So a reading may add
+    or drop any glyph that is not a digit, such as a point or a sign, and may never change, drop
     or add a digit.
 
     Parameters
@@ -261,11 +271,13 @@ def transliteration_ok(seen: str, reading: str) -> bool:
     Returns
     -------
     bool
-        True when the digits of `reading` equal the digits and confusables of `seen`, so
-        "2918" to "291.8" passes and "65.8" to "85.8" fails.
+        True when neither text holds a decimal digit that is not ASCII and the digits of
+        `reading` equal the digits and confusables of `seen`, so "2918" to "291.8" passes and
+        "65.8" to "85.8" fails.
     """
+    foreign = any(glyph.isdecimal() and glyph not in _DIGITS for glyph in f"{seen}{reading}")
     read = "".join(glyph for glyph in reading if glyph in _DIGITS)
-    return "".join(_transliterated(glyph) for glyph in seen) == read
+    return not foreign and "".join(_transliterated(glyph) for glyph in seen) == read
 
 
 def _transliterated(glyph: str) -> str:
