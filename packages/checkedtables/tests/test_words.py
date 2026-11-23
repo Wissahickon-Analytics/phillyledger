@@ -23,6 +23,8 @@ def page(number: int, words: tuple[Word, ...]) -> Page:
 def test_page_refuses_a_word_from_another_page() -> None:
     with pytest.raises(ValueError, match="does not belong to page 1"):
         page(1, (word(SHA, 1, 0), word(SHA, 2, 0)))
+    with pytest.raises(ValueError, match="does not belong to page 2"):
+        page(2, (word(SHA, 1, 0),))
     assert page(2, (word(SHA, 2, 0),)).words == (word(SHA, 2, 0),)
 
 
