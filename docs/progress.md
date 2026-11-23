@@ -6,7 +6,7 @@ same branch as the work: status, the date the check passed, and anything a later
 | Step | What | Status | Branch | Check passed |
 |---|---|---|---|---|
 | 1 | Workspace, tooling, purity and shape tests | check passed | `step-01/a-workspace`, `step-01/b-import-contracts`, `step-01/c-kit-shape`, `step-01/d-test-isolation` | November 22, 2026, runs 45093444380, 45094817250, 45094829990 and 45092206629 |
-| 2 | Kit, words to cells | in progress | `step-02/a-import-pin`, `step-02/b-value-types`, `step-02/c-words-to-lines` | |
+| 2 | Kit, words to cells | in progress | `step-02/a-import-pin`, `step-02/b-value-types`, `step-02/c-words-to-lines`, `step-02/d-lexer` | |
 | 3 | Archive for the QCMR from FY2022 | not started | | |
 | 4 | Words: PDF adapter with font repair, word cache, codec | not started | | |
 | 5 | QCMR positions parser, registry, row schemas, column vocabulary | not started | | |
@@ -202,6 +202,30 @@ Each entry: step, what changed, why, and the design section updated.
   label "Total RTT records **1" (RTT-Q38) can be built with it. `text`, `lines` and `testing`
   import from `re`, `statistics` and `typing`, which join the list in section 11.1. Design
   sections 3.1 and 11.1.
+- **Step 2: the probe clause reads the 55 inputs of VAL section 3.2.1** (November 23, 2026,
+  S2-D). VAL section 3.2 prints 16 of the probe's 55 inputs, and no file holds the rest or any
+  new result. The owner chose the 55 rows of Appendix E of `docs/plans/step-02.md`, with the
+  words "[u]se your list, but make row 4 unreadable." They are now VAL section 3.2.1, and design
+  section 16 records the choice as decision 12. The step 2 check gains "(decision 12)" and no
+  other word. `test_val_probe_table_is_the_dossier_table` in `tests/test_evidence.py` fails when
+  the dossier table and `PROBES` differ. Row 34 writes its backtick inside a double-backtick
+  code span, where Appendix E writes the input and result in words. Design sections 15 and 16.
+- **Step 2: `lex_cell` states its rules** (November 23, 2026, S2-D). The design's kerning rule
+  joined two tokens when one carried a separator and the result was strictly grouped. That
+  joins `4727 402.5` into 4727402.5 and `12 3,456` into 123,456, which `tables/amounts.py:63-97`
+  names as two values. The comment of `lex_cell` in section 3.1 now gives the old code's two
+  shapes with their token limits, in money and percent columns on a text layer only, the minus
+  glyphs, the number reader and the six `Unreadable` reasons in order. The build read three
+  rules of the plan more narrowly. A `$` word leaves the cell only when it opens it, because
+  with `5 $` the plan's rule gives an `Amount` while `has_values` of S2-C is false, and with
+  `1 $ 37,332,523` it joins across the `$`. A raised mark is a one-digit word, measured against
+  the word just before it, which must hold a digit, so a raised `12` stays a token and the cell
+  is `Unreadable`. The reader takes ASCII digits only, because Python's `\d` also matches
+  fullwidth and Arabic-Indic digits, which `Decimal` reads. "grouping" is also the reason for a
+  `$`, `%` or mark in a place no number uses, such as `$$1,234`, `(12.3)%` and `2*42,096`,
+  since no other reason's meaning covers them. The comments of `split_numeric_runs` and
+  `transliteration_ok` now state where a cut falls and the nine confusable glyphs. `lex.py`
+  imports nothing new. Design section 3.1.
 
 ## Notes for later sessions
 

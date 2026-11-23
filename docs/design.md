@@ -1705,18 +1705,37 @@ def cut_pages(layout: Layout, pages: Sequence[PageLines], on: date,
 # checkedtables/lex.py
 def split_numeric_runs(word: Word) -> tuple[Word, ...]: ...
     # "TAX434,605,553" -> ("TAX", "434,605,553"); "12.3%45,678" -> ("12.3%", "45,678");
-    # children get WordRef.child and a box cut in proportion to characters
+    # children get WordRef.child and a box cut in proportion to characters. A cut falls between
+    # a letter and a comma-grouped number on either side, so "FY2016" stays whole, and after a
+    # "%" or ")" that a digit, "(" or "$" follows. A word with one run comes back unchanged.
 def lex_cell(words: Sequence[Word], col: ColumnSpec, source: SourceKind) -> Cell: ...
-    # strict grouping; parentheses or a leading minus is negative; "$" and trailing marks split
-    # off, including Unicode superscript digits and a trailing digit word under 0.7 of the cell's
-    # type size whose bottom sits above the cell's baseline (VAL-Q28); "-", "--", en and em dash
-    # -> Dash(col.dash); "N/A" and "NA" -> NotApplicable; no words -> Blank.
-    # Two bare integer tokens never join (QPOS-Q27). A kerning split joins only when one token
-    # carries a separator and the result matches strict grouping ("67,215,504.0 0").
-    # No decimal point is ever inserted. Anything else -> Unreadable(reason).
-    # YEAR, CODE and TEXT columns give Text.
+    # In order: no words -> Blank; YEAR, CODE and TEXT columns -> Text; "N/A" and "NA" ->
+    # NotApplicable; "-", "--", en and em dash -> Dash(col.dash). Marks then leave the end of the
+    # cell into Amount.marks: *, †, ‡, §, #, a backtick, Unicode superscript digits, and a last
+    # one-digit word under 0.7 of the size of the number word just before it whose bottom sits
+    # above that word's bottom (VAL-Q28). A "$" word that opens the cell leaves its tokens.
+    # One token reads through one private reader, which apply_reading also calls. Paired
+    # parentheses or one leading minus glyph (-, U+2212, en dash, em dash) is negative, a "$"
+    # stands at most once before the digits on either side of that sign, and the digits are
+    # [0-9]{1,3}(,[0-9]{3})* or [0-9]+, then an optional .[0-9]+, ASCII only, with a leading
+    # zero only as the whole integer part. The Decimal is built from the text, so no decimal
+    # point is ever inserted and no float is used.
+    # Two tokens join only in a MONEY or PERCENT column on a text layer, after a pair of
+    # parentheses around the whole cell leaves, and only when the joined text reads as one
+    # number. Shape 1: a bare digit, then 1 or 2 digits and comma groups ("1 37,332,523").
+    # Shape 2: a number with a point whose integer part is 1 to 3 digits or comma-grouped, which
+    # may carry a "$" and a minus glyph, then one digit ("67,215,504.0 0"). So two bare integers
+    # never join (QPOS-Q27), and neither do "1234.5 6", "$1 37,332,523", a detached minus or %,
+    # or tokens that end in a comma ("10, 936, 234", decision 12).
+    # A "%" follows col.fmt.percent, and printed decimals equal col.fmt.decimals unless None.
+    # Anything else -> Unreadable with the first reason that applies: not_a_number (a glyph no
+    # number, sign, mark or separator uses, or no digit), two_tokens (tokens that fit no join
+    # shape), sign (a plus, a minus after a digit, an unpaired parenthesis, two signs),
+    # percent_sign, grouping (what is left is not one strictly grouped number), decimals.
+    # Amount and Unreadable keep the word texts joined by one space and the ref of every word.
 def transliteration_ok(seen: str, reading: str) -> bool: ...
-    # the digits of `reading`, in order, equal the digit-or-OCR-confusable glyphs of `seen`
+    # the digits of `reading`, in order, equal the digit-or-OCR-confusable glyphs of `seen`;
+    # B and b read as 8, D, d, O, o, Q and q as 0, & as 6, and every other glyph as nothing
     # ("1o4.o" -> "104.0" passes; "2918" -> "291.8" passes; "65.8" -> "85.8" fails;
     # "77,500,000" -> "7,500,000" fails)
 
