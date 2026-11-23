@@ -208,6 +208,16 @@ def test_transliteration_refuses_a_digit_swap() -> None:
     assert not transliteration_ok("291.8", "219.8")
 
 
+def test_transliteration_refuses_digits_that_are_not_ascii() -> None:
+    for seven in ("７", "٧"):
+        assert not transliteration_ok(f"{seven}7,500,000", "7,500,000"), seven
+        assert not transliteration_ok("7,500,000", f"{seven}7,500,000"), seven
+        assert not transliteration_ok(seven, "7"), seven
+        assert not transliteration_ok("7", seven), seven
+    assert transliteration_ok("1,234\xb9", "1234")
+    assert transliteration_ok("1234", "1,234\xb9")
+
+
 def test_confusable_glyphs_are_pinned() -> None:
     confusable = dict(CONFUSABLE_GLYPHS)
     for glyph in f"{ascii_letters}{punctuation}\xb9\u2212\u039f\uff10":
@@ -419,9 +429,45 @@ def test_a_dollar_sign_leaves_the_number() -> None:
         assert isinstance(lexed(text), Unreadable), text
 
 
+def test_a_dollar_word_and_a_second_dollar_sign_are_unreadable() -> None:
+    # VAL-Q09
+    for text in ("$ $5", "$ -$5", "$ $(5)", "$ ($5)", "$ $1,234", "$ $67,215,504.0 0"):
+        assert reason(text) == "grouping", text
+    for text, value in (("$ 5", "5"), ("$ (1,234)", "-1234"), ("$ 1 37,332,523", "137332523")):
+        cell = amount(text)
+        assert (cell.printed, cell.text) == (Decimal(value), text)
+        assert cell.words == tuple(WordRef(SHA, 1, index) for index in range(len(text.split())))
+
+
+def test_a_dollar_word_before_a_dash_is_a_dash() -> None:
+    # VAL-Q09, RTT-Q39
+    zero = ColumnSpec("tax", "Local tax", ValueKind.MONEY, dash=DashMeaning.ZERO)
+    refs = (WordRef(SHA, 1, 0), WordRef(SHA, 1, 1))
+    for dash in DASHES:
+        text = f"$ {dash}"
+        assert lexed(text) == Dash(text, refs, DashMeaning.NO_VALUE), text
+        assert lexed(text, zero) == Dash(text, refs, DashMeaning.ZERO), text
+        assert lexed(text, COUNT_COLUMN) == Dash(text, refs, DashMeaning.NO_VALUE), text
+    for text in ("$ - *", "- *", "$ N/A", "$ - -", "$ $ -", "- $"):
+        assert reason(text) == "not_a_number", text
+    assert reason("- 0") == "two_tokens"
+
+
 def test_a_trailing_minus_or_a_plus_sign_is_unreadable() -> None:
     # VAL-Q26
-    for text in ("123-", "+12.3%", "+5", "1,234\u2212", "(5,678", "5,678)", "-(5,678)", "--5"):
+    for text in (
+        "123-",
+        "+12.3%",
+        "+5",
+        "1,234\u2212",
+        "(5,678",
+        "5,678)",
+        "-(5,678)",
+        "--5",
+        "(1).23",
+        "(1)2",
+        "1)",
+    ):
         assert reason(text, PERCENT) == "sign", text
 
 
@@ -495,6 +541,18 @@ def test_an_amount_fused_to_a_label_splits_on_either_side() -> None:
     for text, children in cases.items():
         (word,) = words(text)
         assert [child.text for child in split_numeric_runs(word)] == children, text
+
+
+def test_a_word_with_a_font_code_never_splits() -> None:
+    # VAL-Q05
+    for text in ("(cid:21)5", "12(cid:3)45,678", "TAX(cid:7)434,605"):
+        (word,) = words(text)
+        children = split_numeric_runs(word)
+        assert children == (word,), text
+        for child in children:
+            for column in (MONEY, COUNT_COLUMN, PERCENT):
+                cell = lex_cell((child,), column, SourceKind.TEXT_LAYER)
+                assert cell == Unreadable(text, (word.ref,), "not_a_number"), (text, column)
 
 
 def test_a_word_with_one_run_comes_back_unchanged() -> None:
