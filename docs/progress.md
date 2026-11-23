@@ -762,10 +762,12 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   docstrings, against design section 12.1: `testing` 91 and 51 (estimate 90), `text` 118 and 52
   (150), `lines` 122 and 52 (120), `lex` 269 and 181 (230), `records` 239 and 115 (140). The
   five hold 839 lines against an estimate of 730, and 451 without docstrings. With docstrings,
-  `records` runs 99 lines past its estimate and `lex` 39. Without them, each of the five is at
-  or under its estimate. `uv run python packages/checkedtables/tests/test_library_shape.py`
-  prints `checkedtables: 1431 lines (budget 3,800), 0 public names (budget 140)`, the sum of
-  these five and the seven modules of the note above.
+  `records` runs 99 lines past its estimate and `lex` 39. `testing`, at 91 lines against 90, and
+  `lines`, at 122 against 120, are over their estimates too, by one line and by two, and a
+  count at `73d428e2` gives the same two numbers. Without docstrings, each of the five is at or
+  under its estimate. `uv run python packages/checkedtables/tests/test_library_shape.py` prints
+  `checkedtables: 1431 lines (budget 3,800), 0 public names (budget 140)`, the sum of these
+  five and the seven modules of the note above.
 - **What an OCR word carries, a note for the step 4 plan** (November 23, 2026, step 2, S2-B).
   `Page` refuses a word with an OCR confidence on a text layer page. It does not refuse the
   converse states: a word on an OCR page with no confidence, or with a style, which the design
@@ -965,7 +967,9 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
     96,584 350,198 (253,614) (96,584) #DIV/0!` and for `OTHER NON TAX 2,557 - - - - - - - -
     #DIV/0!`. The owner decides what the cell publishes. An idea, not a plan: a spreadsheet
     error text could count as a value word, so the row keeps its values while the cell itself
-    lexes as `Unreadable`.
+    lexes as `Unreadable`. A reviewed reading of the same cell can also give a number, since the
+    reading `0.0%` gives a reviewed `Amount` of 0.0 (the note "What a reviewed reading can still
+    do", in its bullet on a confusable letter).
 - **Constructor checks the kit does not make** (November 23, 2026, step 2, S2-B). Design section
   2.1 says that the checks a kit type makes at construction are the ones its block shows, and no
   others. Those checks guard what enters the kit from outside: an adapter's words, pages and
@@ -1067,7 +1071,19 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
     word that also holds a digit, or only on an OCR page, or a reading could be refused when
     `seen` holds a letter that is not a pinned confusable. When the step 5 plan writes
     `load_records`, it should run a tighter rule against the old repository's reviewed readings
-    before the owner adopts it.
+    before the owner adopts it. The Codex review of S2-E at `73d428e2` (finding 1) found the same
+    rule at work on a cell that is cut correctly and sits on a text layer. Page 1 of the July
+    2020 School report (`collections/monthly-school/2020_07.pdf`) prints `#DIV/0!` in the
+    percent column of two rows (the note "What the step 2 rules do on real pages", in its bullet
+    on a spreadsheet error). In a percent column the one-word cell `#DIV/0!` is `Unreadable` with
+    the reason `not_a_number`. The reading `0.0%` gives a reviewed `Amount` of 0.0, because the
+    `D` reads as 0 and the token prints one 0. The reading `0` gives `reading_refused`, and a
+    null reading is accepted. A run at `73d428e2`, with the cell built by `page_from_text`,
+    printed `('Amount', "Decimal('0.0')", 'r1', None)` for `0.0%`, `reading_refused` for `0`
+    and `('Unreadable', 'None', None, 'r1')` for the null reading. The word holds the digit 0,
+    so the idea of counting a confusable only inside a word with a digit would still take
+    `0.0%`. The other two ideas would refuse it, since the page is a text layer and `I` and `V`
+    are not pinned confusables. That is read from the rule and not run.
 - **Follow-ups after step 2** (November 23, 2026). The step 2 run found these and did not fix
   them.
   - Nothing ties the module table of design section 11.1 to `PURE_IMPORTS`. A pin can hold a pair
@@ -1175,3 +1191,54 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
     constructed. The Codex review of S2-C at `d3dbb428` found it (finding 3), and a rerun of
     `parse_label` at `f82950e` printed `norm 'sheriff 2' marks ()` and
     `norm 'sheriff' marks ('2',)`.
+  - No lexer test reads an OCR word with a confidence in a fixed-decimal column. The property
+    `test_amount_digits_are_the_digits_of_its_words` builds every word with no confidence, and
+    `test_lexer_round_trip` uses only the money column, which has no fixed decimals. So a lexer
+    that rounds an OCR amount in a one-decimal column, when its word carries a confidence, passes
+    every lexer test. The Codex review of S2-D at `4fa19584` found it (finding 1), with an
+    in-memory mutant that turned 65.8 into 66 and left 52 tests passing. `lex.py` never reads
+    `confidence`. At `73d428e2`, `grep -n confidence` on it prints nothing and exits 1. The same
+    run read `65.8` on an OCR page, whose word has the confidence 100.0, in the one-decimal
+    column as `Amount` 65.8.
+  - `transliteration_ok` counts a footnote digit, because it sees text only. The Codex review of
+    S2-D at `4fa19584` found it (finding 2). At `73d428e2`, `transliteration_ok("2.8 1*", "2.8")`
+    is false and `transliteration_ok("2.8 1*", "2.81")` is true. `apply_reading` removes the mark
+    words that end an `Amount` before the check, so the cell of `2.8` and a small raised `1*`
+    accepts the reading `2.8` and keeps the mark `1*`, and refuses `2.81` with `reading_refused`.
+    The S2-E verifier ran the same at `73d428e2` (`/tmp/swarm-s2-e/worker-7/verify-fix3-c.log`),
+    and so did a run of ours. Any other caller of `transliteration_ok`, such as the loader of
+    step 5, must remove the marks itself (the note "The loader's digit check and a footnoted
+    reading disagree").
+  - The SUPCAP-Q34 test lexes `N/A` in a money column, where the page prints `N/A*` in a year
+    column. The Codex review of S2-D at `4fa19584` found it (finding 3). Page 93 of the FY2023
+    supplemental report (`supplemental-report/FY23.pdf`) prints `N/A*` under Budget Year and five
+    dashes in the money columns. Run read-only on it, `pdftotext -f 93 -l 93 -layout` 26.07.0
+    prints the line `N/A* - - - - -` under the heading line that starts `Budget Year Available`.
+    At `73d428e2`, `N/A*` is `Unreadable` with the reason `not_a_number` in a money column and
+    `Text` in a year column, and `N/A` is `NotApplicable` and `Text`. This is for the step 12
+    plan.
+  - The last child that `split_numeric_runs` returns can end past its parent's right edge by a
+    float error. The Codex review of S2-D at `4fa19584` found it (finding 4). At `73d428e2`, for
+    the word `TAX434,605,553` in the box (10.02, 10, 65.04, 20), the run printed the children
+    `TAX` and `434,605,553`, the parent edge 65.04 and the child edge 65.04000000000002, and
+    `contains` is false at a slack of 0 and true at 1.0. An idea, not a plan: the first and last
+    child keep the parent's own outer edges.
+  - In `lex_cell`, the test `len(texts) == 1` before the `N/A` check changes no result, since a
+    cell of two or more words joins with a space and so never equals `N/A` or `NA`. The S2-D
+    verifier found it at `4fa19584`. At `73d428e2`, the two-word cells `N/A` and an empty word,
+    `N/` and `A`, `N` and `A`, and `NA` and an empty word join to texts that are not `N/A` or
+    `NA`, and each lexes as `Unreadable` in a money column.
+  - Every successful application in `test_records.py` uses the id `r1`, so its tests pass when
+    `apply_reading` writes one constant id. The Codex review of S2-E at `73d428e2` found it
+    (finding 2), with an in-memory mutant that left all 37 tests passing. At `73d428e2`, a record
+    with the id `cash-fy07-q3` on the OCR cell `2918` in the one-decimal column gives that id as
+    `Amount.review_id` for the reading `291.8` and as `Unreadable.accepted_by` for a null reading.
+  - The signed-value property of `test_records.py` compares the value and the exponent, which are
+    equal for `Decimal("-0.0")` and `Decimal("0.0")`. The Codex review of S2-E at `73d428e2` found
+    it (finding 3), with an in-memory mutant that dropped the sign of a reviewed zero and left all
+    37 tests passing. At `73d428e2`, `(0.0)` read as `(0.0)` in the one-decimal cash column gives
+    `Decimal("-0.0")`, whose `as_tuple()` is `DecimalTuple(sign=1, digits=(0,), exponent=-1)`, and
+    the run printed `True` for its equality with `Decimal("0.0")`. Comparing `as_tuple()` would
+    catch a lost sign, as `test_lexer_round_trip` does. Codex states that page 1 of the FY2010 Q2
+    cash report (`qcmr/cash/FY10_Q2.pdf`) prints `(0.0)` in `Total Current Revenue`. That is
+    Codex's statement, not checked here.
