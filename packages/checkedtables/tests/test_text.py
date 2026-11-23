@@ -144,6 +144,11 @@ def test_label_mark_see_note_with_any_one_space_between_its_words() -> None:
             (f"see{space}note",),
         ), ascii(space)
         assert found.norm == label("Federal Government see note").norm == "federal government"
+    assert printed_text_marks(label("Federal Government see\t\tnote")) == (
+        "Federal Government see\t\tnote",
+        "Federal Government see\t\tnote",
+        (),
+    )
 
 
 def test_label_control_see_note_inside_a_word_keeps_every_word() -> None:
