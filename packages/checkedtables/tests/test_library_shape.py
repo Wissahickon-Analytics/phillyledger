@@ -41,6 +41,8 @@ FIELD_SNAPSHOT: dict[str, tuple[str, ...]] = {
     "Blank": (),
     "Unreadable": ("text", "words", "reason", "accepted_by"),
     "Text": ("text", "words"),
+    "NumberFormat": ("decimals", "percent"),
+    "ColumnSpec": ("name", "caption", "kind", "fmt", "presence", "dash"),
 }
 
 
