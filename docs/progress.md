@@ -509,13 +509,16 @@ Each entry: step, what changed, why, and the design section updated.
   code. Section 3.1 keeps each rule as built, with a pointer to its decision, and the step 5
   plan schedules the five changes with their tests.
   - Decision 13, the reading rule. A reading may restore what extraction lost and nothing else.
-    Section 16.2 states it as five clauses on the shape of the cell's words. A prototype of the
-    rule, run outside this repository at `2638173a`, passes all 34 reviewed readings of the old
-    repository and refuses the cases the note "What a reviewed reading can still do" and the
-    Codex reviews recorded. The lexer test that reads `(59.8j` as `(59.8)` keeps passing, through
-    the one `j` the rule allows. A first form of the rule failed its own verification and its
-    Codex review, and the word shapes replaced it.
-  - Decision 14, a raised footnote mark joins the line it sits on.
+    Section 16.2 states it as five clauses on the shape of the cell's words, and three tests
+    that `apply_reading` and `reading_for` make from the source, the word boxes and the cell. A
+    prototype of the five clauses and the source test, run outside this repository at
+    `2638173a`, passes all 34 reviewed readings of the old repository and refuses the cases the
+    note "What a reviewed reading can still do" and the Codex reviews recorded. The lexer test
+    that reads `(59.8j` as `(59.8)` keeps passing, through the one `j` the rule allows. The rule
+    took four forms. Two verifiers that built it from its words alone, and two Codex reviews,
+    each found a hole in the form before, and section 16.2 lists them.
+  - Decision 14, a raised footnote mark joins the line it sits on. Where two lines hold it, it
+    joins the nearer one below it, and a tie leaves it a line of its own.
   - Decision 15, `N/A` in any case and `#DIV/0!` are value words, and U+2010 is a minus glyph
     that is a dash when it stands alone. The Codex review of this entry found the minus sign:
     the FY2021 supplemental report prints U+2010 before 2.75 on page 15 and before 435.43% on
