@@ -37,12 +37,13 @@ class ReviewedReading:
         What a person reads on the rendered page, such as "291.8". None accepts publishing the
         cell as null.
     reason : str
-        Why the reading was written.
+        Why the reading was written. Never empty, since a human reading is a record with a page
+        and a reason.
 
     Raises
     ------
     ValueError
-        When `id` is empty.
+        When `id` or `reason` is empty.
     """
 
     id: str
@@ -55,9 +56,11 @@ class ReviewedReading:
     reason: str
 
     def __post_init__(self) -> None:
-        """Refuse an empty id."""
+        """Refuse an empty id or an empty reason."""
         if not self.id:
             raise ValueError("a reviewed reading needs an id")
+        if not self.reason:
+            raise ValueError(f"reviewed reading {self.id} needs a reason")
 
 
 @dataclass(frozen=True, slots=True)
@@ -72,7 +75,7 @@ class DashRule:
     Attributes
     ----------
     id : str
-        The id of the record.
+        The id of the record. Never empty, so a dash that the rule turns into zero can name it.
     table : str
         The table the rule applies to.
     columns : tuple[str, ...]
@@ -84,6 +87,11 @@ class DashRule:
     evidence : str
         Where the meaning was confirmed, such as "maintainer confirmed 2026-10-01 against page
         2".
+
+    Raises
+    ------
+    ValueError
+        When `id` is empty.
     """
 
     id: str
@@ -92,6 +100,11 @@ class DashRule:
     rows: tuple[RowKey, ...] | EveryRow
     meaning: DashMeaning
     evidence: str
+
+    def __post_init__(self) -> None:
+        """Refuse an empty id."""
+        if not self.id:
+            raise ValueError("a dash rule needs an id")
 
 
 @dataclass(frozen=True, slots=True)
@@ -106,11 +119,26 @@ class CellRecords:
         The dash rules, already narrowed to the period of this edition.
     confidence_floor : float
         An OCR word with a confidence below it needs a reading.
+
+    Raises
+    ------
+    ValueError
+        When two readings, or two dash rules, have one id, so that an id names one record.
     """
 
     readings: tuple[ReviewedReading, ...]
     dash_rules: tuple[DashRule, ...]
     confidence_floor: float
+
+    def __post_init__(self) -> None:
+        """Refuse two readings, or two dash rules, with one id."""
+        for kind, ids in (
+            ("readings", tuple(reading.id for reading in self.readings)),
+            ("dash rules", tuple(rule.id for rule in self.dash_rules)),
+        ):
+            repeated = sorted({id_ for id_ in ids if ids.count(id_) > 1})
+            if repeated:
+                raise ValueError(f"ids that name two or more {kind}: {', '.join(repeated)}")
 
 
 def _holds(reading: ReviewedReading, word: Word) -> bool:
@@ -136,14 +164,15 @@ def reading_for(
 
     A reading is a candidate when its source is `source` and its box, grown by 1.0 point on
     every side, holds a word of the cell on the reading's file and page. The words of
-    `page_words` that the box holds must be exactly the words of the cell, and their texts,
-    left to right and joined by one space, must equal the reading's `seen`. So a box that holds
-    part of a cell, or two cells, is stale for each of them.
+    `page_words` that the box holds must be exactly the words of the cell, each as many times,
+    and the texts of the cell's words, joined by one space in the order given, must equal the
+    reading's `seen`. That is the order in which `lex_cell` joins a cell's text. So a box that
+    holds part of a cell, or two cells, is stale for each of them.
 
     Parameters
     ----------
     cell_words : Sequence[Word]
-        The words of the cell.
+        The words of the cell, in the order the cell was lexed in.
     page_words : Sequence[Word]
         Every word of the page, as the cells were cut from them.
     source : SourceKind
@@ -158,8 +187,8 @@ def reading_for(
         exactly the cell's words, which join to `seen`. Otherwise a BLOCK finding on the
         reading's page with the subject ``"<doc sha8>:reading:<reading id>"``:
         "duplicate_reading" for two or more candidates, named by the least id, or
-        "stale_reading" for one whose box holds other words or words that do not join to
-        `seen`.
+        "stale_reading" for one whose box holds other words than the cell's or whose cell does
+        not join to `seen`.
     """
     candidates = sorted(
         (
@@ -175,15 +204,26 @@ def reading_for(
     if len(candidates) > 1:
         ids = ", ".join(candidate.id for candidate in candidates)
         return _finding("duplicate_reading", reading, f"readings {ids} each hold a word of a cell")
-    held = sorted(
-        (word for word in page_words if _holds(reading, word)),
-        key=lambda word: (word.box.x0, word.ref),
-    )
-    joined = " ".join(word.text for word in held)
-    if set(held) != set(cell_words) or joined != reading.seen:
-        message = f"the box holds {joined!r}, not the cell's words that read {reading.seen!r}"
+    held = tuple(word for word in page_words if _holds(reading, word))
+    text = " ".join(word.text for word in cell_words)
+    if len(held) != len(cell_words) or any(
+        held.count(word) != cell_words.count(word) for word in cell_words
+    ):
+        in_box = " ".join(word.text for word in held)
+        message = f"the words in the box, {in_box!r}, are not the cell's words, {text!r}"
+        return _finding("stale_reading", reading, message)
+    if text != reading.seen:
+        message = f"the cell prints {text!r} where the reading saw {reading.seen!r}"
         return _finding("stale_reading", reading, message)
     return reading
+
+
+def _without_mark_words(text: str, marks: Sequence[str]) -> str:
+    for mark in reversed(marks):
+        if not text.endswith(f" {mark}"):
+            break
+        text = text.removesuffix(f" {mark}")
+    return text
 
 
 def apply_reading(cell: Cell, reading: ReviewedReading) -> Cell | Finding:
@@ -193,9 +233,10 @@ def apply_reading(cell: Cell, reading: ReviewedReading) -> Cell | Finding:
     reading's file and page, and its text must equal the reading's `seen`, so a reading never
     puts its value on another cell's words. The digits of the reading must equal those of
     `seen`, in order, where each OCR confusable glyph of `seen` (``B``, ``b``, ``D``, ``d``,
-    ``O``, ``o``, ``Q``, ``q`` and ``&``) counts as its digit. So a reading may add or drop any
-    other glyph, such as a sign, a separator or a point, and never changes, adds or drops a
-    digit.
+    ``O``, ``o``, ``Q``, ``q`` and ``&``) counts as its digit. The mark words that end an
+    `Amount`, such as a small raised footnote digit, are not part of what the reading keeps. So
+    a reading may add or drop any other glyph, such as a sign, a separator or a point, and
+    never changes, adds or drops a digit of the number.
 
     Parameters
     ----------
@@ -210,26 +251,31 @@ def apply_reading(cell: Cell, reading: ReviewedReading) -> Cell | Finding:
         For a reading of None, an `Unreadable` accepted by the reading's id. It keeps the
         reason of an `Unreadable` cell and gives an `Amount` the reason "reviewed_null". For
         any other reading, a reviewed `Amount` of the cell's text and words, the reading's
-        source and the reading's id, with no marks. Its number is the reading, read as one
-        signed number by the grammar `lex_cell` uses for one word. No column format applies to
-        it. A BLOCK finding on the reading's page, with the subject
+        source and the reading's id, with the marks of an `Amount` cell. Its number is the
+        reading, read as one signed number by the grammar `lex_cell` uses for one word. No
+        column format applies to it. A BLOCK finding on the reading's page, with the subject
         ``"<doc sha8>:reading:<reading id>"``, takes the place of the cell in two cases.
         "stale_reading" means the cell is not the one the reading was written for.
         "reading_refused" means the cell takes no reading, or the reading changes, adds or
-        drops a digit of `seen`, or is not one number.
+        drops a digit of `seen` less the mark words, or is not one number.
     """
     if not isinstance(cell, Amount | Unreadable):
         return _finding("reading_refused", reading, f"a {type(cell).__name__} takes no reading")
     if {(ref.doc_sha256, ref.page) for ref in cell.words} != {(reading.doc_sha256, reading.page)}:
-        return _finding("stale_reading", reading, "the cell's words are not on the reading's page")
+        message = "a word of the cell is not on the reading's file and page"
+        return _finding("stale_reading", reading, message)
     if cell.text != reading.seen:
         message = f"the cell prints {cell.text!r} where the reading saw {reading.seen!r}"
         return _finding("stale_reading", reading, message)
     if reading.reading is None:
         reason = cell.reason if isinstance(cell, Unreadable) else "reviewed_null"
         return Unreadable(cell.text, cell.words, reason, reading.id)
+    marks = cell.marks if isinstance(cell, Amount) else ()
+    kept = _without_mark_words(cell.text, marks)
     number = _read_number(reading.reading)
-    if number is None or not transliteration_ok(reading.seen, reading.reading):
-        message = f"{reading.reading!r} is not one number with the digits of {reading.seen!r}"
+    if number is None or not transliteration_ok(kept, reading.reading):
+        message = f"{reading.reading!r} is not one number with the digits of {kept!r}"
         return _finding("reading_refused", reading, message)
-    return Amount(number, cell.text, cell.words, reading.source, Reading.REVIEWED, reading.id)
+    return Amount(
+        number, cell.text, cell.words, reading.source, Reading.REVIEWED, reading.id, marks
+    )
