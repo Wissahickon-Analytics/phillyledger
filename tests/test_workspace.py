@@ -14,6 +14,7 @@ def test_workspace_packages_import() -> None:
 
 
 def test_hypothesis_profile_is_derandomized() -> None:
+    assert settings.get_current_profile_name() == "phillyledger"
     loaded = settings.default
     assert loaded is not None
     assert loaded.derandomize
