@@ -3868,7 +3868,7 @@ out. Python resolves it through the module global `__package__`, which source ca
 code imports by absolute name. The scan reads source as written. Source that changes a module global
 at run time, such as `__path__`, can still make an absolute import bind another module, and a static
 scan cannot see that change. The note "The pure packages can still reach effects the gates do not
-name" in `docs/progress.md` lists the routes found, and review reads for them. The modules each
+name" in `docs/plan-notes.md` lists the routes found, and review reads for them. The modules each
 package imports from are a closed list, given below. A pull request that imports from a module
 outside the list changes the list and the pin together.
 
@@ -4867,7 +4867,7 @@ The step 5 plan carries what the run could not settle.
   marks. `2918` with a raised `1` then reads only as `2918.1`, where the page prints 291.8 and a
   footnote. Step 5 either gives `apply_reading` the marks the lexer found for an `Unreadable`
   cell, or keeps the mark out at the cut (the notes "What a reviewed reading can still do" and
-  "The loader's digit check and a footnoted reading disagree" of `docs/progress.md`).
+  "The loader's digit check and a footnoted reading disagree" of `docs/plan-notes.md`).
 - A word that extraction glued from two printed numbers still reads. `1,2345,678` reads as
   1.2345678: clause 4 takes its first comma as the point, since four digits follow it, and its
   second as grouping, and clause 7 measures no gap inside one word. The last verifier found
