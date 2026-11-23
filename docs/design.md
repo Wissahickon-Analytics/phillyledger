@@ -1810,6 +1810,8 @@ def transliteration_ok(seen: str, reading: str) -> bool: ...
 # checkedtables/records.py
 def reading_for(cell_words: Sequence[Word], page_words: Sequence[Word], source: SourceKind,
                 readings: Sequence[ReviewedReading]) -> ReviewedReading | Finding | None: ...
+    # Decision 13 (section 16.2, clause 7) adds at step 5: the two number words of a reading
+    # stand within the gap limit of decision 16. As built:
     # A reading is a candidate when its source is `source` and its box, with 1.0 pt of slack,
     # holds a cell word of its file and page. None: no candidate. duplicate_reading: two or
     # more, named by the least id. The page words the box holds must be exactly the cell's
@@ -1821,6 +1823,8 @@ def reading_for(cell_words: Sequence[Word], page_words: Sequence[Word], source: 
     # them a word that moved into the box could not be seen. The caller passes the words the
     # cells were cut from.
 def apply_reading(cell: Cell, reading: ReviewedReading) -> Cell | Finding: ...
+    # Decision 13 (section 16.2, clauses 6 and 8) adds at step 5 a test of the source and the
+    # confirmation of an Amount. As built:
     # 1. Only an Amount or an Unreadable takes a reading, else reading_refused.
     # 2. The cell's words lie on the reading's file and page and its text equals `seen`, else
     #    stale_reading. transliteration_ok reads both texts from the record, so without this
@@ -4664,7 +4668,7 @@ at the decision from each function it touches.
 | 11 | Six captions where the kind of number is a judgment | As filed in section 2.2. The owner confirmed that Budget in Brief "Current Estimate" and collections "Current Estimates" are projections. |
 | 12 | Which 55 inputs does the probe clause of step 2 mean? | The 55 of VAL section 3.2.1. The original inputs are in no file. The owner decided on November 23, 2026, with the words "[u]se your list, but make row 4 unreadable." |
 | 13 | What may a reviewed reading change? | It may restore a decimal point or a sign that extraction lost and, on an OCR page, read a pinned confusable glyph as its digit inside a word that starts as a number. Nothing else. It may not take a digit from a word that holds no ASCII digit or that opens with a letter, move a printed point or drop one that has a digit after it, drop a printed sign, or join two printed numbers. Section 16.2 states the rule. `transliteration_ok` keeps its signature. Built at step 5, with `load_records`. |
-| 14 | A raised footnote mark that falls outside its row | `group_lines` lets a small word join the line whose vertical span holds its bottom edge. Small means under 0.7 of the line's median word height, the ratio of the lexer's raised-digit rule. Where two lines hold it, it joins the one whose bottom edge is nearest below its own, and on a tie it stays a line of its own. Built at step 5 and proven on a word fixture of the page that holds "Human Services (1)", where the raised `(1)` opens a line of its own today. That is page 2 of the held FY2026 Q4 positions excerpt. The old repository's splitter audit puts positions on pages 32 to 34 of the publisher's 92-page report, which makes it page 33 of the publisher's file. |
+| 14 | A raised footnote mark that falls outside its row | `group_lines` lets a small word join a line whose vertical span holds its bottom edge: the line's top is above that edge and the line's bottom is at or below it. Small means under 0.7 of that line's median word height, the ratio of the lexer's raised-digit rule. Where two lines hold it, it joins the one whose bottom edge is nearer to its own, and on a tie it stays a line of its own. Built at step 5 and proven on a word fixture of the page that holds "Human Services (1)", where the raised `(1)` opens a line of its own today. That is page 2 of the held FY2026 Q4 positions excerpt. The old repository's splitter audit puts positions on pages 32 to 34 of the publisher's 92-page report, which makes it page 33 of the publisher's file. |
 | 15 | Which printed forms are a value with no number? | `N/A` and `NA` in any case are not applicable (`n/a` on page 19 of the FY2009 Budget in Brief). U+2010 is a minus glyph, and alone in a cell it is a dash. The FY2021 supplemental report prints both: `‐2.75` on page 15, `‐435.43%` on page 18, and a lone U+2010 on page 17. `#DIV/0!` is a value word and lexes as `NotApplicable` with its text kept (page 1 of the July 2020 School report). VAL section 3.2.1 pins `N/A` in upper case at row 28 and holds no row with `n/a`, U+2010 or `#DIV/0!`, so no acceptance row changes. Built at step 5. |
 | 16 | When may a leading digit join a grouped number? | Only when the two words have the same size and the gap between them is under a limit. Step 5 sizes the limit on word fixtures. It must keep every row of VAL section 3.2.1 as documented, and it must leave `6` and `30,223` as two cells, which page 1 of the held FY2006 obligation-history excerpt prints 51.55 points apart. |
 | 17 | Is a bare digit at the end of a label a footnote mark? | Only when it is small and raised, or when the table's row schema says its pages use digit footnotes ("Sheriff 2", ENT-Q07). Otherwise it stays in the label, so the project label that ends in "PHASE 2" on page 107 of the FY2023 supplemental report keeps its 2. Built at step 5 with the row schemas. |
@@ -4712,12 +4716,14 @@ digit. The minus glyphs are the four of section 3.1 and U+2010 (decision 15).
    body. The second has no lead, and its body holds digit glyphs only. An optional `%`, an
    optional `)` and mark glyphs may follow that body.
 4. The point. `seen` prints a point in three places: at each `.` of a body; at each `,` or `:`
-   that stands between two digit glyphs and is not a grouping comma; and at the break between
-   two number words. A grouping comma is a `,` with exactly three digit glyphs after it. So
-   `69,2` prints a point and `1,234` prints none. Where `seen` prints one point, as many digits
-   come before the point of `reading` as digit glyphs come before the point in `seen`, and a
-   reading with no point counts as having it after its last digit. Where `seen` prints two or
-   more, no reading passes. Where it prints none, a reading may place a point anywhere.
+   that stands between two digit glyphs of one body and is not a grouping comma; and at the
+   break between two number words. A grouping comma is a `,` followed by exactly three digit
+   glyphs and then by a glyph that is not one, or by the end of the body. So `69,2` prints a
+   point, `1,234` prints none, and `1,370,4` prints one, at its second comma. Where `seen` prints
+   one point, as many digits come before the point of `reading` as digit glyphs come before the
+   point in `seen`, and a reading with no point counts as having it after its last digit. Where
+   `seen` prints two or more, no reading passes. Where it prints none, a reading may place a
+   point anywhere.
 5. The sign. `seen` prints a sign when a number word holds a minus glyph, a `(`, a `)` or the
    `j` that stands for one. Then `reading` reads as a negative number, a negative zero included.
    Where `seen` prints no sign, a reading may add one.
@@ -4725,15 +4731,22 @@ digit. The minus glyphs are the four of section 3.1 and U+2010 (decision 15).
 Three more tests need what the two texts do not hold, so `apply_reading` and `reading_for` make
 them and the function does not.
 
-6. The source. On a text layer, `seen` holds no confusable glyph. A text layer prints its own
-   letters, so `15030B`, a project number on page 92 of the FY2015 supplemental report, is not
-   150308. `apply_reading` knows the reading's source.
-7. The gap. The two number words of clause 3 stand no farther apart than the limit of decision
-   16. `reading_for` sees the word boxes. On page 1 of the held FY2006 excerpt, `30,217` and `6`
-   are two columns, and without this test they read as 30217.6.
-8. A confirmation. A reading that reads as the very number an `Amount` cell already prints needs
-   only clause 1. It confirms what the lexer read, as a source disagreement asks (section 9),
-   and the lexer's two join shapes would fail clauses 3 and 4 (`1 37,332,523` and
+6. The source. On a text layer that the publisher's software wrote, `seen` holds no confusable
+   glyph. Such a layer prints its own letters, so `15030B`, a project number on page 92 of the
+   FY2015 supplemental report, is not 150308. A text layer that a scanner's OCR wrote counts as
+   an OCR page here. The held FY2007 Q4 cash report is one: ScanSnap and Acrobat Paper Capture
+   made it, and its text layer holds `20.B` and `25.B`. `apply_reading` knows the reading's
+   source, and `SourceKind` does not yet tell the two kinds of text layer apart.
+7. The gap. The two number words of clause 3 have the same size and stand no farther apart than
+   the gap limit, both as decision 16 sets them. `reading_for` sees the word boxes. On page 1 of
+   the held FY2006 excerpt, `30,217` and `6` are two columns, and without this test they read
+   as 30217.6. Where one extraction word holds both number words, there is no gap to measure and
+   the clause holds: Textract returned `(29 1)`, `(3 2)` and `266 1` of the FY2007 Q3 cash
+   report as one word each.
+8. A confirmation. `apply_reading` accepts, without the function, a reading that reads as the
+   very number an `Amount` cell already prints, with an equal `as_tuple()`, so that a printed
+   sign on a zero stays. It confirms what the lexer read, as a source disagreement asks
+   (section 9). The lexer's two join shapes would fail clauses 3 and 4 (`1 37,332,523` and
    `67,215,504.0 0`, rows 36 and 37 of VAL section 3.2.1).
 
 A null reading needs none of these. It accepts the cell as unreadable.
@@ -4768,6 +4781,7 @@ The table is for an OCR page, and for clauses 1 to 5 alone unless the row names 
 | `(29 1)` | `(29.1)` | passes | passes |  |
 | `67: 3` | `67.3` | passes | passes |  |
 | `69,2` | `69.2` | passes | passes |  |
+| `1,370,4` | `1370.4` | passes | passes |  |
 | `(59.8j` | `(59.8)` | passes | passes |  |
 | `$ 2.8` | `2.8` | passes | passes |  |
 | `$(1,234)` | `(1234)` | passes | passes |  |
@@ -4776,14 +4790,14 @@ The table is for an OCR page, and for clauses 1 to 5 alone unless the row names 
 | `‐435.43%` | `-435.43%` | passes | passes |  |
 | `65.8` | `85.8` | fails | fails | 1 |
 | `77,500,000` | `7,500,000` | fails | fails | 1 |
-| `15030B` on a text layer | `150308` | passes | fails | 6 |
+| `15030B` on a publisher's text layer | `150308` | passes | fails | 6 |
 
 The rule was run on November 23, 2026, as a prototype outside this repository, with the kit at
 `2638173a` for clause 1, for the reader and for the "today" column. It passes all 34 reviewed
 readings of the old repository (`reviewed_fixed_decimal_cells` in `config/layouts/qcmr-cash.yml`
 at `22f355da`), all of them OCR readings of the cash report. Without the colon in clause 2,
 `67: 3` read as 67.3 fails, and it is a right reading. The table above is printed from that run,
-and 110 cases in all gave the results that clauses 1 to 6 state. Clauses 7 and 8 were not run.
+and 121 cases in all gave the results that clauses 1 to 6 state. Clauses 7 and 8 were not run.
 
 The rule took four forms, and each change came from a check of the one before.
 
@@ -4795,6 +4809,11 @@ The rule took four forms, and each change came from a check of the one before.
 - The Codex review of the second form found the last three clauses and the comma: `69,2` read
   as 6.92 or 692 as well as 69.2, `15030B` read as 150308, `30,217 6` read as 30217.6, and a
   reviewer could not confirm three amounts the lexer reads.
+- A third verifier built the fourth form from its words and matched every row and all 34
+  readings. It and the third Codex review changed no result of the table. They corrected this
+  section where it disagreed with itself or with a held file: the scanned FY2007 Q4 report, the
+  three Textract words that hold a space, and the wording of clauses 4, 7 and 8. No verifier
+  and no Codex review has read the section since that last correction.
 
 The step 5 plan carries what the run could not settle.
 
@@ -4804,21 +4823,35 @@ The step 5 plan carries what the run could not settle.
 - On an OCR page a confusable still reads as its digit after an ASCII digit, as `1o4.o` needs.
   So `2Q` reads as 20, and `15030B` would read as 150308 on a scanned page. The rule cannot tell
   such a label from a damaged number. The cut keeps labels out of value cells.
-- Clause 6 trusts the source. A scanned report that carries its own OCR text layer would hold
-  confusable letters on a text layer, and its cells would take only a null reading. No held
-  report is known to be one. If one turns up, the clause changes on that evidence.
+- Clause 6 needs to know which kind of text layer a document has. `SourceKind` has one member
+  for both. Step 4, which ports the word reader, records which documents carry a scanner's OCR
+  as their text layer. Until it does, clause 6 would refuse a right reading of `20.B` on the
+  FY2007 Q4 cash report wherever that layer is the primary source.
 - A cell that the cut gave a label word takes only a null reading. The first rows of the table
   are such cells, and so is `B $23,014`, which the last word of "Series 2008 A & B" on page 12
   of the FY2010 Budget in Brief would make. The fix for such a cell is the cut, not a reading.
 - Two number words read only with the point at their break. `12 345` reads as `12.345` and not
   as `12345`.
+- The rule sees no column. In a count column `12 345` still reads as 12.345, where VAL calls
+  that input two count cells in one lane, and a count has no fraction. A reading may also place
+  a point inside a grouped number, so `1,234` reads as 12.34. Step 5 decides whether assembly,
+  which knows the column, refuses a point in a count column or a reading outside the column's
+  decimals. `apply_reading` applies no column format today.
+- A comma or a colon at the edge of a word prints no point, so `29:` reads as 2.9 while `29.`
+  does not.
+- Decision 16 names the first join shape only. The second, a fraction digit on a word of its
+  own, joins `39,414.37` and `9` into 39414.379 on page 2 of the March 2013 realty transfer
+  report, which prints them 68 points apart in two columns. The owner decides whether the size
+  and gap test covers both shapes. Clause 8 would confirm either join.
+- `load_records` cannot call the whole function. It has the record's text and source and no
+  cell, so it can make the tests of clauses 1 and 6 and no more: a confirmation of rows 36 and
+  37 would fail clauses 3 and 4 before any cell exists. Section 3.2 says the loader refuses a
+  reading whose digits fail, which is clause 1. Step 5 says which clauses run at load.
 - An `Unreadable` cell keeps a raised footnote digit in its text, because `Unreadable` has no
   marks. `2918` with a raised `1` then reads only as `2918.1`, where the page prints 291.8 and a
   footnote. Step 5 either gives `apply_reading` the marks the lexer found for an `Unreadable`
-  cell, or keeps the mark out at the cut. The loader of step 5 has the same need, since it sees
-  the record's text and no geometry (the notes "What a reviewed reading can still do" and "The
-  loader's digit check and a footnoted reading disagree" of `docs/progress.md`). The loader
-  also cannot make the tests of clauses 6 to 8, which need the cell.
+  cell, or keeps the mark out at the cut (the notes "What a reviewed reading can still do" and
+  "The loader's digit check and a footnoted reading disagree" of `docs/progress.md`).
 - A cell that prints `.5` takes only a null reading. A reading of `0.5` adds a digit the cell
   does not print, the reader does not read `.5`, and row 14 of VAL section 3.2.1 keeps `.5`
   unreadable.

@@ -515,10 +515,12 @@ Each entry: step, what changed, why, and the design section updated.
     `2638173a`, passes all 34 reviewed readings of the old repository and refuses the cases the
     note "What a reviewed reading can still do" and the Codex reviews recorded. The lexer test
     that reads `(59.8j` as `(59.8)` keeps passing, through the one `j` the rule allows. The rule
-    took four forms. Two verifiers that built it from its words alone, and two Codex reviews,
-    each found a hole in the form before, and section 16.2 lists them.
+    took four forms. Three verifiers that built it from its words alone, and three Codex
+    reviews, each found a hole or a wrong sentence in the text before, and section 16.2 lists
+    them, with the questions the step 5 plan carries. One of those is for the owner: whether
+    the size and gap test of decision 16 also covers the lexer's second join shape.
   - Decision 14, a raised footnote mark joins the line it sits on. Where two lines hold it, it
-    joins the nearer one below it, and a tie leaves it a line of its own.
+    joins the one whose bottom edge is nearer, and a tie leaves it a line of its own.
   - Decision 15, `N/A` in any case and `#DIV/0!` are value words, and U+2010 is a minus glyph
     that is a dash when it stands alone. The Codex review of this entry found the minus sign:
     the FY2021 supplemental report prints U+2010 before 2.75 on page 15 and before 435.43% on
