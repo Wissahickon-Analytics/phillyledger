@@ -22,7 +22,8 @@ import checkedtables
 from datadesk.core.tables import bib_common, collections_common, qcmr_common, supp_common
 
 if TYPE_CHECKING:
-    from _typeshed import DataclassInstance
+    import _typeshed
+    from _typeshed import DataclassInstance, SupportsRead
 
 FAMILY_HELPERS = (qcmr_common, collections_common, bib_common, supp_common)
 FIELD_SNAPSHOT: dict[str, tuple[str, ...]] = {}
@@ -52,8 +53,10 @@ def public_objects(root: ModuleType) -> Iterable[object]:
 
 
 def package_members(cls: type, root: ModuleType) -> dict[str, object]:
-    owners = {name: owner for owner in reversed(cls.__mro__) for name in vars(owner)}
-    return {name: vars(owner)[name] for name, owner in owners.items() if in_package(owner, root)}
+    defined_in = {name: owner for owner in reversed(cls.__mro__) for name in vars(owner)}
+    return {
+        name: vars(owner)[name] for name, owner in defined_in.items() if in_package(owner, root)
+    }
 
 
 def written_constructor(cls: type, members: Mapping[str, object]) -> Iterator[MethodType]:
@@ -83,17 +86,17 @@ def public_functions(module: ModuleType) -> Iterator[FunctionType | MethodType]:
             yield from public_methods_as_called(value, members)
 
 
-class Unresolved(type):
-    def __getattr__(cls, name: str) -> "Unresolved":
+class UnresolvedType(type):
+    def __getattr__(cls, name: str) -> "UnresolvedType":
         return cls
 
-    def __getitem__(cls, key: object) -> "Unresolved":
+    def __getitem__(cls, key: object) -> "UnresolvedType":
         return cls
 
 
 class AnnotationNames(dict[str, object]):
-    def __missing__(self, name: str) -> Unresolved:
-        return Unresolved(name, (), {})
+    def __missing__(self, name: str) -> UnresolvedType:
+        return UnresolvedType(name, (), {})
 
 
 def resolved(annotation: object, names: AnnotationNames) -> object:
@@ -113,6 +116,7 @@ def accepts_bool(annotation: object) -> bool:
 
 
 def bool_parameters(fn: FunctionType | MethodType) -> list[str]:
+    # eval asks __missing__ for every name before builtins, so builtins and globals go in first.
     names = AnnotationNames({**vars(builtins), **inspect.unwrap(fn).__globals__})
     parameters = inspect.signature(fn).parameters.values()
     return [p.name for p in parameters if accepts_bool(resolved(p.annotation, names))]
@@ -174,6 +178,8 @@ def test_bool_parameters_reads_each_spelling() -> None:
     def plain_string(flag: "bool") -> None: ...
     def optional_string(flag: "bool | None") -> None: ...
     def unresolved_member(flag: "bool | DataclassInstance") -> None: ...
+    def unresolved_dotted(flag: "bool | _typeshed.DataclassInstance") -> None: ...
+    def unresolved_subscript(flag: "bool | SupportsRead[str]") -> None: ...
     def flags(flags: tuple[bool, ...]) -> None: ...
     def count(count: int | None) -> None: ...
     def unresolved_beside(row: "DataclassInstance", flag: bool) -> "DataclassInstance":
@@ -192,6 +198,8 @@ def test_bool_parameters_reads_each_spelling() -> None:
         optional_string,
         unresolved_beside,
         unresolved_member,
+        unresolved_dotted,
+        unresolved_subscript,
     ):
         assert bool_parameters(fn) == ["flag"], fn.__name__
     assert bool_parameters(flags) == []
