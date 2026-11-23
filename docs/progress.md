@@ -1191,15 +1191,22 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
     constructed. The Codex review of S2-C at `d3dbb428` found it (finding 3), and a rerun of
     `parse_label` at `f82950e` printed `norm 'sheriff 2' marks ()` and
     `norm 'sheriff' marks ('2',)`.
-  - No lexer test reads an OCR word with a confidence in a fixed-decimal column. The property
-    `test_amount_digits_are_the_digits_of_its_words` builds every word with no confidence, and
-    `test_lexer_round_trip` uses only the money column, which has no fixed decimals. So a lexer
-    that rounds an OCR amount in a one-decimal column, when its word carries a confidence, passes
-    every lexer test. The Codex review of S2-D at `4fa19584` found it (finding 1), with an
-    in-memory mutant that turned 65.8 into 66 and left 52 tests passing. `lex.py` never reads
-    `confidence`. At `73d428e2`, `grep -n confidence` on it prints nothing and exits 1. The same
-    run read `65.8` on an OCR page, whose word has the confidence 100.0, in the one-decimal
-    column as `Amount` 65.8.
+  - No test states the value of an OCR amount in a fixed-decimal column. A lexer that rounds
+    every OCR `Amount` in a one-decimal column to a whole number passes every test of
+    `test_lex.py`, `test_val_probe.py`, `tests/test_evidence.py` and `test_records.py`. A run at
+    `b52a993a` with that lexer, patched in memory, printed `89 passed`, and the patch changed 9
+    values on the way. The same patch without its test of the source fails 5 tests, so the gap
+    is the OCR source and not the one-decimal column. The property
+    `test_amount_digits_are_the_digits_of_its_words` and `test_lexer_round_trip`, the two named
+    proofs of clause C1b, both pass under it. The lexer at the head is right: it reads `65.8` on
+    an OCR page in the one-decimal column as `Amount` 65.8. The Codex review of S2-D at
+    `4fa19584` found a narrower form (finding 1), a patch that also asked for a confidence on the
+    word, which `lex.py` never reads. The review of the run's decision trail found this wider
+    one. Eight cash editions name a Textract word source in a reviewed record, FY2007 Q3 among
+    them (the table in section 1 of `docs/evidence/dossiers/QCASH.md`), and the tests' own cash
+    column is the one-decimal column of VAL-Q35, so this is a path the cash parser of step 8
+    reads. Close the gap before then, with an OCR draw in a fixed-decimal column in both
+    properties.
   - `transliteration_ok` counts a footnote digit, because it sees text only. The Codex review of
     S2-D at `4fa19584` found it (finding 2). At `73d428e2`, `transliteration_ok("2.8 1*", "2.8")`
     is false and `transliteration_ok("2.8 1*", "2.81")` is true. `apply_reading` removes the mark
