@@ -80,6 +80,10 @@ in section 11.4 enforces both rules.
 
 ### 2.1 `checkedtables` types
 
+A kit type refuses at construction, with `ValueError`, a value that breaks a fact its own block
+below states in a field comment or in a "What these make impossible" list. A check that no block
+states is not built.
+
 ```python
 # checkedtables/refs.py: Box and WordRef. Cells and checks import this module, never words.
 @dataclass(frozen=True, slots=True)
@@ -161,6 +165,8 @@ class Word:
     size: float | None
     confidence: float | None   # OCR only, 0 to 100
 
+    def __post_init__(self) -> None: ...    # ValueError: a confidence outside 0 to 100 or NaN
+
 
 @dataclass(frozen=True, slots=True)
 class Rule:
@@ -179,9 +185,17 @@ class Page:
     rules: tuple[Rule, ...] = ()
 
     def __post_init__(self) -> None:
+        if not self.doc_sha256:
+            raise ValueError(f"page {self.number} names no file")
+        if self.number < 1:
+            raise ValueError(f"a page has a number below 1: {self.number}")
+        seen: set[WordRef] = set()
         for w in self.words:
             if w.ref.doc_sha256 != self.doc_sha256 or w.ref.page != self.number:
                 raise ValueError(f"word {w.ref} does not belong to page {self.number}")
+            if w.ref in seen:
+                raise ValueError(f"two words on page {self.number} share the ref {w.ref}")
+            seen.add(w.ref)
             if self.source.kind is SourceKind.TEXT_LAYER and w.confidence is not None:
                 raise ValueError(f"word {w.ref} has an OCR confidence on a text layer page")
 
@@ -191,8 +205,9 @@ class Document:
     sha256: str
     pages: tuple[Page, ...]    # pages extracted, ascending; need not be contiguous
 
-    def __post_init__(self) -> None: ...    # ValueError: a page whose doc_sha256 is not sha256,
-                                            # or page numbers that are not strictly ascending
+    def __post_init__(self) -> None: ...    # ValueError: an empty sha256, a page whose
+                                            # doc_sha256 is not sha256, or page numbers that are
+                                            # not strictly ascending
 
     def page(self, number: int) -> Page: ...
 ```
@@ -271,6 +286,8 @@ class ColumnSpec:
     fmt: NumberFormat = NumberFormat()
     presence: Presence = Presence.REQUIRED
     dash: DashMeaning = DashMeaning.NO_VALUE
+
+    def __post_init__(self) -> None: ...     # ValueError: an empty name or an empty caption
 
 
 @dataclass(frozen=True, slots=True)
@@ -362,6 +379,8 @@ class Amount:
     def __post_init__(self) -> None:
         if not self.words:
             raise ValueError("an Amount needs the words it was read from")
+        if self.review_id == "":
+            raise ValueError("an Amount names an empty review id")
         if (self.reading is Reading.REVIEWED) != (self.review_id is not None):
             raise ValueError("a reviewed Amount names its review, and only then")
 
@@ -372,6 +391,10 @@ class Dash:
     words: tuple[WordRef, ...]
     meaning: DashMeaning
     rule_id: str | None = None     # the DashRule that set ZERO, if any
+
+    def __post_init__(self) -> None:
+        if not self.words:
+            raise ValueError("a Dash needs the words it was read from")
 
 
 @dataclass(frozen=True, slots=True)

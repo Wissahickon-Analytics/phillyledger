@@ -214,6 +214,38 @@ Each entry: step, what changed, why, and the design section updated.
   that are not strictly ascending, as the design's comment on `pages` already said.
   `WordRef.__post_init__` raises `ValueError` for an empty `doc_sha256`, for a page below 1, which
   the design calls 1-based, and for an index or a child below 0. Design section 2.1.
+- **Step 2: a kit type refuses what its own design block rules out** (November 23, 2026, S2-B,
+  found in the second Codex review and by a verifier). Each Codex round asked for a few more
+  constructor checks, and the list had no natural end. Design section 2.1 now opens with one
+  closed rule. A kit type refuses at construction, with `ValueError`, a value that breaks a fact
+  its own block states in a field comment or in a "What these make impossible" list, and a check
+  that no block states is not built. The round added six checks. Each is stated in its block of
+  section 2.1, and each has a test of the refused value and of its nearest legal value. No field
+  changed, so `FIELD_SNAPSHOT` is unchanged.
+  - `Amount` refuses an empty `review_id` in either reading. The `cells` block says "a reviewed
+    Amount names its review, and only then", and the empty text names no review.
+    `Amount(..., Reading.REVIEWED, "")` was accepted.
+  - `Dash` refuses no words. The `cells` block lists "a number without words" as impossible, and
+    a `ZERO` dash is the operand 0. It also lists "blank" and "dash" as two flags on one field,
+    and a dash with no words is a blank cell. `NotApplicable`, `Unreadable` and `Text` get no
+    such check. `Dash("", (), DashMeaning.ZERO)` was accepted.
+  - `Page` refuses two words with equal refs. The `refs` block says a ref's `index` is the
+    "extraction order on that page", so one ref names one word. A word and the children that
+    `split_numeric_runs` cuts from it differ in `child`, so they may share a page.
+  - `Word` refuses a confidence outside 0 to 100, NaN included. The `words` block says "OCR only,
+    0 to 100". A NaN and 101.0 were accepted, and `< 95` is false for both, so both clear a
+    confidence floor of 95.
+  - `Page` refuses an empty `doc_sha256` and a `number` below 1, and `Document` refuses an empty
+    `sha256`. The `words` block lists "a word without its file hash and page" as impossible, and
+    the `refs` block calls a page "1-based". A page with no words escaped the word checks, so
+    `Page("", 0, ...)` and `Document("", ...)` were accepted. The kit checks a hash for presence
+    only (the note "The kit checks a hash for presence only").
+  - `ColumnSpec` refuses an empty `name` and an empty `caption`. The `columns` block lists "a
+    column without a name and a caption" as impossible, and the empty caption regex matches every
+    header.
+
+  The `ColumnSpec` test is in a new `test_columns.py`, and the S2-B file lists of
+  `docs/plans/step-02.md` now name it. Design section 2.1.
 
 ## Notes for later sessions
 
@@ -419,23 +451,30 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   in a workspace copy and fails when a `.hypothesis` folder appears there.
 - **Docstrings put `refs` past its estimate** (November 23, 2026, step 2, S2-B). The kit size
   report counts every line that is not blank or a comment, docstrings included. At the S2-B head
-  it prints 548 lines. Against design section 12.1: `refs` 121 (estimate 60), `kinds` 29 (40),
-  `words` 125 (90), `labels` 25 (30), `cells` 97 (90). `columns` holds 38 lines for two of its
+  it prints 592 lines. Against design section 12.1: `refs` 121 (estimate 60), `kinds` 29 (40),
+  `words` 147 (90), `labels` 25 (30), `cells` 108 (90). `columns` holds 49 lines for two of its
   ten names (330). `table` holds 113 lines (190) for two of the eight names its row lists,
   `RowKey` and `Finding`, and for `Severity`, which the row does not list. Without docstrings
-  `refs` is 62 lines, `words` 50 and `table` 58. The numpy docstrings on each public class and
-  method, magic methods included, are 289 of the 548 lines. By module their share runs from 28
-  percent in `kinds` to 64 percent in `labels`. `refs` also writes four comparison methods for
-  `WordRef`. The five whole modules hold 397 lines against an estimate of 310. If the other
-  modules run as far past theirs, the kit passes its 3,800 line budget, an inference that no run
-  has checked. The report never fails the build, so the owner decides whether the budget counts
-  docstrings.
+  `refs` is 62 lines, `words` 65, `cells` 50 and `table` 58. The numpy docstrings on each public
+  class and method, magic methods included, are 308 of the 592 lines. By module their share runs
+  from 28 percent in `kinds` to 64 percent in `labels`. `refs` also writes four comparison
+  methods for `WordRef`. The five whole modules hold 430 lines against an estimate of 310. If
+  the other modules run as far past theirs, the kit passes its 3,800 line budget, an inference
+  that no run has checked. The report never fails the build, so the owner decides whether the
+  budget counts docstrings.
 - **What an OCR word carries, a note for the step 4 plan** (November 23, 2026, step 2, S2-B).
   `Page` refuses a word with an OCR confidence on a text layer page. It does not refuse the
   converse states: a word on an OCR page with no confidence, or with a style, which the design
   says no OCR word has. Step 4 builds the adapters and learns what pdfplumber and Textract return
   for every word, so its plan decides whether `Page` refuses those states too, and records the
   choice in design section 2.1.
+- **The kit checks a hash for presence only, a note for the step 4 and step 5 plans** (November
+  23, 2026, step 2, S2-B). `WordRef`, `Page` and `Document` refuse an empty hash and take any
+  other text, such as `"unknown"`. The old repository checks that a hash is 64 lowercase
+  hexadecimal characters (`gov_budget_etl/models.py`, line 216). The kit does not. The adapter
+  of step 4 computes each hash from a file's bytes, and the record lint of step 5 reads the hashes
+  that records cite, so those two own the form of a hash. Their plans say where the form is
+  checked.
 - **Follow-ups after step 2** (November 23, 2026). The step 2 run found these and did not fix
   them.
   - Nothing ties the module table of design section 11.1 to `PURE_IMPORTS`. A pin can hold a pair
