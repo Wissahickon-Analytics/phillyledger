@@ -116,11 +116,6 @@ def is_inside(name: str, package: str) -> bool:
     return any(is_at_or_under(name, root) for root in INSIDE[package])
 
 
-def imported_module(node: ast.ImportFrom, module: str) -> str:
-    relative = "." * node.level + (node.module or "")
-    return importlib.util.resolve_name(relative, module.rpartition(".")[0])
-
-
 def bound_module(alias: ast.alias) -> str:
     return alias.name if alias.asname else alias.name.partition(".")[0]
 
@@ -128,9 +123,9 @@ def bound_module(alias: ast.alias) -> str:
 def outside_imports(tree: ast.Module, module: str) -> list[tuple[int, str]]:
     package = pure_package(module)
     pairs = (
-        (node.lineno, f"{imported_module(node, module)}.{alias.name}")
+        (node.lineno, f"{node.module}.{alias.name}")
         for node in ast.walk(tree)
-        if isinstance(node, ast.ImportFrom)
+        if isinstance(node, ast.ImportFrom) and not node.level
         for alias in node.names
     )
     return [(line, pair) for line, pair in pairs if not is_inside(pair, package)]
@@ -161,6 +156,8 @@ def effect(node: ast.expr | ast.stmt, package: str) -> str | None:
             return f"{owner}.{name}"
         case ast.Name(id=name) if name in BANNED_NAMES:
             return name
+        case ast.ImportFrom(level=level, module=name) if level:
+            return f"relative import from {'.' * level}{name or ''}"
         case ast.Import(names=aliases):
             names = (alias.name for alias in aliases if not is_inside(bound_module(alias), package))
             outside = ", ".join(names)
