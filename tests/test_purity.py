@@ -58,8 +58,12 @@ BANNED_FORMS = {
         "from re import *",
         "def make():\n    from uuid import uuid4",
         "if TYPE_CHECKING:\n    from pathlib import Path",
+        "from . import refs",
+        '__package__ = "email.mime"\nfrom . import text',
     ),
     CORE_MODULE: (
+        "from . import catalog",
+        "from ... import core",
         "from ... import shell",
         "from ...shell import run",
         "from datadesk import shell",
@@ -74,15 +78,12 @@ ALLOWED_FORMS = {
         "if __debug__:\n    def collect():\n        items = []\n        return items\n",
         "from checkedtables.refs import Box",
         "import checkedtables.lines",
-        "from . import refs",
         "from checkedtables.lines import *",
     ),
     CORE_MODULE: (
-        "from . import catalog",
         "from checkedtables.refs import Box",
         "import datadesk.core.tables as tables",
         "from datadesk import core",
-        "from ... import core",
     ),
 }
 GBK_FILE_HIDING_IMPORT = b'# coding: gbk\nX = "\xe3\x81\x81\\"; import sys #\'"\n'
