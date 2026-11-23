@@ -48,6 +48,10 @@ each plan and each pull request from outside. The workflow and principles come f
    git config --local user.email <an email on your GitHub account>
    ```
    Agents never change the git author name or email (hard rule 10 in `CLAUDE.md`).
+8. Optional: install `just` (`brew install just`). The `Justfile` wraps the gate commands:
+   `just check` for lint, format, types and import contracts, `just test` for pytest,
+   `just fix` for ruff's fixes, and `just gates` for everything CI runs. CI calls the
+   commands itself and does not need `just`.
 
 ## Each build step
 

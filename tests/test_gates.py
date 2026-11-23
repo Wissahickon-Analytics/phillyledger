@@ -16,6 +16,7 @@ GATES = (
 
 REPO = Path(__file__).parents[1]
 CI_WORKFLOW = REPO / ".github" / "workflows" / "ci.yml"
+JUSTFILE = REPO / "Justfile"
 CI_HEADER = """\
 name: CI
 
@@ -166,6 +167,31 @@ def folders_missing_init(source_root: Path) -> list[Path]:
 def test_ci_runs_every_gate() -> None:
     steps = "".join(f"      - if: {ALWAYS}\n        run: {gate}\n" for gate in GATES)
     assert CI_WORKFLOW.read_bytes().decode() == CI_HEADER + steps
+
+
+def just_recipes() -> dict[str, tuple[tuple[str, ...], tuple[str, ...]]]:
+    recipes: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {}
+    name = ""
+    for line in JUSTFILE.read_text().splitlines():
+        if line.startswith("    "):
+            needs, commands = recipes[name]
+            recipes[name] = (needs, (*commands, line.strip()))
+        elif line and not line.startswith("#"):
+            head, _, needs = line.partition(":")
+            name = head.split()[0]
+            recipes[name] = (tuple(needs.split()), ())
+    return recipes
+
+
+def commands_of(
+    recipe: str, recipes: Mapping[str, tuple[tuple[str, ...], tuple[str, ...]]]
+) -> list[str]:
+    needs, commands = recipes[recipe]
+    return [command for need in needs for command in commands_of(need, recipes)] + list(commands)
+
+
+def test_just_gates_runs_every_gate() -> None:
+    assert sorted(commands_of("gates", just_recipes())) == sorted(GATES)
 
 
 def test_planted_boto3_import_fails_lint_imports(tmp_path: Path) -> None:
