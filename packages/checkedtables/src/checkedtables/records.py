@@ -15,8 +15,8 @@ _SLACK = 1.0
 class ReviewedReading:
     """A person's reading of one cell on the rendered page.
 
-    A reading is keyed by file hash, page, box and the text that extraction returned in the box,
-    never by word index, which shifts when the extraction library changes.
+    A reading is keyed by file hash, page, box, word source and the text that extraction returned
+    in the box, never by word index, which shifts when the extraction library changes.
 
     Attributes
     ----------
@@ -158,7 +158,8 @@ def reading_for(
         exactly the cell's words, which join to `seen`. Otherwise a BLOCK finding on the
         reading's page with the subject ``"<doc sha8>:reading:<reading id>"``:
         "duplicate_reading" for two or more candidates, named by the least id, or
-        "stale_reading" for one whose box holds other words.
+        "stale_reading" for one whose box holds other words or words that do not join to
+        `seen`.
     """
     candidates = sorted(
         (
@@ -189,10 +190,12 @@ def apply_reading(cell: Cell, reading: ReviewedReading) -> Cell | Finding:
     """Apply a reviewed reading to the cell it was written for.
 
     Only an `Amount` or an `Unreadable` takes a reading. The cell's words must lie on the
-    reading's file and page, and its text must equal the reading's `seen`, because
-    `transliteration_ok` reads both of its texts from the record. A reading may add or drop a
-    sign, a separator or a point, and may read an OCR confusable letter as its digit. It never
-    changes, adds or drops a digit.
+    reading's file and page, and its text must equal the reading's `seen`, so a reading never
+    puts its value on another cell's words. The digits of the reading must equal those of
+    `seen`, in order, where each OCR confusable glyph of `seen` (``B``, ``b``, ``D``, ``d``,
+    ``O``, ``o``, ``Q``, ``q`` and ``&``) counts as its digit. So a reading may add or drop any
+    other glyph, such as a sign, a separator or a point, and never changes, adds or drops a
+    digit.
 
     Parameters
     ----------
@@ -207,8 +210,9 @@ def apply_reading(cell: Cell, reading: ReviewedReading) -> Cell | Finding:
         For a reading of None, an `Unreadable` accepted by the reading's id. It keeps the
         reason of an `Unreadable` cell and gives an `Amount` the reason "reviewed_null". For
         any other reading, a reviewed `Amount` of the cell's text and words, the reading's
-        source and the reading's id. Its number is the reading, read as one signed number by
-        the reader of `lex_cell`. A BLOCK finding on the reading's page, with the subject
+        source and the reading's id, with no marks. Its number is the reading, read as one
+        signed number by the grammar `lex_cell` uses for one word. No column format applies to
+        it. A BLOCK finding on the reading's page, with the subject
         ``"<doc sha8>:reading:<reading id>"``, takes the place of the cell in two cases.
         "stale_reading" means the cell is not the one the reading was written for.
         "reading_refused" means the cell takes no reading, or the reading changes, adds or

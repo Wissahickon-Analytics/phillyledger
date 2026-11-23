@@ -1762,9 +1762,9 @@ def apply_reading(cell: Cell, reading: ReviewedReading) -> Cell | Finding: ...
     # 3. A None reading gives Unreadable(accepted_by=id). An Unreadable keeps its reason, and
     #    an Amount gets "reviewed_null".
     # 4. Any other reading must pass transliteration_ok(seen, reading) and read as one signed
-    #    number through the private reader of lex_cell, else reading_refused. Then
-    #    Amount(the reading's number, the cell's text and words, the reading's source,
-    #    REVIEWED, the reading's id).
+    #    number through the private reader of lex_cell, else reading_refused. No column format
+    #    applies. Then Amount(the reading's number, the cell's text and words, the reading's
+    #    source, REVIEWED, the reading's id), with no marks.
     # Every finding of both functions is BLOCK, on the reading's page, with the subject
     # "<doc sha8>:reading:<reading id>". They have no table name for the form of Finding.subject.
 

@@ -189,7 +189,7 @@ def test_a_reading_never_lends_its_value_to_another_cell() -> None:
 
 
 def test_a_negative_reading_is_read() -> None:
-    # VAL-Q35: "(29 1)" is the form at qcmr-cash.yml:165 of the old repository.
+    # VAL-Q35
     page, cell_words = cash_row("(29 1)")
     cell = lex_cell(cell_words, CASH, OCR)
     assert isinstance(cell, Unreadable)
