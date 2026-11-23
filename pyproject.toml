@@ -1,0 +1,67 @@
+[tool.uv]
+exclude-newer = "1 week"
+
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[tool.uv.sources]
+checkedtables = { workspace = true }
+phillyledger = { workspace = true }
+datadesk = { workspace = true }
+
+[dependency-groups]
+dev = [
+  "checkedtables",
+  "phillyledger",
+  "datadesk",
+  "prek==0.5.10",
+  "pytest>=9",
+  "ruff>=0.17",
+  "ty==0.0.104",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["packages/checkedtables/src", "packages/phillyledger/src", "packages/datadesk/src"]
+extend-exclude = ["docs/prototype", ".claude", "*.md"]
+
+[tool.ruff.lint]
+select = [
+  "E",
+  "F",
+  "I",
+  "UP",
+  "B",
+  "BLE",
+  "C4",
+  "SIM",
+  "D",
+  "PERF",
+  "PTH",
+  "RUF007",
+  "RUF022",
+  "RUF059",
+  "RUF100",
+  "ANN",
+  "PYI",
+]
+ignore = ["ANN401", "D100", "D104"]
+
+[tool.ruff.lint.per-file-ignores]
+"!packages/{checkedtables,phillyledger}/src/**" = ["D"]
+"**/tests/**" = ["ANN", "D"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--import-mode=importlib"
+
+[tool.ty.environment]
+python-version = "3.12"
+root = ["packages/checkedtables/src", "packages/phillyledger/src", "packages/datadesk/src"]
+
+[tool.ty.src]
+exclude = ["docs/prototype", ".claude"]
