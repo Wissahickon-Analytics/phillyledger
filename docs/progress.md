@@ -502,6 +502,23 @@ Each entry: step, what changed, why, and the design section updated.
     `$`, `10` and a raised `1` reads as `10`, where removing every ` 1` would leave `$0`. A box
     over `29` and a `7` on the next line is stale for the cell `29 1`.
 
+- **Decisions 13 to 17 change five rules of section 3.1, to be built at step 5** (November 23,
+  2026, after the step 2 run). The run left five questions for the owner, and he adopted its
+  recommendations with the words "follow your recommendations". Design section 16 records them
+  as decisions 13 to 17, and section 16.2 states the reading rule in full. This entry changes no
+  code. Section 3.1 keeps each rule as built, with a pointer to its decision, and the step 5
+  plan schedules the five changes with their tests.
+  - Decision 13, the reading rule. A reading may restore what extraction lost and nothing else.
+    A prototype of the rule, run outside this repository at `2638173a`, passes all 34 reviewed
+    readings of the old repository and refuses the eight cases the note "What a reviewed reading
+    can still do" and the last Codex reviews recorded. The lexer test that reads `(59.8j` as
+    `(59.8)` keeps passing through the rule's one exception.
+  - Decision 14, a raised footnote mark joins the line it sits on.
+  - Decision 15, `N/A` in any case, a U+2010 dash and `#DIV/0!` are value words. No row of VAL
+    section 3.2.1 holds one of them (a search of the table at `2638173a` finds none).
+  - Decision 16, the first join shape needs equal sizes and a small gap.
+  - Decision 17, a bare digit ends a label as a mark only by its size or by the row schema.
+
 ## Notes for later sessions
 
 Things learned while building: surprises in the PDFs, commands that matter, traps.
@@ -793,7 +810,8 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   only be accepted as null. The step 4 plan also decides how a reviewed reading can supply a
   glyph that a font code hides, if the font repair leaves one.
 - **What the step 2 rules do on real pages, for the plans of steps 5, 8, 10, 11
-  and 12** (November 23, 2026, step 2, S2-C, found in the Codex reviews). Codex read three PDFs of
+  and 12** (November 23, 2026, step 2, S2-C, found in the Codex reviews). Decisions 14 to 17 of
+  design section 16 settle four of the results below, to be built at step 5. Codex read three PDFs of
   `../gov-budget-data/data/phila/` with `pdftotext -bbox` and ran `group_lines`, `has_values` and
   `parse_label` on their word boxes at `8846f05`. The S2-C fix round reran the command (the
   block "PDF reproduction for findings 1-4" of `.codex-review/step-02-pr-8846f05c.md`) and
@@ -1014,7 +1032,8 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   confusable letter, such as the `o` of `1o4.o`.
 - **What a reviewed reading can still do, for the owner and the step 5 plan** (November 23,
   2026, step 2, S2-E fix round, found in the Codex review of `ce55ea9a`). Each case below was
-  run in a scratch copy of `f479ede`, and the fix round changed none of them.
+  run in a scratch copy of `f479ede`, and the fix round changed none of them. The owner decided
+  the rule on November 23, 2026: design section 16, decision 13, with the rule in section 16.2.
   - `apply_reading` alone accepts a reading of another cell that prints the same text on the
     same page (Codex finding 4). On a row of `2918 2918`, a reading whose box holds the first
     cell gives `None` from `reading_for` for the second cell, and `apply_reading` of it to the
