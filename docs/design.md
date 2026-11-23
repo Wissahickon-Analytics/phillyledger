@@ -3705,6 +3705,12 @@ as the working directory (from A). Word fixtures of real pages are generated onc
 `datadesk fixture <sha> <pages>` into `tests/fixtures/words/<series>_<edition>_p<n>.py` as Python
 literals, so importing them is not I/O.
 
+pytest-socket replaces only the names `socket.socket`, `socket.getaddrinfo` and
+`socket.gethostbyname` and lifts its block before fixture finalizers run, so an audit hook in the
+root `conftest.py` also refuses the `socket.__new__` and resolver audit events unless the running
+test carries the `enable_socket` marker. Each core test module also starts in its own empty
+folder, so a module-scoped fixture never sees the checkout.
+
 ### 11.2 Property tests
 
 - Lexer round trip: any `Decimal` with k decimals, printed with commas, parentheses, a leading
