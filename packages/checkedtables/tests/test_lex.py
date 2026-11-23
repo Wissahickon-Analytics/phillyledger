@@ -1,5 +1,7 @@
+from collections.abc import Callable
 from dataclasses import replace
 from decimal import Decimal
+from itertools import product
 from string import ascii_letters, digits, punctuation
 
 from hypothesis import example, given, settings
@@ -23,7 +25,10 @@ PERCENT = ColumnSpec(
 )
 MINUS_GLYPHS = ("-", "\u2212", "\u2013", "\u2014")
 DASHES = ("-", "--", "\u2013", "\u2014")
+GROUPINGS = ("", ",")
+NEGATIVES = ("()", *MINUS_GLYPHS)
 DOLLARS = (("", ""), ("$", ""), ("", "$"), ("$ ", ""))
+EDGE_VALUES = (Decimal("-0.00"), Decimal("12345678901234567890.123456789"))
 CONFUSABLE_GLYPHS = (
     ("B", "8"),
     ("b", "8"),
@@ -88,8 +93,9 @@ SIGNED_MORE = (
     "{}%*",
 )
 values = st.builds(
-    lambda number, decimals: Decimal(number).scaleb(-decimals),
-    st.integers(-(10**15), 10**15),
+    lambda sign, number, decimals: Decimal((sign, tuple(map(int, str(number))), -decimals)),
+    st.integers(0, 1),
+    st.integers(0, 10**40),
     st.integers(0, 12),
 )
 number_words = st.builds(
@@ -139,12 +145,25 @@ def decimal_digits(text: str) -> str:
     return "".join(character for character in text if character in digits)
 
 
+def prints_a_sign(text: str) -> bool:
+    places = [index for index, character in enumerate(text) if character in digits]
+    lead, tail = text[: places[0]], text[places[-1] + 1 :]
+    return any(glyph in lead for glyph in MINUS_GLYPHS) or ("(" in lead and ")" in tail)
+
+
+def in_every_printed_form(test: Callable[..., None]) -> Callable[..., None]:
+    for form in product(EDGE_VALUES, GROUPINGS, NEGATIVES, DOLLARS):
+        test = example(*form)(test)
+    return test
+
+
 @given(
     values,
-    st.sampled_from(("", ",")),
-    st.sampled_from(("()", *MINUS_GLYPHS)),
+    st.sampled_from(GROUPINGS),
+    st.sampled_from(NEGATIVES),
     st.sampled_from(DOLLARS),
 )
+@in_every_printed_form
 @example(Decimal("0.00001"), "", "-", ("", ""))
 @example(Decimal("1234.567890"), ",", "()", ("$", ""))
 @example(Decimal("-1234.567890"), "", "\u2014", ("", "$"))
@@ -167,6 +186,7 @@ def test_lexer_round_trip(
 @example(["67,215,504.0", "0"], "", MONEY, SourceKind.TEXT_LAYER)
 @example(["$", "2.8"], "1", CASH, SourceKind.TEXT_LAYER)
 @example(["0.05%*"], "", PERCENT, SourceKind.TEXT_LAYER)
+@example(["5%"], "", PERCENT, SourceKind.TEXT_LAYER)
 def test_amount_digits_are_the_digits_of_its_words(
     texts: list[str], raised: str, col: ColumnSpec, source: SourceKind
 ) -> None:
@@ -179,6 +199,7 @@ def test_amount_digits_are_the_digits_of_its_words(
         fraction = joined.rpartition(".")[2] if "." in joined else ""
         assert decimal_digits(format(cell.printed.copy_abs(), "f")) == decimal_digits(joined)
         assert cell.printed.as_tuple().exponent == -len(decimal_digits(fraction))
+        assert prints_a_sign(joined) or not cell.printed.is_signed(), joined
 
 
 @settings(max_examples=500)
@@ -231,6 +252,7 @@ def test_transliteration_reads_every_glyph_in_order() -> None:
     assert transliteration_ok("B&D", "860")
     assert not transliteration_ok("B&D", "806")
     assert not transliteration_ok("291.8", "2918.1")
+    assert not transliteration_ok("291.8", "291.")
     assert not transliteration_ok("1,185.9", "1,165.9")
 
 
@@ -357,9 +379,10 @@ def test_a_dash_means_no_value_unless_the_column_declares_zero() -> None:
 
 def test_dashes_and_marks_are_never_zero() -> None:
     # QCASH-Q52
-    for text in (*DASHES, "*", "---", "\u2212", "- -"):
-        cell = lexed(text, CASH)
-        assert isinstance(cell, Dash | Unreadable), text
+    for dash in DASHES:
+        assert lexed(dash, CASH) == Dash(dash, (WordRef(SHA, 1, 0),), DashMeaning.NO_VALUE), dash
+    for text in ("*", "---", "\u2212", "- -"):
+        assert isinstance(lexed(text, CASH), Unreadable), text
 
 
 def test_not_applicable_cells_are_never_numbers() -> None:
