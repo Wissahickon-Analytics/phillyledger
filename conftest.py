@@ -38,8 +38,8 @@ def pytest_configure(config: pytest.Config) -> None:
     # teardown. CPython raises these audit events inside the socket constructor and the resolver
     # functions, so no name or fixture phase skips them.
     sys.addaudithook(_refuse_sockets)
-    # Hypothesis writes .hypothesis/constants into the folder it was imported from during
-    # collection, even with database=None.
+    # Hypothesis writes .hypothesis/constants under the working directory it was imported in,
+    # from collection on, even with database=None.
     home = Path(tempfile.mkdtemp(prefix="hypothesis-"))
     config.stash[HYPOTHESIS_HOME] = home
     set_hypothesis_home_dir(home)

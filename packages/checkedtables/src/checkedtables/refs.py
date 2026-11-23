@@ -25,7 +25,7 @@ class Box:
     bottom: float
 
     def __post_init__(self) -> None:
-        """Refuse an inverted box."""
+        """Refuse an inverted or NaN edge pair."""
         if not (self.x0 <= self.x1 and self.top <= self.bottom):
             raise ValueError(f"inverted box {self}")
 
@@ -67,11 +67,6 @@ class Box:
             The box to test.
         slack : float
             How far `other` may reach past each edge of this box.
-
-        Returns
-        -------
-        bool
-            True when every edge of `other` is within `slack` of this box or inside it.
         """
         return (
             self.x0 - slack <= other.x0
@@ -97,8 +92,8 @@ class WordRef:
     index : int
         The extraction order on that page. It is evidence, never a record key.
     child : int or None
-        Set when `split_numeric_runs` made this word from a longer one, whose box this word's
-        box approximates.
+        Set when `split_numeric_runs` cut this word out of a longer one. Its box is then
+        approximate.
     """
 
     doc_sha256: str

@@ -357,19 +357,20 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
 - **Hypothesis writes nothing in the checkout** (November 23, 2026, step 2, S2-B). The root
   `conftest.py` registers and loads one profile with `database=None`, `derandomize=True` and
   `deadline=None`, so every machine draws the same examples. A wider search is a command a person
-  runs with another profile. Hypothesis 6.170.15 still writes `.hypothesis/constants` into the
-  folder it was imported from, during collection, so `pytest_configure` points it at a temporary
-  folder with `set_hypothesis_home_dir` and `pytest_unconfigure` removes the folder.
+  runs with another profile. Hypothesis 6.170.15 still writes `.hypothesis/constants` under the
+  working directory it was imported in, and its pytest plugin starts the writes during
+  collection, so `pytest_configure` points it at a temporary folder with
+  `set_hypothesis_home_dir` and `pytest_unconfigure` removes the folder.
   `test_hypothesis_writes_nothing_in_the_workspace` in `tests/test_gates.py` runs a property test
   in a workspace copy and fails when a `.hypothesis` folder appears there.
 - **Docstrings put `refs` past its estimate** (November 23, 2026, step 2, S2-B). The kit size
   report counts every line that is not blank or a comment, docstrings included. At the S2-B head
-  it prints 533 lines. Against design section 12.1: `refs` 111 (estimate 60), `kinds` 29 (40),
-  `words` 112 (90), `labels` 25 (30), `cells` 97 (90). `columns` holds 38 lines for two of its
-  ten names (330), and `table` 121 for three of its eight (190). Without docstrings `refs` is 53
+  it prints 518 lines. Against design section 12.1: `refs` 107 (estimate 60), `kinds` 29 (40),
+  `words` 109 (90), `labels` 25 (30), `cells` 97 (90). `columns` holds 38 lines for two of its
+  ten names (330), and `table` 113 for three of its eight (190). Without docstrings `refs` is 53
   lines and `table` 58. The numpy docstring on each public class and method, magic methods
   included, is about half of each module, and `refs` also writes four comparison methods for
-  `WordRef`. The five whole modules hold 374 lines against an estimate of 310. If the other
+  `WordRef`. The five whole modules hold 367 lines against an estimate of 310. If the other
   modules run as far past theirs, the kit passes its 3,800 line budget, an inference that no run
   has checked. The report never fails the build, so the owner decides whether the budget counts
   docstrings.

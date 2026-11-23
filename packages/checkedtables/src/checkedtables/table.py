@@ -25,7 +25,7 @@ class RowKey:
     parts: tuple[tuple[str, str], ...]
 
     def __post_init__(self) -> None:
-        """Refuse parts that `str` could not print in a form that `parse` reads back."""
+        """Refuse no parts, names that are empty or not strictly ascending, and a separator."""
         names = [name for name, _ in self.parts]
         if not names:
             raise ValueError("a row key needs at least one part")
@@ -48,11 +48,6 @@ class RowKey:
         ----------
         **parts : str
             The value of each part, by name.
-
-        Returns
-        -------
-        RowKey
-            The key.
         """
         return RowKey(tuple(sorted(parts.items())))
 
@@ -60,17 +55,12 @@ class RowKey:
     def parse(text: str) -> "RowKey":
         """Read a key from the text that ``str`` prints.
 
-        TOML records use this. Code builds a key with `of`.
+        For a key held as text, such as one in a TOML record. Code builds a key with `of`.
 
         Parameters
         ----------
         text : str
             Parts as ``name=value``, joined by ``|``.
-
-        Returns
-        -------
-        RowKey
-            The key.
 
         Raises
         ------
@@ -84,7 +74,7 @@ class RowKey:
 
     @property
     def has_occurrence(self) -> bool:
-        """Whether the key has an ``occurrence`` part, as a key from a list table does."""
+        """Whether the key has the ``occurrence`` part that a list table gives a repeated key."""
         return any(name == "occurrence" for name, _ in self.parts)
 
 

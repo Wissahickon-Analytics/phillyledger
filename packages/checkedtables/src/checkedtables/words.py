@@ -108,7 +108,8 @@ class Document:
     sha256 : str
         The sha256 of the publisher file.
     pages : tuple[Page, ...]
-        The extracted pages in ascending order. They need not be contiguous.
+        The extracted pages. The caller passes them in ascending order, and they need not be
+        contiguous.
     """
 
     sha256: str
@@ -121,11 +122,6 @@ class Document:
         ----------
         number : int
             The 1-based page number in the publisher file.
-
-        Returns
-        -------
-        Page
-            The extracted page.
 
         Raises
         ------
