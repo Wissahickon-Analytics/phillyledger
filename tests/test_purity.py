@@ -1,8 +1,11 @@
 import ast
 import importlib.util
+import sys
 from collections.abc import Iterable, Iterator
 from pathlib import Path
 from types import ModuleType
+
+import pytest
 
 PURE_PACKAGES = ("checkedtables", "datadesk.core")
 PURE_IMPORTS: dict[str, tuple[str, ...]] = {
@@ -59,6 +62,7 @@ BANNED_FORMS = {
     CORE_MODULE: (
         "from ... import shell",
         "from ...shell import run",
+        "from datadesk import shell",
         "import datadesk.core.tables",
     ),
 }
@@ -71,13 +75,17 @@ ALLOWED_FORMS = {
         "from checkedtables.refs import Box",
         "import checkedtables.lines",
         "from . import refs",
+        "from checkedtables.lines import *",
     ),
     CORE_MODULE: (
         "from . import catalog",
         "from checkedtables.refs import Box",
         "import datadesk.core.tables as tables",
+        "from datadesk import core",
+        "from ... import core",
     ),
 }
+GBK_FILE_HIDING_IMPORT = b'# coding: gbk\nX = "\xe3\x81\x81\\"; import sys #\'"\n'
 
 
 def package_sources(name: str) -> list[tuple[str, Path]]:
@@ -88,6 +96,10 @@ def package_sources(name: str) -> list[tuple[str, Path]]:
         for folder in map(Path, spec.submodule_search_locations)
         for path in folder.rglob("*.py")
     )
+
+
+def parse_file(path: Path) -> ast.Module:
+    return ast.parse(path.read_text(), filename=str(path))
 
 
 def pure_package(module: str) -> str:
@@ -196,7 +208,7 @@ def test_pure_packages_have_no_effects() -> None:
         f"{path}:{line} {found}"
         for name in PURE_PACKAGES
         for module, path in package_sources(name)
-        for line, found in impurities(ast.parse(path.read_text(), filename=str(path)), module)
+        for line, found in impurities(parse_file(path), module)
     ]
     assert not hits, "\n".join(hits)
 
@@ -206,15 +218,42 @@ def test_pure_imports_are_pinned() -> None:
         pairs = {
             pair
             for module, path in package_sources(name)
-            for _, pair in outside_imports(ast.parse(path.read_text(), filename=str(path)), module)
+            for _, pair in outside_imports(parse_file(path), module)
         }
         assert tuple(sorted(pairs)) == PURE_IMPORTS[name], name
+
+
+def test_scan_reads_a_file_as_the_importer_does(tmp_path: Path) -> None:
+    path = tmp_path / "words.py"
+    path.write_bytes(GBK_FILE_HIDING_IMPORT)
+    assert impurities(parse_file(path), KIT_MODULE) == [(2, "import sys")]
 
 
 def test_pinned_imports_are_not_modules() -> None:
     probes = ("dataclasses.sys", "dataclasses.dataclass", "statistics.random", "re.no_such_name")
     assert module_valued(probes) == ["dataclasses.sys", "statistics.random", "re.no_such_name"]
     assert module_valued(pair for pairs in PURE_IMPORTS.values() for pair in pairs) == []
+
+
+def test_star_import_from_outside_fails_whatever_the_pin_holds(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    units = ModuleType("example_units")
+    units.__getattr__ = lambda name: None
+    monkeypatch.setitem(sys.modules, units.__name__, units)
+    monkeypatch.setitem(PURE_IMPORTS, "checkedtables", ("example_units.*",))
+    star = "from example_units import *"
+    assert impurities(ast.parse(star), KIT_MODULE) == [(1, star)]
+    assert module_valued(PURE_IMPORTS["checkedtables"]) == ["example_units.*"]
+
+
+def test_scan_passes_a_name_its_own_package_pins(monkeypatch: pytest.MonkeyPatch) -> None:
+    tree = ast.parse("from decimal import Decimal")
+    monkeypatch.setitem(PURE_IMPORTS, "checkedtables", ("decimal.Decimal",))
+    assert impurities(tree, KIT_MODULE) == []
+    monkeypatch.setitem(PURE_IMPORTS, "checkedtables", ())
+    monkeypatch.setitem(PURE_IMPORTS, "datadesk.core", ("decimal.Decimal",))
+    assert impurities(tree, KIT_MODULE) == [(1, "from decimal import Decimal")]
 
 
 def test_scan_reports_each_banned_form() -> None:
