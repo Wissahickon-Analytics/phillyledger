@@ -85,10 +85,10 @@ def _tokens_and_marks(words: Sequence[Word]) -> tuple[tuple[str, ...], tuple[str
     return tuple(tokens), tuple(marks)
 
 
-def _joined(tokens: Sequence[str], col: ColumnSpec, source: SourceKind) -> str | None:
+def _joined(dollar: str, tokens: Sequence[str], col: ColumnSpec, source: SourceKind) -> str | None:
     if len(tokens) != 2 or col.kind not in _JOIN_KINDS or source is not SourceKind.TEXT_LAYER:
         return None
-    wrapped = tokens[0].startswith("(") and tokens[1].endswith(")")
+    wrapped = not dollar and tokens[0].startswith("(") and tokens[1].endswith(")")
     opening, closing = ("(", ")") if wrapped else ("", "")
     head, tail = tokens[0].removeprefix(opening), tokens[1].removesuffix(closing)
     for head_shape, tail_shape in _JOINS:
@@ -120,7 +120,9 @@ def _read_cell(tokens: Sequence[str], col: ColumnSpec, source: SourceKind) -> De
     # VAL-Q09: a "$" set as its own word before the number.
     dollar = "$" if tokens[0] == "$" else ""
     number_tokens = tokens[len(dollar) :]
-    joined = number_tokens[0] if len(number_tokens) == 1 else _joined(number_tokens, col, source)
+    joined = (
+        number_tokens[0] if len(number_tokens) == 1 else _joined(dollar, number_tokens, col, source)
+    )
     if joined is None:
         return "two_tokens"
     token = dollar + joined
@@ -204,11 +206,13 @@ def lex_cell(words: Sequence[Word], col: ColumnSpec, source: SourceKind) -> Cell
     3, or plain, then an optional point and digits, with a leading zero only as the whole
     integer part, and a ``%``, if any, follows the digits inside the parentheses. Two words
     read as one number only in a money or percent column on a text layer, in two printed forms,
-    each of which may sit inside one pair of parentheses: one bare digit, then 1 or 2 digits
-    and comma groups ("1 37,332,523"), or a number with a point whose integer part is 1 to 3
-    digits or comma-grouped, with an optional ``$`` and minus glyph, then one digit
-    ("67,215,504.0 0"). Whether a ``%`` may or must be printed follows ``col.fmt.percent``,
-    and the printed decimals must equal ``col.fmt.decimals`` unless it is None.
+    each of which may sit inside one pair of parentheses around the whole cell: one bare digit,
+    then 1 or 2 digits and comma groups ("1 37,332,523"), or a number with a point whose
+    integer part is 1 to 3 digits or comma-grouped, with an optional ``$`` and minus glyph,
+    then one digit ("67,215,504.0 0"). Parentheses after a ``$`` word do not wrap the whole
+    cell, so "$ (1 23,456)" does not join. Whether a ``%`` may or must be printed follows
+    ``col.fmt.percent``, and the printed decimals must equal ``col.fmt.decimals`` unless it is
+    None.
 
     Parameters
     ----------
@@ -259,7 +263,8 @@ def transliteration_ok(seen: str, reading: str) -> bool:
     seven, in either text fails the check, since no ASCII digit can stand for it. Every other
     glyph of either text counts as nothing, a superscript digit included. So a reading may add
     or drop any glyph that is not a digit, such as a point or a sign, and may never change, drop
-    or add a digit.
+    or add a digit. A `seen` that holds ``(cid:``, a font code that extraction could not decode,
+    fails against every reading, since the code is no evidence of any digit.
 
     Parameters
     ----------
@@ -271,10 +276,12 @@ def transliteration_ok(seen: str, reading: str) -> bool:
     Returns
     -------
     bool
-        True when neither text holds a decimal digit that is not ASCII and the digits of
-        `reading` equal the digits and confusables of `seen`, so "2918" to "291.8" passes and
-        "65.8" to "85.8" fails.
+        True when `seen` holds no font code, neither text holds a decimal digit that is not
+        ASCII, and the digits of `reading` equal the digits and confusables of `seen`, so "2918"
+        to "291.8" passes and "65.8" to "85.8" and "10(cid:28)" to "10028" fail.
     """
+    if "(cid:" in seen:
+        return False
     foreign = any(glyph.isdecimal() and glyph not in _DIGITS for glyph in f"{seen}{reading}")
     read = "".join(glyph for glyph in reading if glyph in _DIGITS)
     return not foreign and "".join(_transliterated(glyph) for glyph in seen) == read
