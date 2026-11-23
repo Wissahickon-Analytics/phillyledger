@@ -1730,8 +1730,9 @@ def lex_cell(words: Sequence[Word], col: ColumnSpec, source: SourceKind) -> Cell
     # A "%" follows col.fmt.percent, and printed decimals equal col.fmt.decimals unless None.
     # Anything else -> Unreadable with the first reason that applies: not_a_number (a glyph no
     # number, sign, mark or separator uses, or no digit), two_tokens (tokens that fit no join
-    # shape), sign (a plus, a minus after a digit, an unpaired parenthesis, two signs),
-    # percent_sign, grouping (what is left is not one strictly grouped number), decimals.
+    # shape), sign (a plus, a minus after a digit, an unpaired or misplaced parenthesis, two
+    # signs), percent_sign, grouping (what is left is not one strictly grouped number, a
+    # misplaced "$" or "%" included), decimals.
     # Amount and Unreadable keep the word texts joined by one space and the ref of every word.
 def transliteration_ok(seen: str, reading: str) -> bool: ...
     # the digits of `reading`, in order, equal the digit-or-OCR-confusable glyphs of `seen`;

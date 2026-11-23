@@ -136,8 +136,11 @@ def _read_cell(tokens: Sequence[str], col: ColumnSpec, source: SourceKind) -> De
 def split_numeric_runs(word: Word) -> tuple[Word, ...]:
     """Cut a word where a label and a number, or two numbers, were printed with no space.
 
-    A cut falls between a letter and a comma-grouped number on either side, so ``FY2016`` stays
-    one word, and after a ``%`` or a ``)`` that a digit, a ``(`` or a ``$`` follows.
+    A cut falls between an ASCII letter and a comma-grouped number on either side, so ``FY2016``
+    stays one word. Before the number a ``(`` or ``$`` may follow the letter, as in
+    "TAX$434,605", and after it a decimal part and a ``)`` may come before the letter, as in
+    "(408,491.2)NET". A cut also falls after a ``%`` or a ``)`` that a digit, a ``(`` or a
+    ``$`` follows.
 
     Parameters
     ----------
@@ -181,22 +184,23 @@ def lex_cell(words: Sequence[Word], col: ColumnSpec, source: SourceKind) -> Cell
 
     The rules apply in order. No words give `Blank`, and a year, code or text column gives
     `Text`. The text "N/A" or "NA" gives `NotApplicable`, and "-", "--", an en dash or an em
-    dash gives a `Dash` with the column's meaning. Marks then leave the end of the cell: the
-    glyphs ``*``, ``†``, ``‡``, ``§``, ``#``, a backtick and superscript digits, and a last
-    one-digit word under 0.7 of the size of the number word before it whose bottom is above
-    that word's bottom. A ``$`` word that opens the cell leaves its tokens.
+    dash gives a `Dash` with the column's meaning. A number may end in marks, which the
+    `Amount` keeps apart from its value: the glyphs ``*``, ``†``, ``‡``, ``§``, ``#``, a
+    backtick and superscript digits, and a last one-digit word under 0.7 of the size of the
+    number word just before it whose bottom is above that word's bottom. A ``$`` word may stand
+    first in the cell.
 
-    One token reads as a number when paired parentheses or one leading minus glyph (``-``,
-    U+2212, an en dash or an em dash) give its sign, a ``$`` stands at most once before the
-    digits on either side of that sign, and the digits are 1 to 3 then comma groups of 3, or
-    plain, then an optional point and digits, with a leading zero only as the whole integer
-    part. Two tokens join only in a money or percent column on a text layer, after a pair of
-    parentheses around the whole cell leaves, and only when the joined text reads as one
-    number. Shape 1 is one bare digit, then 1 or 2 digits and comma groups ("1 37,332,523").
-    Shape 2 is a number with a point whose integer part is 1 to 3 digits or comma-grouped, with
-    an optional ``$`` and minus glyph, then one digit ("67,215,504.0 0"). A ``%`` must follow
-    ``col.fmt.percent``, and the printed decimals must equal ``col.fmt.decimals`` unless it is
-    None.
+    A word reads as a number when paired parentheses around it or one leading minus glyph
+    (``-``, U+2212, an en dash or an em dash) give its sign, a ``$`` stands at most once before
+    the digits on either side of that sign, the digits are ASCII, 1 to 3 then comma groups of
+    3, or plain, then an optional point and digits, with a leading zero only as the whole
+    integer part, and a ``%``, if any, follows the digits inside the parentheses. Two words
+    read as one number only in a money or percent column on a text layer, in two printed forms,
+    each of which may sit inside one pair of parentheses: one bare digit, then 1 or 2 digits
+    and comma groups ("1 37,332,523"), or a number with a point whose integer part is 1 to 3
+    digits or comma-grouped, with an optional ``$`` and minus glyph, then one digit
+    ("67,215,504.0 0"). Whether a ``%`` may or must be printed follows ``col.fmt.percent``,
+    and the printed decimals must equal ``col.fmt.decimals`` unless it is None.
 
     Parameters
     ----------
@@ -211,13 +215,15 @@ def lex_cell(words: Sequence[Word], col: ColumnSpec, source: SourceKind) -> Cell
     -------
     Cell
         An `Amount` whose `printed` is a Decimal built from the printed digits, sign and point,
-        with the marks it lost. Any other cell of a number column is `Unreadable`, with the
-        first reason that applies of "not_a_number" (a character that no number, sign, mark or
-        separator uses, or no digit), "two_tokens" (tokens that fit no join shape), "sign" (a
-        plus sign, a minus after a digit, an unpaired parenthesis or two signs),
-        "percent_sign", "grouping" (what is left is not one strictly grouped number) and
-        "decimals". An `Amount` and an `Unreadable` keep the word texts joined by one space and
-        the ref of every word, the ``$`` and mark words included.
+        with its marks. A cell of a number column that is not blank, N/A or a dash and does not
+        read as a number is `Unreadable`, with the first reason that applies of
+        "not_a_number" (a character that no number, sign, mark or separator uses, or no
+        digit), "two_tokens" (two or more words in no form that reads as one number), "sign" (a
+        plus sign, a minus after a digit, an unpaired or misplaced parenthesis, or two signs),
+        "percent_sign", "grouping" (what is left is not one strictly grouped number, a
+        misplaced ``$`` or ``%`` included) and "decimals". An `Amount` and an `Unreadable` keep
+        the word texts joined by one space and the ref of every word, the ``$`` and mark words
+        included.
     """
     if not words:
         return Blank()
@@ -239,10 +245,11 @@ def lex_cell(words: Sequence[Word], col: ColumnSpec, source: SourceKind) -> Cell
 def transliteration_ok(seen: str, reading: str) -> bool:
     """Return whether a reading keeps every digit that extraction saw, in order.
 
-    Each glyph of `seen` counts as its digit when it is a digit or one of the OCR confusables
-    ``B`` and ``b`` for 8, ``D``, ``d``, ``O``, ``o``, ``Q`` and ``q`` for 0, and ``&`` for 6.
-    Every other glyph counts as nothing, so a reading may restore a point or a sign and may
-    never change, drop or add a digit.
+    Each glyph of `seen` counts as its digit when it is an ASCII digit or one of the OCR
+    confusables ``B`` and ``b`` for 8, ``D``, ``d``, ``O``, ``o``, ``Q`` and ``q`` for 0, and
+    ``&`` for 6. Every other glyph of either text counts as nothing. So a reading may add or
+    drop any glyph that is not a digit, such as a point or a sign, and may never change, drop
+    or add a digit.
 
     Parameters
     ----------
