@@ -5,7 +5,7 @@ same branch as the work: status, the date the check passed, and anything a later
 
 | Step | What | Status | Branch | Check passed |
 |---|---|---|---|---|
-| 1 | Workspace, tooling, purity and shape tests | in progress | `step-01/a-workspace` | |
+| 1 | Workspace, tooling, purity and shape tests | check passed | `step-01/a-workspace`, `step-01/b-import-contracts`, `step-01/c-kit-shape`, `step-01/d-test-isolation` | November 22, 2026, runs 45093444380, 45079756579, 45082927896 and 45092206629 |
 | 2 | Kit, words to cells | not started | | |
 | 3 | Archive for the QCMR from FY2022 | not started | | |
 | 4 | Words: PDF adapter with font repair, word cache, codec | not started | | |
@@ -19,6 +19,23 @@ same branch as the work: status, the date the check passed, and anything a later
 | 12 | Supplemental reports, one statement at a time | not started | | |
 | 13 | `watch`, the reader, first full release | not started | | |
 | 14 | QSMR, the held-out test of the kit | not started | | |
+
+The step 1 check passed in four `pull_request` runs of `.github/workflows/ci.yml`:
+
+- Clean: run 45093444380 at `d3a9477dad72aa38751277fd2d4f3ee684b49ce1`, the head of
+  `step-01/d-test-isolation` after the restack and before the commit that set this row. Every
+  gate passed on Python 3.12 and 3.14.
+- C2: run 45079756579 at `4395f899294790a878db848e00db2a08d5850ed7`, with `import boto3` planted
+  in `datadesk.core`. The `uv run lint-imports` step failed with `datadesk core is pure BROKEN`.
+- C3: run 45082927896 at `ec19cf4fd446023fa76f8f5197e3e14d00861a25`, with a `bool` parameter
+  planted in `checkedtables`. The `uv run pytest` step failed with `AssertionError: planted`.
+- C4: run 45092206629 at `71a76f3d16b74a8bb5c604dac03a3c170f7d8636`, with a `socket.socket()`
+  call planted in a core test. The `uv run pytest` step failed with `SocketBlockedError`.
+
+The three plant runs came from temporary pull requests 7, 9 and 13, which are closed. Each ran on
+the head of its stack branch at the time, not on the final heads. C2 ran on `805cd23` of
+`step-01/b-import-contracts`, C3 on `bd0f2f1` of `step-01/c-kit-shape`, and C4 on `b4eda02` of
+`step-01/d-test-isolation`, which has the same patch id as the final S1-D head.
 
 ## Deviations from the design
 
@@ -202,6 +219,11 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
     with numeric flags, and `sys.audit` for `gethostbyaddr`.
   - Two routes still pass. CPython raises no audit event for `_socket.socketpair()`, which makes
     a pair of local sockets, and a subprocess that a test starts opens sockets freely.
+  - pytest runs a session-scoped fixture's finalizer inside the last test's protocol, so when
+    that test carries `enable_socket`, the finalizer can open a socket even though an unmarked
+    test requested the fixture. Probed at S1-D on an unconnected socket, the finalizer opened it
+    and the run ended `5 passed`, and with the marker removed it failed with
+    `SocketBlockedError` at teardown.
   - A class that a module defines on `socket.socket` keeps the block for the whole session when
     the module is first imported after the root `conftest.py` blocks sockets. `ssl` is one.
     `ssl.SSLSocket` subclasses pytest-socket's guard, so under the marker
@@ -212,6 +234,11 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   - Each blocked call also prints the `UserWarning` that `SocketBlockedError` issues when it is
     created, so `uv run pytest` reports six warnings, one per blocked call in the isolation
     tests.
+- **A core test's package- or session-scoped fixture sees the checkout** (November 22, 2026,
+  step 1, S1-D). `_empty_module_working_directory` gives each core test module an empty folder,
+  but pytest sets up a package- or session-scoped fixture first, so one that a core test requests
+  still runs in the checkout. Probed at S1-D, fixtures of session and package scope found
+  `pyproject.toml` in the working directory, and one of module scope did not.
 - **The pure packages can still reach effects the gates do not name** (November 22, 2026, step
   1, S1-D, found in the Codex review of the stack and the build). Planted one at a time in
   `datadesk/core/tables/birt.py`, each of these passes every gate: `from io import FileIO`
