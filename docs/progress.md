@@ -1219,7 +1219,20 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
     `828,904.89` in a two-decimal column on an OCR page. Three lexers patched in memory each fail
     all three tests: one that rounds every OCR `Amount` in a one-decimal column, one that does so
     only when the first word has a confidence, and one that rounds every OCR `Amount` in a
-    two-decimal column. Each passes the 89 tests of the old run at `2638173a`.
+    two-decimal column. Each passes the 89 tests of the old run at `2638173a`. The Codex review
+    of this pull request at `5a443450` found three more gaps here, and the fix round closes them.
+    `test_lexer_round_trip` gains the OCR example `828,904.89`, because its only two-decimal
+    example, `-0.00`, reads the same after rounding. The lexer that rounds the cents and keeps
+    the exponent, so that `828,904.89` reads as `828905.00`, now fails the round trip as well.
+    `fixed_column` keeps the drawn column's kind and percent-sign rule, and
+    `test_a_bare_percent_keeps_the_decimals_its_column_declares` reads a bare `74.98` in a
+    two-decimal percent column (SUPOP-Q12). A lexer that rounds that bare percent to `75.00`
+    fails it and the digits property. The digits property draws `bold` as False or None for OCR
+    words, and `test_a_style_free_ocr_word_below_full_confidence_keeps_its_decimals` reads `5.6`
+    at confidence `99.21337127685547` with no bold and no size. By Codex's account, FY2007 Q4
+    cash carries that word. A lexer that rounds such a word in the one-decimal column to `6.0`
+    fails that test, and the digits property through its new example `5.6`. At `5a443450` every
+    test passed under the percent and the style-free lexers.
   - `transliteration_ok` counts a footnote digit, because it sees text only. The Codex review of
     S2-D at `4fa19584` found it (finding 2). At `73d428e2`, `transliteration_ok("2.8 1*", "2.8")`
     is false and `transliteration_ok("2.8 1*", "2.81")` is true. `apply_reading` removes the mark
@@ -1256,7 +1269,12 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
     Pull request #27 (`step-02/f-test-gaps`) closes it with
     `test_a_reviewed_cell_names_the_record_that_was_applied`, which applies records of the ids
     `cash-fy07-q3` and `cash-fy08-q1` to that cell. With `apply_reading` patched in memory to
-    write `r1` in place of the reading's id, that test fails.
+    write `r1` in place of the reading's id, that test fails. Both records go to a cell that is
+    `Unreadable`, which the Codex review at `5a443450` found. So
+    `test_a_reviewed_amount_names_the_record_that_was_applied` applies the record `cash-fy07-q4`
+    to the OCR `Amount` `65.8`, with the reading `65.8` and with none. With `apply_reading`
+    patched in memory to write `r1` only when its input cell is an `Amount`, that test fails. At
+    `5a443450` every test passed under that patch.
   - The signed-value property of `test_records.py` compares the value and the exponent, which are
     equal for `Decimal("-0.0")` and `Decimal("0.0")`. The Codex review of S2-E at `73d428e2` found
     it (finding 3), with an in-memory mutant that dropped the sign of a reviewed zero and left all
