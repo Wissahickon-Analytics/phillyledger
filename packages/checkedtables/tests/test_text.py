@@ -134,6 +134,18 @@ def test_label_mark_see_note_with_and_without_its_space() -> None:
     )
 
 
+def test_label_mark_see_note_with_any_one_space_between_its_words() -> None:
+    # WAGE-Q44
+    for space in ("\xa0", "\t", "\u2009"):
+        found = label(f"Federal Government see{space}note")
+        assert printed_text_marks(found) == (
+            f"Federal Government see{space}note",
+            "Federal Government",
+            (f"see{space}note",),
+        ), ascii(space)
+        assert found.norm == label("Federal Government see note").norm == "federal government"
+
+
 def test_label_control_see_note_inside_a_word_keeps_every_word() -> None:
     # WAGE-Q44
     assert printed_text_marks(label("Oversee note")) == ("Oversee note", "Oversee note", ())
