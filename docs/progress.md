@@ -6,7 +6,7 @@ same branch as the work: status, the date the check passed, and anything a later
 | Step | What | Status | Branch | Check passed |
 |---|---|---|---|---|
 | 1 | Workspace, tooling, purity and shape tests | check passed | `step-01/a-workspace`, `step-01/b-import-contracts`, `step-01/c-kit-shape`, `step-01/d-test-isolation` | November 22, 2026, runs 45093444380, 45094817250, 45094829990 and 45092206629 |
-| 2 | Kit, words to cells | in progress | `step-02/a-import-pin`, `step-02/b-value-types`, `step-02/c-words-to-lines`, `step-02/d-lexer` | |
+| 2 | Kit, words to cells | check passed | `step-02/a-import-pin`, `step-02/b-value-types`, `step-02/c-words-to-lines`, `step-02/d-lexer`, `step-02/e-records` | November 23, 2026, head `73d428e2`, run 45130645501 |
 | 3 | Archive for the QCMR from FY2022 | not started | | |
 | 4 | Words: PDF adapter with font repair, word cache, codec | not started | | |
 | 5 | QCMR positions parser, registry, row schemas, column vocabulary | not started | | |
@@ -416,6 +416,91 @@ Each entry: step, what changed, why, and the design section updated.
     results from those of `fae7e17`. Each change is one of the three above or a change of
     `Unreadable` reason, and no new `Amount` holds a digit that its words less their marks do
     not print.
+- **Step 2: `reading_for` takes the page's words, and `records` states its findings**
+  (November 23, 2026, S2-E). Design section 3.1 gave `reading_for` a page number, which every
+  word's ref already carries, and section 2.1 makes a reading stale when the words inside its box
+  stop joining to `seen`. The function could not see those words. It is now
+  `reading_for(cell_words, page_words, source, readings)`. A reading is a candidate when its
+  source matches and its box, with 1.0 point of slack, holds a cell word of its file and page.
+  Two candidates give `duplicate_reading`. The page words the box holds must be exactly the
+  cell's words and join to `seen`, else `stale_reading`, so a box over two cells of `7` is stale
+  for both. `apply_reading` gives `reading_refused` for a cell that is not an `Amount` or an
+  `Unreadable`, and for a reading that fails `transliteration_ok` or does not read as one signed
+  number through the private reader of `lex.py`. It gives `stale_reading` when the cell's text
+  differs from `seen`, so a record with `seen` "85.8" cannot put its value on a cell that prints
+  `65.8`. A null reading on an `Amount` gives the reason `reviewed_null`. Every finding is BLOCK
+  on the reading's page, with the subject `<doc sha8>:reading:<reading id>`, because neither
+  function has the table name that the subject form of `Finding` needs. Two rules go past the
+  plan's words. `apply_reading` also gives `stale_reading` when the cell's words are not on the
+  reading's file and page, so a reading of page 4 never applies to a cell on page 5 that prints
+  the same text: a human reading is a record with a page (`CLAUDE.md`, hard rule 4). With that
+  test removed in a scratch copy, `test_a_reading_never_lends_its_value_to_another_cell` fails.
+  `ReviewedReading` refuses an empty `id` with `ValueError`, because `Amount` refuses an empty
+  `review_id` and `apply_reading` must not raise for a record that a file can hold. `records`
+  imports no new outside name, so `PURE_IMPORTS` and the list in section 11.1 are unchanged.
+  Design sections 2.1 and 3.1.
+- **Step 2: a reading keeps footnote digits out, and one id names one record** (November 23,
+  2026, S2-E fix round, found in the Codex review of `ce55ea9a` and the verification lanes).
+  Each change has a test that failed before it, except the reworded page message of
+  `apply_reading`. Design sections 2.1 and 3.1 and the S2-E boxes of `docs/plans/step-02.md` say
+  the same.
+  - `apply_reading` checks a reading against the cell's text less the mark words that end an
+    `Amount`, and the reviewed `Amount` keeps the cell's marks. The whole-word marks of an
+    `Amount`, such as a small raised digit, a backtick or `*`, are the last words of its text,
+    in order. Before, a review of `$ 2.8` with a small raised `1` refused `2.8` and accepted
+    `2.81`, so a footnote digit entered the number (VAL-Q28), and every reviewed `Amount` had no
+    marks. A mark inside a word, such as the `*` of `242,096*`, holds no digit, and a reading
+    still drops it. An `Unreadable` has no marks, so a reading keeps its whole text (the note
+    "What a reviewed reading can still do").
+  - `ReviewedReading` refuses an empty `reason`, because a human reading is a record with a page
+    and a reason (`CLAUDE.md`, hard rule 4). Before, a reading with no reason changed `2918` to
+    `291.8`. `DashRule` refuses an empty `id`, so a `Dash` that a rule sets to zero can name the
+    rule. `CellRecords` refuses two readings with one id and two dash rules with one id, because
+    `Assembly.used` holds ids and a used id must name the record that was used. Fix round 2
+    refuses a reading and a dash rule that share an id too (the entry below). The opening of
+    design section 2.1 now names a record file's reasons beside its ids.
+  - `reading_for` counts the words the box holds against the cell's words, and joins the cell's
+    words in the order given, which is the order `lex_cell` joins a cell's text in. Before, it
+    compared sets, so one word given twice passed as the cell, and it joined the held words by
+    left edge, then ref. `group_lines` orders two words with one left edge by their bottoms, so
+    a cell printed `8 7`, `reading_for` joined `7 8`, and no reading of that cell could pass.
+  - The `stale_reading` message of `reading_for` names the words in the box and the cell's
+    words, or the cell's text and `seen`. Before, for a box over two cells of `7`, it said that
+    the second cell's words read the first cell's `seen`. The page message of `apply_reading`
+    says that a word of the cell is not on the reading's file and page.
+  - Two rules that the design's comments state and this file did not. With two or more
+    candidates, `duplicate_reading` takes the subject of the least id and its message names
+    every id. No column format applies to a reading, so the reading `29.18` of `2918` gives a
+    reviewed `Amount` of 29.18 in a one-decimal column.
+  - New tests fail seven mutants of `records.py` that passed the tests of `ce55ea9a`: the null
+    reading checked before the stale tests, the page checked without the file, one word of the
+    cell on the reading's page taken as enough, the cell's words joined by ref or by left edge,
+    and a slack of 0.6 or 1.9. Three tests show that a reading cannot drop or add a decimal
+    digit of another script, such as a fullwidth one before `,234` read as `234`, which S2-D
+    fixed in `transliteration_ok`.
+- **Step 2: one id names one record of either kind, and a blank id or reason is no id or
+  reason** (November 23, 2026, S2-E fix round 2, found in the second Codex review of S2-E, at
+  `61704909`, and the verification lanes). Each change has a test that failed before it. Design
+  section 2.1 and the S2-E boxes of `docs/plans/step-02.md` say the same.
+  - `CellRecords` refuses an id that two of its records share: two readings, two dash rules, or
+    a reading and a dash rule. `Assembly.used` is one `frozenset[str]` of ids, so before, a used
+    reading `d1` made an unused dash rule `d1` look used, and no `unused_record` finding could
+    name the rule.
+  - `ReviewedReading` refuses an `id` or a `reason` that is empty after `strip()`, and `DashRule`
+    such an `id`. Before, a reason of two spaces and a tab let a reading change `2918` to
+    `291.8`. The tests try a space, a tab and a newline.
+  - A font code cannot become a reviewed number. The count cell `10(cid:28)`, read as `109` or as
+    `10028`, gives `reading_refused` through `reading_for` and `apply_reading`, and a null reading
+    of it is accepted. Codex found the word on page 1 of the FY2023 Q1 positions report, where
+    the page prints 109. S2-D fixed `transliteration_ok`, and this round adds the records test.
+    With the S2-D check removed in a scratch copy, the tests of `61704909` pass and the new test
+    fails.
+  - Four mutants of `records.py` passed all 191 tests of `61704909`, and each now fails a new
+    test: removing only the last mark word, removing the mark words wherever they appear in the
+    text, joining the cell's words by left edge, and comparing only how many words the box
+    holds. So a cell of `2.8`, a raised `1` and a `*` reads as `2.8` with both marks. A cell of
+    `$`, `10` and a raised `1` reads as `10`, where removing every ` 1` would leave `$0`. A box
+    over `29` and a `7` on the next line is stale for the cell `29 1`.
 
 ## Notes for later sessions
 
@@ -440,6 +525,24 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   them, so steps 1 to 4 are unaffected. This note first named step 2 by mistake. The owner
   decides, before the step 5 plan, whether `RawRow.bold` joins the pinned set or `RawRow` stays
   out of `kit_dataclasses`.
+- **`assemble` passes the words of the cut page to `reading_for`, a note for the step 5 plan**
+  (November 23, 2026, step 2, S2-E). `reading_for` compares the page words its box holds with
+  the cell's words as values. So `assemble` passes the words the cells were cut from, after any
+  `split_numeric_runs`, and not the page's raw words. Probed at S2-E: for "TAX434,605,553" on an
+  OCR page, a reading around the child "434,605,553" gives `stale_reading` with the raw word as
+  `page_words`, and the reading itself with the two children.
+- **The loader's digit check and a footnoted reading disagree, a note for the step 5 plan**
+  (November 23, 2026, step 2, S2-E fix round 2, finding 3 of the second Codex review of S2-E).
+  Design section 3.2 says that `load_records`, which step 5 builds in `datadesk`, refuses "a
+  reading whose digits fail transliteration_ok" (`docs/design.md`, lines 2069 and 2070 at the
+  S2-E head). The loader has only the record's text, so it cannot tell that the last `1` of the
+  footnoted cell `$ 2.8 1` is a small raised mark. Run in a scratch copy of `64560f3`:
+  `transliteration_ok("$ 2.8 1", "2.8")` is false, and `apply_reading` gives that cell, an
+  `Amount` with the mark `1`, a reviewed `Amount` of 2.8 that keeps the mark. The reverse also
+  holds: `transliteration_ok("$ 2.8 1", "2.81")` is true, and `apply_reading` gives
+  `reading_refused`. So the loader as the design words it would refuse a record that the
+  cell-level check accepts, and pass one that it refuses. The step 5 plan decides: either the
+  loader leaves the digit check to `apply_reading`, or the record carries what the loader needs.
 - **`uv.lock` and `exclude-newer`** (November 22, 2026, step 1). The owner's uv config and
   `UV_EXCLUDE_NEWER` set `exclude-newer = "1 week"`, and `uv lock` records that span in
   `uv.lock`. A machine without the setting, such as a CI runner, rejects the lock: `uv lock
@@ -641,7 +744,9 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   in a workspace copy and fails when a `.hypothesis` folder appears there.
 - **Docstrings put `refs` past its estimate** (November 23, 2026, step 2, S2-B). The kit size
   report counts every line that is not blank or a comment, docstrings included. At the S2-B head
-  it prints 592 lines. Against design section 12.1: `refs` 121 (estimate 60), `kinds` 29 (40),
+  it prints 592 lines. At the S2-E head after its fix round 2 it prints 1,420, and `records`
+  counts 239 lines against its estimate of 140, and 115 without docstrings. Against design
+  section 12.1: `refs` 121 (estimate 60), `kinds` 29 (40),
   `words` 147 (90), `labels` 25 (30), `cells` 108 (90). `columns` holds 49 lines for two of its
   ten names (330). `table` holds 113 lines (190) for two of the eight names its row lists,
   `RowKey` and `Finding`, and for `Severity`, which the row does not list. Without docstrings
@@ -652,6 +757,17 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   the other modules run as far past theirs, the kit passes its 3,800 line budget, an inference
   that no run has checked. The report never fails the build, so the owner decides whether the
   budget counts docstrings.
+- **Five more kit modules against their estimates** (November 23, 2026, step 2, S2-E fix
+  round 3). The same count as the note above, at `f82950e`, with and without
+  docstrings, against design section 12.1: `testing` 91 and 51 (estimate 90), `text` 118 and 52
+  (150), `lines` 122 and 52 (120), `lex` 269 and 181 (230), `records` 239 and 115 (140). The
+  five hold 839 lines against an estimate of 730, and 451 without docstrings. With docstrings,
+  `records` runs 99 lines past its estimate and `lex` 39. `testing`, at 91 lines against 90, and
+  `lines`, at 122 against 120, are over their estimates too, by one line and by two, and a
+  count at `73d428e2` gives the same two numbers. Without docstrings, each of the five is at or
+  under its estimate. `uv run python packages/checkedtables/tests/test_library_shape.py` prints
+  `checkedtables: 1431 lines (budget 3,800), 0 public names (budget 140)`, the sum of these
+  five and the seven modules of the note above.
 - **What an OCR word carries, a note for the step 4 plan** (November 23, 2026, step 2, S2-B).
   `Page` refuses a word with an OCR confidence on a text layer page. It does not refuse the
   converse states: a word on an OCR page with no confidence, or with a style, which the design
@@ -838,6 +954,22 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
     predicate in `lines.py` is loose by design, and step 5 decides whether `lanes_from_values`
     needs a stricter one. Step 10 parses this report, and the RTT dossier finds a zone's columns
     "from amount-bearing lines only" (section 4, rule 3).
+  - A spreadsheet error hides two valued rows, for the owner and the step 9 plan (design section
+    15, "Monthly City and School"). On page 1 of the July 2020 School report
+    (`collections/monthly-school/2020_07.pdf`), the rows `PAYMENT IN LIEU OF TAXES` and
+    `OTHER NON TAX` end in the text `#DIV/0!` in the percent column, and `has_values` is false
+    for both. The design's rule reads the last word that is not a mark, and `#DIV/0!` is not a
+    value word. No dossier records that text. The Codex review of S2-C at `d3dbb428` found it
+    (finding 2 of `.codex-review/step-02-pr-d3dbb428.md`). The S2-E fix round 3 reran it at
+    `f82950e`, read-only, with `pdftotext -f 1 -l 1 -layout` piped to a script that builds each
+    row with `page_from_text` and calls `group_lines` and `has_values`. It printed
+    `has_values=False` for `PAYMENT IN LIEU OF TAXES 4,574,002 - 96,584 350,198 (253,614)
+    96,584 350,198 (253,614) (96,584) #DIV/0!` and for `OTHER NON TAX 2,557 - - - - - - - -
+    #DIV/0!`. The owner decides what the cell publishes. An idea, not a plan: a spreadsheet
+    error text could count as a value word, so the row keeps its values while the cell itself
+    lexes as `Unreadable`. A reviewed reading of the same cell can also give a number, since the
+    reading `0.0%` gives a reviewed `Amount` of 0.0 (the note "What a reviewed reading can still
+    do", in its bullet on a confusable letter).
 - **Constructor checks the kit does not make** (November 23, 2026, step 2, S2-B). Design section
   2.1 says that the checks a kit type makes at construction are the ones its block shows, and no
   others. Those checks guard what enters the kit from outside: an adapter's words, pages and
@@ -880,6 +1012,78 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   words, always". The check would make that clause a fact of the type, and not only of the
   lexer's tests. A reviewed `Amount` could not make the same check, because its text may hold a
   confusable letter, such as the `o` of `1o4.o`.
+- **What a reviewed reading can still do, for the owner and the step 5 plan** (November 23,
+  2026, step 2, S2-E fix round, found in the Codex review of `ce55ea9a`). Each case below was
+  run in a scratch copy of `f479ede`, and the fix round changed none of them.
+  - `apply_reading` alone accepts a reading of another cell that prints the same text on the
+    same page (Codex finding 4). On a row of `2918 2918`, a reading whose box holds the first
+    cell gives `None` from `reading_for` for the second cell, and `apply_reading` of it to the
+    second cell gives a reviewed `Amount` of 291.8 on the second cell's word. A cell holds word
+    refs with no boxes, so `apply_reading` cannot see the reading's box. `reading_for` binds a
+    reading to its box, so step 5's `assemble` calls it first, with the words of the cut page,
+    and gives `apply_reading` only the reading it returns.
+  - The reading check compares digits only. So a reading can move a printed decimal point. The
+    cell `29.18`, a direct `Amount` of 29.18 in a money column, read as `291.8` gives 291.8. It
+    can drop a printed sign, since `(29.1)` read as `29.1` gives 29.1, and add one, since `29.1`
+    read as `(29.1)` or `-29.1` gives -29.1. Design section 3.1 allows a reading to place a
+    separator and a sign that extraction lost. Whether a reading may change one that the cell
+    already prints is the owner's decision. A reading can also join two printed numbers by
+    dropping a printed decimal point (Codex review of `2e0f4eca`, finding 2). The cell
+    `110,626,142.01 92.31`, a balance and the percentage beside it (VAL-Q15), is `Unreadable`
+    with the reason `two_tokens`. The reading `1106261420192.31` gives a reviewed `Amount` of
+    that value, and the reading `110626142.01` gives `reading_refused`. A rerun at `f82950e`
+    printed `reading '1106261420192.31' -> Amount 1106261420192.31 reviewed` and
+    `reading '110626142.01' -> reading_refused`. This case falls under the same decision.
+  - An `Unreadable` cell that also holds a small raised footnote digit keeps that digit in its
+    text, so a reading must carry it. On a text layer, `2918` then a raised `1` in a one-decimal
+    column gives `Unreadable` `2918 1` with the reason `decimals`. The readings `291.8` and
+    `2918` give `reading_refused`, and `2918.1` and `291.81` give reviewed amounts, so the cell
+    reads only as a number that ends in 1. `Unreadable` has no marks field. The step 5 plan
+    decides whether the cut stage keeps a raised mark out of an unreadable cell.
+  - A glyph of `seen` that is not an ASCII digit and not one of the nine pinned confusables
+    counts as nothing, so a reading can skip it (found in the verification lanes of fix round
+    2, run in a scratch copy of `64560f3`). For the OCR cell `29l8`, where OCR returned a
+    lower-case L for a 1, the reading `29.8` gives a reviewed `Amount` of 29.8, and `291.8` gives
+    `reading_refused`. For `¹,234` and `①,234`, the reading `234` gives a reviewed `Amount` of
+    234, and `1,234` gives `reading_refused`. The confusable glyphs are a pinned closed list
+    (`test_confusable_glyphs_are_pinned`, design section 3.1) with no `l` or `I` for 1, so a
+    change is the owner's decision under hard rule 6 of `CLAUDE.md`. An idea, not a plan: a
+    stricter rule would refuse a reading when `seen` holds a letter that is not a pinned
+    confusable.
+  - A confusable letter anywhere in the cell's text supplies a digit, in a word that holds no
+    digit and on a text layer as well as on OCR (Codex review of `2e0f4eca`, finding 1). In a
+    money column the cell `408,491,218 NET PROFITS TAX` is `Unreadable` with the reason
+    `not_a_number`. The reading `408491218` gives `reading_refused`, and the reading
+    `4084912180` gives a reviewed `Amount` of 4084912180, because the `O` of `PROFITS` reads as
+    0. The cell `TOTAL TAX REVENUE *` read as `0` gives a reviewed `Amount` of 0. A rerun at
+    `f82950e` on both sources printed `reading '408491218' -> reading_refused`,
+    `reading '4084912180' -> Amount 4084912180 reviewed` and, for `TOTAL TAX REVENUE *`,
+    `reading '0' -> Amount 0 reviewed`. The code follows design section 3.1 as written ("D, d,
+    O, o, Q and q as 0 ... and every other glyph as nothing"), so this is a question about the
+    design's rule and not a defect of `records.py`. Such a cell exists only when the cut puts
+    label words into a value cell. VAL probes 35 and 40 (VAL section 3.2.1) are these two texts
+    in a money column, and each lexes as `Unreadable not_a_number`. VAL section 3.1 lists them
+    as a footnote mark and as an amount fused to a label in the collections reports. Codex
+    states that on page 2 of the April 2024 City collections statement
+    (`collections/monthly-city/2024_04.pdf`) `TOTAL TAX REVENUE *` is a row label, and that the
+    first amount to its right is `4,160,607,459`. That is Codex's statement, not checked here.
+    The owner decides the rule. Ideas, not a plan: a confusable letter could count only inside a
+    word that also holds a digit, or only on an OCR page, or a reading could be refused when
+    `seen` holds a letter that is not a pinned confusable. When the step 5 plan writes
+    `load_records`, it should run a tighter rule against the old repository's reviewed readings
+    before the owner adopts it. The Codex review of S2-E at `73d428e2` (finding 1) found the same
+    rule at work on a cell that is cut correctly and sits on a text layer. Page 1 of the July
+    2020 School report (`collections/monthly-school/2020_07.pdf`) prints `#DIV/0!` in the
+    percent column of two rows (the note "What the step 2 rules do on real pages", in its bullet
+    on a spreadsheet error). In a percent column the one-word cell `#DIV/0!` is `Unreadable` with
+    the reason `not_a_number`. The reading `0.0%` gives a reviewed `Amount` of 0.0, because the
+    `D` reads as 0 and the token prints one 0. The reading `0` gives `reading_refused`, and a
+    null reading is accepted. A run at `73d428e2`, with the cell built by `page_from_text`,
+    printed `('Amount', "Decimal('0.0')", 'r1', None)` for `0.0%`, `reading_refused` for `0`
+    and `('Unreadable', 'None', None, 'r1')` for the null reading. The word holds the digit 0,
+    so the idea of counting a confusable only inside a word with a digit would still take
+    `0.0%`. The other two ideas would refuse it, since the page is a text layer and `I` and `V`
+    are not pinned confusables. That is read from the rule and not run.
 - **Follow-ups after step 2** (November 23, 2026). The step 2 run found these and did not fix
   them.
   - Nothing ties the module table of design section 11.1 to `PURE_IMPORTS`. A pin can hold a pair
@@ -961,3 +1165,87 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
     a raised footnote all keep the digit out of the number at that head. A full-size digit
     before a raised mark word joins the number through join shape 2, as it does with no mark.
     No page is known to print a `$` and a raised digit alone, and no step owns the form.
+  - `apply_reading`'s message for a word that is not on the reading's file and page has no test
+    that reads the message. The S2-E fix round 2 found it.
+  - Hand-built words `10(` and `cid:28)` in a count column give an `Unreadable` cell whose text
+    is `10( cid:28)`, and the reading `10028` gives a reviewed `Amount`, because the font-code
+    check looks for `(cid:` in `seen`. The S2-E verifier found it at `2e0f4eca`, and a rerun at
+    `f82950e` printed `cell 'Unreadable not_a_number', reading '10028' -> Amount 10028
+    reviewed`. A text layer gives a font code in place of one character, so no extraction
+    should split it across two words. The note above on the case of `(cid:` cites the
+    `pdfminer` line that writes it. This is for the plan of the step that ports the word
+    reader: the reader must keep a font code inside one word, or the check must look for
+    `cid:`.
+  - `pages()` in `packages/checkedtables/tests/test_lines.py` draws, for each word index, the
+    word or its children and never both. So `test_every_word_lands_in_exactly_one_line` passes
+    when `group_lines` drops a parent word whose child is on the page. The Codex review of S2-C
+    at `d3dbb428` found it (finding 1). `Page` accepts a parent with its children (the
+    Deviations entry "the constructor checks are the ones the design blocks show"). At
+    `f82950e`, a page of the word `1,234` and its children `1,` and `234` builds, and
+    `group_lines` keeps all three words. In a scratch copy with `group_lines` changed to drop
+    such a parent, the same page gave only the two children, and the property and the other 11
+    tests of `test_lines.py` passed.
+  - A label whose words are `Sheriff` ending in a non-breaking space and then `2` gives the
+    norm `sheriff 2` with no mark, where `Sheriff 2` gives `sheriff` with the mark `2`. The
+    bare-digit form needs exactly one whitespace character before the digit. The input is
+    constructed. The Codex review of S2-C at `d3dbb428` found it (finding 3), and a rerun of
+    `parse_label` at `f82950e` printed `norm 'sheriff 2' marks ()` and
+    `norm 'sheriff' marks ('2',)`.
+  - No test states the value of an OCR amount in a fixed-decimal column. A lexer that rounds
+    every OCR `Amount` in a one-decimal column to a whole number passes every test of
+    `test_lex.py`, `test_val_probe.py`, `tests/test_evidence.py` and `test_records.py`. A run at
+    `b52a993a` with that lexer, patched in memory, printed `89 passed`, and the patch changed 9
+    values on the way. The same patch without its test of the source fails 5 tests, so the gap
+    is the OCR source and not the one-decimal column. The property
+    `test_amount_digits_are_the_digits_of_its_words` and `test_lexer_round_trip`, the two named
+    proofs of clause C1b, both pass under it. The lexer at the head is right: it reads `65.8` on
+    an OCR page in the one-decimal column as `Amount` 65.8. The Codex review of S2-D at
+    `4fa19584` found a narrower form (finding 1), a patch that also asked for a confidence on the
+    word, which `lex.py` never reads. The review of the run's decision trail found this wider
+    one. Eight cash editions name a Textract word source in a reviewed record, FY2007 Q3 among
+    them (the table in section 1 of `docs/evidence/dossiers/QCASH.md`), and the tests' own cash
+    column is the one-decimal column of VAL-Q35, so this is a path the cash parser of step 8
+    reads. Close the gap before then, with an OCR draw in a fixed-decimal column in both
+    properties.
+  - `transliteration_ok` counts a footnote digit, because it sees text only. The Codex review of
+    S2-D at `4fa19584` found it (finding 2). At `73d428e2`, `transliteration_ok("2.8 1*", "2.8")`
+    is false and `transliteration_ok("2.8 1*", "2.81")` is true. `apply_reading` removes the mark
+    words that end an `Amount` before the check, so the cell of `2.8` and a small raised `1*`
+    accepts the reading `2.8` and keeps the mark `1*`, and refuses `2.81` with `reading_refused`.
+    The S2-E verifier ran the same at `73d428e2` (`/tmp/swarm-s2-e/worker-7/verify-fix3-c.log`),
+    and so did a run of ours. Any other caller of `transliteration_ok`, such as the loader of
+    step 5, must remove the marks itself (the note "The loader's digit check and a footnoted
+    reading disagree").
+  - The SUPCAP-Q34 test lexes `N/A` in a money column, where the page prints `N/A*` in a year
+    column. The Codex review of S2-D at `4fa19584` found it (finding 3). Page 93 of the FY2023
+    supplemental report (`supplemental-report/FY23.pdf`) prints `N/A*` under Budget Year and five
+    dashes in the money columns. Run read-only on it, `pdftotext -f 93 -l 93 -layout` 26.07.0
+    prints the line `N/A* - - - - -` under the heading line that starts `Budget Year Available`.
+    At `73d428e2`, `N/A*` is `Unreadable` with the reason `not_a_number` in a money column and
+    `Text` in a year column, and `N/A` is `NotApplicable` and `Text`. This is for the step 12
+    plan.
+  - The last child that `split_numeric_runs` returns can end past its parent's right edge by a
+    float error. The Codex review of S2-D at `4fa19584` found it (finding 4). At `73d428e2`, for
+    the word `TAX434,605,553` in the box (10.02, 10, 65.04, 20), the run printed the children
+    `TAX` and `434,605,553`, the parent edge 65.04 and the child edge 65.04000000000002, and
+    `contains` is false at a slack of 0 and true at 1.0. An idea, not a plan: the first and last
+    child keep the parent's own outer edges.
+  - In `lex_cell`, the test `len(texts) == 1` before the `N/A` check changes no result, since a
+    cell of two or more words joins with a space and so never equals `N/A` or `NA`. The S2-D
+    verifier found it at `4fa19584`. At `73d428e2`, the two-word cells `N/A` and an empty word,
+    `N/` and `A`, `N` and `A`, and `NA` and an empty word join to texts that are not `N/A` or
+    `NA`, and each lexes as `Unreadable` in a money column.
+  - Every successful application in `test_records.py` uses the id `r1`, so its tests pass when
+    `apply_reading` writes one constant id. The Codex review of S2-E at `73d428e2` found it
+    (finding 2), with an in-memory mutant that left all 37 tests passing. At `73d428e2`, a record
+    with the id `cash-fy07-q3` on the OCR cell `2918` in the one-decimal column gives that id as
+    `Amount.review_id` for the reading `291.8` and as `Unreadable.accepted_by` for a null reading.
+  - The signed-value property of `test_records.py` compares the value and the exponent, which are
+    equal for `Decimal("-0.0")` and `Decimal("0.0")`. The Codex review of S2-E at `73d428e2` found
+    it (finding 3), with an in-memory mutant that dropped the sign of a reviewed zero and left all
+    37 tests passing. At `73d428e2`, `(0.0)` read as `(0.0)` in the one-decimal cash column gives
+    `Decimal("-0.0")`, whose `as_tuple()` is `DecimalTuple(sign=1, digits=(0,), exponent=-1)`, and
+    the run printed `True` for its equality with `Decimal("0.0")`. Comparing `as_tuple()` would
+    catch a lost sign, as `test_lexer_round_trip` does. Codex states that page 1 of the FY2010 Q2
+    cash report (`qcmr/cash/FY10_Q2.pdf`) prints `(0.0)` in `Total Current Revenue`. That is
+    Codex's statement, not checked here.

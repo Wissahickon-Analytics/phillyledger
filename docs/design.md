@@ -82,11 +82,11 @@ in section 11.4 enforces both rules.
 
 The checks a kit type makes at construction are the ones its block below shows, and no others.
 They guard what enters the kit from outside: an adapter's words, pages and documents, a record
-file's ids, and a table module's columns. Each raises `ValueError`. A relation between two fields
-that one kit function computes has no check at construction. `parse_label` keeps `Label.norm`,
-`Label.squash` and `Label.text`, and `lex_cell` and `apply_reading` keep `Amount.printed` and
-each cell's `text`, and their tests prove it. A pull request that adds a check shows it in the
-block.
+file's ids and reasons, and a table module's columns. Each raises `ValueError`. A relation
+between two fields that one kit function computes has no check at construction. `parse_label`
+keeps `Label.norm`, `Label.squash` and `Label.text`, and `lex_cell` and `apply_reading` keep
+`Amount.printed` and each cell's `text`, and their tests prove it. A pull request that adds a
+check shows it in the block.
 
 ```python
 # checkedtables/refs.py: Box and WordRef. Cells and checks import this module, never words.
@@ -698,14 +698,16 @@ What these make impossible:
 # checkedtables/records.py: the two record types the kit applies to cells
 @dataclass(frozen=True, slots=True)
 class ReviewedReading:
-    id: str
+    id: str                    # never blank: a reviewed Amount names it
     doc_sha256: str
     page: int
     box: Box                   # where the reviewer looked
     source: SourceKind         # the word layer being read
     seen: str                  # what extraction returns inside the box, joined: "2918" or "1o4.o"
     reading: str | None        # what a person reads on the rendered page; None accepts null
-    reason: str
+    reason: str                # never blank: a human reading is a record with a page and a reason
+
+    def __post_init__(self) -> None: ...   # ValueError: an id or a reason empty after strip()
 
 
 @dataclass(frozen=True, slots=True)
@@ -715,12 +717,14 @@ class EveryRow:
 
 @dataclass(frozen=True, slots=True)
 class DashRule:
-    id: str
+    id: str                    # never blank: a Dash the rule sets to ZERO names it
     table: str
     columns: tuple[str, ...]
     rows: tuple[RowKey, ...] | EveryRow
     meaning: DashMeaning
     evidence: str              # "maintainer confirmed 2026-10-01 against page 2"
+
+    def __post_init__(self) -> None: ...   # ValueError: an id empty after strip()
 
 
 @dataclass(frozen=True, slots=True)
@@ -728,12 +732,17 @@ class CellRecords:
     readings: tuple[ReviewedReading, ...]   # for this document only
     dash_rules: tuple[DashRule, ...]        # already narrowed to this edition's period
     confidence_floor: float                 # OCR words below it need a reading (change 4)
+
+    def __post_init__(self) -> None: ...    # ValueError: an id that two records share, two
+                                            # readings, two dash rules, or one of each, since
+                                            # Assembly.used names a record by its id alone
 ```
 
 A reading is keyed by file hash, page, box and the text the extraction returned. It is never
 keyed by word index, which shifts when the extraction library changes. If the words inside the
 box stop joining to `seen`, the reading is stale and blocks. A reading whose digits are not a
-transliteration of `seen` is refused (`transliteration_ok`, MSCH-Q26).
+transliteration of `seen`, less the mark words that end an `Amount`, is refused
+(`transliteration_ok`, MSCH-Q26, VAL-Q28).
 
 ```python
 # checkedtables/assemble.py
@@ -1790,13 +1799,35 @@ def transliteration_ok(seen: str, reading: str) -> bool: ...
 
 
 # checkedtables/records.py
-def reading_for(cell_words: Sequence[Word], page: int, source: SourceKind,
+def reading_for(cell_words: Sequence[Word], page_words: Sequence[Word], source: SourceKind,
                 readings: Sequence[ReviewedReading]) -> ReviewedReading | Finding | None: ...
-    # the reading whose box holds these words on this page and source. Joined word text must
-    # equal `seen`, else a stale_reading Finding. Two readings for one cell: a Finding.
+    # A reading is a candidate when its source is `source` and its box, with 1.0 pt of slack,
+    # holds a cell word of its file and page. None: no candidate. duplicate_reading: two or
+    # more, named by the least id. The page words the box holds must be exactly the cell's
+    # words, each as many times, and the cell's words joined by one space in the order given,
+    # the order lex_cell joins them in, must equal `seen`, else stale_reading. So a box that
+    # holds part of a cell or two cells is stale for each, and a cell whose words share a left
+    # edge reads as group_lines ordered them.
+    # page_words takes the place of a page number, which every word's ref carries: without
+    # them a word that moved into the box could not be seen. The caller passes the words the
+    # cells were cut from.
 def apply_reading(cell: Cell, reading: ReviewedReading) -> Cell | Finding: ...
-    # transliteration_ok(seen, reading) or a Finding; then Amount(reading=REVIEWED) or
-    # Unreadable(accepted_by=id) when reading is None
+    # 1. Only an Amount or an Unreadable takes a reading, else reading_refused.
+    # 2. The cell's words lie on the reading's file and page and its text equals `seen`, else
+    #    stale_reading. transliteration_ok reads both texts from the record, so without this
+    #    test a reading could put its value on another cell's words.
+    # 3. A None reading gives Unreadable(accepted_by=id). An Unreadable keeps its reason, and
+    #    an Amount gets "reviewed_null".
+    # 4. Any other reading must pass transliteration_ok(kept, reading), where kept is the
+    #    cell's text less the mark words that end an Amount (the whole-word marks, such as a
+    #    small raised digit, are the last words of the text, VAL-Q28), and read as one signed
+    #    number through the private reader of lex_cell, else reading_refused. So the mark "1"
+    #    of "$ 2.8 1" never enters the number, which reads as "2.8" and not "2.81".
+    #    No column format applies, so "29.18" reads in a one-decimal column. Then Amount(the
+    #    reading's number, the cell's text and words, the reading's source, REVIEWED, the
+    #    reading's id, the cell's marks); an Unreadable has none.
+    # Every finding of both functions is BLOCK, on the reading's page, with the subject
+    # "<doc sha8>:reading:<reading id>". They have no table name for the form of Finding.subject.
 
 
 # checkedtables/rows.py
