@@ -80,9 +80,13 @@ in section 11.4 enforces both rules.
 
 ### 2.1 `checkedtables` types
 
-A kit type refuses at construction, with `ValueError`, a value that breaks a fact its own block
-below states in a field comment or in a "What these make impossible" list. A check that no block
-states is not built.
+The checks a kit type makes at construction are the ones its block below shows, and no others.
+They guard what enters the kit from outside: an adapter's words, pages and documents, a record
+file's ids, and a table module's columns. Each raises `ValueError`. A relation between two fields
+that one kit function computes has no check at construction. `parse_label` keeps `Label.norm`,
+`Label.squash` and `Label.text`, and `lex_cell` and `apply_reading` keep `Amount.printed` and
+each cell's `text`, and their tests prove it. A pull request that adds a check shows it in the
+block.
 
 ```python
 # checkedtables/refs.py: Box and WordRef. Cells and checks import this module, never words.
@@ -467,6 +471,7 @@ class RowKey:
 
     @staticmethod
     def parse(text: str) -> "RowKey": ...   # inverse of str; TOML records only; code uses RowKey.of
+                                            # ValueError: a part with no "="
 
     @property
     def has_occurrence(self) -> bool: ...   # an "occurrence" part from a list table

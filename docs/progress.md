@@ -217,14 +217,18 @@ Each entry: step, what changed, why, and the design section updated.
   that are not strictly ascending, as the design's comment on `pages` already said.
   `WordRef.__post_init__` raises `ValueError` for an empty `doc_sha256`, for a page below 1, which
   the design calls 1-based, and for an index or a child below 0. Design section 2.1.
-- **Step 2: a kit type refuses what its own design block rules out** (November 23, 2026, S2-B,
-  found in the second Codex review and by a verifier). Each Codex round asked for a few more
-  constructor checks, and the list had no natural end. Design section 2.1 now opens with one
-  closed rule. A kit type refuses at construction, with `ValueError`, a value that breaks a fact
-  its own block states in a field comment or in a "What these make impossible" list, and a check
-  that no block states is not built. The round added six checks. Each is stated in its block of
-  section 2.1, and each has a test of the refused value and of its nearest legal value. No field
-  changed, so `FIELD_SNAPSHOT` is unchanged.
+- **Step 2: the constructor checks are the ones the design blocks show** (November 23, 2026,
+  S2-B, found in the second and third Codex reviews and by verifiers). Each Codex round asked for
+  a few more constructor checks, and the list had no natural end. Design section 2.1 now opens
+  with a closed statement. The checks a kit type makes at construction are the ones its block
+  shows, and no others. They guard what enters the kit from outside, and a relation between two
+  fields that one kit function computes has no check at construction (the note "Constructor
+  checks the kit does not make"). Fix round 3 replaced a wider rule of fix round 2, which promised
+  a check for every fact a block states. The blocks state many facts that no constructor checks.
+  One check in the code had no line in its block, the refusal of a part with no `=` in
+  `RowKey.parse`, and fix round 3 added it to the `table` block. Fix round 2 added six checks.
+  Each is shown in its block of section 2.1, and each has a test of the refused value and of its
+  nearest legal value. No field changed, so `FIELD_SNAPSHOT` is unchanged.
   - `Amount` refuses an empty `review_id` in either reading. The `cells` block says "a reviewed
     Amount names its review, and only then", and the empty text names no review.
     `Amount(..., Reading.REVIEWED, "")` was accepted.
@@ -498,6 +502,48 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
   of step 4 computes each hash from a file's bytes, and the record lint of step 5 reads the hashes
   that records cite, so those two own the form of a hash. Their plans say where the form is
   checked.
+- **Constructor checks the kit does not make** (November 23, 2026, step 2, S2-B). Design section
+  2.1 says that the checks a kit type makes at construction are the ones its block shows, and no
+  others. Those checks guard what enters the kit from outside: an adapter's words, pages and
+  documents, a record file's ids, and a table module's columns. A relation between two fields
+  that one kit function computes belongs to that function and its tests. A constructor that
+  checked `Label.squash` or `Amount.printed` would copy the label reader and the lexer into the
+  types, and the type modules would import them in a cycle. The blocks state the facts below, and
+  no constructor checks them. The verifier's log of fix round 2 and the third Codex review of S2-B
+  found them. Each value was built again in a scratch copy of `aec4c6c` on Python 3.12.15, and
+  each constructor accepted it.
+  - The adapters of step 4 meet the word facts. On an OCR page, `Page` accepts a word with
+    `bold=True` and a word with no confidence (the note "What an OCR word carries"). `WordRef`,
+    `Page` and `Document` accept the hash `"unknown"` (the note "The kit checks a hash for
+    presence only", which also names the record lint of step 5). A subclass of `WordRef` with the
+    same four fields as a ref on the page compares unequal to that ref, so `Page` holds both
+    words.
+  - The record lint of step 5 meets the record ids. `Dash` accepts an empty `rule_id`, and
+    `Unreadable` accepts an empty `accepted_by`.
+  - The catalog test of step 5 meets the column declarations. `NumberFormat` accepts
+    `decimals=-1`. `ColumnSpec` accepts the caption `"Adopted ("`, which `re.compile` refuses
+    with `missing ), unterminated subpattern at position 8`.
+  - `parse_label` of S2-C and its tests keep the label facts. `Label` accepts a `squash` that is
+    not its `norm` without spaces, a `line_no` that is not in `printed`, and a `text` that is not
+    drawn from `printed`.
+  - `lex_cell` of S2-D, `apply_reading` of S2-E and their tests keep the cell facts. The cell
+    constructors accept a direct `Amount` of 65.8 from the text `85.8`, a `ZERO` `Dash` from
+    `85.8` and a `NotApplicable` from `85.8`, the digit disagreement of QCASH-Q22. `Amount` also
+    accepts `Decimal("NaN")`. The step 2 plan has the number reader of S2-D build a `Decimal`
+    from digit text, so it cannot return NaN.
+  - `Dash` accepts `NO_VALUE` with a `rule_id`, where the block says the rule set `ZERO`. The
+    design names no function yet that applies a `DashRule`, so the step that builds one keeps
+    this fact.
+  - `Finding` accepts a `subject` with no colon, where the block gives the form
+    `<doc sha8>:<table>:<row key or label>`. Each function that makes a finding builds its
+    subject, and no step checks the form.
+
+  One idea is for the owner to decide, and no plan holds it. A direct `Amount` could refuse, at
+  construction, a `printed` whose ASCII digits differ from the digits of its `text` less the
+  digits of its `marks`. Clause C1b of step 2 says "An `Amount`'s digits are the digits of its
+  words, always". The check would make that clause a fact of the type, and not only of the
+  lexer's tests. A reviewed `Amount` could not make the same check, because its text may hold a
+  confusable letter, such as the `o` of `1o4.o`.
 - **Follow-ups after step 2** (November 23, 2026). The step 2 run found these and did not fix
   them.
   - Nothing ties the module table of design section 11.1 to `PURE_IMPORTS`. A pin can hold a pair
@@ -518,3 +564,14 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
     and `AssertionError: from collections import defaultdict` on Python 3.12.15. Both pins are
     empty, so no pin names one today. A later pull request that pins a name that one of the banned
     forms imports, such as `collections.defaultdict`, must also edit that form.
+  - `test_hypothesis_profile_is_derandomized` in `tests/test_workspace.py` asserts the name of the
+    active Hypothesis profile. Hypothesis renames the active profile when a run sets
+    `--hypothesis-verbosity=verbose`, so that one diagnostic flag fails the test. The third Codex
+    review of S2-B found it at `aec4c6c8`. In a scratch copy of that head, pytest with the flag
+    failed the test on the name `phillyledger-with-verbose-verbosity`, and the same run without
+    the flag passed.
+  - `pytest_unconfigure` in the root `conftest.py` removes the Hypothesis home with
+    `shutil.rmtree(home, ignore_errors=True)`, so a failed cleanup is silent. The third Codex
+    review of S2-B found it at `aec4c6c8`. Its command, which patches `os.lstat` to raise
+    `PermissionError`, printed `cleanup failed: True teardown returned normally` in a scratch copy
+    of that head.
