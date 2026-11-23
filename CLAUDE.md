@@ -14,7 +14,7 @@ step is finished when its check passes.
 - The main session runs Fable. It plans, owns the design, reviews every diff and verifies every
   claim. Code is written by `pstack:poteto-agent` delegates on Opus 5.5. Model roles live in
   `~/.claude/rules/pstack-models.md`, written by `/pstack:setup-pstack`, never in this file.
-- Each build step goes through two runs of `/pstack:poteto-mode`:
+- Each build step goes through two runs of `/pstack:poteto-mode`. This is the full track.
   1. **Plan.** The Multi-phase plan playbook turns step N of design section 15 into
      `docs/plans/step-NN.md`: the pull requests in landing order, the files each touches, and
      each one's verification, with every clause of the step's check assigned to a pull request.
@@ -26,6 +26,20 @@ step is finished when its check passes.
      finding, sends confirmed ones back to a fresh Opus owner, and gives the final review.
      Contested design goes to `/pstack:interrogate`. Pull requests stack only where one builds
      on another. The owner lands them.
+- **Verification is sized by what there is to prove.** A pull request's swarm is the three
+  parts of `verify-step` (the gates, the check and the audits), each as its own lane, plus one
+  live lane for each clause the pull request owns and each risk its plan names. It gets a
+  timing lane only where the design or the step's check names a time or size budget. pstack's
+  plan format asks for ten live lanes and four perf boxes on every pull request. The plan
+  writes the ones it does not need as "Not used", and no agent runs for them. This differs
+  from pstack, and the project rule wins. `docs/plans/README.md` has the wording and the reason.
+- **Light track.** The owner may start a step on the light track when its diff cannot change a
+  published value, the label or period a value is published under, the kit's public shape, or
+  the release protocol. `docs/plans/README.md` says which steps qualify. It is one run of
+  `/pstack:poteto-mode` with the Feature playbook. The session writes a short plan as the first
+  commit of the pull request, one Opus owner builds it, one verifier runs `verify-step` in full
+  at the finished head, and Codex reviews the pull request once. There is no plan review and no
+  swarm. Every hard rule below still holds, and the owner lands the pull request.
 - After steps 6, 13 and 14, Codex also reviews the whole design against the code, the way it
   reviewed the design on November 22, 2026 (`docs/reviews/`).
 - Start every session by reading `docs/progress.md`, then the part of `docs/design.md` the work

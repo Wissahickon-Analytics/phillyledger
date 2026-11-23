@@ -58,6 +58,17 @@ the codex-review skill and confirm each finding before acting on it. Review ever
 and stop when the pull requests are verified. Do not merge.
 ```
 
+Those two runs are the full track. A step that qualifies for the light track
+(`docs/plans/README.md`) takes one run:
+
+```text
+/pstack:poteto-mode Build step N from docs/design.md section 15 on the light track with the
+Feature playbook. Write the short plan as the first commit, have one Opus owner build it, verify
+it once with the verify-step skill, then get a Codex review with the codex-review skill and
+confirm each finding before acting on it. Review the diff yourself and stop when the pull
+request is verified. Do not merge.
+```
+
 To rerun a Codex review by hand, commit and run `/codex-review plan N` or
 `/codex-review pr N <base-branch>`. Reports land in `.codex-review/`, which git ignores.
 
