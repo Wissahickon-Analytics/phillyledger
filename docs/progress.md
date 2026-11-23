@@ -489,7 +489,7 @@ Things learned while building: surprises in the PDFs, commands that matter, trap
 - **The loader's digit check and a footnoted reading disagree, a note for the step 5 plan**
   (November 23, 2026, step 2, S2-E fix round 2, finding 3 of the second Codex review of S2-E).
   Design section 3.2 says that `load_records`, which step 5 builds in `datadesk`, refuses "a
-  reading whose digits fail transliteration_ok" (`docs/design.md`, lines 2068 and 2069 at the
+  reading whose digits fail transliteration_ok" (`docs/design.md`, lines 2069 and 2070 at the
   S2-E head). The loader has only the record's text, so it cannot tell that the last `1` of the
   footnoted cell `$ 2.8 1` is a small raised mark. Run in a scratch copy of `64560f3`:
   `transliteration_ok("$ 2.8 1", "2.8")` is false, and `apply_reading` gives that cell, an
