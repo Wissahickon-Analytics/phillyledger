@@ -32,6 +32,8 @@ OCR = SourceKind.OCR
 TEXT_LAYER = SourceKind.TEXT_LAYER
 CASH = ColumnSpec("cash", "Cash", ValueKind.MONEY, NumberFormat(decimals=1))
 MONEY = ColumnSpec("money", "Money", ValueKind.MONEY, NumberFormat(decimals=None))
+COUNT = ColumnSpec("general", "General", ValueKind.COUNT)
+BLANKS = ("", " ", "\t", "\n")
 CONFUSABLE_GLYPHS = (
     ("B", "8"),
     ("b", "8"),
@@ -348,19 +350,22 @@ def test_a_cell_with_a_word_on_another_page_is_stale() -> None:
 
 def test_a_reading_needs_an_id() -> None:
     _, cell_words = cash_row("2918")
-    with pytest.raises(ValueError, match="id"):
-        record("2918", "291.8", cell_words, "")
+    for blank in BLANKS:
+        with pytest.raises(ValueError, match="id"):
+            record("2918", "291.8", cell_words, blank)
 
 
 def test_a_reading_needs_a_reason() -> None:
     _, cell_words = cash_row("2918")
-    with pytest.raises(ValueError, match="reason"):
-        replace(record("2918", "291.8", cell_words), reason="")
+    for blank in (*BLANKS, " \t "):
+        with pytest.raises(ValueError, match="reason"):
+            replace(record("2918", "291.8", cell_words), reason=blank)
 
 
 def test_a_dash_rule_needs_an_id() -> None:
-    with pytest.raises(ValueError, match="id"):
-        replace(DASH_RULE, id="")
+    for blank in BLANKS:
+        with pytest.raises(ValueError, match="id"):
+            replace(DASH_RULE, id=blank)
 
 
 def test_one_id_names_one_record() -> None:
@@ -373,6 +378,91 @@ def test_one_id_names_one_record() -> None:
         CellRecords((reading, replace(reading, reading="29.18")), (), 90.0)
     with pytest.raises(ValueError, match="d1"):
         CellRecords((), (DASH_RULE, replace(DASH_RULE, columns=("other",))), 90.0)
+
+
+def test_a_reading_and_a_dash_rule_never_share_an_id() -> None:
+    _, cell_words = cash_row("2918")
+    reading = record("2918", "291.8", cell_words, DASH_RULE.id)
+    with pytest.raises(ValueError, match="d1"):
+        CellRecords((reading,), (DASH_RULE,), 90.0)
+
+
+def test_a_font_code_never_becomes_a_reviewed_number() -> None:
+    # VAL-Q05
+    page = page_from_text("10(cid:28)", SHA, PAGE)
+    cell = lex_cell(page.words, COUNT, TEXT_LAYER)
+    assert isinstance(cell, Unreadable)
+    for value in ("109", "10028", None):
+        reading = replace(record("10(cid:28)", value, page.words), source=TEXT_LAYER)
+        assert reading_for(page.words, page.words, TEXT_LAYER, (reading,)) == reading
+        result = apply_reading(cell, reading)
+        if value is None:
+            assert result == replace(cell, accepted_by="r1")
+        else:
+            assert_finding(result, "reading_refused")
+
+
+def test_a_reviewed_amount_keeps_a_raised_digit_and_a_mark_after_it() -> None:
+    # VAL-Q28
+    cell_words = (
+        text_word(0, "2.8", 12.0, 12.0),
+        text_word(1, "1", 6.0, 6.0),
+        text_word(2, "*", 12.0, 12.0),
+    )
+    cell = lex_cell(cell_words, CASH, TEXT_LAYER)
+    assert isinstance(cell, Amount)
+    assert (cell.printed, cell.text, cell.marks) == (Decimal("2.8"), "2.8 1 *", ("1", "*"))
+    box = Box.around(word.box for word in cell_words)
+    reading = ReviewedReading("r1", SHA, PAGE, box, TEXT_LAYER, "2.8 1 *", "2.8", "footnote 1")
+    assert reading_for(cell_words, cell_words, TEXT_LAYER, (reading,)) == reading
+    result = apply_reading(cell, reading)
+    assert isinstance(result, Amount), result
+    assert (result.printed, result.marks) == (Decimal("2.8"), ("1", "*"))
+    assert_finding(apply_reading(cell, replace(reading, reading="2.81")), "reading_refused")
+
+
+def test_only_the_mark_words_that_end_a_cell_leave_its_digits() -> None:
+    # VAL-Q28
+    for texts, accepted, refused in (
+        (("1", "1"), "1", "11"),
+        (("$", "1", "1"), "1", "11"),
+        (("$", "10", "1"), "10", "101"),
+    ):
+        *number, mark = texts
+        cell_words = (
+            *(text_word(index, text, 12.0, 12.0) for index, text in enumerate(number)),
+            text_word(len(number), mark, 6.0, 6.0),
+        )
+        cell = lex_cell(cell_words, MONEY, TEXT_LAYER)
+        assert isinstance(cell, Amount), texts
+        assert cell.marks == (mark,), texts
+        seen = " ".join(texts)
+        box = Box.around(word.box for word in cell_words)
+        reading = ReviewedReading("r1", SHA, PAGE, box, TEXT_LAYER, seen, accepted, "footnote")
+        result = apply_reading(cell, reading)
+        assert isinstance(result, Amount), (texts, result)
+        assert (result.printed, result.marks) == (Decimal(accepted), (mark,)), texts
+        assert_finding(apply_reading(cell, replace(reading, reading=refused)), "reading_refused")
+
+
+def test_a_box_over_a_word_of_the_next_line_is_stale() -> None:
+    first, second = text_word(0, "29", 12.0, 12.0), text_word(1, "1", 12.0, 12.0)
+    below = replace(text_word(2, "7", 12.0, 26.0), box=Box(0.0, 14.0, 6.0, 26.0))
+    box = Box.around((first.box, below.box))
+    assert not box.contains(second.box, 1.0)
+    reading = ReviewedReading("r1", SHA, PAGE, box, TEXT_LAYER, "29 1", "29.1", "lost point")
+    result = reading_for((first, second), (first, second, below), TEXT_LAYER, (reading,))
+    assert_finding(result, "stale_reading")
+
+
+def test_a_reading_joins_the_cell_words_as_given_and_not_by_left_edge() -> None:
+    left, right = text_word(0, "7", 12.0, 12.0), text_word(1, "8", 12.0, 12.0)
+    cell_words = (right, left)
+    box = Box.around(word.box for word in cell_words)
+    accepted = ReviewedReading("r1", SHA, PAGE, box, TEXT_LAYER, "8 7", None, "printed 8 7")
+    assert reading_for(cell_words, cell_words, TEXT_LAYER, (accepted,)) == accepted
+    stale = replace(accepted, seen="7 8")
+    assert_finding(reading_for(cell_words, cell_words, TEXT_LAYER, (stale,)), "stale_reading")
 
 
 @given(seen_parts, st.integers(1, 16), st.sampled_from(("", ",")), st.sampled_from(SIGNED))
