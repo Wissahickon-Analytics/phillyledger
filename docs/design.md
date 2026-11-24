@@ -2624,11 +2624,15 @@ inside a call (section 4). Other bytes under a report's key raise `PreconditionF
 tried again. `plan_fetch` gets no notes until `load_records` arrives at step 5.
 
 `run_fetch` returns the `FetchPlan` and calls no `GitHost`. `fetch_command` writes the plan's files
-into the checkout after every put, so a run that stops leaves the index file as it was, and the
-session opens the pull request. Step 13 builds `GitHost` and its adapter. Catalog or index
-findings, a source the catalog lacks, a listing status other than 200, a listing body that is not
-UTF-8 and a listing finding each raise `FetchStopped` before any report is fetched, so nothing is
-stored and no file is written.
+into the checkout after every put, each to a temporary file with a fixed name in the same folder and
+then renamed. So a run alone that stops leaves the index file as it was, and the session opens the
+pull request. One checkout runs one fetch at a time. The fixed name lets the next run overwrite a
+temporary file that a crash left behind. Two runs at once on one checkout share the temporary file,
+and the file renamed last becomes the index. A line one run added can then be lost, and a run that
+stops can have the file it wrote renamed into place by the other. Step 13 builds `GitHost` and its
+adapter. Catalog or index findings, a source the catalog lacks, a listing status other than 200, a
+listing body that is not UTF-8 and a listing finding each raise `FetchStopped` before any report is
+fetched, so nothing is stored and no file is written.
 
 `main(argv)` is the `datadesk` script, `datadesk fetch <source> --saved <folder>`. At step 3
 `--saved` is required. The City refuses a client that is not a browser (step 3 plan, facts 6 and

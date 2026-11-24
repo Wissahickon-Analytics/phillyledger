@@ -370,13 +370,17 @@ design leaves open" in `docs/plans/step-03.md`.
   <source> --saved <folder>` reads a folder that a browser saved, through `SavedHttp` (shape 6).
   `fetch_command` returns `FetchRun(listing_sha256, findings, plan)`, raises `FetchStopped` before
   any report is fetched when the checkout or the listing cannot be read, and writes the plan's files
-  after every put, each to a temporary file in its folder and then renamed. A command that returns
-  before it asks for the listing when the index holds lines fails
-  `test_fetching_the_same_listing_again_adds_nothing` on the call log of the second run. One that
-  fetches nothing when the index holds lines fails it at the third run, which must store the new
-  edition. That test passed with `run_fetch` putting every fetched body instead of each
-  `StoreObject`, because no report in its feed was fetched and rejected (Codex review of S3-D,
-  finding 3). The saved City feed has one, FY2027 Q1, which every run rejects as
+  after every put, each to a temporary file in its folder and then renamed. One checkout runs one
+  fetch at a time. Two runs at once share the temporary file, so a line one run added can be lost,
+  or a run that stops can have its file renamed into place by the other (Codex review of S3-D,
+  finding 2). The temporary file keeps its fixed name, so the next run overwrites one that a crash
+  left behind, and section 4.2 now says that a run alone that stops leaves the index file as it
+  was. No code changed for this. A command that returns before it asks for the listing when the
+  index holds lines fails `test_fetching_the_same_listing_again_adds_nothing` on the call log of the
+  second run. One that fetches nothing when the index holds lines fails it at the third run, which
+  must store the new edition. That test passed with `run_fetch` putting every fetched body instead
+  of each `StoreObject`, because no report in its feed was fetched and rejected (Codex review of
+  S3-D, finding 3). The saved City feed has one, FY2027 Q1, which every run rejects as
   `period_unreadable`. So the test now runs a fourth and a fifth time on a feed that gains a report
   whose cover prints no `PERIOD ENDING` phrase. Each run rejects it and puts nothing, and the fifth
   writes no file. With every fetched body put, the test fails at the fourth run. With the
