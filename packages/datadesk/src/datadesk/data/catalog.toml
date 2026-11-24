@@ -1,0 +1,7 @@
+[[source]]
+id = "qcmr"
+series = "qcmr"
+shape = "document_finder"
+listing_url = "https://api.phila.gov/phila/document-finder/v1/151831"
+category = "Quarterly City Managers Report"
+first_period_end = 2021-09-30
