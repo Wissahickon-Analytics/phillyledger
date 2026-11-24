@@ -71,7 +71,7 @@ addopts = "--import-mode=importlib --disable-socket"
 
 [tool.ty.environment]
 python-version = "3.12"
-root = ["packages/checkedtables/src", "packages/phillyledger/src", "packages/datadesk/src"]
+root = ["packages/checkedtables/src", "packages/phillyledger/src", "packages/datadesk/src", "."]
 
 [tool.ty.src]
 exclude = ["docs/prototype", ".claude"]
