@@ -89,9 +89,10 @@ design leaves open" in `docs/plans/step-03.md`.
   takes number signs such as "½", the `a_month_word_with_a_character_that_is_not_a_letter` case
   fails. Design section 3.2.
 - **Step 3: `ListedLink.listed_at`, and a parser per page shape** (November 24, 2026, S3-B). The
-  design gave `ListedLink` no upload time, so `plan_watch` could not find the last link of an
-  edition. The owner decided that `ListedLink` gains `listed_at`, filled by the shape's parser,
-  because that parser alone knows the page. For document-finder it is the 14-digit upload stamp in
+  design's rule "Later `listed_at` wins" (section 6.3) needs the upload stamp of each link, and the
+  design's `ListedLink` had only `position`, which gives feed order. The S3-B build session chose to
+  add `listed_at` to `ListedLink`, filled by the shape's parser, because that parser alone knows the
+  page. For document-finder it is the 14-digit upload stamp in
   the URL path (shape 2). A document-finder URL with no stamp makes the whole listing unreadable.
   All 97 QCMR links of the July 28, 2026 recording carry one, so a link without one means the page
   changed shape. One regular expression finds the path the way RFC 3986, appendix B splits a URL,
