@@ -10,10 +10,12 @@ from botocore.session import Session as BotocoreSession
 from datadesk.shell.ports import Condition, CreateOnly, EffectError, IfMatch, PreconditionFailed
 from datadesk.shell.settings import Settings
 
-# botocore reads AWS_PROFILE and the shared config and credentials files even when a client is
+# botocore reads each session variable from its AWS_* environment variable even when a client is
 # given its keys, and a profile that the config file lacks raises ProfileNotFound.
-NO_AMBIENT_PROFILE = {
-    "profile": (None, None, None, None),
+QUIET_SESSION_VARIABLES = {
+    name: (config, None, default, convert)
+    for name, (config, _, default, convert) in BotocoreSession.SESSION_VARIABLES.items()
+} | {
     "config_file": (None, None, devnull, None),
     "credentials_file": (None, None, devnull, None),
 }
@@ -70,7 +72,7 @@ class S3Store:
 
 
 def s3_store(settings: Settings) -> S3Store:
-    session = Session(botocore_session=BotocoreSession(session_vars=NO_AMBIENT_PROFILE))
+    session = Session(botocore_session=BotocoreSession(session_vars=QUIET_SESSION_VARIABLES))
     client = session.client(
         "s3",
         endpoint_url=settings.endpoint_url,

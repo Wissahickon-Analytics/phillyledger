@@ -2515,10 +2515,17 @@ finding).
 `DATADESK_R2_SECRET_ACCESS_KEY` and `DATADESK_R2_ARCHIVE_BUCKET`, and no other variable. It returns
 `Settings(endpoint_url, access_key_id, secret_access_key, archive_bucket)`, frozen, with both keys
 left out of its `repr`. An absent or empty variable is missing, and one `MissingSettings` names
-every missing variable and holds no value. `s3_store(settings)` builds the S3 adapter's client from
-`Settings` alone: region `auto`, path-style addressing, one attempt for each call, and a botocore
-session that reads neither `AWS_PROFILE` nor the shared config and credentials files. Given only
-explicit keys, a boto3 1.44.5 client still raised `ProfileNotFound` under a missing `AWS_PROFILE`.
+every missing variable and holds no value. `s3_store(settings)` builds the S3 adapter's client with
+region `auto`, path-style addressing and botocore's own retries off. Its botocore session maps
+none of its variables to an environment variable and reads `os.devnull` as its config and
+credentials files, so no session variable, `AWS_PROFILE` and `AWS_REQUEST_CHECKSUM_CALCULATION`
+among them, changes the client. Given only explicit keys, a boto3 1.44.5 client still raised
+`ProfileNotFound` under a missing `AWS_PROFILE`. botocore 1.44.5 still reads some variables outside
+the session: three `AWS_S3_*` variables that apply only to ARN buckets and the us-east-1 region,
+the proxy variables through urllib, `REQUESTS_CA_BUNDLE` and `SSLKEYLOGFILE` for TLS,
+`AWS_EXECUTION_ENV` for the user agent, `AWS_LAMBDA_FUNCTION_NAME` with `_X_AMZN_TRACE_ID` for a
+trace header, and its own `BOTO_*` and `BOTOCORE_*` switches. botocore may also follow one S3
+region redirect inside a call, so one call can send two requests.
 `CreateOnly` and `IfMatch(None)` send `IfNoneMatch="*"`, and `IfMatch(e)` sends `IfMatch=e`. A 412
 `PreconditionFailed` raises `PreconditionFailed`, `head` of an absent key returns `None`, and `get`
 of an absent key raises `KeyError`. The pdfplumber reader opens a PDF with `pages=[1]`, so
@@ -2610,10 +2617,10 @@ Download, hash and decide is a loop of small plans, as the principles allow. Byt
 keyed by hash until `plan_fetch` decides; nothing is staged and copied (R2). A watch pull request
 adds a handful of PDFs, so memory is not a concern. `put_immutable` (section 4.5) lives in
 `run_fetch.py`, its first caller. Each `http.get` and each `put_immutable` is tried up to three
-times while it raises `EffectError`, and the third failure propagates (section 9). The S3 client
-makes one attempt for each call, so these are all the tries. Other bytes under a report's key raise
-`PreconditionFailed`, which is not tried again. `plan_fetch` gets no notes until `load_records`
-arrives at step 5.
+times while it raises `EffectError`, and the third failure propagates (section 9). botocore's own
+retries are off, so these are the only retries, though botocore may follow one S3 region redirect
+inside a call (section 4). Other bytes under a report's key raise `PreconditionFailed`, which is not
+tried again. `plan_fetch` gets no notes until `load_records` arrives at step 5.
 
 `run_fetch` returns the `FetchPlan` and calls no `GitHost`. `fetch_command` writes the plan's files
 into the checkout after every put, so a run that stops leaves the index file as it was, and the

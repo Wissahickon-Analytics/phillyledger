@@ -324,12 +324,17 @@ design leaves open" in `docs/plans/step-03.md`.
   and gave it no fields. It holds the endpoint, the two keys and the archive bucket from the four
   `DATADESK_R2_*` variables of the plan, and leaves both keys out of its `repr`. An empty variable
   counts as missing. With explicit keys alone, a boto3 1.44.5 client raised `ProfileNotFound` under
-  an `AWS_PROFILE` that names no profile. So `s3_store` builds its client on a botocore session
-  whose `profile` reads no variable and whose config and credentials files are `os.devnull`. The
-  client also makes one attempt for each call, so the executor's three tries are all the tries. With
-  a default session, `test_s3_client_ignores_the_ambient_aws_profile` fails with
-  `ProfileNotFound`. With the keys in the `repr`,
-  `test_settings_keep_both_keys_out_of_their_repr` fails. Design section 4.
+  an `AWS_PROFILE` that names no profile. A session that shut out only the profile and the two
+  files still let `AWS_REQUEST_CHECKSUM_CALCULATION` drop the checksum header (Codex review of
+  S3-D, finding 6). So `s3_store` builds its client on a botocore session that maps none of its
+  variables to an environment variable and whose config and credentials files are `os.devnull`.
+  Section 4 lists what botocore still reads outside the session. botocore's own retries are off,
+  so the executor's three tries are the only retries, but botocore may follow one S3 region
+  redirect inside a call: a probe saw a 301 and then a 503 for one `put` (finding 5). With a
+  default session, `test_s3_client_ignores_the_ambient_aws_profile` fails with
+  `ProfileNotFound`, and with only the profile and the two files shut out,
+  `test_s3_client_ignores_the_ambient_aws_settings` fails. With the keys in the `repr`,
+  `test_settings_keep_both_keys_out_of_their_repr` fails. Design sections 4 and 4.2.
 - **Step 3: contract suites that run on every commit** (November 24, 2026, S3-D). Section 11.1
   ran the real adapters' contracts nightly and before release, against the network or MinIO. The
   saved-folder `Http` adapter and the pdfplumber reader need neither, so their contracts run in CI

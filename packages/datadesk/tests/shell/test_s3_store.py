@@ -77,6 +77,27 @@ def test_s3_client_ignores_the_ambient_aws_profile(
     assert request.url == "http://store.invalid:9000/archive/pdf/7c/7c4a.pdf"
 
 
+def test_s3_client_ignores_the_ambient_aws_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    def put_request() -> tuple[str, str, dict[str, str]]:
+        store = s3_store(SETTINGS)
+        sent = answer(store, 200, {"ETag": '"etag-1"'})
+        store.put("pdf/7c/7c4a.pdf", b"report", CreateOnly())
+        (request,) = sent
+        unsigned = set(request.headers) - {"Authorization", "X-Amz-Date", "amz-sdk-invocation-id"}
+        return request.method, request.url, {name: header(request, name) for name in unsigned}
+
+    settings = {
+        "AWS_REQUEST_CHECKSUM_CALCULATION": "when_required",
+        "AWS_SDK_UA_APP_ID": "an-app-PLANTED",
+    }
+    for name in settings:
+        monkeypatch.delenv(name, raising=False)
+    without = put_request()
+    for name, value in settings.items():
+        monkeypatch.setenv(name, value)
+    assert put_request() == without
+
+
 @pytest.mark.parametrize(
     ("condition", "name", "value"),
     [
