@@ -1129,7 +1129,9 @@ def index_problem(versions: tuple[DocumentVersion, ...]) -> Finding | None: ...
     # the rules an index never breaks, each a BLOCK finding: versions sorted by
     # (edition, listed_at, sha256); one sha on one line (content_alias); supersedes names a
     # version of the same edition (supersedes_outside_edition); one version per edition that
-    # nothing supersedes (two_current_versions)
+    # nothing supersedes (two_current_versions); following supersedes from that version reaches
+    # every version of its edition once and then ends, so a version that supersedes itself or a
+    # cycle of versions is refused (broken_chain)
 ```
 
 What this makes impossible:
@@ -1137,7 +1139,7 @@ What this makes impossible:
 - identity from a file path (BSALES-Q04, SUPCAP-Q03);
 - two editions sharing one set of bytes without a rejection (MSCH-Q01);
 - a revision that silently replaces bytes (RTT-Q07);
-- an edition with two current versions.
+- an edition whose versions are not one chain from one current version.
 
 ```python
 # datadesk/core/records.py   (all loaded from TOML text by pure functions)

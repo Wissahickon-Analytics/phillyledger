@@ -92,10 +92,22 @@ def index_problem(versions: tuple[DocumentVersion, ...]) -> Finding | None:
         if version.supersedes is not None and editions.get(version.supersedes) != version.edition:
             message = f"{version.sha256} supersedes {version.supersedes}, not of its edition"
             return _block("supersedes_outside_edition", version.sha256, message)
-    for edition, count in Counter(head.edition for head in _heads(versions)).items():
+    heads = _heads(versions)
+    for edition, count in Counter(head.edition for head in heads).items():
         if count > 1:
             message = f"{edition.id()} has {count} versions that nothing supersedes"
             return _block("two_current_versions", edition.id(), message)
+    current = {head.edition: head.sha256 for head in heads}
+    older = {version.sha256: version.supersedes for version in versions}
+    for edition, size in Counter(version.edition for version in versions).items():
+        chain: list[str] = []
+        sha = current.get(edition)
+        while sha is not None and sha not in chain:
+            chain.append(sha)
+            sha = older[sha]
+        if sha is not None or len(chain) != size:
+            message = f"{edition.id()} has {size} versions that do not form one chain"
+            return _block("broken_chain", edition.id(), message)
     return None
 
 

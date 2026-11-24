@@ -168,3 +168,31 @@ def test_add_versions_refuses_an_edition_left_with_two_versions_that_nothing_sup
     )
     revision = replace(LATER_Q4, supersedes=Q4_SHA)
     assert add_versions(ArchiveIndex((Q3, Q4)), [revision]) == ArchiveIndex((Q3, Q4, revision))
+
+
+def test_add_versions_refuses_a_version_that_supersedes_itself() -> None:
+    found = add_versions(ArchiveIndex((Q3,)), [replace(Q4, supersedes=Q4_SHA)])
+    assert isinstance(found, Finding)
+    assert (found.severity, found.code, found.subject) == (
+        Severity.BLOCK,
+        "broken_chain",
+        "qcmr:2026-06-30:none",
+    )
+    assert add_versions(ArchiveIndex((Q3,)), [Q4]) == ArchiveIndex((Q3, Q4))
+
+
+def test_add_versions_refuses_two_versions_that_supersede_each_other_beside_a_third() -> None:
+    cycle = [
+        replace(REVISED_Q4, supersedes=LATER_Q4_SHA),
+        replace(LATER_Q4, supersedes=REVISED_Q4_SHA),
+    ]
+    found = add_versions(ArchiveIndex((Q3, Q4)), cycle)
+    assert isinstance(found, Finding)
+    assert (found.severity, found.code, found.subject) == (
+        Severity.BLOCK,
+        "broken_chain",
+        "qcmr:2026-06-30:none",
+    )
+    later = replace(LATER_Q4, supersedes=REVISED_Q4_SHA)
+    chain = add_versions(ArchiveIndex((Q3, Q4)), [REVISED_Q4, later])
+    assert chain == ArchiveIndex((Q3, REVISED_Q4, Q4, later))

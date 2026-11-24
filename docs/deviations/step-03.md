@@ -15,13 +15,21 @@ design leaves open" in `docs/plans/step-03.md`.
   unchanged URL can be recorded (shape 2). `index_problem` in `domain.py` names the first rule
   a tuple of versions breaks, as a BLOCK finding: out of order, one sha on two lines
   (`content_alias`), a `supersedes` that names no version of its own edition
-  (`supersedes_outside_edition`), or an edition with two versions that nothing supersedes
-  (`two_current_versions`). `ArchiveIndex` raises `ValueError` with that finding's message, and
-  `add_versions` returns the finding, so each rule is written once. The design's `__post_init__`
-  checked only for one sha indexed twice. With `current` changed to return the edition's last
-  version,
-  `test_current_is_the_version_that_nothing_supersedes` fails. Design sections 2.2, 6.3 and
-  12.3.
+  (`supersedes_outside_edition`), an edition with two versions that nothing supersedes
+  (`two_current_versions`), or an edition whose versions are not one chain (`broken_chain`).
+  The chain rule follows `supersedes` from the version that nothing supersedes and requires the
+  walk to reach every version of the edition once and then end, so a version that supersedes
+  itself, two versions that supersede each other beside a third, and a chain that runs into a
+  cycle are all refused. Without it `current` can return `None` for an indexed edition.
+  `ArchiveIndex` raises `ValueError` with that finding's message, and `add_versions` returns the
+  finding, so each rule is written once. The design's `__post_init__` checked only for one sha
+  indexed twice. With `current` changed to return the edition's last version,
+  `test_current_is_the_version_that_nothing_supersedes` fails. With the `broken_chain` rule
+  removed, `test_index_refuses_an_edition_whose_versions_are_not_one_chain`,
+  `test_add_versions_refuses_a_version_that_supersedes_itself` and
+  `test_add_versions_refuses_two_versions_that_supersede_each_other_beside_a_third` fail, and
+  with only the stop on a repeated version removed, the `a_chain_that_runs_into_a_cycle` case
+  fails. Design sections 2.2, 6.3 and 12.3.
 - **Step 3: the index sorts by `(edition, listed_at, sha256)`** (November 23, 2026, S3-A). The
   design sorted by `(edition, listed_at)`, which is not a total order once two versions of one
   edition share a `listed_at`. The sha is the last key. `ArchiveIndex` refuses an unsorted

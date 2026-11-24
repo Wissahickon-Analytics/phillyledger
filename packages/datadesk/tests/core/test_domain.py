@@ -1,8 +1,17 @@
+from dataclasses import replace
 from datetime import date
 
 import pytest
 
-from datadesk.core.domain import ArchiveIndex, DocumentVersion, EditionKey, Period, Stage
+from checkedtables.table import Severity
+from datadesk.core.domain import (
+    ArchiveIndex,
+    DocumentVersion,
+    EditionKey,
+    Period,
+    Stage,
+    index_problem,
+)
 
 FY2026_Q3 = EditionKey("qcmr", Period(date(2026, 1, 1), date(2026, 3, 31)))
 FY2026_Q4 = EditionKey("qcmr", Period(date(2026, 4, 1), date(2026, 6, 30)))
@@ -29,6 +38,8 @@ def version(
 
 Q3 = version(Q3_SHA, FY2026_Q3, "20260515154446")
 Q4 = version(Q4_SHA, FY2026_Q4, "20260817162758")
+REVISED_Q4 = version(REVISED_Q4_SHA, FY2026_Q4, "20260817162758", supersedes=Q4_SHA)
+LATER_Q4 = version(LATER_Q4_SHA, FY2026_Q4, "20261116120000", supersedes=REVISED_Q4_SHA)
 
 
 def test_edition_id_names_the_series_the_period_end_and_the_stage() -> None:
@@ -73,6 +84,43 @@ def test_index_refuses_one_sha_twice() -> None:
 def test_index_refuses_versions_that_break_a_rule(versions: tuple[DocumentVersion, ...]) -> None:
     with pytest.raises(ValueError):
         ArchiveIndex(versions)
+
+
+@pytest.mark.parametrize(
+    ("broken", "chain"),
+    [
+        pytest.param(
+            (replace(Q4, supersedes=Q4_SHA),), (Q4,), id="a_version_that_supersedes_itself"
+        ),
+        pytest.param(
+            (replace(REVISED_Q4, supersedes=LATER_Q4_SHA), Q4, LATER_Q4),
+            (REVISED_Q4, Q4, LATER_Q4),
+            id="two_versions_that_supersede_each_other_beside_a_third",
+        ),
+        pytest.param(
+            (
+                REVISED_Q4,
+                replace(Q4, supersedes=REVISED_Q4_SHA),
+                replace(LATER_Q4, supersedes=Q4_SHA),
+            ),
+            (REVISED_Q4, Q4, LATER_Q4),
+            id="a_chain_that_runs_into_a_cycle",
+        ),
+    ],
+)
+def test_index_refuses_an_edition_whose_versions_are_not_one_chain(
+    broken: tuple[DocumentVersion, ...], chain: tuple[DocumentVersion, ...]
+) -> None:
+    assert ArchiveIndex(chain).versions == chain
+    problem = index_problem(broken)
+    assert problem is not None
+    assert (problem.severity, problem.code, problem.subject) == (
+        Severity.BLOCK,
+        "broken_chain",
+        "qcmr:2026-06-30:none",
+    )
+    with pytest.raises(ValueError, match="qcmr:2026-06-30:none"):
+        ArchiveIndex(broken)
 
 
 def test_index_orders_versions_of_one_edition_by_listed_at_then_sha() -> None:
