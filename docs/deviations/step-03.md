@@ -141,3 +141,80 @@ design leaves open" in `docs/plans/step-03.md`.
   `collections.abc.Callable`, `hashlib.sha256`, `re.compile`, `tomllib.TOMLDecodeError`,
   `tomllib.loads`, `types.MappingProxyType` and `typing.Never`. With the default `parse_constant`,
   `test_a_bare_nan_or_infinity_makes_the_feed_unreadable` fails. Design section 11.1.
+- **Step 3: `confirm_period` reads the QCMR cover** (November 24, 2026, S3-C). The design named
+  the "PERIOD ENDING" reader and gave it no rule or finding codes. `PERIOD_READERS` maps a
+  series to its reader, as `TITLE_RULES` does for titles, and holds `qcmr_period` alone. A
+  series with no reader is `period_unsupported`. `qcmr_period` reads every
+  `PERIOD ENDING <Month> <D>, <YYYY>` phrase on page 1 (QCASH-Q05, QOBL-Q04), in any case, with
+  any run of whitespace between words (QOBL-Q02), the comma optional, and the year not followed
+  by another digit. It ports the shape of `_PERIOD_ENDING_RE` in the old repo's `qcmr.py`. It
+  never reads the bare date that the cover also prints (plan risk 3). A cover with no phrase, or
+  with a phrase it cannot read, is `period_unreadable`. Two dates are `period_ambiguous`, and a
+  date that is not a quarter end is `period_not_a_quarter_end`. Any other date gives the fiscal
+  quarter it ends, and `confirm_period` confirms it only when it equals the whole expected
+  period, start included. The build session chose the whole period over the end date alone, so
+  a wrong first day of a quarter cannot pass. With `(?!\d)` dropped from the phrase, the
+  `a_year_run_on_into_another_digit` case fails. With spaces alone between its words, the
+  `a_phrase_broken_across_lines` and `a_phrase_spaced_with_no_break_spaces` cases fail. With the
+  words "PERIOD ENDING" made optional, the two bare date cases fail. With each fiscal quarter
+  that starts in July or October moved back a year, every case that prints September 30 or
+  December 31 fails, `september_opens_the_next_fiscal_year` and
+  `december_is_in_the_next_fiscal_year` among them (QPOS-Q34), and the March and June cases
+  pass. Without the check for two dates, the `two_phrases_with_two_dates` case fails, and
+  without the quarter end check, `a_date_that_is_not_a_quarter_end` fails. Design section 3.2.
+- **Step 3: a `PRINTED_PERIOD` note clears a mismatch only when it fits the cover** (November
+  24, 2026, S3-C). The design said that a note is the only way past a mismatch (QOBL-Q06) and
+  did not say when a note fits. A note fits when its kind is `PRINTED_PERIOD`, its page is 1 or
+  none, page 1 holds its printed text, and its value is the printed end date in ISO form. Both
+  texts are compared with each run of whitespace made one space, so a line break on the page
+  does not hide the text (QOBL-Q02). `confirm_period` then returns the printed period, not the
+  expected one (shape 8). No note clears a code that the reader returns, so a note cannot file a
+  report under a date that is not a quarter end. `plan_fetch` passes only the notes whose
+  `doc_sha256` is the fetched sha. With the kind, the page, the text or the value left out of
+  the fit, the matching case of `test_a_note_that_does_not_fit_the_cover_leaves_the_mismatch`
+  fails. With the texts compared as they are, the `a_page_that_spaces_the_text_another_way`
+  case fails. With every note passed through, the second half of
+  `test_plan_fetch_clears_a_mismatch_only_with_a_note_for_the_fetched_sha` fails. Design
+  section 3.2.
+- **Step 3: `plan_fetch` decides each fetch against one working index** (November 24, 2026,
+  S3-C). The design gave `plan_fetch` the `content_alias` rule alone. It is now a fold over the
+  fetched reports in input order. A working index starts as the given index and grows by
+  `add_versions` after each added line, so two requests in one batch see each other, and every
+  question of what is already indexed goes to that one index. The first rule that fits decides
+  a fetch: a status other than 200 (`http_<status>`), a sha under another edition
+  (`content_alias`, MSCH-Q01), a superseded sha, the current sha at a known URL (nothing), the
+  current sha at a new URL (the URL alone, shape 7), and then a new sha. A new sha goes through
+  `confirm_period`, and a `Fetched` with no page 1 text reads as an empty page, so it is
+  `period_unreadable` with no branch of its own. The new version supersedes the current one,
+  and a new version is stored once. A finding from `add_versions` becomes a rejection with its
+  code. With the input index in place of the working one,
+  `test_one_sha_fetched_for_two_editions_in_one_batch_is_a_content_alias` fails. With the alias
+  check removed, both `content_alias` tests fail. With every added line stored,
+  `test_the_current_sha_at_a_new_url_adds_the_url_and_stores_nothing` fails, and with a known
+  URL added again, `test_plan_fetch_adds_nothing_for_an_indexed_sha` fails. With `supersedes`
+  left empty, `add_versions` returns `two_current_versions` and both cases of
+  `test_new_bytes_of_an_indexed_edition_supersede_its_current_version` fail. Design section 3.2.
+- **Step 3: a superseded sha listed again is a rejection** (November 24, 2026, S3-C). With bytes
+  A, then B, then A again at a later stamp, the design's URL merge would add the URL to A's line
+  and leave B current. One line for each sha cannot say that A now supersedes B, and the later
+  `listed_at` must win (shape 7). So `plan_fetch` rejects the third fetch as
+  `superseded_sha_relisted`, for the owner. Without the rule,
+  `test_a_superseded_sha_listed_again_is_rejected_and_the_newer_bytes_stay_current` fails.
+  Design sections 3.2 and 6.3.
+- **Step 3: new bytes listed before the current version are a rejection** (November 24, 2026,
+  S3-C). The design said that the later `listed_at` wins and did not say what happens to new
+  bytes listed earlier than the edition's current version. `index_problem` does not compare a
+  version's `listed_at` with the one it supersedes, so such bytes would become current. They are
+  now the rejection `listed_before_current`, for the owner (shape 2, follow-up 5 of pull request
+  32). The same `listed_at` still supersedes, so new bytes behind an unchanged URL are recorded
+  (design 18.1). Without the rule,
+  `test_new_bytes_listed_before_the_current_version_are_rejected` fails, and with `<=` in place
+  of `<`, the `new_bytes_behind_the_same_listing` case fails. Design sections 3.2 and 6.3.
+- **Step 3: `FetchPlan.pull_request` holds the index file** (November 24, 2026, S3-C). The
+  design said only that the pull request holds the new index lines. `fetch.py` defines
+  `INDEX_PATH` (shape 3). When `index_add` is empty, `files` is empty. Otherwise it holds one
+  pair, the path and the rendered index after every added line, so S3-D writes the whole file.
+  The branch is `fetch/index` and the title is fixed. The body lists each added line by
+  edition id, sha and URL, and each rejection by edition id, URL and reason. With the file
+  written whatever was added, nine tests fail, among them
+  `test_plan_fetch_adds_nothing_for_an_indexed_sha`. Design section 3.2.
