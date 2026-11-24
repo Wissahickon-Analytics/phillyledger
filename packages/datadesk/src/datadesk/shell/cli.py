@@ -35,10 +35,9 @@ def fetch_command(deps: Deps, root: Path, source: str, today: date) -> FetchRun:
     repo = gather_repo(root)
     if isinstance(repo, tuple):
         raise FetchStopped(_findings("the checkout cannot be read", repo))
-    try:
-        entry = repo.catalog.entry(source)
-    except KeyError:
-        raise FetchStopped(f"the catalog has no source {source!r}") from None
+    if source not in (listed.id for listed in repo.catalog.entries):
+        raise FetchStopped(f"the catalog has no source {source!r}")
+    entry = repo.catalog.entry(source)
     response = retried(partial(deps.http.get, entry.listing_url))
     if response.status != 200:
         raise FetchStopped(f"the listing {entry.listing_url} answered {response.status}")

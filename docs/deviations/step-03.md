@@ -388,5 +388,9 @@ design leaves open" in `docs/plans/step-03.md`.
   `UnicodeDecodeError` left uncaught in `gather_repo`, the `not_utf_8` cases of
   `test_a_checkout_file_the_command_cannot_read_or_decode_stops_it_before_any_request` fail, and
   left uncaught in `SavedHttp` or `fetch_command`, a case of
-  `test_main_prints_one_line_for_an_input_it_cannot_read` fails. Design sections 1.4, 4, 4.2 and
-  9.
+  `test_main_prints_one_line_for_an_input_it_cannot_read` fails. `fetch_command` also caught the
+  `KeyError` of `SourceCatalog.entry`, so `gather_repo` was not the one place the shell catches a
+  core exception (finding 11). It now checks the source against the catalog's entries first. With
+  that check dropped, the `KeyError` escapes and the `a_source_the_catalog_lacks` case of
+  `test_a_checkout_the_command_cannot_read_stops_it_before_any_request` fails. Design sections 1.4,
+  4, 4.2 and 9.
