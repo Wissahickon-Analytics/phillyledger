@@ -218,3 +218,50 @@ design leaves open" in `docs/plans/step-03.md`.
   edition id, sha and URL, and each rejection by edition id, URL and reason. With the file
   written whatever was added, nine tests fail, among them
   `test_plan_fetch_adds_nothing_for_an_indexed_sha`. Design section 3.2.
+- **Step 3: a `PRINTED_PERIOD` note must quote the printed period** (November 24, 2026, S3-C
+  fix round). The S3-C rule let a note clear a mismatch when page 1 held its printed text. The
+  empty string is on every page, so a blank note filed a December report under September (Codex
+  review of S3-C, finding 1). A note now fits only when the series reader also reads its printed
+  text alone as the very period page 1 prints. A blank note, or one that quotes other words on
+  the cover, clears nothing. The kind, page, on-page text and value conditions stay. With the
+  reader condition dropped, the `a_blank_note` and `a_note_that_quotes_other_words` cases of
+  `test_a_note_that_does_not_fit_the_cover_leaves_the_mismatch` fail. The reader now also
+  refuses the older `a_note_whose_text_page_1_lacks` case, so the new case
+  `a_note_that_reads_as_the_period_in_words_page_1_lacks` keeps the on-page text condition
+  tested, and it fails with that condition dropped. Design sections 3.2 and 6.3.
+- **Step 3: a URL that joins a line brings its `listed_at`** (November 24, 2026, S3-C fix
+  round). S3-A had `add_versions` add a new URL to a held line and change nothing else (shape 7).
+  So when the current bytes came back in June at a new URL, the line kept its November stamp.
+  Other bytes listed in March then became current with no rejection, though the later
+  `listed_at` wins (shape 2, Codex review of S3-C, finding 2). When a URL joins a line,
+  `add_versions` now gives the line the later of its own `listed_at` and the new version's. A
+  version with no new URL still changes nothing. `plan_fetch` adds the URL with the request's
+  `listed_at`, so the March bytes are `listed_before_current` and the June line stays current.
+  With the held stamp kept,
+  `test_older_bytes_after_a_repost_of_the_current_sha_are_listed_before_current`,
+  `test_the_current_sha_at_a_new_url_adds_the_url_and_stores_nothing` and
+  `test_add_versions_merges_a_new_url_into_the_line_of_the_same_sha_and_edition` fail. With the
+  new stamp taken whatever its order,
+  `test_the_current_sha_at_a_new_url_listed_earlier_keeps_the_later_stamp` fails. With the later
+  stamp taken when no URL joins,
+  `test_add_versions_adds_nothing_for_an_indexed_sha_at_an_indexed_url` fails. Design sections
+  3.2 and 6.3.
+- **Step 3: every `PERIOD ENDING` caption must carry a readable date** (November 24, 2026, S3-C
+  fix round). The S3-C pattern matched a whole phrase with an ASCII month word. So
+  `PERIOD ENDING Märch 31, 2022` never matched, and a readable phrase beside it decided the
+  period, though the design called such a phrase `period_unreadable` (Codex review of S3-C,
+  finding 3). The pattern also matched inside a longer word, so `SUBPERIOD ENDING SEPTEMBER 30,
+  2021` read as FY2022 Q1. `qcmr_period` now finds every `PERIOD ENDING` caption, with a word
+  boundary before `PERIOD` and after `ENDING`. Each caption must be followed by a readable date,
+  whose month word is any run of word characters, as in the title rule. Otherwise the page is
+  `period_unreadable`. With the S3-C pattern, the cases
+  `a_month_word_of_other_letters_beside_a_readable_phrase`,
+  `a_caption_with_no_date_beside_a_readable_phrase` and `a_longer_word_in_place_of_the_caption`
+  of `test_confirm_period_returns_a_finding_for_a_cover_it_cannot_confirm` fail. The `Märch` case
+  passes with either half of the change alone, the optional date or the wider month word. With
+  the date required after the caption, the caption case fails. Without the boundary before
+  `PERIOD`, the `SUBPERIOD` case fails, and without the one after `ENDING`, the
+  `a_longer_word_after_period_is_not_a_caption` case fails. Page 1 of the owner's 21 saved City
+  reports, read with `pdftotext -f 1 -l 1 -layout`, gives the same result before and after the
+  change. The 20 reports from FY2022 Q1 to FY2026 Q4 read as their own quarters, and FY2027 Q1
+  is `period_unreadable`. Design section 3.2.

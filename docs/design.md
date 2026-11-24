@@ -1101,7 +1101,8 @@ class DocumentVersion:
     sha256: str
     edition: EditionKey
     listed_at: str             # sortable: upload stamp or "<listing date>#<position>";
-                               # document-finder: the 14-digit upload stamp in the URL path
+                               # document-finder: the 14-digit upload stamp in the URL path;
+                               # the latest of the stamps its urls were listed at
     urls: tuple[str, ...]      # every URL that served these bytes, canonical host
     title: str                 # listing title, verbatim
     printed_period: Period | None
@@ -2154,23 +2155,28 @@ class FetchPlan:
 INDEX_PATH = "packages/datadesk/src/datadesk/data/index.jsonl"
 PERIOD_READERS: MappingProxyType[str, Callable[[str], Period | str]]   # series -> its reader
 def qcmr_period(page1_text: str) -> Period | str: ...
-    # reads every "PERIOD ENDING <Month> <D>, <YYYY>" phrase on page 1 (QCASH-Q05, QOBL-Q04), in
-    # any case, with any run of whitespace between words, line breaks and U+00A0 included
-    # (QOBL-Q02), the comma optional and the year not followed by another digit. The bare date
-    # that the cover also prints is not read. No phrase, or a phrase whose month word is not a
-    # key of MONTHS or whose day is not a real date, is "period_unreadable". Phrases that name
-    # two dates are "period_ambiguous". A date that is not a quarter end is
-    # "period_not_a_quarter_end". Any other date gives Period(first day of its fiscal quarter,
-    # the date), so a September 30, 2021 cover is FY2022 Q1 (QPOS-Q34).
+    # finds every "PERIOD ENDING" caption on page 1 (QCASH-Q05, QOBL-Q04), in any case, with a
+    # word boundary before PERIOD and after ENDING, and any run of whitespace between words,
+    # line breaks and U+00A0 included (QOBL-Q02). Each caption must be followed by a readable
+    # "<Month> <D>, <YYYY>". Its month word is any run of word characters that is a key of
+    # MONTHS after casefold, its day makes a real date, the comma is optional and the year is
+    # not followed by another digit. The bare date that the cover also prints is not read. No
+    # caption, or any caption without a readable date after it, is "period_unreadable", so an
+    # unreadable phrase beside a readable one is unreadable. Captions that name two dates are
+    # "period_ambiguous". A date that is not a quarter end is "period_not_a_quarter_end". Any
+    # other date gives Period(first day of its fiscal quarter, the date), so a September 30,
+    # 2021 cover is FY2022 Q1 (QPOS-Q34).
 def confirm_period(series: str, page1_text: str, expected: EditionKey,
                    notes: Sequence[EditionNote]) -> Period | Finding: ...
     # reads page 1 with PERIOD_READERS[series]. Each finding is BLOCK, with expected.id() as
     # its subject: period_unsupported for a series with no reader, and each code the reader
     # returns. A printed period equal to expected.period is confirmed. Another one is confirmed
-    # only by a PRINTED_PERIOD note on page 1 or on no page, whose printed text page 1 holds,
-    # both compared with each run of whitespace made one space, and whose value is the printed
-    # end in ISO form. Then the printed period is returned. Otherwise it is period_mismatch
-    # (QOBL-Q06). No note clears a code the reader returns. The caller passes only the notes of
+    # only by a PRINTED_PERIOD note on page 1 or on no page that quotes the words that print the
+    # period. Page 1 holds the note's printed text, both compared with each run of whitespace
+    # made one space. The series reader reads that text alone as the very period page 1 prints,
+    # so a blank note, or one that quotes other words, clears nothing. The note's value is the
+    # printed end in ISO form. Then the printed period is returned. Otherwise it is
+    # period_mismatch (QOBL-Q06). No note clears a code the reader returns. The caller passes only the notes of
     # the sha at hand. Readers for later steps: "MONTH OF <month>" plus one "FY YYYY" (MCITY-Q04
     # to Q07), "Fiscal Year YYYY Collections" (BSALES-Q11), wage months and FY (WAGE-Q14),
     # "Quarterly School Manager Report" and its period ending date (QSMR).
@@ -2184,8 +2190,10 @@ def plan_fetch(fetched: Sequence[Fetched], index: ArchiveIndex,
     # 3. A sha indexed under the request's edition that is not its current version is
     #    "superseded_sha_relisted". With bytes A, then B, then A again, B stays current.
     # 4. The current sha at a URL its line holds adds nothing.
-    # 5. The current sha at a new URL stores nothing and adds the line with urls (url,), which
-    #    add_versions merges into the held line.
+    # 5. The current sha at a new URL stores nothing and adds the line with urls (url,) and the
+    #    request's listed_at. add_versions merges it into the held line, which keeps the later
+    #    listed_at. So after a repost, new bytes listed before the repost are
+    #    "listed_before_current" by rule 6.
     # 6. A new sha goes to confirm_period with page1_text, or "" when it is None, and the notes
     #    whose doc_sha256 is the sha. A finding is a rejection with its code. New bytes whose
     #    listed_at is earlier than the current version's are "listed_before_current". Otherwise
@@ -2204,8 +2212,9 @@ def parse_index(jsonl: str) -> ArchiveIndex: ...         # splits on "\n" alone,
 def render_index(index: ArchiveIndex) -> str: ...        # sorted, one JSON object per line
 def add_versions(index: ArchiveIndex, new: Sequence[DocumentVersion]) -> ArchiveIndex | Finding: ...
     # a new version whose sha and edition are indexed adds its URLs to that line, after the
-    # URLs it holds, and changes nothing else; the result must pass index_problem, so a sha
-    # under another edition is a content_alias finding
+    # URLs it holds. When a URL joins, the line takes the later of its own listed_at and the
+    # new version's, and nothing else changes. A version with no new URL changes nothing. The
+    # result must pass index_problem, so a sha under another edition is a content_alias finding
 
 
 # datadesk/core/records.py
@@ -3621,11 +3630,11 @@ editions never overlap and FY2026 Q4 is `qcmr:2026-06-30:none`.
 |---|---|---|
 | Revised attachment listed after the original (QPOS-Q32, RTT-Q06, MCITY-Q02) | Later `listed_at` wins, and on equal ones the link listed later; the earlier version stays in the index with `supersedes` pointing at it | `plan_watch` |
 | Same bytes under two periods (MSCH-Q01, MCITY-Q08) | Rejected as `content_alias`; the missing period is reported as a gap | `plan_fetch`, `plan_watch`, `add_versions` |
-| Same bytes of the same edition at a new URL | When the bytes are the edition's current version, the URL joins that version's `urls`, after the ones it holds. Nothing is stored, and nothing else changes | `plan_fetch`, `add_versions` |
+| Same bytes of the same edition at a new URL | When the bytes are the edition's current version, the URL joins that version's `urls`, after the ones it holds, and the version takes the later of the two `listed_at`. Nothing is stored, and nothing else changes | `plan_fetch`, `add_versions` |
 | Superseded bytes listed again: bytes A, then B, then A | Rejected as `superseded_sha_relisted`, for the owner. B stays current, because one line for each sha cannot say that A now supersedes B | `plan_fetch` |
 | New bytes listed before the current version | Rejected as `listed_before_current`, for the owner. New bytes supersede the current version only when their `listed_at` is later or the same | `plan_fetch` |
 | A URL whose bytes changed, old pages pointing at new bytes (WAGE-Q10) | The index keys by sha, so the change is visible; `url_reused` plus a Wayback lookup for the old period | `plan_watch`, `pick_capture` |
-| Printed period disagrees with the listing (QOBL-Q06, QCASH-Q07) | Rejected unless a `PRINTED_PERIOD` note names the sha and the printed text | `confirm_period` |
+| Printed period disagrees with the listing (QOBL-Q06, QCASH-Q07) | Rejected unless a `PRINTED_PERIOD` note names the sha and quotes the words that print the period | `confirm_period` |
 | BIRT same-coverage revision (BSALES-Q04) | A new sha for the same `EditionKey` is a new version; nothing is keyed by path | `plan_watch` |
 | Stale link must not overwrite a good file (MCITY-Q09) | Nothing is overwritten; versions are added only after `confirm_period` | `plan_fetch` |
 | No listing page (QSMR-Q01) | Catalog entries with shape `manual` hold the URLs; `Via.MANUAL` in the index | `parse_listing`, index |
