@@ -54,6 +54,21 @@ the command or the page named.
 8. `gh extension list` shows no `stack` extension. `docker` is installed and `minio` is not.
 9. The design gives no fields for `SourceCatalog`, `SourceEntry`, `PullRequestPlan`,
    `HttpResponse` or `Deps`, no path for the index file, and no environment variable name.
+10. Cloudflare's R2 pages, read after the owner's answer 3. "Authentication" says "You must
+    purchase R2 before you can generate an API token", and a token with the permission "Object
+    Read & Write" can be scoped to named buckets. "Pricing" gives a free allowance each month
+    of 10 GB of Standard storage, 1 million Class A operations and 10 million Class B
+    operations, and charges nothing for egress. "Create new buckets" says a bucket is not
+    public until its owner makes it so. "aws CLI" runs the `aws` CLI against R2 with
+    `--endpoint-url https://<account id>.r2.cloudflarestorage.com` and the region `auto`. The
+    owner's machine has `aws` and no `wrangler`. `uv run` takes `--env-file` (uv 0.13.6), and
+    `.gitignore` lists `.env`.
+11. The City's server refused a plain User-Agent. After the owner's answer 1, `curl` asked for
+    the feed twice, as `datadesk/0.1` and as
+    `datadesk/0.1 (+https://github.com/Wissahickon-Analytics/phillyledger)`. Both got HTTP 403
+    from `awselb/2.0` behind CloudFront. The old repo sends a `User-Agent` header and no other,
+    with a browser's string (`publisher_http.py:199`). No request with a browser's string was
+    run here.
 
 The copies seen, by edition. This is not the inventory. No one has checked it by hand, and the
 City's file for an edition may differ from the copy.
@@ -97,7 +112,8 @@ file holds the 20 edition ids as its own list, built from the 20 quarter ends, S
 pairs: the sha of an inventory row must be the sha of the index's current version of that
 row's edition. C2 requires each inventory sha on exactly one index line. S3-E shows two changes
 failing, each in its pull request: the shas of FY2022 Q1 and Q2 swapped in the index, and one
-quarter removed from both files.
+quarter removed from both files. Both files also hold FY2027 Q1 (answer 2). C2 to C4 cover its
+row, and C1's list stays the 20.
 
 The index comes from `datadesk`. The inventory's `sha256` comes from a `curl` download and
 `shasum` (see "The inventory"), so the two sides share no code. C4's test fails while any row
@@ -223,7 +239,7 @@ Builds on S3-A. `feat(datadesk): read the QCMR listing`.
   "Managers" read the same. The host `admin.phila.gov` becomes `www.phila.gov` (QCASH-Q04). The
   edition comes from the title and never from the URL, so `...March-30-2026R.pdf` under its
   March 31 title is FY2026 Q3. `plan_watch` asks for 21 fetches on an empty index and none
-  when the index holds every URL. The count is 20 if question 2 sets a last period end.
+  when the index holds every URL.
 - Proves, on changed copies of the feed: with a second attachment appended for one quarter,
   `plan_watch` asks for the last one alone, a test ported from the old `test_qcmr.py:165`. A
   report title dated March 30, 2026 gives a finding and no fetch.
@@ -275,8 +291,9 @@ Builds on S3-C. `feat(datadesk): store reports in R2 and run fetch`.
   page. The `Http` contract passes on the fake.
 - The suites run on the fakes in CI. Design 11.1 runs the real halves nightly and before a
   release, so CI skips them and reports the skip. The owner of S3-D runs the `ObjectStore`
-  suite against MinIO in Docker and the `Http` suite as one request for the City's feed, and
-  records both runs in the pull request.
+  suite against MinIO in Docker and the `Http` suite against a local server that the test
+  starts, and records both runs in the pull request. No session sends the City a request in
+  S3-D (fact 11).
 
 ### S3-E, `step-03/e-archive`: the 20 reports
 
@@ -286,11 +303,16 @@ under `src/`.
 - Files: `src/datadesk/data/index.jsonl`, `docs/evidence/inventory/qcmr.tsv`,
   `tests/test_archive_inventory.py`, `docs/plan-notes.md`, `CLAUDE.md`.
 - Runs, each recorded in the pull request with its command and output: `datadesk fetch qcmr`,
-  `datadesk import-held`, and `datadesk fetch qcmr` a second time. With the owner's go
-  (question 3), the `ObjectStore` suite also runs against a scratch bucket on R2.
-- Owns C1 to C4. `docs/plan-notes.md` gets a note for step 7: the feed lists QCMR reports back
-  to December 31, 2006. `CLAUDE.md` gets the folder of the held reports in place of "ask for
-  the path when step 3 starts".
+  `datadesk import-held`, and `datadesk fetch qcmr` a second time. Open question A decides who
+  starts the two fetch runs. With the owner's go (open question B), the `ObjectStore` suite
+  also runs against a scratch bucket on R2.
+- S3-E starts only after the owner has set up R2 ("Setting up R2") and answered open
+  question A. S3-A to S3-D wait on neither.
+- Owns C1 to C4. `docs/plan-notes.md` gets two notes. For step 7: the feed lists QCMR reports
+  back to December 31, 2006. For step 13: the City refuses a client that does not send a
+  browser's User-Agent (fact 11), which `watch` must answer before it runs on a schedule.
+  `CLAUDE.md` gets the folder of the held reports in place of "ask for the path when step 3
+  starts".
 
 ## The inventory
 
@@ -301,18 +323,21 @@ under `src/`.
 How it is made, in S3-E:
 
 1. Before any command runs, the session writes one row for each of the 20 editions, and one
-   for FY2027 Q1 if question 2 says so, with `edition` alone. A shell loop over the 14 in-range
+   for FY2027 Q1 (answer 2), with `edition` alone. A shell loop over the 14 in-range
    files of the owner's folder fills `held_file` and `held_sha256` with `shasum -a 256`. The
    session checks those shas against the table above.
 2. `datadesk fetch qcmr` runs, then `datadesk import-held`, which reads the rows of step 1.
-3. For each row the session downloads the City's file with `curl`, from the URL the index
-   gives, into a scratch folder. `sha256` is `shasum -a 256` of that download, `bytes` its
-   size, `pages` comes from `pdfinfo`, and `page1_period` is the `PERIOD ENDING` phrase from
+3. For each row the owner saves the City's file in his browser, from the URL the index gives,
+   into a scratch folder. The City refuses `curl` (facts 6 and 11), so the session cannot make
+   this download. `sha256` is `shasum -a 256` of the saved file, `bytes` its size, `pages`
+   comes from `pdfinfo`, and `page1_period` is the `PERIOD ENDING` phrase from
    `pdftotext -f 1 -l 1`. This download shares no code with `datadesk`. For a report that
    reached the archive from the held folder, the source is the held file.
 4. For each row the session compares that source digest, the digest of the object read back
-   from the archive bucket, the object's key and the index line. Where the table above has a
-   copy, its sha is a fifth witness. Any difference goes to the owner before he checks a row.
+   from the archive bucket, the object's key and the index line. The read-back is
+   `aws s3 cp` under the owner's `r2` profile ("Setting up R2"), piped to `shasum`. Where the
+   table above has a copy, its sha is a fifth witness. Any difference goes to the owner before
+   he checks a row.
 
 The pull request prints each loop, so anyone can run it again.
 
@@ -322,11 +347,47 @@ his own `shasum -a 256` of the file prints the row's sha. He says so in the sess
 then writes the date in `checked` for the rows he named, and quotes his words in the pull
 request. No agent fills `checked` on its own reading.
 
-The owner has seen an earlier form of this proposal and has not confirmed it (question 4).
+The owner confirmed this form on November 23, 2026 (answer 4). Two details came after his
+answer, and he has not seen them: the download of step 3 is by his browser, where the form he
+confirmed used `curl`, and the read-back of step 4 uses his `r2` profile.
+
+## Setting up R2
+
+The owner has no R2 bucket (answer 3). He sets it up himself, because it takes his Cloudflare
+sign-in, a purchase and a credential. S3-A to S3-D need neither R2 nor the City's site. They
+run on the fakes, MinIO and a recorded feed. S3-E starts after these steps are done.
+
+The steps are in the Cloudflare dashboard, under R2 object storage (fact 10).
+
+1. Turn R2 on. Cloudflare calls this a purchase. This plan has not seen that page, so it does
+   not know whether the page asks for a payment card. Step 3 stores about 50 MB and makes a
+   few hundred requests, inside the free allowance of 10 GB and 1 million Class A operations a
+   month.
+2. Create a bucket with the default location and Standard storage. The proposed name is
+   `phillyledger-archive`. Infrequent Access storage is outside the free allowance. Public
+   access stays off.
+3. Create an API token with the permission "Object Read & Write", scoped to that bucket. The
+   page shows the Access Key ID and the Secret Access Key once.
+4. Write `.env` at the top of the checkout, with one `NAME=value` line for each of the five
+   variables below. `.gitignore` lists the file. Each command runs as
+   `uv run --env-file .env datadesk ...`, so no session reads or prints the file.
+5. Run `aws configure --profile r2` with the two key values and the region `auto`. This is the
+   `aws` CLI the owner knows, and no `wrangler` is needed. An empty listing with no error
+   shows that the token works:
+
+   ```bash
+   aws s3 ls s3://phillyledger-archive --profile r2 \
+     --endpoint-url https://<account id>.r2.cloudflarestorage.com
+   ```
+
+The bucket stays private at step 3, so this plan drops the public address it first asked for.
+Making the bucket public is a publishing decision, and it waits for the step that first needs
+a public read. The bucket's name, the private bucket, the `.env` file and the `r2` profile are
+proposals that the owner has not seen.
 
 ## Environment variables
 
-`load_settings(environ)` reads these six and nothing else. The S3 adapter gives its client the
+`load_settings(environ)` reads these five and nothing else. The S3 adapter gives its client the
 endpoint and the two keys from `Settings`. That alone does not shut out an AWS profile. A boto3
 1.43.26 client built with explicit keys raised `ProfileNotFound` under `AWS_PROFILE` set to a
 missing profile (run on November 23, 2026). S3-D builds the client so that a profile or a
@@ -339,24 +400,25 @@ it.
 | `DATADESK_R2_ACCESS_KEY_ID` | the R2 token's access key id, a credential |
 | `DATADESK_R2_SECRET_ACCESS_KEY` | the R2 token's secret, a credential |
 | `DATADESK_R2_ARCHIVE_BUCKET` | the name of the archive bucket |
-| `DATADESK_R2_ARCHIVE_PUBLIC_URL` | the bucket's public address, which the hand check downloads from |
 | `DATADESK_HTTP_USER_AGENT` | the User-Agent that `Http` sends to the City's site |
 
-`Settings` keeps both key values out of its `repr`, and no command prints either one.
+`Settings` keeps both key values out of its `repr`, and no command prints either one. The
+value of `DATADESK_HTTP_USER_AGENT` is the owner's to set (open question A).
 
 CI runs on the fakes and reads no credential. The `ObjectStore` contract suite reads its target
 from four variables of its own: `DATADESK_CONTRACT_S3_ENDPOINT_URL`,
 `DATADESK_CONTRACT_S3_ACCESS_KEY_ID`, `DATADESK_CONTRACT_S3_SECRET_ACCESS_KEY` and
 `DATADESK_CONTRACT_S3_BUCKET`. It skips its real half, with a message, when they are unset. The
 MinIO run sets them to a local server with throwaway keys. A run against R2 sets them to a
-scratch bucket and a real token, and only with the owner's go (question 3). So no test writes
-to the archive bucket, and no test reads the six variables above.
+scratch bucket and a real token, and only with the owner's go (open question B). So no test
+writes to the archive bucket, and no test reads the five variables above.
 
 ## Risks to probe
 
-1. **The City's CDN refuses a client that is not a browser** (fact 6). S3-D sends one request
-   with the User-Agent the owner picks, before it writes the adapter. A refusal stops the step
-   for the owner.
+1. **The City's server refuses a client that is not a browser** (facts 6 and 11). The probe
+   this risk asked for ran on November 23, 2026, and the City refused a plain User-Agent. Open
+   question A decides how the City's files arrive. Until then no session sends the City a
+   request.
 2. **A held copy may not be the City's current file** (fact 5, QPOS-Q32). S3-E compares the two
    shas for each of the 14 editions before any row is checked.
 3. **Page 1 prints the period twice**, once in the phrase and once as a bare date
@@ -370,9 +432,9 @@ to the archive bucket, and no test reads the six variables above.
 5. **Conditional writes through boto3** (design line 2290, section 18.1). `IfNoneMatch="*"` and
    `IfMatch` on `put_object` must raise `PreconditionFailed` on MinIO and on R2, and the etag
    that `put` and `head` return must be the same string.
-6. **The feed fixture is a recorded response.** S3-B saves the feed's body with the adapter's
-   client or from the owner's browser, cuts it to the QCMR category, and states the cut in the
-   fixture. No one types it.
+6. **The feed fixture is a recorded response.** S3-B saves the feed's body from a browser,
+   cuts it to the QCMR category and one other, and states the cut in the fixture. No one types
+   it.
 7. **The import pin and the socket block.** `import json` fails the purity test and
    `from json import loads` passes with a pin (design 11.1). The MinIO test needs the
    `enable_socket` marker, and a test over TLS needs `import ssl` at the top of the root
@@ -381,32 +443,56 @@ to the archive bucket, and no test reads the six variables above.
    its review finds the adapter and the commands too much for one fix round, the owner may
    split it at `s3.py`.
 
-## Questions for the owner
+## The owner's answers
 
-1. **What User-Agent may `datadesk` send to the City's site?** The proposal is a plain one that
-   names the tool and a contact address. If the City refuses it, the choices are the browser
-   User-Agent the old repo sends, or six downloads by hand into the held folder.
-2. **Does step 3 index FY2027 Q1?** The feed lists it (fact 4). The proposal is yes, with a 21st
-   inventory row. The clauses stay about the 20. If no, the catalog entry gets a last period
-   end of June 30, 2026, which a later step removes.
-3. **Which R2 bucket is the archive, and may step 3 use it?** The design says "both buckets use
-   Cloudflare R2" and names neither. Step 3 needs the archive bucket, its public address, a
-   token that can write to it, and the variable names above confirmed or changed. It stores
-   about 21 PDFs, near 50 MB (the 19 copies seen hold 38,831,218 bytes), and makes a few
-   hundred requests. Whether that costs money depends on the account's allowance, which this
-   plan has not read. A report becomes public at its first `put` if the bucket is public by
-   then. A second go is asked for the contract suite on a scratch bucket with a real token.
-   Without it, MinIO and Cloudflare's page are the proof of the conditional writes.
-4. **Is the inventory right as proposed?** The form shown earlier was a 20-row table computed
-   from the held folder: edition, file name, sha256, page count and the period printed on page
-   1, each row checked by opening the PDF. This plan changes two things. The rows come from the
-   City's files, downloaded apart from `datadesk`, and the held copies are a second sha beside
-   them (shape 6).
-5. **What happens to a held copy that differs from the City's file?** The proposal is to leave
-   it out of the index and list it in the pull request. The other choice is to index it as an
-   earlier version.
-6. **May the Build session install the `gh stack` extension?** It is not installed (fact 8), and
-   `docs/plans/README.md` requires it from this step on.
+The owner answered six questions in the session on November 23, 2026. Each row quotes the
+question as the session put it to him, and his answer. The longer wording of each question is
+in this file at commit `0d411bb`.
+
+| # | What he was shown | His words |
+|---|---|---|
+| 1 | "What User-Agent may `datadesk` send to the City's site? I propose a plain one that names the tool and a contact. If the City refuses it, the choices are the old repo's browser User-Agent or six downloads by hand." | "Yeah use a plain one. Anything should work." |
+| 2 | "Does step 3 index FY2027 Q1? I propose yes, with a 21st inventory row." | "Yes" |
+| 3 | "Which R2 bucket is the archive, and may step 3 use it? It stores about 50 MB. I have not read your account's allowance. A second go is needed to run the contract suite on a scratch bucket with a real token." | "I don't have one set up. I'm not familiar with the cli tooling around R2, just aws s3" |
+| 4 | "Is the inventory right as the plan proposes it? The rows now come from the City's files, downloaded apart from `datadesk`." | "yes" |
+| 5 | "What happens to a held copy that differs from the City's file? I propose leaving it out of the index and listing it in the pull request." | "your rec is fine" |
+| 6 | "May the Build session install the `gh stack` extension? It is not installed." | "yes" |
+
+What follows from each answer:
+
+1. `Http` sends the value of `DATADESK_HTTP_USER_AGENT`. The City then refused two plain
+   values (fact 11), so his answer does not yet say how the City's files arrive. Open
+   question A asks.
+2. The catalog entry has no last period end. The inventory and the index hold 21 rows.
+3. "Setting up R2" gives the steps. His answer gives no go for the contract suite on R2, so
+   open question B asks again.
+4. "The inventory" stands, with the two later details it names.
+5. `plan_import` refuses a held copy that differs, with the reason `differs_from_listed`
+   (shape 6). It is not indexed, and the pull request of S3-E lists it.
+6. The Build session of S3-A runs `gh extension install github/gh-stack`
+   (`docs/working-with-claude-code.md`).
+
+## Still open
+
+**A. How do the City's files arrive, now that the City refuses a plain User-Agent?** There are
+three choices.
+
+1. The owner sets `DATADESK_HTTP_USER_AGENT` in `.env` to a string he chooses, and he starts
+   the commands that reach the City himself, in his terminal: `datadesk fetch qcmr`, twice, in
+   S3-E. The sessions build and test on the recorded feed and the fakes, and they read his
+   output. The plan stands as written. This is the proposal.
+2. The owner saves the feed and the 21 reports in his browser, and `import-held` indexes them.
+   No `datadesk` command reaches the City at step 3. Shape 6 turns around, so the plan is
+   revised and Codex reads it again.
+3. The owner asks the City to let the tool through, and S3-E waits for the answer.
+
+Under every choice, no agent session picks or sends a browser's string to get past the City's
+refusal. That value and those runs are the owner's.
+
+**B. May the `ObjectStore` contract suite run once against a scratch bucket on R2?** A yes adds
+a second bucket, `phillyledger-scratch`, to steps 2 and 3 of "Setting up R2". Without a yes,
+MinIO and Cloudflare's page are the proof of the conditional writes, and the fetch of S3-E
+proves `CreateOnly` on R2 and nothing more.
 
 ## Codex review
 
@@ -429,3 +515,16 @@ for each. None is disputed.
 | 10 | The store tests passed an adapter that refuses every `IfMatch`, and two adapters had no contract | Design lines 2293, 3786 and 4051 | S3-D: the full condition matrix, retries, the `Http` and `page1_text` contracts, and the root `conftest.py` |
 | 11 | Explicit keys do not shut out an AWS profile | Rerun: `ProfileNotFound` under a missing `AWS_PROFILE`, boto3 1.43.26 | "Environment variables": the claim is gone, and a test must prove the isolation |
 | 12 | A real R2 run contradicted "no test reads a real credential", and the cost was unstated | The plan's own text, and the byte total recomputed as 38,831,218 | The contract suite has its own variables and a scratch bucket, and question 3 asks for the go |
+
+## Changes after the review
+
+Codex read commit `39f8af3e`. It has not read these changes, which follow the owner's answers
+and facts 10 and 11.
+
+- FY2027 Q1 is in, so the inventory and the index hold 21 rows (answer 2).
+- The archive bucket is private at step 3, and `DATADESK_R2_ARCHIVE_PUBLIC_URL` is gone
+  ("Setting up R2").
+- The real half of the `Http` contract suite runs against a local server. No session sends the
+  City a request (fact 11).
+- The inventory's download is by the owner's browser, and its read-back is `aws s3 cp`.
+- S3-E adds a note for step 13 to `docs/plan-notes.md`.
