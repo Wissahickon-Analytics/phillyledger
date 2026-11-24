@@ -83,7 +83,11 @@ design leaves open" in `docs/plans/step-03.md`.
   `test_managers_and_manager_s_read_the_same` fails, and with the quarter-end check dropped,
   `test_a_report_title_dated_on_any_other_day_is_not_a_quarter_end` fails. With a word that names
   no month read as `unrelated`, the `a_month_that_is_not_a_month` case of
-  `test_qcmr_title_reads_an_edition_or_a_skip_reason` fails. Design section 3.2.
+  `test_qcmr_title_reads_an_edition_or_a_skip_reason` fails. A letter is a character that
+  `str.isalpha` accepts, so "Märch" makes a report title and "Mar½ch" does not. With ASCII letters
+  alone, the `a_month_word_with_a_letter_outside_ascii` case fails. With `[^\W\d_]`, which also
+  takes number signs such as "½", the `a_month_word_with_a_character_that_is_not_a_letter` case
+  fails. Design section 3.2.
 - **Step 3: `ListedLink.listed_at`, and a parser per page shape** (November 24, 2026, S3-B). The
   design gave `ListedLink` no upload time, so `plan_watch` could not find the last link of an
   edition. The owner decided that `ListedLink` gains `listed_at`, filled by the shape's parser,

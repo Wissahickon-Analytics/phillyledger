@@ -9,7 +9,7 @@ from datadesk.core.periods import MONTHS
 QUARTER_ENDS = frozenset({(3, 31), (6, 30), (9, 30), (12, 31)})
 QCMR_REPORT = compile(
     r"Quarterly City Manager'?s Report\s+[-–]\s+"
-    r"(?P<month>[A-Za-z]+)\s+(?P<day>\d{1,2}),\s+(?P<year>[1-9]\d{3})"
+    r"(?P<month>\w+)\s+(?P<day>\d{1,2}),\s+(?P<year>[1-9]\d{3})"
 )
 
 
@@ -17,7 +17,7 @@ def qcmr_title(title: str) -> EditionKey | str:
     if "infographic" in title.casefold():
         return "infographic"
     report = QCMR_REPORT.fullmatch(title)
-    if report is None:
+    if report is None or not report["month"].isalpha():
         return "unrelated"
     month = MONTHS.get(report["month"].casefold(), 0)
     day = int(report["day"])

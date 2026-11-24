@@ -69,6 +69,16 @@ def report_title(day: date, manager: str = "Managers", dash: str = "-") -> str:
             "not_a_quarter_end",
             id="a_month_that_is_not_a_month",
         ),
+        pytest.param(
+            "Quarterly City Managers Report - Märch 31, 2026",
+            "not_a_quarter_end",
+            id="a_month_word_with_a_letter_outside_ascii",
+        ),
+        pytest.param(
+            "Quarterly City Managers Report - Mar½ch 31, 2026",
+            "unrelated",
+            id="a_month_word_with_a_character_that_is_not_a_letter",
+        ),
     ],
 )
 def test_qcmr_title_reads_an_edition_or_a_skip_reason(
