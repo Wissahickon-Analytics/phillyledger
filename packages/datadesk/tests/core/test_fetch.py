@@ -249,6 +249,22 @@ def test_a_note_that_does_not_fit_the_cover_leaves_the_mismatch(note: EditionNot
     assert finding_code(confirm_period("qcmr", Q2_COVER, FY2022_Q1, (note,))) == "period_mismatch"
 
 
+@pytest.mark.parametrize(
+    "page1",
+    [
+        pytest.param(
+            f"{Q2_COVER}SUBPERIOD ENDING DECEMBER 31 2021", id="a_word_character_before_the_quote"
+        ),
+        pytest.param(
+            f"{Q2_COVER}PERIOD ENDING DECEMBER 31 2021S", id="a_word_character_after_the_quote"
+        ),
+    ],
+)
+def test_a_note_quoted_from_inside_a_longer_word_leaves_the_mismatch(page1: str) -> None:
+    note = replace(NOTE, printed="PERIOD ENDING DECEMBER 31 2021")
+    assert finding_code(confirm_period("qcmr", page1, FY2022_Q1, (note,))) == "period_mismatch"
+
+
 def test_a_note_does_not_clear_a_date_that_is_not_a_quarter_end() -> None:
     page1 = "FOR THE PERIOD ENDING DECEMBER 30, 2021"
     note = replace(NOTE, printed=page1, value="2021-12-30")

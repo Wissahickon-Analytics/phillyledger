@@ -34,6 +34,7 @@ PURE_IMPORTS: dict[str, tuple[str, ...]] = {
         "json.dumps",
         "json.loads",
         "re.compile",
+        "re.escape",
         "tomllib.TOMLDecodeError",
         "tomllib.loads",
         "types.MappingProxyType",

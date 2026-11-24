@@ -1,7 +1,7 @@
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, replace
 from datetime import date
-from re import compile
+from re import compile, escape
 from types import MappingProxyType
 
 from checkedtables.table import Finding, Severity
@@ -175,10 +175,15 @@ def _clears(
     return (
         note.kind == NoteKind.PRINTED_PERIOD
         and note.page in (None, 1)
-        and _collapsed(note.printed) in _collapsed(page1_text)
+        and _quotes(page1_text, note.printed)
         and reader(note.printed) == printed
         and note.value == printed.end.isoformat()
     )
+
+
+def _quotes(page1_text: str, quote: str) -> bool:
+    pattern = compile(rf"(?<!\w){escape(_collapsed(quote))}(?!\w)")
+    return pattern.search(_collapsed(page1_text)) is not None
 
 
 def _collapsed(text: str) -> str:
