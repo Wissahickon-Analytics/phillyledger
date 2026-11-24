@@ -31,6 +31,7 @@ PURE_IMPORTS: dict[str, tuple[str, ...]] = {
         "enum.StrEnum",
         "json.dumps",
         "json.loads",
+        "types.MappingProxyType",
         "typing.Any",
     ),
 }
