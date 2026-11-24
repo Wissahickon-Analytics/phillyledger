@@ -116,3 +116,12 @@ def test_load_catalog_returns_every_problem_it_finds() -> None:
         ("catalog_missing_field", "qcmr"),
         ("catalog_unknown_shape", "qcmr_again"),
     ]
+
+
+def test_an_entry_s_field_shape_and_repeated_id_are_each_a_finding() -> None:
+    text = QCMR_TEXT + QCMR_TEXT.replace("document_finder", "rss") + "extra=1\n"
+    assert codes(load_catalog(text)) == [
+        ("catalog_unknown_field", "qcmr"),
+        ("catalog_unknown_shape", "qcmr"),
+        ("catalog_duplicate_id", "qcmr"),
+    ]

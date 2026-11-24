@@ -31,7 +31,7 @@ class SourceCatalog:
     entries: tuple[SourceEntry, ...]
 
     def __post_init__(self) -> None:
-        if repeated := _repeated_ids(self.entries):
+        if repeated := _repeated(entry.id for entry in self.entries):
             raise ValueError(f"the catalog lists {', '.join(repeated)} more than once")
 
     def entry(self, id: str) -> SourceEntry:
@@ -73,9 +73,10 @@ def load_catalog(text: str) -> SourceCatalog | tuple[Finding, ...]:
             entries.append(read)
         else:
             findings.extend(read)
+    ids = (fields["id"] for fields in sources if type(fields.get("id")) is str)
     findings += [
         _block("catalog_duplicate_id", id, f"{id} names more than one source")
-        for id in _repeated_ids(entries)
+        for id in _repeated(ids)
     ]
     return tuple(findings) or SourceCatalog(tuple(entries))
 
@@ -99,10 +100,11 @@ def _entry(number: int, fields: dict[str, Any]) -> SourceEntry | list[Finding]:
             if name in fields and type(fields[name]) is not kind
         ),
     ]
+    shape = fields.get("shape")
+    if type(shape) is str and shape not in ListingShape:
+        findings.append(_block("catalog_unknown_shape", subject, f"{shape} is not a shape"))
     if findings:
         return findings
-    if fields["shape"] not in ListingShape:
-        return [_block("catalog_unknown_shape", subject, f"{fields['shape']} is not a shape")]
     return SourceEntry(
         id=fields["id"],
         series=fields["series"],
@@ -113,8 +115,8 @@ def _entry(number: int, fields: dict[str, Any]) -> SourceEntry | list[Finding]:
     )
 
 
-def _repeated_ids(entries: Iterable[SourceEntry]) -> list[str]:
-    return [id for id, count in Counter(entry.id for entry in entries).items() if count > 1]
+def _repeated(ids: Iterable[str]) -> list[str]:
+    return [id for id, count in Counter(ids).items() if count > 1]
 
 
 def _block(code: str, subject: str, message: str) -> Finding:
