@@ -19,6 +19,7 @@ from typing import (
 )
 
 import checkedtables
+from datadesk.core.records import NoteKind
 from datadesk.core.tables import bib_common, collections_common, qcmr_common, supp_common
 
 if TYPE_CHECKING:
@@ -277,6 +278,16 @@ def test_kit_dataclass_fields_are_pinned() -> None:
 
 def test_bool_fields_are_page_facts_only() -> None:
     assert bool_fields(kit_dataclasses()) == {("Word", "bold")}
+
+
+def test_closed_lists_are_pinned() -> None:
+    assert [k.value for k in NoteKind] == [
+        "printed_period",
+        "cutoff",
+        "header_misprint",
+        "drop_line",
+        "header_illegible",
+    ]
 
 
 def report_budget() -> None:
