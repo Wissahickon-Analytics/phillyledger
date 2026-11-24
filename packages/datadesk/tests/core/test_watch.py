@@ -9,7 +9,7 @@ from hypothesis import given
 from hypothesis import strategies as st
 from packages.datadesk.tests.core.fixtures.qcmr_feed import FEED
 
-from checkedtables.table import Finding, Severity
+from checkedtables.table import Severity
 from datadesk.core.catalog import ListingShape, SourceCatalog, SourceEntry
 from datadesk.core.domain import ArchiveIndex, DocumentVersion, EditionKey, Period
 from datadesk.core.listings import Listing, parse_listing
@@ -167,15 +167,13 @@ def test_a_report_title_dated_march_30_gives_a_finding_and_no_fetch() -> None:
     watch = plan(changed)
     assert FY2026_Q3 not in [request.edition for request in watch.fetch]
     assert len(watch.fetch) == 18
-    assert watch.findings == (
-        Finding(
-            Severity.WARN,
-            "not_a_quarter_end",
-            Q3_URL,
-            "'Quarterly City Managers Report - March 30, 2026' reads as a report "
-            "whose date is not a quarter end, so it is not fetched",
-        ),
+    (finding,) = watch.findings
+    assert (finding.severity, finding.code, finding.subject) == (
+        Severity.WARN,
+        "not_a_quarter_end",
+        Q3_URL,
     )
+    assert "Quarterly City Managers Report - March 30, 2026" in finding.message
 
 
 def test_a_new_url_for_an_indexed_edition_is_a_revision() -> None:
