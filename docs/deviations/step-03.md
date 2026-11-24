@@ -341,3 +341,37 @@ design leaves open" in `docs/plans/step-03.md`.
   With that conversion removed, both cases of
   `test_page1_text_of_a_file_pdfplumber_cannot_read_is_an_effect_error` fail. Design sections 4,
   11.1 and 11.5.
+- **Step 3: `run_fetch` returns the plan and tries each effect three times** (November 24, 2026,
+  S3-D). The design's sketch called `GitHost`, put each report with `public=True`, and did not say
+  how a failed effect is tried again. `run_fetch` now returns the `FetchPlan` and calls no `GitHost`
+  (shape 10). Each `http.get` and each `put_immutable` is tried three times in all while it raises
+  `EffectError`, and the third failure propagates. `put_immutable` writes with `CreateOnly` and, on
+  `PreconditionFailed`, hashes the stored object, so a put whose reply was lost completes on the
+  next try. With two tries, the `2-listing` case of
+  `test_three_failures_stop_the_command_with_the_index_unchanged` fails, and with four, the
+  `3-listing` case fails. With a failed put skipped, the `3-put` case fails. With the read-back
+  removed, `test_put_immutable_completes_when_the_store_holds_the_same_bytes` fails. Design
+  sections 1.4, 4.2, 4.5 and 9.
+- **Step 3: the fetch command reads a saved folder and writes the index last** (November 24, 2026,
+  S3-D). The design gave the fetch command no shape, and its `Http` adapter sent requests. The City
+  refuses a client that is not a browser (plan facts 6 and 11), so at step 3 `datadesk fetch
+  <source> --saved <folder>` reads a folder that a browser saved, through `SavedHttp` (shape 6).
+  `fetch_command` returns `FetchRun(listing_sha256, findings, plan)`, raises `FetchStopped` before
+  any report is fetched when the checkout or the listing cannot be read, and writes the plan's files
+  after every put, each to a temporary file in its folder and then renamed. A command that returns
+  before it asks for the listing when the index holds lines fails
+  `test_fetching_the_same_listing_again_adds_nothing` on the call log of the second run. One that
+  fetches nothing when the index holds lines fails it at the third run, which must store the new
+  edition. With the listing's status left unchecked,
+  `test_a_saved_folder_without_the_feed_s_row_stops_the_command_before_any_put` fails. With the
+  bare-name check on a saved row dropped, the `a_file_outside_the_folder` case of
+  `test_saved_http_refuses_a_folder_it_cannot_trust` fails. Design sections 1.4, 4.2, 12.3 and
+  12.4.
+- **Step 3: an index file that `parse_index` cannot read is a finding** (November 24, 2026, S3-D).
+  Section 9 lets the shell catch only effect exceptions, and `parse_index` raises `KeyError`,
+  `TypeError` or `ValueError` on a file it cannot read. The index file is input from the checkout,
+  so `gather_repo` returns that as the BLOCK finding `index_unreadable`, beside any catalog
+  findings, and the command stops before any request. `RepoSnapshot` holds the loaded catalog and
+  index, not text. With only `OSError` caught, the `an_index_that_is_not_json` case of
+  `test_a_checkout_the_command_cannot_read_stops_it_before_any_request` fails. Design sections 1.4,
+  4 and 9.

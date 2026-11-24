@@ -62,10 +62,10 @@ publisher listings --watch--> WatchPlan --exec--> pull request (index lines, gap
 | Textract | `OcrService` | `datadesk.shell.adapters.textract` | the `ocr` executor only, and only with `--spend` |
 | PDF words, rules and page-1 text | `PdfReader` | `datadesk.shell.adapters.pdf_pdfplumber` | `fetch` and `words` executors |
 | Local content-addressed cache | `LocalCache` | `datadesk.shell.adapters.cache_dir`, `phillyledger._shell.cache_dir` | executors, reader |
-| Git and pull requests | `GitHost` | `datadesk.shell.adapters.github` | `watch` and `fetch` executors |
+| Git and pull requests | `GitHost`, from step 13 | `datadesk.shell.adapters.github` | the `watch` executor. At step 3, `fetch_command` writes the index file into the checkout and the session opens the pull request |
 | Clock | none; `cli.main` reads the time once and passes a `date` and a `datetime` down | `datadesk.shell.cli` | CLI entry only |
 | Environment | none; `load_settings(environ)` returns a frozen `Settings` once | `datadesk.shell.settings` | CLI entry only |
-| Repository files (TOML records, index, schemas) | none; `gather_repo` reads text once into a `RepoSnapshot` | `datadesk.shell.gather` | CLI entry only |
+| Repository files (TOML records, index, schemas) | none; `gather_repo` reads each file's text once and passes it to a pure loader, and the values make a `RepoSnapshot` | `datadesk.shell.gather` | CLI entry only |
 | Logging and progress | none; findings are values | `datadesk.shell.report` | executors |
 
 ## 2. Domain model
@@ -2500,10 +2500,14 @@ bucket. A step that needs another bucket adds a store for it to `Deps`.
 `textract_to_document` is a pure function in `datadesk.core.ocr`; only the call to Textract is an
 effect. Archived responses live privately at `ocr/<sha>/<page>/<config-hash>.json` (VAL-Q07).
 
-The shell reads repository files once. `gather_repo(root)` returns a `RepoSnapshot` of text:
-TOML records, row schemas, the registry, the catalog and the archive index. Pure loaders turn the
-text into values. An executor then holds the snapshot and the plan, and passes both to pure
-functions only (R3 purity finding).
+The shell reads repository files once. `gather_repo(root)` reads each file's text at its path in
+the checkout and passes it to a pure loader, and the values make a `RepoSnapshot`. At step 3 the
+snapshot holds `catalog: SourceCatalog` and `index: ArchiveIndex`, from `CATALOG_PATH` in
+`gather.py` and `INDEX_PATH` in `core/fetch.py`, and `gather_repo` returns
+`RepoSnapshot | tuple[Finding, ...]`. The findings are the catalog's, and one BLOCK finding
+`index_unreadable` when `parse_index` raises on the index file. Later steps add the TOML records,
+row schemas, the registry and the code tree sha (section 10). An executor then holds the snapshot
+and the plan, and passes both to pure functions only (R3 purity finding).
 
 `load_settings(environ)` reads `DATADESK_R2_ENDPOINT_URL`, `DATADESK_R2_ACCESS_KEY_ID`,
 `DATADESK_R2_SECRET_ACCESS_KEY` and `DATADESK_R2_ARCHIVE_BUCKET`, and no other variable. It returns
@@ -2551,28 +2555,83 @@ flag).
 
 ```python
 # datadesk/shell/run_fetch.py
+TRIES = 3
+
+
+def retried[T](effect: Callable[[], T]) -> T: ...   # runs effect up to TRIES times while it raises
+                                                    # EffectError; the last failure propagates
+
+
 def run_fetch(deps: Deps, plan: WatchPlan, repo: RepoSnapshot) -> FetchPlan:
     held: dict[str, bytes] = {}                                   # bytes by sha, in memory
     fetched: list[Fetched] = []
     for req in plan.fetch:
-        r = deps.http.get(req.url)
+        r = retried(partial(deps.http.get, req.url))
         if r.status != 200:
             fetched.append(Fetched(req, r.status, None, 0, None))
             continue
         sha = sha256(r.body).hexdigest()
         held[sha] = r.body
         fetched.append(Fetched(req, 200, sha, len(r.body), deps.pdf.page1_text(r.body)))
-    result = plan_fetch(fetched, repo.index, repo.records.notes)  # pure: every decision
+    result = plan_fetch(fetched, repo.index, ())                  # pure: every decision
     for obj in result.store:
-        deps.store.put(obj.dest_key, held[obj.sha256], public=True)
-    deps.git.open_pull_request(result.pull_request)
+        retried(partial(put_immutable, deps.store, obj.dest_key, held[obj.sha256], obj.sha256))
     return result
+
+
+# datadesk/shell/cli.py (excerpt)
+@dataclass(frozen=True, slots=True)
+class FetchRun:
+    listing_sha256: str
+    findings: tuple[Finding, ...]                  # plan_watch's findings
+    plan: FetchPlan
+
+
+def fetch_command(deps: Deps, root: Path, source: str, today: date) -> FetchRun:
+    repo = gather_repo(root)                       # findings: FetchStopped
+    entry = repo.catalog.entry(source)             # a source the catalog lacks: FetchStopped
+    r = retried(partial(deps.http.get, entry.listing_url))     # not 200: FetchStopped
+    listing = parse_listing(entry, entry.listing_url, r.text)   # a finding: FetchStopped
+    watch = plan_watch(repo.catalog, [listing], repo.index, today)
+    plan = run_fetch(deps, watch, repo)
+    for path, text in plan.pull_request.files:     # last, after every put
+        written = (root / path).with_name(f".{Path(path).name}.tmp")
+        written.write_text(text, encoding="utf-8", newline="")
+        written.replace(root / path)               # a rename within one folder
+    return FetchRun(listing.html_sha256, watch.findings, plan)
 ```
 
 Download, hash and decide is a loop of small plans, as the principles allow. Bytes stay in memory
 keyed by hash until `plan_fetch` decides; nothing is staged and copied (R2). A watch pull request
-adds a handful of PDFs, so memory is not a concern. The index change goes through a pull request,
-so `GitHost` needs one method.
+adds a handful of PDFs, so memory is not a concern. `put_immutable` (section 4.5) lives in
+`run_fetch.py`, its first caller. Each `http.get` and each `put_immutable` is tried up to three
+times while it raises `EffectError`, and the third failure propagates (section 9). The S3 client
+makes one attempt for each call, so these are all the tries. Other bytes under a report's key raise
+`PreconditionFailed`, which is not tried again. `plan_fetch` gets no notes until `load_records`
+arrives at step 5.
+
+`run_fetch` returns the `FetchPlan` and calls no `GitHost`. `fetch_command` writes the plan's files
+into the checkout after every put, so a run that stops leaves the index file as it was, and the
+session opens the pull request. Step 13 builds `GitHost` and its adapter. Catalog or index
+findings, a source the catalog lacks, a listing status other than 200 and a listing finding each
+raise `FetchStopped` before any report is fetched, so nothing is stored and no file is written.
+
+`main(argv)` is the `datadesk` script, `datadesk fetch <source> --saved <folder>`. At step 3
+`--saved` is required. The City refuses a client that is not a browser (step 3 plan, facts 6 and
+11), so no command sends the City a request. A browser saves the listing and the reports, and the
+command reads the saved folder. `main` reads the clock once, the environment once with
+`load_settings`, and the working directory as the checkout. It builds `Deps` from
+`SavedHttp(folder)`, `s3_store(settings)` and the pdfplumber reader. It prints the listing digest,
+each finding, the plan's title and body and each file it wrote, and returns 0. A missing variable,
+a saved folder that `SavedHttp` refuses, a `FetchStopped` or an `EffectError` prints one line to
+stderr and returns 1.
+
+The saved folder holds the saved files and `responses.tsv`, whose first row is the header
+`url<TAB>file` and whose other rows each pair a URL with a file name. `SavedHttp(folder)` reads it
+when built. It refuses a file with another
+header, a row that is not one URL and one file name, a URL listed twice, and a name that is not a
+file directly in the folder. `get` answers a listed URL with status 200 and the bytes of its file,
+and any other URL with 404.
 
 ### 4.3 `ocr`
 
@@ -3980,7 +4039,7 @@ A problem in the documents is a returned value. An exception means a bug or a fa
 | Printed period mismatch at fetch | `Rejection` in the plan | the watch or fetch pull request shows it |
 | Key or entity change between releases | `RowDiff.key_changed` or `entity_changed`; blocks without `--accept-diff` | the owner reviews the diff |
 | `Table` or `RowSchema` invariant violated in `__post_init__` | `ValueError` | a bug: a loader or `assemble` should have produced a finding |
-| HTTP, S3 or Textract error | exception from the adapter | the executor retries the same plan item up to three times, then stops; index and pointer are written last, so nothing is half committed |
+| HTTP, S3 or Textract error | `EffectError` from the adapter | the executor tries the same plan item three times in all, then stops; index and pointer are written last, so nothing is half committed. A `PreconditionFailed` is not an `EffectError` and is never tried again |
 | Hash mismatch on staged or downloaded bytes | `StagingCorrupted`, `IntegrityError` | stop; never retried silently |
 
 Findings are collected per line (change 19). A page-level failure stops its table, because
@@ -3988,7 +4047,9 @@ nothing below it can be read. A line-level problem becomes a finding and the par
 one run shows every problem in an edition.
 
 The shell is the only place that catches exceptions, and only effect exceptions. A `ValueError`
-from the core propagates and fails the command, because it is a bug.
+from the core propagates and fails the command, because it is a bug. `gather_repo` is the one
+exception. `parse_index` raises on an index file it cannot read, and `gather_repo` returns that as
+the BLOCK finding `index_unreadable`, because the file is input from the checkout (section 4).
 
 ## 10. Caching and determinism
 
