@@ -154,6 +154,13 @@ def test_add_versions_leaves_a_line_that_repeats_a_url_as_it_was_when_no_url_joi
     assert add_versions(index, [replace(Q4, listed_at="20261116120000")]) == index
 
 
+def test_add_versions_holds_each_url_once_when_a_url_joins_a_line_that_repeats_one() -> None:
+    index = ArchiveIndex((Q3, replace(Q4, urls=(Q4_URL, Q4_URL))))
+    relisted = replace(Q4, listed_at="20261116120000", urls=(Q4_REPOST_URL,))
+    merged = replace(Q4, urls=(Q4_URL, Q4_REPOST_URL), listed_at="20261116120000")
+    assert add_versions(index, [relisted]) == ArchiveIndex((Q3, merged))
+
+
 def test_add_versions_refuses_a_sha_indexed_under_another_edition() -> None:
     found = add_versions(ArchiveIndex((Q4,)), [replace(Q3, sha256=Q4_SHA)])
     assert isinstance(found, Finding)
