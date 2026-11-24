@@ -155,7 +155,7 @@ The City's files, as a browser read them on November 23, 2026 (fact 12). The 21 
 
 The tests of C1 to C3 read the index file and the inventory file from the checkout. The test
 file holds 20 edition ids as its own list, the quarter ends from September 30, 2021 to June 30,
-2026. FY2027 Q1 is not among them at step 3 (fact 14, open question D). C1 requires one
+2026. FY2027 Q1 is not among them at step 3 (fact 14, answer D). C1 requires one
 inventory row and an index line for each id, so an edition that is missing from both files
 fails. C2 and C3 compare pairs. Each row's
 `(edition, sha256)` must be on exactly one index line, as a version of that edition. They do
@@ -388,10 +388,11 @@ under `src/`.
   on it.
 - Owns C1 to C4. The pull request lists the owner's 14 copies that differ from the City's
   files, each with its sha (answer 5, fact 12).
-- `docs/plan-notes.md` gets two notes. For step 7: the feed lists QCMR reports back to
+- `docs/plan-notes.md` gets three notes. For step 7: the feed lists QCMR reports back to
   December 31, 2006. For step 13: the City refuses a client that does not send a browser's
   User-Agent (fact 11), the owner's answer for a run that is his is the string the old repo
-  sends (answer A), and the live `Http` adapter waits for that step.
+  sends (answer A), and the live `Http` adapter waits for that step. For the step that adds
+  OCR: the FY2027 Q1 report is saved, rejected and not indexed (fact 14, answer D).
 - `CLAUDE.md` gets the saved folder in place of "ask for the path when step 3 starts".
 
 ## The saved folder
@@ -576,8 +577,8 @@ What follows from each answer:
 1. The City then refused two plain values (fact 11), so this answer did not settle how the
    City's files arrive. Answer A below did.
 2. The catalog entry has no last period end, so the feed's 21st report is fetched. Its cover
-   cannot be read (fact 14), so it is rejected and not indexed at step 3. Open question D asks
-   what he wants.
+   cannot be read (fact 14), so it is rejected and not indexed at step 3. Answer D below
+   settles it.
 3. "Setting up R2" gives the steps. His answer gives no go for the contract suite on R2, so
    open question B asks again.
 4. "The inventory" stands, with the three later details it names.
@@ -616,6 +617,18 @@ What follows from answer A:
   14 copies are not indexed, because none has the City's sha. The save through Chrome was
   done the same day (fact 13).
 
+**Answer D.** The session then found that the FY2027 Q1 report has no text a program can read
+(fact 14). It told him that this collides with his yes to indexing that report, that the plan
+now rejects it at step 3 and indexes the 20, and that the other choice is a note at step 3 that
+records his own reading of the cover. The question as he saw it: "Should FY2027 Q1 wait until a
+later step can read its cover, or do you want a note added at step 3?" His words: "Let it
+wait".
+
+What follows from answer D: at step 3 the fetch rejects FY2027 Q1 and stores nothing for it.
+The index and the inventory hold the 20 editions of the check. The saved file stays in the
+saved folder. A later step indexes it once it can read the cover, and S3-E leaves a note for
+that step's plan.
+
 ## Still open
 
 **B. May the `ObjectStore` contract suite run once against a scratch bucket on R2?** A yes adds
@@ -625,13 +638,6 @@ read-back and a repeat fetch on R2. It does not prove that R2 refuses an overwri
 first run writes absent keys and its second run writes nothing. The scratch run alone proves
 that: a second create with other bytes must raise `PreconditionFailed` and leave the first
 bytes.
-
-**D. What happens to FY2027 Q1?** He said yes to indexing it (answer 2). Its cover has no
-text a program can read (fact 14), so `confirm_period` cannot confirm its period, and the later
-steps cannot read its tables without OCR. The plan takes the choice that publishes nothing: at
-step 3 the fetch rejects it, the index holds the 20, and each run reports the rejection. It
-enters when a later step can read it, by OCR or by a note that records a person's reading of
-the cover. The other choice is to build that note at step 3. He has not seen this question.
 
 ## Codex review
 
@@ -703,4 +709,4 @@ These came after the revision that answers the second review. Codex has not read
 - The owner connected Chrome, and the planning session saved the feed and the 21 reports. The
   saved folder exists, and "The saved folder" says how it was made and what S3-E does with it.
 - FY2027 Q1 has no readable text (fact 14). At step 3 the fetch rejects it, and the tests of C1
-  to C3 hold the 20 editions of the check. Open question D asks the owner.
+  to C3 hold the 20 editions of the check. The owner agreed (answer D).
