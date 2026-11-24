@@ -308,3 +308,36 @@ design leaves open" in `docs/plans/step-03.md`.
   `test_add_versions_holds_each_url_once_when_a_url_joins_a_line_that_repeats_one` pins the
   rule, and fails when the merge keeps the held tuple as it is and appends the new URLs.
   Design section 6.3.
+- **Step 3: the ports as step 3 builds them** (November 24, 2026, S3-D). The design's
+  `ObjectStore.put` took `public`, and R2 has no setting that makes one object public (plan fact
+  7). So `put(key, data, condition)` takes no flag, each store is bound to one bucket, and `Deps`
+  holds `http`, a `store` bound to the archive bucket, and `pdf` (shape 9). `ObjectStore` has
+  `put`, `head` and `get` at step 3, and `PdfReader` has `page1_text` alone (shape 11).
+  `HttpResponse` holds `status` and `body`, and `text` decodes the body as UTF-8. A new
+  `EffectError` marks a failed effect that may be tried again. Each adapter raises it from its
+  library's failure, and `PreconditionFailed` is not one. With `PreconditionFailed` made a
+  subclass of `EffectError`, `test_other_bytes_under_a_report_s_key_stop_the_command_after_one_put`
+  fails, because the put is tried three times. The sketches in sections 4.3 and 4.5 no longer pass
+  `public`. The 4.5 sketch publishes through `deps.public`, a store bound to a public bucket, which
+  is a proposal for the step that builds the release. Design sections 4, 4.3 and 4.5.
+- **Step 3: `Settings` and the S3 client** (November 24, 2026, S3-D). The design named `Settings`
+  and gave it no fields. It holds the endpoint, the two keys and the archive bucket from the four
+  `DATADESK_R2_*` variables of the plan, and leaves both keys out of its `repr`. An empty variable
+  counts as missing. With explicit keys alone, a boto3 1.44.5 client raised `ProfileNotFound` under
+  an `AWS_PROFILE` that names no profile. So `s3_store` builds its client on a botocore session
+  whose `profile` reads no variable and whose config and credentials files are `os.devnull`. The
+  client also makes one attempt for each call, so the executor's three tries are all the tries. With
+  a default session, `test_s3_client_ignores_the_ambient_aws_profile` fails with
+  `ProfileNotFound`. With the keys in the `repr`,
+  `test_settings_keep_both_keys_out_of_their_repr` fails. Design section 4.
+- **Step 3: contract suites that run on every commit** (November 24, 2026, S3-D). Section 11.1
+  ran the real adapters' contracts nightly and before release, against the network or MinIO. The
+  saved-folder `Http` adapter and the pdfplumber reader need neither, so their contracts run in CI
+  beside the fakes (plan, S3-D). The `ObjectStore` suite runs the dict store always and the S3
+  store only when the four `DATADESK_CONTRACT_S3_*` variables are set. The `PdfReader` contract builds its two PDFs in the
+  test, because `.gitignore` keeps every PDF out of git. With page 1 read as the last page,
+  `test_page1_text_holds_the_words_of_page_1_alone` fails. Bytes that pdfplumber cannot open and a
+  PDF with no page raise `EffectError`, so the command stops with one line and not a traceback.
+  With that conversion removed, both cases of
+  `test_page1_text_of_a_file_pdfplumber_cannot_read_is_an_effect_error` fail. Design sections 4,
+  11.1 and 11.5.

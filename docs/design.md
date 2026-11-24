@@ -57,7 +57,7 @@ publisher listings --watch--> WatchPlan --exec--> pull request (index lines, gap
 
 | Effect | Port (Protocol) | Adapter | Called from |
 |---|---|---|---|
-| HTTP to phila.gov, philasd.org and the Wayback CDX | `Http` | `datadesk.shell.adapters.http_httpx` | `watch` and `fetch` executors |
+| HTTP to phila.gov, philasd.org and the Wayback CDX | `Http` | `datadesk.shell.adapters.http_saved`, which answers from a folder that a browser saved; `datadesk.shell.adapters.http_httpx` from step 13 | `fetch_command` and the `fetch` executor; the `watch` executor from step 13 |
 | Object store (public PDFs, private Textract JSON, releases) | `ObjectStore` | `datadesk.shell.adapters.s3` | `fetch`, `ocr`, `words` and `release` executors |
 | Textract | `OcrService` | `datadesk.shell.adapters.textract` | the `ocr` executor only, and only with `--spend` |
 | PDF words, rules and page-1 text | `PdfReader` | `datadesk.shell.adapters.pdf_pdfplumber` | `fetch` and `words` executors |
@@ -2416,13 +2416,22 @@ def predecessor_spans(registry_rows: Sequence[Mapping[str, object]], entity: str
 
 ## 4. The imperative shell
 
-Every effect sits behind one `typing.Protocol` with one real adapter and one fake. There are six
-ports. The `Clock` port is gone: `cli.main` reads the time once and passes values down (change 20).
+Every effect sits behind one `typing.Protocol` with a real adapter and one fake. `Http` has two
+real adapters, `http_saved` from step 3 and `http_httpx` from step 13. There are six ports. The
+`Clock` port is gone: `cli.main` reads the time once and passes values down (change 20).
 
 ```python
 # datadesk/shell/ports.py
+@dataclass(frozen=True, slots=True)
+class HttpResponse:
+    status: int
+    body: bytes
+    @property
+    def text(self) -> str: ...                       # body decoded as UTF-8
+
+
 class Http(Protocol):
-    def get(self, url: str) -> HttpResponse: ...     # any status is a result; transport errors raise
+    def get(self, url: str) -> HttpResponse: ...     # any status is a result; a failed effect raises
 
 
 @dataclass(frozen=True, slots=True)
@@ -2432,19 +2441,22 @@ class CreateOnly:
 
 @dataclass(frozen=True, slots=True)
 class IfMatch:
-    etag: str | None                   # None: the key must not exist yet
+    etag: str | None                   # None: the key must not exist yet, as CreateOnly
 
 
-Condition = CreateOnly | IfMatch
+type Condition = CreateOnly | IfMatch
 
 
-class PreconditionFailed(Exception): ...
+class PreconditionFailed(Exception): ...   # the condition did not hold; never tried again
 
 
-class ObjectStore(Protocol):
-    def put(self, key: str, data: bytes, public: bool, condition: Condition) -> str: ...  # new etag
-    def head(self, key: str) -> str | None: ...                                          # etag
-    def get(self, key: str) -> bytes: ...
+class EffectError(Exception): ...          # an effect failed and may be tried again
+
+
+class ObjectStore(Protocol):               # bound to one bucket
+    def put(self, key: str, data: bytes, condition: Condition) -> str: ...   # new etag
+    def head(self, key: str) -> str | None: ...                               # etag
+    def get(self, key: str) -> bytes: ...                                     # KeyError if absent
     def exists(self, key: str) -> bool: ...
     def list(self, prefix: str) -> tuple[str, ...]: ...   # one caller: archived OCR keys for plan_parse
 
@@ -2454,8 +2466,8 @@ class OcrService(Protocol):
 
 
 class PdfReader(Protocol):
+    def page1_text(self, pdf: bytes) -> str: ...                     # "" for a page with no text
     def words(self, pdf: bytes, sha256: str, pages: Sequence[int]) -> Document: ...
-    def page1_text(self, pdf: bytes) -> str: ...
     def render(self, pdf: bytes, page: int, dpi: int) -> bytes: ...  # for OCR and review images
 
 
@@ -2467,7 +2479,23 @@ class LocalCache(Protocol):
 
 class GitHost(Protocol):
     def open_pull_request(self, plan: PullRequestPlan) -> str: ...  # files, branch, title, body
+
+
+@dataclass(frozen=True, slots=True)
+class Deps:
+    http: Http
+    store: ObjectStore                     # the archive bucket
+    pdf: PdfReader
 ```
+
+Step 3 builds `HttpResponse`, `Http`, the conditions, both exceptions, `ObjectStore` with `put`,
+`head` and `get`, `PdfReader` with `page1_text`, and `Deps` with those three ports. `exists` and
+`list` join `ObjectStore` at the step that first calls them, `words` and `render` join `PdfReader`
+at step 4, and each later port joins `Deps` at the step that builds it. Each adapter turns its
+library's failures into `EffectError`, chained with `from`, and `PreconditionFailed` is not an
+`EffectError`. R2 has no setting that makes one object public, because its S3 API does not take
+`x-amz-acl` (step 3 plan, fact 7). So `put` takes no `public` flag, and each store is bound to one
+bucket. A step that needs another bucket adds a store for it to `Deps`.
 
 `textract_to_document` is a pure function in `datadesk.core.ocr`; only the call to Textract is an
 effect. Archived responses live privately at `ocr/<sha>/<page>/<config-hash>.json` (VAL-Q07).
@@ -2476,6 +2504,19 @@ The shell reads repository files once. `gather_repo(root)` returns a `RepoSnapsh
 TOML records, row schemas, the registry, the catalog and the archive index. Pure loaders turn the
 text into values. An executor then holds the snapshot and the plan, and passes both to pure
 functions only (R3 purity finding).
+
+`load_settings(environ)` reads `DATADESK_R2_ENDPOINT_URL`, `DATADESK_R2_ACCESS_KEY_ID`,
+`DATADESK_R2_SECRET_ACCESS_KEY` and `DATADESK_R2_ARCHIVE_BUCKET`, and no other variable. It returns
+`Settings(endpoint_url, access_key_id, secret_access_key, archive_bucket)`, frozen, with both keys
+left out of its `repr`. An absent or empty variable is missing, and one `MissingSettings` names
+every missing variable and holds no value. `s3_store(settings)` builds the S3 adapter's client from
+`Settings` alone: region `auto`, path-style addressing, one attempt for each call, and a botocore
+session that reads neither `AWS_PROFILE` nor the shared config and credentials files. Given only
+explicit keys, a boto3 1.44.5 client still raised `ProfileNotFound` under a missing `AWS_PROFILE`.
+`CreateOnly` and `IfMatch(None)` send `IfNoneMatch="*"`, and `IfMatch(e)` sends `IfMatch=e`. A 412
+`PreconditionFailed` raises `PreconditionFailed`, `head` of an absent key returns `None`, and `get`
+of an absent key raises `KeyError`. The pdfplumber reader raises `EffectError` for bytes it cannot
+open and for a PDF with no page.
 
 ### 4.1 `watch`
 
@@ -2542,7 +2583,8 @@ def run_ocr(deps: Deps, plan: OcrPlan) -> tuple[str, ...]:
     for item in plan.items:
         pdf = deps.store.get(item.pdf_key)
         image = deps.pdf.render(pdf, item.page, item.dpi)
-        deps.store.put(item.archive_key, deps.ocr.analyze(image, item.config), public=False)
+        response = deps.ocr.analyze(image, item.config)
+        put_immutable(deps.store, item.archive_key, response, sha256(response).hexdigest())
         written.append(item.archive_key)
     return tuple(written)
 
@@ -2596,24 +2638,24 @@ def run_release(deps: Deps, planned: ReleasePlanned) -> Released:
     plan, blobs = planned.plan, planned.blobs                 # plan lists files by sha only
     prefix = f"releases/{plan.release_id}"
     for f in plan.files:
-        put_immutable(deps.store, f"{prefix}/staged/{f.path}", blobs[f.sha256], f.sha256, public=False)
+        put_immutable(deps.store, f"{prefix}/staged/{f.path}", blobs[f.sha256], f.sha256)
     for f in plan.files:                                      # gate step 2: what was staged
         if sha256(deps.store.get(f"{prefix}/staged/{f.path}")).hexdigest() != f.sha256:
             raise StagingCorrupted(f.path)
     for f in plan.files:
-        put_immutable(deps.store, f"{prefix}/{f.path}", blobs[f.sha256], f.sha256, public=True)
-    deps.store.put("releases/latest.json", blobs[plan.pointer.new_sha256], public=True,
-                   condition=IfMatch(plan.pointer.previous_etag))   # PreconditionFailed: replan
+        put_immutable(deps.public, f"{prefix}/{f.path}", blobs[f.sha256], f.sha256)
+    deps.public.put("releases/latest.json", blobs[plan.pointer.new_sha256],
+                    IfMatch(plan.pointer.previous_etag))     # PreconditionFailed: replan
     return Released(plan.manifest)
 
 
-def put_immutable(store: ObjectStore, key: str, data: bytes, sha: str, public: bool) -> None:
+# datadesk/shell/run_fetch.py (excerpt)
+def put_immutable(store: ObjectStore, key: str, data: bytes, sha: str) -> None:
     try:
-        store.put(key, data, public, condition=CreateOnly())
+        store.put(key, data, CreateOnly())
     except PreconditionFailed:                                # a retry or a racing run wrote it
         if sha256(store.get(key)).hexdigest() != sha:
             raise
-
 
 # datadesk/shell/cli.py (excerpt)
 def release_command(deps: Deps, repo: RepoSnapshot, release_id: str, now: datetime,
@@ -2621,13 +2663,17 @@ def release_command(deps: Deps, repo: RepoSnapshot, release_id: str, now: dateti
     parsed = run_parse(deps, repo)                            # editions that need OCR come back
     report_ocr_needed(parsed.ocr_needed)                      # as withheld, not as a stop
     checked = check_all(parsed, repo)                         # pure: checks, coverage, gates
-    previous = load_previous_release(deps.store)              # effect: manifest, rows, pointer etag
+    previous = load_previous_release(deps.public)             # effect: manifest, rows, pointer etag
     outcome = plan_release(ReleaseInputs(checked, previous, release_id, now, accepted_diff))
     if isinstance(outcome, ReleaseBlocked):
         return report_blocked(outcome)
     run_release(deps, outcome)
     return 0
 ```
+
+Each store is bound to one bucket (section 4). This sketch stages in the private archive bucket
+through `deps.store` and publishes through `deps.public`, a store bound to a public bucket. That
+store and the choice of buckets are a proposal. The step that builds the release decides them.
 
 `ReleasePlan` holds `files` (path, sha, size), `manifest`, `diff`, `withheld` and `pointer`. The
 bytes travel beside it in `ReleasePlanned.blobs`, keyed by sha. A dry run prints the plan without
@@ -3990,7 +4036,7 @@ Determinism rules:
 | `datadesk.core` unit | listing parsers, period readers, `plan_watch`, `plan_fetch`, `plan_parse`, registry lint, vintage, release plan | literal strings and values | every commit |
 | Table fixtures | each table parser on frozen word fixtures of real pages | fixture modules (Python values) | every commit |
 | Records | every TOML record loads, every ack and reading is used, lint passes | the data directory, read by a shell-side conftest | every commit |
-| Adapter contracts | each port's fake and real adapter pass the same tests | network or MinIO for the real ones | nightly and before release |
+| Adapter contracts | each port's fake and real adapter pass the same tests | network or MinIO for some real ones | every commit for an adapter that needs neither, such as `http_saved` and `pdf_pdfplumber`; nightly and before release for the others |
 | Corpus | every archived edition parses and its gate passes | the archive | before release |
 | Canary | one full run from bytes to a staged release | fakes plus two archived PDFs | every commit |
 | Purity | AST scan of `checkedtables` and `datadesk.core` for `open`, `print`, `input`, `.now()`, `.today()`, `os.`, `random`, `time.`, `builtins`, `__import__`, and mutable module state: a module-level assignment of a list, dict or set display, a comprehension of one, or a call to `list`, `dict`, `set` or `bytearray`. The scan also fails every relative import, and every import from outside the package that the import pin below does not hold | nothing | every commit |
@@ -4203,9 +4249,9 @@ One suite per port, run against the fake and the real adapter:
 
 | Port | Fake | Real |
 |---|---|---|
-| `ObjectStore` | dict store | S3 API via MinIO |
-| `Http` | replays recorded responses | one phila.gov listing, nightly |
-| `PdfReader` | none needed | two committed tiny PDFs: a text layer with a drawn grid and bold words, and an image page |
+| `ObjectStore` | dict store | S3 API via MinIO. The real half reads its target from `DATADESK_CONTRACT_S3_ENDPOINT_URL`, `DATADESK_CONTRACT_S3_ACCESS_KEY_ID`, `DATADESK_CONTRACT_S3_SECRET_ACCESS_KEY` and `DATADESK_CONTRACT_S3_BUCKET`, and skips with a message naming them when one is unset, as in CI |
+| `Http` | replays recorded responses | `http_saved` on a folder the test writes, every commit; from step 13, one phila.gov listing, nightly |
+| `PdfReader` | none needed | `page1_text` on two PDFs the test builds, a text page and an image page; step 4 adds a text layer with a drawn grid and bold words |
 | `OcrService` | returns archived responses | one page against Textract, by hand, with `--spend` |
 | `GitHost` | records the plan | a sandbox repository, before release |
 | `LocalCache` | dict | temp directory |
@@ -4329,7 +4375,8 @@ estimates; nothing has been written.
 | `shell/ports.py` | the six protocols | 80 |
 | `shell/settings.py` | `Settings`, `load_settings(environ)` | 50 |
 | `shell/gather.py` | `gather_repo`, `RepoSnapshot`, code tree sha | 110 |
-| `shell/adapters/http_httpx.py` | `Http` adapter | 60 |
+| `shell/adapters/http_saved.py` | `Http` adapter over a folder that a browser saved (step 3) | 50 |
+| `shell/adapters/http_httpx.py` | live `Http` adapter (step 13) | 60 |
 | `shell/adapters/s3.py` | `ObjectStore` adapter | 140 |
 | `shell/adapters/textract.py` | `OcrService` adapter | 80 |
 | `shell/adapters/pdf_pdfplumber.py` | `PdfReader` adapter | 210 |
@@ -4342,7 +4389,7 @@ estimates; nothing has been written.
 | `shell/run_release.py` | release executor | 75 |
 | `shell/report.py` | printing findings, plans and gates | 140 |
 | `shell/cli.py` | `datadesk` commands; reads the clock once | 240 |
-| **total** | 75 modules | **10,105** |
+| **total** | 76 modules | **10,155** |
 
 `datadesk/data/` holds data, not code: `catalog.toml`, `rows/*.toml` (one per table),
 `registry/`, `acks/` and `records/`. It is not in the line counts.
@@ -4353,10 +4400,10 @@ estimates; nothing has been written.
 |---|---:|---:|
 | `checkedtables` | 24 | 3,680 |
 | `phillyledger` | 8 | 840 |
-| `datadesk` (core 8,465, shell 1,640) | 75 | 10,105 |
-| **Grand total** | **107** | **14,625** |
+| `datadesk` (core 8,465, shell 1,690) | 76 | 10,155 |
+| **Grand total** | **108** | **14,675** |
 | QSMR, added in build step 14 | 13 | 1,290 |
-| Grand total with the QSMR | 120 | 15,915 |
+| Grand total with the QSMR | 121 | 15,965 |
 
 QSMR modules, for the last build step:
 

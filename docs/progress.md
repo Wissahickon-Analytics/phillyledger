@@ -131,11 +131,15 @@ session needs it. A note for one later step goes in `docs/plan-notes.md`.
     `ssl.SSLSocket` subclasses pytest-socket's guard, so under the marker
     `ssl.create_default_context().wrap_socket(...)` fails with `SocketBlockedError`. With
     `import ssl` at the top of the root `conftest.py`, the same probe passes and the isolation
-    tests still pass. Probed at S1-D with the audit hook in place, on an unconnected socket. The
-    first contract test that needs TLS makes that change.
+    tests still pass. Probed at S1-D with the audit hook in place, on an unconnected socket. S3-D
+    put `import ssl` at the top of the root `conftest.py` for the S3 contract suite. The probe
+    under the marker failed before that line and passed after it (November 24, 2026).
   - Each blocked call also prints the `UserWarning` that `SocketBlockedError` issues when it is
-    created, so `uv run pytest` reports six warnings, one per blocked call in the isolation
-    tests.
+    created, so `uv run pytest` reports seven warnings. Six are the blocked calls in the isolation
+    tests. The seventh comes when a shell test imports urllib3 through boto3. urllib3 opens an
+    IPv6 socket at import to set `HAS_IPV6`, the block refuses it, and urllib3 catches the error.
+    So under pytest urllib3 runs with `HAS_IPV6` false and resolves IPv4 addresses alone
+    (November 24, 2026, S3-D).
 - **A core test's package- or session-scoped fixture sees the checkout** (November 22, 2026,
   step 1, S1-D). `_empty_module_working_directory` gives each core test module an empty folder,
   but pytest sets up a package- or session-scoped fixture first, so one that a core test requests
