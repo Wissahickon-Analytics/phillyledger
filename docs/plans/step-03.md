@@ -136,20 +136,25 @@ The City's files, as a browser read them on November 23, 2026 (fact 12). The 21 
 
 | # | Clause of the check | Owner | Test that proves it |
 |---|---|---|---|
-| C1 | Each of the 20 reports, FY2022 Q1 to FY2026 Q4, is indexed | S3-E | `test_each_of_the_20_editions_has_a_row_and_a_current_version` in `tests/test_archive_inventory.py` |
-| C2 | Each is indexed once | S3-E | `test_each_inventory_sha_is_indexed_once`, same file |
+| C1 | Each of the 20 reports, FY2022 Q1 to FY2026 Q4, is indexed | S3-E | `test_each_expected_edition_has_a_row_and_an_indexed_version` in `tests/test_archive_inventory.py` |
+| C2 | Each is indexed once | S3-E | `test_each_inventory_pair_is_indexed_once`, same file |
 | C3 | Each is indexed by the sha in the inventory | S3-E | `test_each_edition_is_indexed_under_its_inventory_sha`, same file |
 | C4 | The inventory is checked by hand | S3-E | `test_every_inventory_row_is_checked`, same file, and the owner's words in the pull request |
 | C5 | Fetching the same listing again adds nothing | S3-D | `test_fetching_the_same_listing_again_adds_nothing` in `packages/datadesk/tests/shell/test_fetch_command.py` |
 
 The tests of C1 to C3 read the index file and the inventory file from the checkout. The test
-file holds the 20 edition ids as its own list, built from the 20 quarter ends, September 30,
-2021 to June 30, 2026. So a quarter that is missing from both files fails C1. C3 compares
-pairs: the sha of an inventory row must be the sha of the index's current version of that
-row's edition. C2 requires each inventory sha on exactly one index line. S3-E shows two changes
-failing, each in its pull request: the shas of FY2022 Q1 and Q2 swapped in the index, and one
-quarter removed from both files. Both files also hold FY2027 Q1 (answer 2). C2 to C4 cover its
-row, and C1's list stays the 20.
+file holds 21 edition ids as its own list: the 20 quarter ends from September 30, 2021 to June
+30, 2026, and FY2027 Q1 (answer 2). C1 requires one inventory row and an index line for each
+id, so an edition that is missing from both files fails. C2 and C3 compare pairs. Each row's
+`(edition, sha256)` must be on exactly one index line, as a version of that edition. They do
+not ask for the current version, because one edition can have several versions (design line
+3483) and a later step may index a revision.
+
+S3-E shows three changes failing, each in its pull request: the shas of FY2022 Q1 and Q2
+swapped in the index, one quarter removed from both files, and FY2027 Q1 removed from both
+files. It also prints a run that compares the two files as multisets of pairs and finds them
+equal, so the index holds no line beyond the 21. That equality is a run at S3-E and not a
+lasting test, because a later step may add a version.
 
 The index comes from `datadesk`. The inventory's `sha256` comes from `shasum` of a file that a
 browser saved, beside a digest that the browser computed from the City's URL (see "The
@@ -162,7 +167,10 @@ the recorded feed and one body for each report URL, a fake `PdfReader`, and the 
 After the first run it asserts the store's keys, the bytes under each key, and the edition and
 sha of each index line. It then loads the checkout again and runs the command a second time.
 The store saw no new `put`, the index file is byte for byte the same, and the plan holds no
-file to write. S3-C adds the pure half, `test_plan_fetch_adds_nothing_for_an_indexed_sha`.
+file to write. The fake's call log shows that the second run asked for the listing again, and
+the run reports the same listing digest with no finding and no rejection. A third run, on a
+feed with one more edition, adds that edition alone. So a command that returns early on a
+filled index fails. S3-C adds the pure half, `test_plan_fetch_adds_nothing_for_an_indexed_sha`.
 S3-E records two real runs over the saved folder and R2 in its pull request, and each run
 prints the listing's `html_sha256`.
 
@@ -194,7 +202,9 @@ pull request that builds a shape records it in `docs/design.md` and in
 5. **`plan_watch`, first cut.** It keeps the design's signature. `parse_listing` keeps the links
    of the entry's category alone. `plan_watch` takes the last listed link of each edition
    (design line 2035), drops an edition whose period ends before `first_period_end`, and makes
-   one `FetchRequest` for each link whose URL no indexed version holds. The reason is `new`
+   one `FetchRequest` for each link whose URL no indexed version of its own edition holds. A
+   link to a URL that another edition's version holds is still fetched, so `plan_fetch` sees
+   the bytes and rejects them as `content_alias` (design line 3489). The reason is `new`
    when the edition has no version and `revision` when it has one. A link whose title reads as
    a report and whose date is not a quarter end gets the skip reason `not_a_quarter_end`, and
    `plan_watch` returns a finding for it in `WatchPlan.findings`. `wayback` and `gaps` stay
@@ -216,14 +226,20 @@ pull request that builds a shape records it in `docs/design.md` and in
 7. **A version gains a URL.** When a fetched sha is already indexed under its edition and the
    request's URL is new, `plan_fetch` stores nothing and `index_add` carries the version with
    that URL. `add_versions` merges it into the one line, so `urls` holds every URL that served
-   the bytes (design line 1102) and the next `plan_watch` asks for nothing.
+   the bytes (design line 1102) and the next `plan_watch` asks for nothing. This holds for the
+   edition's current sha alone. When a later listing serves a superseded sha again, as in
+   bytes A, then B, then A, the request is a `Rejection` with the reason
+   `superseded_sha_relisted`, for the owner. One line for each sha cannot say that A now
+   supersedes B, and the later `listed_at` must win (design line 3488).
 8. **`confirm_period` returns the period the page prints.** It is the expected period, or the
    period a `PRINTED_PERIOD` note names for a text that page 1 holds. Anything else is a
    finding: no phrase, a date that is not a quarter end, or another quarter with no note.
    `plan_fetch` passes it only the notes whose `doc_sha256` is the sha at hand. The command
-   passes no notes at step 3. `load_records` arrives at step 5 and the first
-   real note at step 7 (QCASH-Q07), so unit tests alone prove the note path here. A cover among
-   the 20 that fails stops S3-E for the owner.
+   passes no notes at step 3. `load_records` arrives at step 5. No cover seen so far
+   needs a note. QCASH-Q07 is about a cash page, and the cover of the owner's whole FY2014 Q2
+   report prints December 31, 2013 (`pdftoppm` and `tesseract` on `FY14_Q2.pdf`). So unit tests
+   alone prove the note path here, and a real note needs a page 1 mismatch on an archived sha.
+   A cover among the 21 that fails stops S3-E for the owner.
 9. **One store for each bucket.** R2 cannot make one object public (fact 7), so
    `ObjectStore.put` loses `public` and becomes `put(key, data, condition)`. `Deps` holds a
    store bound to the archive bucket. A later step adds a store for each bucket it needs. The
@@ -270,13 +286,22 @@ Builds on S3-A. `feat(datadesk): read the QCMR listing`.
   the real `catalog.toml`.
 - `periods.py` gets `MONTHS`, `fiscal_year_of` and `fiscal_quarter`. `fiscal_period` needs
   `Window` and waits for step 5. `match_month` waits for step 9.
-- The fixture keeps the QCMR category from September 30, 2021 on and one other category whole.
-- Proves, on the recorded feed: 21 report links get editions and 13 infographics get the skip
-  reason `infographic`. A link of the other category is never listed. "Manager's" and
-  "Managers" read the same. The host `admin.phila.gov` becomes `www.phila.gov` (QCASH-Q04). The
+- The fixture is cut from a recording of the feed that the old repo holds, read only, under
+  `../gov-budget-data/data/phila/catalog-snapshots/document-finder/151831/`. The file is
+  `e483743d16cf909edf38abbe54dc32a2296159cf42716ae89862b7e10640115d.json`, 384,679 bytes,
+  observed July 28, 2026. Its name is its sha256, checked with `shasum`.
+  So S3-B needs no browser and nothing from the owner. The cut keeps the QCMR category from
+  the last report before September 30, 2021 on, and one other category whole. The fixture
+  states the cut, and no one types it.
+- Proves, on the recorded feed: the report links from September 30, 2021 on get editions and
+  the infographics get the skip reason `infographic`. Codex counted 19 and 13 in the
+  recording, which predates FY2026 Q4 and FY2027 Q1, and S3-B asserts the counts it finds. The
+  report before the floor gets no request, and the first one after it gets one. A link of the
+  other category is never listed. "Manager's" and "Managers" read the same. The host `admin.phila.gov` becomes `www.phila.gov` (QCASH-Q04). The
   edition comes from the title and never from the URL, so `...March-30-2026R.pdf` under its
-  March 31 title is FY2026 Q3. `plan_watch` asks for 21 fetches on an empty index and none
-  when the index holds every URL.
+  March 31 title is FY2026 Q3. `plan_watch` asks for one fetch for each listed edition on an
+  empty index and none when the index holds every URL. S3-E proves the 21 on the feed it
+  saves.
 - Proves, on changed copies of the feed: with a second attachment appended for one quarter,
   `plan_watch` asks for the last one alone, a test ported from the old `test_qcmr.py:165`. A
   report title dated March 30, 2026 gives a finding and no fetch.
@@ -290,15 +315,16 @@ Builds on S3-B. `feat(datadesk): confirm the printed period and plan a fetch`.
   `packages/checkedtables/tests/test_library_shape.py`, where `test_closed_lists_are_pinned`
   starts with the `NoteKind` pin (hard rule 6, design 11.4).
 - Proves, for `confirm_period`: the printed quarter end passes. Another quarter is a finding
-  (QOBL-Q06). A mismatch passes only with a `PRINTED_PERIOD` note whose text page 1 holds
-  (QCASH-Q07), and a note for another sha does not clear it. A cover with no phrase is a
+  (QOBL-Q06). A mismatch passes only with a `PRINTED_PERIOD` note whose text page 1 holds, on
+  a cover the test builds, and a note for another sha does not clear it. A cover with no phrase is a
   finding. September and December ends belong to the next fiscal year (QPOS-Q34).
 - Proves, for `plan_fetch`: a confirmed report gets one `StoreObject` at
   `pdf/<sha[:2]>/<sha>.pdf` and one index line. A sha indexed under another edition is a
   `content_alias` rejection (MSCH-Q01). A status other than 200 is a rejection. A later listing
   of an edition supersedes the earlier version (QPOS-Q32), and so do new bytes with the same
-  `listed_at`. An indexed sha at an indexed URL adds nothing. An indexed sha at a new URL adds
-  the URL and stores nothing.
+  `listed_at`. An indexed sha at an indexed URL adds nothing. The current sha at a new URL
+  adds the URL and stores nothing. With bytes A, then B, then A again at a later stamp, the
+  third request is a `superseded_sha_relisted` rejection and B stays current.
 
 ### S3-D, `step-03/d-shell`: the S3 adapter and the fetch command
 
@@ -321,14 +347,17 @@ Builds on S3-C. `feat(datadesk): store reports in R2 and run fetch`.
   `AWS_PROFILE` that does not exist and under shared files that hold other keys.
 - Proves: the `page1_text` contract on two PDFs the test builds, a text page and an image
   page. The `Http` contract passes on the fake and on `http_saved.py`, over a folder the test
-  writes: a listed URL gives status 200 and its file's bytes, and any other URL gives 404. A
-  `responses.tsv` that names a missing file stops the command before any `put`.
-- The suites run on the fakes in CI. Design 11.1 runs the real halves nightly and before a
-  release, so CI skips them and reports the skip. The owner of S3-D runs the `ObjectStore`
-  suite against MinIO in Docker and records the run in the pull request. No test and no
-  session sends the City a request (fact 11).
+  writes: a listed URL gives status 200 and its file's bytes, and any other URL gives 404.
+- Proves, through the command with `--saved` on a folder the test writes: the run stores and
+  indexes what the folder lists. With the feed's own row removed, or with a row that names a
+  missing file, the command stops before any `put`. An edition listed at a URL that another
+  edition's version holds is fetched and ends as a `content_alias` rejection.
+- The contracts of `http_saved.py` and `pdf_pdfplumber.py` need no network and no credential,
+  so they run in CI beside the fakes. CI skips the real half of the `ObjectStore` suite alone,
+  with a message (design 11.1). The owner of S3-D runs it against MinIO in Docker and records
+  the run in the pull request. No test and no session sends the City a request (fact 11).
 
-### S3-E, `step-03/e-archive`: the 20 reports
+### S3-E, `step-03/e-archive`: the 21 reports
 
 Builds on S3-D. `feat(datadesk): index the QCMR reports from FY2022`. It adds data and no code
 under `src/`.
@@ -362,13 +391,17 @@ How it is made, in S3-E:
    URLs of the feed and records the status, the byte count and the sha256 that the page
    computes. This is the run of fact 12. A sha that differs from the second table above is a
    new upload, and it goes to the owner.
-2. The session saves the feed's body and the 21 files through Chrome into the folder. This is
-   untested, and it needs Chrome's Claude extension connected (fact 13). It tries one report
-   first. If the save cannot be done, the owner saves the 22 files by hand from the list of
-   URLs.
+2. The session saves the feed's body first, then the 21 files, through Chrome into the folder.
+   This is untested, and it needs Chrome's Claude extension connected (fact 13). It tries one
+   report first. The owner asked for the agent to fetch (answer A), so a save by his hand is a
+   fallback that needs his agreement.
 3. `shasum -a 256` of each saved report must equal the sha256 that the page computed for its
-   URL. The session writes `responses.tsv` from the feed's URLs, with the host `www.phila.gov`
-   (QCASH-Q04).
+   URL. The session records the sha256 of the saved feed.
+4. The session writes `responses.tsv`. Its first row maps the feed's own URL,
+   `https://api.phila.gov/phila/document-finder/v1/151831`, to the saved body. The 21 report
+   rows are read from those same feed bytes, with the host `www.phila.gov` (QCASH-Q04). The
+   run of S3-E must end with 21 editions, no rejection, and no request for a report from
+   before FY2022.
 
 ## The inventory
 
@@ -386,10 +419,11 @@ How it is made, in S3-E:
 3. `datadesk fetch qcmr --saved <folder>` runs.
 4. For each row the session compares four things with the row's `sha256`: its
    `browser_sha256`, the digest of the object read back from the archive bucket, the object's
-   key and the index line. The read-back is `aws s3 cp` under the owner's `r2` profile
-   ("Setting up R2"), piped to `shasum`. For the five editions whose copy in the old repo has
-   the City's sha, that copy is a fifth witness. Any difference goes to the owner before he
-   checks a row.
+   key and the index line. The read-back is `aws s3 cp ... - | shasum -a 256` under
+   `set -o pipefail`, with the keys passed through the environment ("Setting up R2"). The pull
+   request records the command with the variable names. For the five editions whose copy in
+   the old repo has the City's sha, that copy is a fifth witness. Any difference goes to the
+   owner before he checks a row.
 
 The pull request prints each loop, so anyone can run it again.
 
@@ -402,7 +436,7 @@ request. No agent fills `checked` on its own reading.
 The owner confirmed an earlier form on November 23, 2026 (answer 4). Three details came after
 his answer, and he has not seen them. The files come from the saved folder, where the form he
 confirmed used `curl`. `browser_sha256` replaces the two columns for his own copies. The
-read-back of step 4 uses his `r2` profile.
+read-back of step 4 is the `aws` CLI with the keys from `.env`.
 
 ## Setting up R2
 
@@ -424,19 +458,24 @@ The steps are in the Cloudflare dashboard, under R2 object storage (fact 10).
 4. Write `.env` at the top of the checkout, with one `NAME=value` line for each of the four
    variables below. `.gitignore` lists the file. Each command runs as
    `uv run --env-file .env datadesk ...`, so no session reads or prints the file.
-5. Run `aws configure --profile r2` with the two key values and the region `auto`. This is the
-   `aws` CLI the owner knows, and no `wrangler` is needed. An empty listing with no error
-   shows that the token works:
+5. Look at the bucket with the `aws` CLI the owner knows. No `wrangler` is needed. The keys
+   reach the CLI through the environment and are never written to a profile, because
+   `aws configure` stores them in a shared file and hard rule 8 keeps credentials in the
+   environment. An empty listing with no error shows that the token works:
 
    ```bash
-   aws s3 ls s3://phillyledger-archive --profile r2 \
-     --endpoint-url https://<account id>.r2.cloudflarestorage.com
+   uv run --env-file .env bash -c 'AWS_ACCESS_KEY_ID="$DATADESK_R2_ACCESS_KEY_ID" \
+     AWS_SECRET_ACCESS_KEY="$DATADESK_R2_SECRET_ACCESS_KEY" AWS_DEFAULT_REGION=auto \
+     aws s3 ls "s3://$DATADESK_R2_ARCHIVE_BUCKET" --endpoint-url "$DATADESK_R2_ENDPOINT_URL"'
    ```
+
+   The read-back of the inventory uses the same form with `aws s3 cp`. S3-E checks the command
+   on its first object before it relies on it.
 
 The bucket stays private at step 3, so this plan drops the public address it first asked for.
 Making the bucket public is a publishing decision, and it waits for the step that first needs
-a public read. The bucket's name, the private bucket, the `.env` file and the `r2` profile are
-proposals that the owner has not seen.
+a public read. The bucket's name, the private bucket and the `.env` file are proposals that
+the owner has not seen.
 
 ## Environment variables
 
@@ -477,7 +516,7 @@ writes to the archive bucket, and no test reads the four variables above.
 3. **Page 1 prints the period twice**, once in the phrase and once as a bare date
    (`FY22_Q1.pdf`). `confirm_period` reads the `PERIOD ENDING` phrase alone (QCASH-Q05,
    QOBL-Q04). pdfplumber may break the phrase across lines or put U+00A0 in it (QOBL-Q02), so
-   S3-C tests both, and S3-E runs the 20 real covers.
+   S3-C tests both, and S3-E runs the 21 real covers.
 4. **A title, a cover and a URL can name different days** (fact 5, FY2026 Q3). The edition
    comes from the title. The old `reports_from_feed` mapped a title date by its month alone
    (`qcmr.py:145`), so a title dated March 30 read as Q3. Here such a title is a finding
@@ -485,11 +524,9 @@ writes to the archive bucket, and no test reads the four variables above.
 5. **Conditional writes through boto3** (design line 2290, section 18.1). `IfNoneMatch="*"` and
    `IfMatch` on `put_object` must raise `PreconditionFailed` on MinIO and on R2, and the etag
    that `put` and `head` return must be the same string.
-6. **The feed fixture is a recorded response.** S3-B needs the feed's body on disk before the
-   saved folder exists. Chrome saves it, or the owner saves the page (fact 13). If neither can
-   be done, the session cuts the body in the page, writes the text the page returns, and
-   checks its sha256 against a digest the page computed. The fixture keeps the QCMR category
-   and one other, and states the cut. No one types it.
+6. **The feed fixture is a recorded response** from July 28, 2026, two reports short of the
+   feed today. S3-B cuts it from the old repo's recording, so the tests of S3-B to S3-D prove
+   the rules on a real feed and not the count of 21. S3-E proves the 21 on the feed it saves.
 7. **The import pin and the socket block.** `import json` fails the purity test and
    `from json import loads` passes with a pin (design 11.1). The MinIO test needs the
    `enable_socket` marker, and a test over TLS needs `import ssl` at the top of the root
@@ -559,11 +596,15 @@ What follows from answer A:
 
 **B. May the `ObjectStore` contract suite run once against a scratch bucket on R2?** A yes adds
 a second bucket, `phillyledger-scratch`, to steps 2 and 3 of "Setting up R2". Without a yes,
-MinIO and Cloudflare's page are the proof of the conditional writes, and the fetch of S3-E
-proves `CreateOnly` on R2 and nothing more.
+MinIO and Cloudflare's page are the proof of the conditional writes. S3-E proves upload,
+read-back and a repeat fetch on R2. It does not prove that R2 refuses an overwrite, because its
+first run writes absent keys and its second run writes nothing. The scratch run alone proves
+that: a second create with other bytes must raise `PreconditionFailed` and leave the first
+bytes.
 
 **C. Chrome's Claude extension is not connected** (fact 13). Before S3-E the owner signs in to
-it in Chrome, or he saves the 22 files by hand. This is a step for him and not a decision.
+it in Chrome. If the save through Chrome then fails, the session asks him whether he will save
+the 22 files by hand.
 
 ## Codex review
 
@@ -590,7 +631,8 @@ for each. None is disputed.
 ## Changes after the first review
 
 Codex first read commit `39f8af3e`. These changes came later, from the owner's answers and
-facts 10 to 13. Rows 4, 5 and 9 of the table above describe parts that are now gone.
+facts 10 to 13. Rows 4, 5 and 9 of the table above describe parts that are now gone. Codex
+read these changes at commit `46acec4a` (next section).
 
 - FY2027 Q1 is in, so the inventory and the index hold 21 rows (answer 2).
 - The archive bucket is private at step 3, and `DATADESK_R2_ARCHIVE_PUBLIC_URL` is gone
@@ -604,3 +646,25 @@ facts 10 to 13. Rows 4, 5 and 9 of the table above describe parts that are now g
 - The inventory takes its sha from the saved file, beside the digest the browser computed, and
   its read-back is `aws s3 cp`.
 - S3-E adds a note for step 13 to `docs/plan-notes.md`.
+
+## Second Codex review
+
+Codex read commit `46acec4a` on November 23, 2026, after the owner chose the browser route.
+Its report is `.codex-review/step-03-plan-46acec4a.md`. It raised twelve findings, four as
+blocking. Each was checked against the plan, the design or a run. All twelve held, and the plan
+above is revised for each. None is disputed.
+
+| # | Finding | How it was confirmed | What changed |
+|---|---|---|---|
+| 1 | C1 to C3 passed with FY2027 Q1 gone from both files, or with an extra index line, and C3 would fail after a later revision | The plan's own text, and design line 3483 | "Clauses": the test's list holds 21 ids, C2 and C3 compare pairs and not the current version, and S3-E prints an equality run |
+| 2 | The saved folder's recipe left out the feed's own URL, so the first lookup would be a 404 | The plan's own text | "The saved folder" step 4, and S3-D runs the command through the folder adapter |
+| 3 | C5 passed for a command that returns early on a filled index | The plan's own text, and design line 4560 | "Clauses": the call log, the listing digest and a third run with one more edition |
+| 4 | The read-back used `aws configure --profile`, which writes the keys to a shared file | Hard rule 8 of `CLAUDE.md` | "Setting up R2" step 5: the keys reach `aws` through the environment, and the profile is gone |
+| 5 | S3-B needed a feed recording while the plan said S3-A to S3-D need nothing from the City | The plan's own text, and `shasum` of the old repo's July recording | S3-B cuts its fixture from that recording, and a save by hand needs the owner's agreement |
+| 6 | The fixture started at the floor, so no test saw the FY2022 cutoff | The plan's own text | S3-B keeps the last report before the floor, and S3-E asks for no report before FY2022 |
+| 7 | A link to a URL that another edition holds got no fetch, so the alias check never ran | The plan's own text, and design line 3489 | Shape 5 skips a request by edition and URL, and S3-D runs the case through the command |
+| 8 | QCASH-Q07 is about a cash page, and the whole report's cover agrees with its quarter | `QCASH.md` lines 263 to 266, and `tesseract` on `FY14_Q2.pdf` printed "DECEMBER 31, 2013" | Shape 8 and S3-C: no real note is predicted, and the cite is gone from the test |
+| 9 | A superseded sha that is listed again would merge a URL and leave the wrong version current | The plan's own text, and design line 3488 | Shape 7 and S3-C: a `superseded_sha_relisted` rejection, with an A, B, A test |
+| 10 | The contracts of two local adapters could be skipped with the real halves | The plan's own text, and `ci.yml` runs on push and pull request alone | S3-D: both run in CI, and CI skips the MinIO half alone |
+| 11 | Two runs on R2 do not prove that `CreateOnly` refuses an overwrite | The plan's own text | "Still open" B: the claim is gone, and the scratch run is the proof |
+| 12 | `shasum` with no flag prints a SHA-1 | `shasum --help` on this machine | "The inventory" step 4: `shasum -a 256` under `set -o pipefail` |
