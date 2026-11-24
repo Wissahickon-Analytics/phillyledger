@@ -297,9 +297,9 @@ Builds on S3-A. `feat(datadesk): read the QCMR listing`.
   the infographics get the skip reason `infographic`. Codex counted 19 and 13 in the
   recording, which predates FY2026 Q4 and FY2027 Q1, and S3-B asserts the counts it finds. The
   report before the floor gets no request, and the first one after it gets one. A link of the
-  other category is never listed. "Manager's" and "Managers" read the same. The host `admin.phila.gov` becomes `www.phila.gov` (QCASH-Q04). The
-  edition comes from the title and never from the URL, so `...March-30-2026R.pdf` under its
-  March 31 title is FY2026 Q3. `plan_watch` asks for one fetch for each listed edition on an
+  other category is never listed. "Manager's" and "Managers" read the same. The host
+  `admin.phila.gov` becomes `www.phila.gov` (QCASH-Q04). The edition comes from the title and
+  never from the URL, so `...March-30-2026R.pdf` under its March 31 title is FY2026 Q3. `plan_watch` asks for one fetch for each listed edition on an
   empty index and none when the index holds every URL. S3-E proves the 21 on the feed it
   saves.
 - Proves, on changed copies of the feed: with a second attachment appended for one quarter,
