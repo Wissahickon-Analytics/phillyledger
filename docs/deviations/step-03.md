@@ -374,7 +374,13 @@ design leaves open" in `docs/plans/step-03.md`.
   before it asks for the listing when the index holds lines fails
   `test_fetching_the_same_listing_again_adds_nothing` on the call log of the second run. One that
   fetches nothing when the index holds lines fails it at the third run, which must store the new
-  edition. With the listing's status left unchecked,
+  edition. That test passed with `run_fetch` putting every fetched body instead of each
+  `StoreObject`, because no report in its feed was fetched and rejected (Codex review of S3-D,
+  finding 3). The saved City feed has one, FY2027 Q1, which every run rejects as
+  `period_unreadable`. So the test now runs a fourth and a fifth time on a feed that gains a report
+  whose cover prints no `PERIOD ENDING` phrase. Each run rejects it and puts nothing, and the fifth
+  writes no file. With every fetched body put, the test fails at the fourth run. With the
+  listing's status left unchecked,
   `test_a_saved_folder_without_the_feed_s_row_stops_the_command_before_any_put` fails. With the
   bare-name check on a saved row dropped, the `a_file_outside_the_folder` case of
   `test_saved_http_refuses_a_folder_it_cannot_trust` fails. A row's URL must start with `https://`

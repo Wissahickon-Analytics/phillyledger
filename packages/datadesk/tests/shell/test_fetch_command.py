@@ -41,6 +41,7 @@ TODAY = date(2026, 11, 24)
 FY2026_Q4_URL = (
     "https://admin.phila.gov/media/20260817162758/Quarterly-City-Managers-Report-June-30-2026.pdf"
 )
+FY2027_Q1_URL = "https://admin.phila.gov/media/20261117093015/Quarterly-City-Managers-Report-September-30-2026.pdf"
 ENVIRON = {
     "DATADESK_R2_ENDPOINT_URL": "http://store.invalid:9000",
     "DATADESK_R2_ACCESS_KEY_ID": "access-key-PLANTED",
@@ -89,13 +90,16 @@ def reports(feed: list[dict[str, Any]]) -> list[Report]:
     return found
 
 
-def with_fy2026_q4(feed: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def with_report(feed: list[dict[str, Any]], url: str, title: str) -> list[dict[str, Any]]:
     grown = deepcopy(feed)
     (category,) = (category for category in grown if category["title"] == CATEGORY)
     newest = category["documents"][0]
-    title = "Quarterly City Managers Report - June 30, 2026"
-    category["documents"].insert(0, {**newest, "url": FY2026_Q4_URL, "title": title})
+    category["documents"].insert(0, {**newest, "url": url, "title": title})
     return grown
+
+
+def with_fy2026_q4(feed: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return with_report(feed, FY2026_Q4_URL, "Quarterly City Managers Report - June 30, 2026")
 
 
 def only(feed: list[dict[str, Any]], *titles: str) -> list[dict[str, Any]]:
@@ -197,6 +201,26 @@ def test_fetching_the_same_listing_again_adds_nothing(tmp_path: Path) -> None:
     assert store.objects == stored([*listed, new])
     assert index_lines(root) == expected_lines([*listed, new])
     assert (third.findings, third.plan.rejections) == ((), ())
+    index_after_third = (root / INDEX_FILE).read_bytes()
+    puts_after_third = list(store.puts)
+
+    title = "Quarterly City Managers Report - September 30, 2026"
+    regrown = with_report(grown, FY2027_Q1_URL, title)
+    (unread,) = [report for report in reports(regrown) if report not in [*listed, new]]
+    unread = replace(unread, cover="QUARTERLY CITY MANAGERS REPORT")
+    request = FetchRequest(unread.edition, unread.url, unread.title, unread.listed_at, "new")
+    rejected = (Rejection(request, "period_unreadable"),)
+    http.bodies.update({LISTING_URL: feed_bytes(regrown), unread.url: unread.body})
+    fourth = run(http, store, [*listed, new, unread], root)
+    assert store.puts == puts_after_third
+    assert (root / INDEX_FILE).read_bytes() == index_after_third
+    assert fourth.plan.rejections == rejected
+
+    fifth = run(http, store, [*listed, new, unread], root)
+    assert store.puts == puts_after_third
+    assert (root / INDEX_FILE).read_bytes() == index_after_third
+    assert fifth.plan.pull_request.files == ()
+    assert fifth.plan.rejections == rejected
 
 
 @pytest.mark.parametrize("failing", ["listing", "report"])
