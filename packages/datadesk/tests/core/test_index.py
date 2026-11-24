@@ -42,30 +42,28 @@ LATER_Q4 = DocumentVersion(
     LATER_Q4_SHA, FY2026_Q4, "20261116120000", (Q4_REPOST_URL,), Q4_TITLE, None, None
 )
 TEXT = (
-    '{"sha256": "032c5cfddfb77c50b270d5f0954d73674b5ec1c92c5d3fdee4b60e53efd82827", '
-    '"edition": {"series": "qcmr", "period": {"start": "2026-01-01", "end": "2026-03-31"}, '
-    '"stage": "none"}, "listed_at": "20260515154446", '
+    '{"edition": {"period": {"end": "2026-03-31", "start": "2026-01-01"}, "series": "qcmr", '
+    '"stage": "none"}, "holding": "whole", "listed_at": "20260515154446", '
+    '"printed_period": {"end": "2026-03-31", "start": "2026-01-01"}, '
+    '"sha256": "032c5cfddfb77c50b270d5f0954d73674b5ec1c92c5d3fdee4b60e53efd82827", '
+    '"supersedes": null, "title": "Quarterly City Managers Report - March 31, 2026", '
     '"urls": ["https://www.phila.gov/media/20260515154446/'
-    'Quarterly-City-Managers-Report-March-30-2026R.pdf"], '
-    '"title": "Quarterly City Managers Report - March 31, 2026", '
-    '"printed_period": {"start": "2026-01-01", "end": "2026-03-31"}, '
-    '"supersedes": null, "via": "publisher", "holding": "whole"}\n'
-    '{"sha256": "1c0d5e7f9a2b4c6d8e0f1a3b5c7d9e1f2a4b6c8d0e2f4a6b8c0d2e4f6a8b0c2d", '
-    '"edition": {"series": "qcmr", "period": {"start": "2026-04-01", "end": "2026-06-30"}, '
-    '"stage": "none"}, "listed_at": "20260817162758", '
-    '"urls": ["https://www.phila.gov/media/20260817162758/'
-    'Quarterly-City-Managers-Report-June-30-2026.pdf"], '
-    '"title": "Quarterly City Managers Report - June 30, 2026", "printed_period": null, '
+    'Quarterly-City-Managers-Report-March-30-2026R.pdf"], "via": "publisher"}\n'
+    '{"edition": {"period": {"end": "2026-06-30", "start": "2026-04-01"}, "series": "qcmr", '
+    '"stage": "none"}, "holding": "whole", "listed_at": "20260817162758", '
+    '"printed_period": null, '
+    '"sha256": "1c0d5e7f9a2b4c6d8e0f1a3b5c7d9e1f2a4b6c8d0e2f4a6b8c0d2e4f6a8b0c2d", '
     '"supersedes": "48fd9aa936df05a28bb7f37083720afac85d1ee2a2c9a70be832382f0dc55020", '
-    '"via": "publisher", "holding": "whole"}\n'
-    '{"sha256": "48fd9aa936df05a28bb7f37083720afac85d1ee2a2c9a70be832382f0dc55020", '
-    '"edition": {"series": "qcmr", "period": {"start": "2026-04-01", "end": "2026-06-30"}, '
-    '"stage": "none"}, "listed_at": "20260817162758", '
-    '"urls": ["https://www.phila.gov/media/20260817162758/'
-    'Quarterly-City-Managers-Report-June-30-2026.pdf"], '
     '"title": "Quarterly City Managers Report - June 30, 2026", '
-    '"printed_period": {"start": "2026-04-01", "end": "2026-06-30"}, '
-    '"supersedes": null, "via": "publisher", "holding": "whole"}\n'
+    '"urls": ["https://www.phila.gov/media/20260817162758/'
+    'Quarterly-City-Managers-Report-June-30-2026.pdf"], "via": "publisher"}\n'
+    '{"edition": {"period": {"end": "2026-06-30", "start": "2026-04-01"}, "series": "qcmr", '
+    '"stage": "none"}, "holding": "whole", "listed_at": "20260817162758", '
+    '"printed_period": {"end": "2026-06-30", "start": "2026-04-01"}, '
+    '"sha256": "48fd9aa936df05a28bb7f37083720afac85d1ee2a2c9a70be832382f0dc55020", '
+    '"supersedes": null, "title": "Quarterly City Managers Report - June 30, 2026", '
+    '"urls": ["https://www.phila.gov/media/20260817162758/'
+    'Quarterly-City-Managers-Report-June-30-2026.pdf"], "via": "publisher"}\n'
 )
 
 sha256s = st.text("0123456789abcdef", min_size=64, max_size=64)
@@ -102,7 +100,7 @@ def test_parse_index_reads_one_version_from_each_line() -> None:
     assert parse_index(TEXT) == ArchiveIndex((Q3, REVISED_Q4, Q4))
 
 
-def test_render_index_writes_one_line_for_each_version() -> None:
+def test_render_index_writes_one_line_for_each_version_with_sorted_keys() -> None:
     assert render_index(ArchiveIndex((Q3, REVISED_Q4, Q4))) == TEXT
 
 

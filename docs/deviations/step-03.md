@@ -38,12 +38,15 @@ design leaves open" in `docs/plans/step-03.md`.
   `test_index_orders_versions_of_one_edition_by_listed_at_then_sha` fails. Design section 2.2.
 - **Step 3: the index file and its line** (November 23, 2026, S3-A). The design gave no path
   and no line format. The file is `packages/datadesk/src/datadesk/data/index.jsonl`, which S3-D
-  creates. Each line is `dumps(asdict(version))` with dates in ISO form and `ensure_ascii`
-  off, then a newline, so the edition keeps its period start and the empty index renders as
-  `""` (shape 3). `parse_index` splits on `"\n"` alone. With `splitlines()` in its place, the
-  Hypothesis property `test_parse_index_reads_back_what_render_index_writes` fails, because a
-  title may hold a character such as U+2028 that `splitlines()` breaks on and `dumps` leaves
-  unescaped. Design section 3.2.
+  creates. Each line is `dumps(asdict(version))` with keys sorted at every level, dates in ISO
+  form and `ensure_ascii` off, then a newline, so the edition keeps its period start and the
+  empty index renders as `""` (shape 3). Sorted keys follow section 10, which renders all JSON
+  (index, manifest, plans) with sorted keys. With `sort_keys` dropped,
+  `test_render_index_writes_one_line_for_each_version_with_sorted_keys` fails. `parse_index`
+  splits on `"\n"` alone. With `splitlines()` in its place, the Hypothesis property
+  `test_parse_index_reads_back_what_render_index_writes` fails, because a title may hold a
+  character such as U+2028 that `splitlines()` breaks on and `dumps` leaves unescaped. Design
+  section 3.2.
 - **Step 3: `add_versions` merges a new URL into its version's line** (November 23, 2026, S3-A).
   The design did not say what `add_versions` does with a sha it already holds. A new version
   whose sha and edition are indexed adds its URLs to that line, after the URLs it holds and

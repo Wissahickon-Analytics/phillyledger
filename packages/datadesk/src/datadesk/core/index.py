@@ -24,7 +24,7 @@ def parse_index(jsonl: str) -> ArchiveIndex:
 
 def render_index(index: ArchiveIndex) -> str:
     return "".join(
-        f"{dumps(asdict(version), ensure_ascii=False, default=date.isoformat)}\n"
+        f"{dumps(asdict(version), ensure_ascii=False, sort_keys=True, default=date.isoformat)}\n"
         for version in index.versions
     )
 

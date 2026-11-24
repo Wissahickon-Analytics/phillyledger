@@ -2093,9 +2093,10 @@ def plan_fetch(fetched: Sequence[Fetched], index: ArchiveIndex,
 
 # datadesk/core/index.py
 # The index file is packages/datadesk/src/datadesk/data/index.jsonl. Each line is one
-# DocumentVersion as a JSON object: its fields in order, the edition as series, period start,
-# period end and stage (never the id alone, which drops the start), dates in ISO form,
-# printed_period an object or null, and a newline after every line. The empty index is "".
+# DocumentVersion as a JSON object: its keys sorted at every level (section 10), the edition as
+# series, period start, period end and stage (never the id alone, which drops the start), dates
+# in ISO form, printed_period an object or null, and a newline after every line. The empty
+# index is "".
 def parse_index(jsonl: str) -> ArchiveIndex: ...         # splits on "\n" alone, then sorts
 def render_index(index: ArchiveIndex) -> str: ...        # sorted, one JSON object per line
 def add_versions(index: ArchiveIndex, new: Sequence[DocumentVersion]) -> ArchiveIndex | Finding: ...
