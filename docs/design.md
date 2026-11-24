@@ -2516,16 +2516,17 @@ finding).
 `Settings(endpoint_url, access_key_id, secret_access_key, archive_bucket)`, frozen, with both keys
 left out of its `repr`. An absent or empty variable is missing, and one `MissingSettings` names
 every missing variable and holds no value. `s3_store(settings)` builds the S3 adapter's client with
-region `auto`, path-style addressing and botocore's own retries off. Its botocore session maps
-none of its variables to an environment variable and reads `os.devnull` as its config and
-credentials files, so no session variable, `AWS_PROFILE` and `AWS_REQUEST_CHECKSUM_CALCULATION`
-among them, changes the client. Given only explicit keys, a boto3 1.44.5 client still raised
-`ProfileNotFound` under a missing `AWS_PROFILE`. botocore 1.44.5 still reads some variables outside
-the session: three `AWS_S3_*` variables that apply only to ARN buckets and the us-east-1 region,
-the proxy variables through urllib, `REQUESTS_CA_BUNDLE` and `SSLKEYLOGFILE` for TLS,
-`AWS_EXECUTION_ENV` for the user agent, `AWS_LAMBDA_FUNCTION_NAME` with `_X_AMZN_TRACE_ID` for a
-trace header, and its own `BOTO_*` and `BOTOCORE_*` switches. botocore may also follow one S3
-region redirect inside a call, so one call can send two requests.
+region `auto`, path-style addressing and botocore's own retries off. Its botocore session maps none
+of its session variables to an environment variable and reads `os.devnull` as its config and
+credentials files, so no environment variable behind a session variable, `AWS_PROFILE` and
+`AWS_REQUEST_CHECKSUM_CALCULATION` among them, changes the client. Given only explicit keys, a boto3
+1.44.5 client still raised `ProfileNotFound` under a missing `AWS_PROFILE`. botocore 1.44.5 still
+reads some variables that are not session variables. Three `AWS_S3_*` variables apply only to ARN
+buckets and the us-east-1 region, and `AWS_BEARER_TOKEN_S3` changed no put or get in a probe.
+`AWS_EXECUTION_ENV` joins the user agent, and `AWS_LAMBDA_FUNCTION_NAME` with `_X_AMZN_TRACE_ID`
+adds a trace header. urllib reads the proxy variables, `REQUESTS_CA_BUNDLE` and `SSLKEYLOGFILE`
+change TLS, and botocore reads its own `BOTO_*` and `BOTOCORE_*` switches. botocore may also follow
+one S3 region redirect inside a call, so one call can send two requests.
 `CreateOnly` and `IfMatch(None)` send `IfNoneMatch="*"`, and `IfMatch(e)` sends `IfMatch=e`. A 412
 `PreconditionFailed` raises `PreconditionFailed`, `head` of an absent key returns `None`, and `get`
 of an absent key raises `KeyError`. The pdfplumber reader opens a PDF with `pages=[1]`, so
@@ -2638,8 +2639,8 @@ command reads the saved folder. `main` reads the clock once, the environment onc
 each finding, the plan's title and body and each file it wrote, and returns 0. A missing variable,
 a saved folder that `SavedHttp` refuses, a `FetchStopped` or an `EffectError` prints one line to
 stderr and returns 1. `main` prints neither R2 key. Once `Settings` is loaded, every line it prints
-goes through `hide_keys`, which replaces each non-empty key with the name of its variable, so a
-service message that echoes a key prints `$DATADESK_R2_ACCESS_KEY_ID` in its place.
+goes through `hide_keys`, which replaces each non-empty key with `$` and the name of its variable,
+so a service message that echoes the access key prints `$DATADESK_R2_ACCESS_KEY_ID` in its place.
 
 The saved folder holds the saved files and `responses.tsv`, whose first row is the header
 `url<TAB>file` and whose other rows each pair a URL with a file name. `SavedHttp(folder)` reads it
@@ -4063,12 +4064,12 @@ nothing below it can be read. A line-level problem becomes a finding and the par
 one run shows every problem in an edition.
 
 The shell is the only place that catches exceptions, and only effect exceptions. Reading text is
-such an effect, so the shell also catches the `UnicodeDecodeError` of a checkout file, a saved
-`responses.tsv` or a listing body that is not UTF-8, and turns it into a finding or a stop. A
-`ValueError` from the core propagates and fails the command, because it is a bug. `gather_repo` is
-the one place the shell catches a core exception. `parse_index` raises on an index file it cannot
-read, and `gather_repo` returns that as the BLOCK finding `index_unreadable`, because the file is
-input from the checkout (section 4).
+such an effect, so the `UnicodeDecodeError` of a checkout file, a saved `responses.tsv` or a listing
+body that is not UTF-8 is one, and the shell turns it into a finding or a stop. A `ValueError` from
+the core propagates and fails the command, because it is a bug. `gather_repo` is the one place the
+shell catches a core exception. `parse_index` raises on an index file it cannot read, and
+`gather_repo` returns that as the BLOCK finding `index_unreadable`, because the file is input from
+the checkout (section 4).
 
 ## 10. Caching and determinism
 

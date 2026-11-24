@@ -328,10 +328,10 @@ design leaves open" in `docs/plans/step-03.md`.
   files still let `AWS_REQUEST_CHECKSUM_CALCULATION` drop the checksum header (Codex review of
   S3-D, finding 6). So `s3_store` builds its client on a botocore session that maps none of its
   variables to an environment variable and whose config and credentials files are `os.devnull`.
-  Section 4 lists what botocore still reads outside the session. botocore's own retries are off,
-  so the executor's three tries are the only retries, but botocore may follow one S3 region
-  redirect inside a call: a probe saw a 301 and then a 503 for one `put` (finding 5). With a
-  default session, `test_s3_client_ignores_the_ambient_aws_profile` fails with
+  Section 4 lists the variables botocore still reads that are not session variables. botocore's
+  own retries are off, so the executor's three tries are the only retries, but botocore may follow
+  one S3 region redirect inside a call. A probe saw a 301 and then a 503 for one `put` (finding 5).
+  With a default session, `test_s3_client_ignores_the_ambient_aws_profile` fails with
   `ProfileNotFound`, and with only the profile and the two files shut out,
   `test_s3_client_ignores_the_ambient_aws_settings` fails. With the keys in the `repr`,
   `test_settings_keep_both_keys_out_of_their_repr` fails. Design sections 4 and 4.2.
@@ -341,10 +341,10 @@ design leaves open" in `docs/plans/step-03.md`.
   beside the fakes (plan, S3-D). The `ObjectStore` suite runs the dict store always and the S3
   store only when the four `DATADESK_CONTRACT_S3_*` variables are set. The `PdfReader` contract
   builds its PDFs in the test, because `.gitignore` keeps every PDF out of git. With page 1 read as
-  the last page,
-  `test_page1_text_holds_the_words_of_page_1_alone` fails. Bytes that pdfplumber cannot open and a
-  PDF with no page raise `EffectError`, so the command stops with one line and not a traceback.
-  With that conversion removed, the `bytes_that_are_not_a_pdf` and `a_pdf_with_no_page` cases of
+  the last page, `test_page1_text_holds_the_words_of_page_1_alone` fails. Bytes that pdfplumber
+  cannot open and a PDF with no page raise `EffectError`, so the command stops with one line and
+  not a traceback. With that conversion removed, the `bytes_that_are_not_a_pdf` and
+  `a_pdf_with_no_page` cases of
   `test_page1_text_of_a_file_pdfplumber_cannot_read_is_an_effect_error` fail. `document.pages[0]`
   built every page, so a broken box on page 2 hid a readable cover, and pdfplumber's
   `MalformedPDFException` is not a `PdfminerException`, so it escaped (Codex review of S3-D,
@@ -417,5 +417,5 @@ design leaves open" in `docs/plans/step-03.md`.
   `KeyError` of `SourceCatalog.entry`, so `gather_repo` was not the one place the shell catches a
   core exception (finding 11). It now checks the source against the catalog's entries first. With
   that check dropped, the `KeyError` escapes and the `a_source_the_catalog_lacks` case of
-  `test_a_checkout_the_command_cannot_read_stops_it_before_any_request` fails. Design sections 1.4,
-  4, 4.2 and 9.
+  `test_a_checkout_the_command_cannot_read_stops_it_before_any_request` fails. Design sections 4,
+  4.2 and 9.
