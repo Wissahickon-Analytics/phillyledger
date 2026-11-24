@@ -116,9 +116,13 @@ design leaves open" in `docs/plans/step-03.md`.
   failure case. The Hypothesis property
   `test_the_fiscal_quarter_turns_on_the_first_of_january_april_july_and_october` draws days from
   1900 to 2199, so a version that refuses other days fails it. Design section 3.2.
-- **Step 3: `datadesk.core` imports from four more outside modules** (November 24, 2026, S3-B).
+- **Step 3: `datadesk.core` imports from five more outside modules** (November 24, 2026, S3-B).
   `catalog.py` parses TOML with `tomllib`, `listings/__init__.py` hashes the listing with `hashlib`,
   the listing modules use `re`, and `periods.py` and `titles.py` hold constant maps in
-  `types.MappingProxyType`. `PURE_IMPORTS["datadesk.core"]` in `tests/test_purity.py` pins seven new
-  pairs: `collections.abc.Callable`, `hashlib.sha256`, `json.JSONDecodeError`, `re.compile`,
-  `tomllib.TOMLDecodeError`, `tomllib.loads` and `types.MappingProxyType`. Design section 11.1.
+  `types.MappingProxyType`. `document_finder.py` reads the path of a URL with
+  `urllib.parse.urlsplit`, so a stamp in the query or the fragment is no upload stamp.
+  `PURE_IMPORTS["datadesk.core"]` in `tests/test_purity.py` pins eight new pairs:
+  `collections.abc.Callable`, `hashlib.sha256`, `json.JSONDecodeError`, `re.compile`,
+  `tomllib.TOMLDecodeError`, `tomllib.loads`, `types.MappingProxyType` and `urllib.parse.urlsplit`.
+  With the whole URL searched, `test_an_upload_stamp_outside_the_url_path_makes_the_feed_unreadable`
+  fails. Design section 11.1.

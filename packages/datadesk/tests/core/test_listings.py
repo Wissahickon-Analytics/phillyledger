@@ -207,6 +207,21 @@ def test_a_blank_title_or_url_makes_the_feed_unreadable(change: dict[str, str]) 
     assert_unreadable(with_first_document(change))
 
 
+@pytest.mark.parametrize(
+    "url",
+    [
+        pytest.param(
+            "https://admin.phila.gov/report.pdf?old=/media/20260515154446/", id="in_the_query"
+        ),
+        pytest.param(
+            "https://admin.phila.gov/report.pdf#/media/20260515154446/", id="in_the_fragment"
+        ),
+    ],
+)
+def test_an_upload_stamp_outside_the_url_path_makes_the_feed_unreadable(url: str) -> None:
+    assert_unreadable(with_first_document({"url": url}))
+
+
 def test_a_listed_link_has_an_edition_or_a_skip_reason() -> None:
     link = listing().links[0]
     with pytest.raises(ValueError, match="edition or a skip reason"):

@@ -39,6 +39,7 @@ PURE_IMPORTS: dict[str, tuple[str, ...]] = {
         "tomllib.loads",
         "types.MappingProxyType",
         "typing.Any",
+        "urllib.parse.urlsplit",
     ),
 }
 INSIDE = {
