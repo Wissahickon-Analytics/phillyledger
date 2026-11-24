@@ -1,6 +1,11 @@
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
 from hashlib import sha256
+from io import BytesIO
+from typing import Any
 
+from botocore.awsrequest import AWSPreparedRequest, AWSResponse
+
+from datadesk.shell.adapters.s3 import S3Store
 from datadesk.shell.ports import (
     Condition,
     CreateOnly,
@@ -96,6 +101,24 @@ class LostReplyStore(FlakyStore):
             self.inner.put(key, data, condition)
             raise EffectError(f"planted lost reply for {key}")
         return self.inner.put(key, data, condition)
+
+
+class Body(BytesIO):
+    def stream(self, **_: Any) -> Iterator[bytes]:
+        yield self.getvalue()
+
+
+def answer(
+    store: S3Store, status: int, headers: dict[str, str], body: bytes = b""
+) -> list[AWSPreparedRequest]:
+    sent: list[AWSPreparedRequest] = []
+
+    def send(request: AWSPreparedRequest, **_: Any) -> AWSResponse:
+        sent.append(request)
+        return AWSResponse(request.url, status, headers, Body(body))
+
+    store.client.meta.events.register("before-send.s3", send)
+    return sent
 
 
 def _etag(data: bytes) -> str:

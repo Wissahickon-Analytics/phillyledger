@@ -17,7 +17,7 @@ from datadesk.shell.adapters.s3 import s3_store
 from datadesk.shell.gather import gather_repo
 from datadesk.shell.ports import Deps, EffectError
 from datadesk.shell.run_fetch import retried, run_fetch
-from datadesk.shell.settings import MissingSettings, load_settings
+from datadesk.shell.settings import MissingSettings, hide_keys, load_settings
 
 
 @dataclass(frozen=True, slots=True)
@@ -70,17 +70,25 @@ def main(argv: Sequence[str] | None = None) -> int:
     today = date.today()
     try:
         settings = load_settings(environ)
-        deps = Deps(SavedHttp(args.saved), s3_store(settings), PdfPlumberReader())
-        run = fetch_command(deps, Path.cwd(), args.source, today)
-    except (MissingSettings, SavedFolderError, FetchStopped, EffectError) as error:
+    except MissingSettings as error:
         print(f"datadesk: {error}", file=sys.stderr)
         return 1
-    print(f"listing sha256 {run.listing_sha256}")
-    for finding in run.findings:
-        print(f"{finding.severity} {finding.code} {finding.subject}: {finding.message}")
-    print(f"\n{run.plan.pull_request.title}\n\n{run.plan.pull_request.body}")
-    for path, _ in run.plan.pull_request.files:
-        print(f"wrote {path}")
+    try:
+        deps = Deps(SavedHttp(args.saved), s3_store(settings), PdfPlumberReader())
+        run = fetch_command(deps, Path.cwd(), args.source, today)
+    except (SavedFolderError, FetchStopped, EffectError) as error:
+        print(hide_keys(f"datadesk: {error}", settings), file=sys.stderr)
+        return 1
+    lines = [
+        f"listing sha256 {run.listing_sha256}",
+        *(f"{f.severity} {f.code} {f.subject}: {f.message}" for f in run.findings),
+        "",
+        run.plan.pull_request.title,
+        "",
+        run.plan.pull_request.body,
+        *(f"wrote {path}" for path, _ in run.plan.pull_request.files),
+    ]
+    print(hide_keys("\n".join(lines), settings))
     return 0
 
 

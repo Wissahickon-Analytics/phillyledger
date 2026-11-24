@@ -383,6 +383,13 @@ design leaves open" in `docs/plans/step-03.md`.
   check dropped, the `a_link_to_a_file_outside_the_folder` case fails, and with either half of the
   URL rule dropped, `a_url_with_no_scheme` or `a_url_with_a_space` fails. Design sections 1.4,
   4.2, 12.3 and 12.4.
+- **Step 3: `main` prints neither R2 key** (November 24, 2026, S3-D fix round). The S3 adapter
+  puts the service's message in its `EffectError`, and `main` printed it, so a 403 whose message
+  held the access key printed the key (Codex review of S3-D, finding 1, hard rule 8). Once
+  `Settings` is loaded, every line `main` prints now goes through `hide_keys`, which replaces each
+  non-empty key with the name of its variable. With `hide_keys` dropped from the error line, or
+  with either key left out of it, `test_main_prints_neither_r2_key_when_the_store_echoes_both`
+  fails. Design section 4.2.
 - **Step 3: an index file that `parse_index` cannot read is a finding** (November 24, 2026, S3-D).
   Section 9 lets the shell catch only effect exceptions, and `parse_index` raises `KeyError`,
   `TypeError` or `ValueError` on a file it cannot read. The index file is input from the checkout,

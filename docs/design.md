@@ -2637,7 +2637,9 @@ command reads the saved folder. `main` reads the clock once, the environment onc
 `SavedHttp(folder)`, `s3_store(settings)` and the pdfplumber reader. It prints the listing digest,
 each finding, the plan's title and body and each file it wrote, and returns 0. A missing variable,
 a saved folder that `SavedHttp` refuses, a `FetchStopped` or an `EffectError` prints one line to
-stderr and returns 1.
+stderr and returns 1. `main` prints neither R2 key. Once `Settings` is loaded, every line it prints
+goes through `hide_keys`, which replaces each non-empty key with the name of its variable, so a
+service message that echoes a key prints `$DATADESK_R2_ACCESS_KEY_ID` in its place.
 
 The saved folder holds the saved files and `responses.tsv`, whose first row is the header
 `url<TAB>file` and whose other rows each pair a URL with a file name. `SavedHttp(folder)` reads it

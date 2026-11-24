@@ -1,11 +1,11 @@
-from collections.abc import Callable, Iterator
-from io import BytesIO
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 import pytest
-from botocore.awsrequest import AWSPreparedRequest, AWSResponse
+from botocore.awsrequest import AWSPreparedRequest
 from botocore.exceptions import EndpointConnectionError
+from packages.datadesk.tests.shell.fakes import answer
 
 from datadesk.shell.adapters.s3 import S3Store, s3_store
 from datadesk.shell.ports import CreateOnly, EffectError, IfMatch, PreconditionFailed
@@ -30,24 +30,6 @@ AMBIENT_CREDENTIALS = """\
 aws_access_key_id = CREDENTIALSKEYPLANTED
 aws_secret_access_key = credentials-secret
 """
-
-
-class Body(BytesIO):
-    def stream(self, **_: Any) -> Iterator[bytes]:
-        yield self.getvalue()
-
-
-def answer(
-    store: S3Store, status: int, headers: dict[str, str], body: bytes = b""
-) -> list[AWSPreparedRequest]:
-    sent: list[AWSPreparedRequest] = []
-
-    def send(request: AWSPreparedRequest, **_: Any) -> AWSResponse:
-        sent.append(request)
-        return AWSResponse(request.url, status, headers, Body(body))
-
-    store.client.meta.events.register("before-send.s3", send)
-    return sent
 
 
 def header(request: AWSPreparedRequest, name: str) -> str:

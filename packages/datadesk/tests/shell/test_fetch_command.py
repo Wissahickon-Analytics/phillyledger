@@ -16,6 +16,7 @@ from packages.datadesk.tests.shell.fakes import (
     FlakyHttp,
     FlakyStore,
     LostReplyStore,
+    answer,
 )
 from packages.datadesk.tests.shell.pdfs import text_pdf
 
@@ -25,8 +26,10 @@ from datadesk.core.index import render_index
 from datadesk.core.watch import FetchRequest
 from datadesk.shell import cli
 from datadesk.shell.adapters.http_saved import SavedHttp
+from datadesk.shell.adapters.s3 import S3Store, s3_store
 from datadesk.shell.cli import FetchRun, FetchStopped, fetch_command, main
 from datadesk.shell.ports import Deps, EffectError, Http, ObjectStore, PreconditionFailed
+from datadesk.shell.settings import Settings
 
 REPO = Path(__file__).parents[4]
 CATALOG_FILE = "packages/datadesk/src/datadesk/data/catalog.toml"
@@ -465,6 +468,33 @@ def test_main_with_a_missing_variable_names_it_and_prints_no_value(
     assert len(err.splitlines()) == 1
     assert not [value for value in ENVIRON.values() if value in out + err]
     assert (root / INDEX_FILE).read_text() == ""
+
+
+def test_main_prints_neither_r2_key_when_the_store_echoes_both(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = checkout(tmp_path / "checkout")
+    feed = only(FEED, reports(FEED)[0].title)
+    pdfs = [replace(report, body=text_pdf(report.cover)) for report in reports(feed)]
+    folder = saved_folder(tmp_path / "saved", feed, pdfs)
+    keys = (ENVIRON["DATADESK_R2_ACCESS_KEY_ID"], ENVIRON["DATADESK_R2_SECRET_ACCESS_KEY"])
+    echo = (
+        "<Error><Code>InvalidAccessKeyId</Code><Message>no key {} with secret {}</Message></Error>"
+    )
+
+    def refusing_store(settings: Settings) -> S3Store:
+        store = s3_store(settings)
+        answer(store, 403, {}, echo.format(*keys).encode())
+        return store
+
+    monkeypatch.setattr(cli, "s3_store", refusing_store)
+    for name, value in ENVIRON.items():
+        monkeypatch.setenv(name, value)
+    monkeypatch.chdir(root)
+    assert main(["fetch", "qcmr", "--saved", str(folder)]) == 1
+    out, err = capsys.readouterr()
+    assert "InvalidAccessKeyId" in err
+    assert not [key for key in keys if key in out + err]
 
 
 def test_main_with_a_saved_row_that_names_a_missing_file_stops_before_any_put(
