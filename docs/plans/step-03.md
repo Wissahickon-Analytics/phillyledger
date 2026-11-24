@@ -69,6 +69,15 @@ the command or the page named.
     from `awselb/2.0` behind CloudFront. The old repo sends a `User-Agent` header and no other,
     with a browser's string (`publisher_http.py:199`). No request with a browser's string was
     run here.
+12. A real browser reads the City's files. In the built-in browser of the Claude app, a page on
+    `https://www.phila.gov` fetched each of the 21 report URLs and hashed the bytes with
+    `crypto.subtle.digest`. All 21 came back with HTTP 200. The second table below gives the
+    byte count and the sha256 of each. The five copies in the old repo have the City's sha.
+    None of the 14 copies in the owner's folder does. `FY22_Q1.pdf` holds 2,748,146 bytes, and
+    the City's file for that quarter holds 1,781,180.
+13. That browser cannot write a file to disk. A click on a download link left no file, and the
+    pane blocks a page's request to `127.0.0.1` (`net::ERR_BLOCKED_BY_CLIENT`). Chrome was
+    running and its Claude extension was not connected, so a save through Chrome is untested.
 
 The copies seen, by edition. This is not the inventory. No one has checked it by hand, and the
 City's file for an edition may differ from the copy.
@@ -96,6 +105,33 @@ City's file for an edition may differ from the copy.
 | FY2026 Q3 | 2026-03-31 | 20260515154446 | old repo, `source_cache` | 94 | `032c5cfddfb77c50b270d5f0954d73674b5ec1c92c5d3fdee4b60e53efd82827` |
 | FY2026 Q4 | 2026-06-30 | 20260817162758 | old repo, `source_audits` | 92 | `48fd9aa936df05a28bb7f37083720afac85d1ee2a2c9a70be832382f0dc55020` |
 
+The City's files, as a browser read them on November 23, 2026 (fact 12). The 21 files hold
+42,108,658 bytes. This is not the inventory either. No one has opened these files.
+
+| Edition | Bytes | sha256 of the City's file | The copy seen |
+|---|---:|---|---|
+| FY2022 Q1 | 1,781,180 | `7c4a2e5abb00a5084cdb24fb35325cd1f2cdee42cfd9b30cf7c62c46c2f22918` | differs |
+| FY2022 Q2 | 2,292,284 | `401136b9ca279d46ab11e25a6d3da0980b30cbf147fc23976cc467519aa7aed7` | differs |
+| FY2022 Q3 | 1,819,602 | `212011ea27a2b2f250b10df6803a9b5a8479c50c2cbbdde4e6337572ed7a3c17` | differs |
+| FY2022 Q4 | 1,800,765 | `940773bc90362453fb4709f5791fc61ee650e1c82dfa2f56627a7ce266bc40da` | differs |
+| FY2023 Q1 | 1,645,726 | `cbddaf2fb174d1eb6400e460244324cbb1c13ae4e1f0565f50c0929bfc694d1e` | differs |
+| FY2023 Q2 | 2,252,295 | `a6654785d20f6d906488d3936c4d1b4ad8a0b176756acb2cbb43fbbbe32fc233` | differs |
+| FY2023 Q3 | 2,007,412 | `d72aef7a2d98bfcca8f732e4511de5486938b1be0d1952761eb8e20f8f328d4c` | differs |
+| FY2023 Q4 | 2,546,166 | `bf29b59e623b7465da67743d376df6d8ceadb59995fbc7ce96d01b90d1c1594c` | differs |
+| FY2024 Q1 | 1,861,104 | `92eb0fda42dbf566f1a01c25a8b42ed7f0a887cff9c5a0b7bff35fb999ffc82a` | differs |
+| FY2024 Q2 | 2,171,533 | `852b850f3b0ae77ecf2ccdac065da73cc6d4afa0e87756bcc5e79f9ec204c52c` | differs |
+| FY2024 Q3 | 2,294,974 | `7a859d47071c6dac4ad98f8f2c9a62e4f2dc1c59614fae109f78d9f189990c6b` | differs |
+| FY2024 Q4 | 1,868,452 | `bda61e16130d7fb311024b951cbc0afbe3c6ad615ac69516efe07ea4e3683824` | differs |
+| FY2025 Q1 | 1,592,311 | `ea2a183e2cc251d63e5063234483d79e0f4c38c01da2341348634e1f64d8a34c` | differs |
+| FY2025 Q2 | 2,224,737 | `85b1c8720e1c280090e0f3e3bbe51240086d3b830a9c2774e751dfd54dc27843` | differs |
+| FY2025 Q3 | 2,937,675 | `0e6895f1cc3fa8476761cf71decc930a473f7be48662b11fdfa8663f94eeb63f` | same sha |
+| FY2025 Q4 | 1,636,815 | `fdae8df31b0d7144557d5a803b1eb5f0a969ee43b60a55960db71b7e77e4afdd` | no copy |
+| FY2026 Q1 | 1,688,297 | `377c9305e6ac182da830aaeaf0e7892c53b79e94c05ecc85b61103157f152747` | same sha |
+| FY2026 Q2 | 1,745,318 | `f7b627e958ffa22c63d0af8b5584c4b3bf2266907156891fd84614186f083aae` | same sha |
+| FY2026 Q3 | 2,386,107 | `032c5cfddfb77c50b270d5f0954d73674b5ec1c92c5d3fdee4b60e53efd82827` | same sha |
+| FY2026 Q4 | 2,483,740 | `48fd9aa936df05a28bb7f37083720afac85d1ee2a2c9a70be832382f0dc55020` | same sha |
+| FY2027 Q1 | 1,072,165 | `640068cb7a8a5d6c621f0ac6a0b2e16df6c290fc1036ea95f2260057be58f365` | no copy |
+
 ## Clauses
 
 | # | Clause of the check | Owner | Test that proves it |
@@ -115,8 +151,9 @@ failing, each in its pull request: the shas of FY2022 Q1 and Q2 swapped in the i
 quarter removed from both files. Both files also hold FY2027 Q1 (answer 2). C2 to C4 cover its
 row, and C1's list stays the 20.
 
-The index comes from `datadesk`. The inventory's `sha256` comes from a `curl` download and
-`shasum` (see "The inventory"), so the two sides share no code. C4's test fails while any row
+The index comes from `datadesk`. The inventory's `sha256` comes from `shasum` of a file that a
+browser saved, beside a digest that the browser computed from the City's URL (see "The
+inventory"), so the two sides share no code. C4's test fails while any row
 has an empty `checked` cell, and only the owner's word fills a cell.
 
 C5's test drives the function behind `datadesk fetch qcmr` twice, so it covers the listing
@@ -126,7 +163,7 @@ After the first run it asserts the store's keys, the bytes under each key, and t
 sha of each index line. It then loads the checkout again and runs the command a second time.
 The store saw no new `put`, the index file is byte for byte the same, and the plan holds no
 file to write. S3-C adds the pure half, `test_plan_fetch_adds_nothing_for_an_indexed_sha`.
-S3-E records two real runs against the City's site and R2 in its pull request, and each run
+S3-E records two real runs over the saved folder and R2 in its pull request, and each run
 prints the listing's `html_sha256`.
 
 ## Shapes the design leaves open
@@ -139,11 +176,11 @@ pull request that builds a shape records it in `docs/design.md` and in
    printed end date)`, so FY2026 Q4 is April 1 to June 30, 2026, and its id is
    `qcmr:2026-06-30:none`. Editions then never overlap.
 2. **`listed_at` and the order of versions.** For a document-finder link `listed_at` is the
-   14-digit upload stamp in the URL path. For a held copy it is the empty string.
+   14-digit upload stamp in the URL path.
    `current(edition)` is the edition's version that no other version supersedes. A new version
    supersedes the current one when its `listed_at` is later or the same, so step 13 can record
    new bytes behind an unchanged URL (design 18.1). A new version with an earlier `listed_at`
-   is a rejection for the owner, so a held copy never supersedes a listed version.
+   is a rejection for the owner.
    `add_versions` returns a finding when an edition would have two versions that nothing
    supersedes.
 3. **The index file** is `packages/datadesk/src/datadesk/data/index.jsonl`, one
@@ -162,29 +199,29 @@ pull request that builds a shape records it in `docs/design.md` and in
    a report and whose date is not a quarter end gets the skip reason `not_a_quarter_end`, and
    `plan_watch` returns a finding for it in `WatchPlan.findings`. `wayback` and `gaps` stay
    empty until step 13. `PullRequestPlan(files, branch, title, body)` lives in `core/watch.py`.
-6. **The City's file first, the held copy second.** `datadesk fetch qcmr` downloads the last
-   listed report of every edition from FY2022 Q1 on, because five URLs show a second upload and
-   the City's last listed file is the current version of its edition (design 6.3).
-   `datadesk import-held` then reads the inventory. For each row with a `held_file` it reads
-   that one file, checks its sha against the row's `held_sha256`, and builds a
-   `Held(edition, name, sha256, size, page1_text)`. It opens no other file in the folder, so
-   the 59 older reports there wait for step 7. `plan_import(held, index, notes)` in
-   `core/fetch.py` sends each `Held` through `confirm_period` and the index rules of
-   `plan_fetch`. A held sha that is already indexed under its edition adds nothing. A held file
-   for an edition with no version is indexed with `Via.MANUAL` and `urls=()`. A held sha that
-   differs from its edition's listed version is a `Rejection` with the reason
-   `differs_from_listed`, and the owner decides it. A `Rejection` names the `FetchRequest` or
-   the `Held` it refuses.
+6. **The City's responses come from a folder that a browser saved.** The City refuses a client
+   that is not a browser (facts 6 and 11), and the owner chose a real browser (answer A). So at
+   step 3 the `Http` port has one adapter, `http_saved.py`. It reads `responses.tsv` in a
+   folder, a list of `url` and `file`. It answers a listed URL with status 200 and the bytes of
+   its file, and any other URL with status 404, which `plan_fetch` rejects.
+   `datadesk fetch qcmr --saved <folder>` then runs the design's whole path on the City's real
+   feed and files: `parse_listing`, `plan_watch`, `run_fetch`, `confirm_period`, `plan_fetch`,
+   `put_immutable` and the index write. It takes the last listed report of every edition from
+   FY2022 Q1 on (design 6.3), and the index says `Via.PUBLISHER`, because the bytes came from
+   the City's URL. This run is the design's "one-time import of held FY2022 to FY2026 reports
+   by sha". The live adapter, its User-Agent and its contract suite wait for step 13, with
+   `watch`. This plan no longer has `import-held`, `Held` or `plan_import`. None of the owner's
+   14 copies has the City's sha (fact 12), and answer 5 leaves a copy that differs out of the
+   index. S3-E lists the 14 in its pull request.
 7. **A version gains a URL.** When a fetched sha is already indexed under its edition and the
    request's URL is new, `plan_fetch` stores nothing and `index_add` carries the version with
    that URL. `add_versions` merges it into the one line, so `urls` holds every URL that served
-   the bytes (design line 1102) and the next `plan_watch` asks for nothing. A held version that
-   a listing later serves takes the listing's `listed_at` and title, and `Via.PUBLISHER`.
+   the bytes (design line 1102) and the next `plan_watch` asks for nothing.
 8. **`confirm_period` returns the period the page prints.** It is the expected period, or the
    period a `PRINTED_PERIOD` note names for a text that page 1 holds. Anything else is a
    finding: no phrase, a date that is not a quarter end, or another quarter with no note.
-   `plan_fetch` and `plan_import` pass it only the notes whose `doc_sha256` is the sha at hand.
-   The two commands pass no notes at step 3. `load_records` arrives at step 5 and the first
+   `plan_fetch` passes it only the notes whose `doc_sha256` is the sha at hand. The command
+   passes no notes at step 3. `load_records` arrives at step 5 and the first
    real note at step 7 (QCASH-Q07), so unit tests alone prove the note path here. A cover among
    the 20 that fails stops S3-E for the owner.
 9. **One store for each bucket.** R2 cannot make one object public (fact 7), so
@@ -262,20 +299,17 @@ Builds on S3-B. `feat(datadesk): confirm the printed period and plan a fetch`.
   of an edition supersedes the earlier version (QPOS-Q32), and so do new bytes with the same
   `listed_at`. An indexed sha at an indexed URL adds nothing. An indexed sha at a new URL adds
   the URL and stores nothing.
-- Proves, for `plan_import`: a held file for an edition with no version is indexed with
-  `Via.MANUAL` and no URL. One that equals the listed version adds nothing. One that differs
-  from it is a `differs_from_listed` rejection.
 
-### S3-D, `step-03/d-shell`: the S3 adapter and the two commands
+### S3-D, `step-03/d-shell`: the S3 adapter and the fetch command
 
 Builds on S3-C. `feat(datadesk): store reports in R2 and run fetch`.
 
 - Files: `src/datadesk/shell/ports.py`, `settings.py`, `gather.py`, `run_fetch.py`, `cli.py`,
-  `src/datadesk/shell/adapters/__init__.py`, `s3.py`, `http_httpx.py`, `pdf_pdfplumber.py`,
+  `src/datadesk/shell/adapters/__init__.py`, `s3.py`, `http_saved.py`, `pdf_pdfplumber.py`,
   `src/datadesk/data/index.jsonl`, empty, `tests/shell/` with the fakes, the contract suites
-  and the tests below, `packages/datadesk/pyproject.toml` for `boto3`, `httpx`, `pdfplumber`
-  and the `datadesk` script, `uv.lock`, the root `conftest.py` for `import ssl`
-  (`docs/progress.md`), and `CLAUDE.md` for the two new commands.
+  and the tests below, `packages/datadesk/pyproject.toml` for `boto3`, `pdfplumber` and the
+  `datadesk` script, `uv.lock`, the root `conftest.py` for `import ssl`
+  (`docs/progress.md`), and `CLAUDE.md` for the new command.
 - Proves: C5. The `ObjectStore` contract suite covers a create on an absent key, a replacement
   with the current etag, a stale etag refused with the bytes kept, `CreateOnly` on a key that
   exists, and `IfMatch(None)` on an absent key and on one that exists. `put_immutable`
@@ -284,16 +318,15 @@ Builds on S3-C. `feat(datadesk): store reports in R2 and run fetch`.
   Three failures stop the command with the index file untouched.
 - Proves: `load_settings` names a missing variable and prints no value.
   `test_s3_client_ignores_the_ambient_aws_profile` builds the adapter's client under an
-  `AWS_PROFILE` that does not exist and under shared files that hold other keys. `import-held`
-  never opens an older file in the folder, indexes a held report that the fetch did not
-  bring, and stops when a held file's sha is not the one its inventory row gives.
+  `AWS_PROFILE` that does not exist and under shared files that hold other keys.
 - Proves: the `page1_text` contract on two PDFs the test builds, a text page and an image
-  page. The `Http` contract passes on the fake.
+  page. The `Http` contract passes on the fake and on `http_saved.py`, over a folder the test
+  writes: a listed URL gives status 200 and its file's bytes, and any other URL gives 404. A
+  `responses.tsv` that names a missing file stops the command before any `put`.
 - The suites run on the fakes in CI. Design 11.1 runs the real halves nightly and before a
   release, so CI skips them and reports the skip. The owner of S3-D runs the `ObjectStore`
-  suite against MinIO in Docker and the `Http` suite against a local server that the test
-  starts, and records both runs in the pull request. No session sends the City a request in
-  S3-D (fact 11).
+  suite against MinIO in Docker and records the run in the pull request. No test and no
+  session sends the City a request (fact 11).
 
 ### S3-E, `step-03/e-archive`: the 20 reports
 
@@ -302,55 +335,74 @@ under `src/`.
 
 - Files: `src/datadesk/data/index.jsonl`, `docs/evidence/inventory/qcmr.tsv`,
   `tests/test_archive_inventory.py`, `docs/plan-notes.md`, `CLAUDE.md`.
-- Runs, each recorded in the pull request with its command and output: `datadesk fetch qcmr`,
-  `datadesk import-held`, and `datadesk fetch qcmr` a second time. The owner starts the two
-  fetch runs in his terminal, and the session reads their output (answer A). The session runs
-  `import-held`, which reaches R2 and no server of the City. With the owner's go (open
-  question B), the `ObjectStore` suite also runs against a scratch bucket on R2.
+- Before the runs, the session makes the saved folder and checks it ("The saved folder").
+- Runs, each recorded in the pull request with its command and output:
+  `datadesk fetch qcmr --saved <folder>`, twice. The session starts both, and neither sends
+  the City a request. With the owner's go (open question B), the `ObjectStore` suite also runs
+  against a scratch bucket on R2.
 - S3-E starts only after the owner has set up R2 ("Setting up R2"). S3-A to S3-D do not wait
   on it.
-- Owns C1 to C4. `docs/plan-notes.md` gets two notes. For step 7: the feed lists QCMR reports
-  back to December 31, 2006. For step 13: the City refuses a client that does not send a
-  browser's User-Agent (fact 11), which `watch` must answer before it runs on a schedule.
-  `CLAUDE.md` gets the folder of the held reports in place of "ask for the path when step 3
-  starts".
+- Owns C1 to C4. The pull request lists the owner's 14 copies that differ from the City's
+  files, each with its sha (answer 5, fact 12).
+- `docs/plan-notes.md` gets two notes. For step 7: the feed lists QCMR reports back to
+  December 31, 2006. For step 13: the City refuses a client that does not send a browser's
+  User-Agent (fact 11), the owner's answer for a run that is his is the string the old repo
+  sends (answer A), and the live `Http` adapter waits for that step.
+- `CLAUDE.md` gets the saved folder in place of "ask for the path when step 3 starts".
+
+## The saved folder
+
+The saved folder holds what the City serves, as a real browser saved it: the feed's body, the
+21 reports and `responses.tsv`. It is on the owner's machine and outside git. The proposed path
+is `~/DataProjects/phillyledger-held/qcmr-city`.
+
+How it is made, in S3-E:
+
+1. In a browser, on a page of `https://www.phila.gov`, the session fetches each of the 21 report
+   URLs of the feed and records the status, the byte count and the sha256 that the page
+   computes. This is the run of fact 12. A sha that differs from the second table above is a
+   new upload, and it goes to the owner.
+2. The session saves the feed's body and the 21 files through Chrome into the folder. This is
+   untested, and it needs Chrome's Claude extension connected (fact 13). It tries one report
+   first. If the save cannot be done, the owner saves the 22 files by hand from the list of
+   URLs.
+3. `shasum -a 256` of each saved report must equal the sha256 that the page computed for its
+   URL. The session writes `responses.tsv` from the feed's URLs, with the host `www.phila.gov`
+   (QCASH-Q04).
 
 ## The inventory
 
 `docs/evidence/inventory/qcmr.tsv` has one row for each expected edition, with the columns
-`edition`, `sha256`, `bytes`, `pages`, `page1_period`, `url`, `held_file`, `held_sha256` and
-`checked`.
+`edition`, `sha256`, `bytes`, `pages`, `page1_period`, `url`, `browser_sha256` and `checked`.
 
 How it is made, in S3-E:
 
-1. Before any command runs, the session writes one row for each of the 20 editions, and one
-   for FY2027 Q1 (answer 2), with `edition` alone. A shell loop over the 14 in-range
-   files of the owner's folder fills `held_file` and `held_sha256` with `shasum -a 256`. The
-   session checks those shas against the table above.
-2. `datadesk fetch qcmr` runs, then `datadesk import-held`, which reads the rows of step 1.
-3. For each row the owner saves the City's file in his browser, from the URL the index gives,
-   into a scratch folder. The City refuses `curl` (facts 6 and 11), so the session cannot make
-   this download. `sha256` is `shasum -a 256` of the saved file, `bytes` its size, `pages`
+1. Before any command runs, the session writes one row for each of the 20 editions and one for
+   FY2027 Q1 (answer 2), with `edition`, `url` and `browser_sha256` from step 1 of "The saved
+   folder".
+2. For each row, `sha256` is `shasum -a 256` of the saved file, `bytes` its size, `pages`
    comes from `pdfinfo`, and `page1_period` is the `PERIOD ENDING` phrase from
-   `pdftotext -f 1 -l 1`. This download shares no code with `datadesk`. For a report that
-   reached the archive from the held folder, the source is the held file.
-4. For each row the session compares that source digest, the digest of the object read back
-   from the archive bucket, the object's key and the index line. The read-back is
-   `aws s3 cp` under the owner's `r2` profile ("Setting up R2"), piped to `shasum`. Where the
-   table above has a copy, its sha is a fifth witness. Any difference goes to the owner before
-   he checks a row.
+   `pdftotext -f 1 -l 1`. None of this shares code with `datadesk`.
+3. `datadesk fetch qcmr --saved <folder>` runs.
+4. For each row the session compares four things with the row's `sha256`: its
+   `browser_sha256`, the digest of the object read back from the archive bucket, the object's
+   key and the index line. The read-back is `aws s3 cp` under the owner's `r2` profile
+   ("Setting up R2"), piped to `shasum`. For the five editions whose copy in the old repo has
+   the City's sha, that copy is a fifth witness. Any difference goes to the owner before he
+   checks a row.
 
 The pull request prints each loop, so anyone can run it again.
 
-How it is checked: the owner opens each PDF from the scratch folder. He confirms that the cover
+How it is checked: the owner opens each PDF from the saved folder. He confirms that the cover
 names the row's period, that the file is the whole report with the row's page count, and that
 his own `shasum -a 256` of the file prints the row's sha. He says so in the session. The session
 then writes the date in `checked` for the rows he named, and quotes his words in the pull
 request. No agent fills `checked` on its own reading.
 
-The owner confirmed this form on November 23, 2026 (answer 4). Two details came after his
-answer, and he has not seen them: the download of step 3 is by his browser, where the form he
-confirmed used `curl`, and the read-back of step 4 uses his `r2` profile.
+The owner confirmed an earlier form on November 23, 2026 (answer 4). Three details came after
+his answer, and he has not seen them. The files come from the saved folder, where the form he
+confirmed used `curl`. `browser_sha256` replaces the two columns for his own copies. The
+read-back of step 4 uses his `r2` profile.
 
 ## Setting up R2
 
@@ -369,7 +421,7 @@ The steps are in the Cloudflare dashboard, under R2 object storage (fact 10).
    access stays off.
 3. Create an API token with the permission "Object Read & Write", scoped to that bucket. The
    page shows the Access Key ID and the Secret Access Key once.
-4. Write `.env` at the top of the checkout, with one `NAME=value` line for each of the five
+4. Write `.env` at the top of the checkout, with one `NAME=value` line for each of the four
    variables below. `.gitignore` lists the file. Each command runs as
    `uv run --env-file .env datadesk ...`, so no session reads or prints the file.
 5. Run `aws configure --profile r2` with the two key values and the region `auto`. This is the
@@ -388,7 +440,7 @@ proposals that the owner has not seen.
 
 ## Environment variables
 
-`load_settings(environ)` reads these five and nothing else. The S3 adapter gives its client the
+`load_settings(environ)` reads these four and nothing else. The S3 adapter gives its client the
 endpoint and the two keys from `Settings`. That alone does not shut out an AWS profile. A boto3
 1.43.26 client built with explicit keys raised `ProfileNotFound` under `AWS_PROFILE` set to a
 missing profile (run on November 23, 2026). S3-D builds the client so that a profile or a
@@ -401,11 +453,9 @@ it.
 | `DATADESK_R2_ACCESS_KEY_ID` | the R2 token's access key id, a credential |
 | `DATADESK_R2_SECRET_ACCESS_KEY` | the R2 token's secret, a credential |
 | `DATADESK_R2_ARCHIVE_BUCKET` | the name of the archive bucket |
-| `DATADESK_HTTP_USER_AGENT` | the User-Agent that `Http` sends to the City's site |
 
-`Settings` keeps both key values out of its `repr`, and no command prints either one. The
-owner sets `DATADESK_HTTP_USER_AGENT` to the string the old repo sends, `BROWSER_UA` in
-`publisher_http.py` (answer A). `datadesk` holds no User-Agent string of its own.
+`Settings` keeps both key values out of its `repr`, and no command prints either one. Step 3
+sets no User-Agent, because no `datadesk` command sends the City a request (shape 6).
 
 CI runs on the fakes and reads no credential. The `ObjectStore` contract suite reads its target
 from four variables of its own: `DATADESK_CONTRACT_S3_ENDPOINT_URL`,
@@ -413,17 +463,17 @@ from four variables of its own: `DATADESK_CONTRACT_S3_ENDPOINT_URL`,
 `DATADESK_CONTRACT_S3_BUCKET`. It skips its real half, with a message, when they are unset. The
 MinIO run sets them to a local server with throwaway keys. A run against R2 sets them to a
 scratch bucket and a real token, and only with the owner's go (open question B). So no test
-writes to the archive bucket, and no test reads the five variables above.
+writes to the archive bucket, and no test reads the four variables above.
 
 ## Risks to probe
 
-1. **The City's server refuses a client that is not a browser** (facts 6 and 11). The probe
-   this risk asked for ran on November 23, 2026, and the City refused a plain User-Agent. The
-   owner chose the browser's string that the old repo sends, and he starts the runs that reach
-   the City (answer A). No request with that string has been run from this repo, so his first
-   run in S3-E is the probe. A refusal stops S3-E for him.
-2. **A held copy may not be the City's current file** (fact 5, QPOS-Q32). S3-E compares the two
-   shas for each of the 14 editions before any row is checked.
+1. **The City's server refuses a client that is not a browser** (facts 6 and 11). At step 3 no
+   `datadesk` command sends the City a request. A real browser reads the City's files (fact
+   12). The open part is the save to disk (fact 13): S3-E tries one report through Chrome
+   first, and the owner saves the files by hand if that fails.
+2. **The owner's copies are not the City's current files** (fact 12, QPOS-Q32). None of the 14
+   has the City's sha, so none is indexed (answer 5). A City file may also change between
+   fact 12 and the save, and step 1 of "The saved folder" catches that.
 3. **Page 1 prints the period twice**, once in the phrase and once as a bare date
    (`FY22_Q1.pdf`). `confirm_period` reads the `PERIOD ENDING` phrase alone (QCASH-Q05,
    QOBL-Q04). pdfplumber may break the phrase across lines or put U+00A0 in it (QOBL-Q02), so
@@ -435,16 +485,17 @@ writes to the archive bucket, and no test reads the five variables above.
 5. **Conditional writes through boto3** (design line 2290, section 18.1). `IfNoneMatch="*"` and
    `IfMatch` on `put_object` must raise `PreconditionFailed` on MinIO and on R2, and the etag
    that `put` and `head` return must be the same string.
-6. **The feed fixture is a recorded response.** S3-B saves the feed's body from a browser,
-   cuts it to the QCMR category and one other, and states the cut in the fixture. No one types
-   it.
+6. **The feed fixture is a recorded response.** S3-B needs the feed's body on disk before the
+   saved folder exists. Chrome saves it, or the owner saves the page (fact 13). If neither can
+   be done, the session cuts the body in the page, writes the text the page returns, and
+   checks its sha256 against a digest the page computed. The fixture keeps the QCMR category
+   and one other, and states the cut. No one types it.
 7. **The import pin and the socket block.** `import json` fails the purity test and
    `from json import loads` passes with a pin (design 11.1). The MinIO test needs the
    `enable_socket` marker, and a test over TLS needs `import ssl` at the top of the root
    `conftest.py` (`docs/progress.md`).
-8. **S3-D is the largest pull request**, about 670 lines by the estimates of design 12.3. If
-   its review finds the adapter and the commands too much for one fix round, the owner may
-   split it at `s3.py`.
+8. **S3-D is the largest pull request.** If its review finds the adapter and the command too
+   much for one fix round, the owner may split it at `s3.py`.
 
 ## The owner's answers
 
@@ -463,15 +514,14 @@ in this file at commit `0d411bb`.
 
 What follows from each answer:
 
-1. `Http` sends the value of `DATADESK_HTTP_USER_AGENT`. The City then refused two plain
-   values (fact 11), so this answer did not settle how the City's files arrive. Answer A
-   below did.
+1. The City then refused two plain values (fact 11), so this answer did not settle how the
+   City's files arrive. Answer A below did.
 2. The catalog entry has no last period end. The inventory and the index hold 21 rows.
 3. "Setting up R2" gives the steps. His answer gives no go for the contract suite on R2, so
    open question B asks again.
-4. "The inventory" stands, with the two later details it names.
-5. `plan_import` refuses a held copy that differs, with the reason `differs_from_listed`
-   (shape 6). It is not indexed, and the pull request of S3-E lists it.
+4. "The inventory" stands, with the three later details it names.
+5. A held copy that differs is not indexed, and the pull request of S3-E lists it. All 14 of
+   his copies differ (fact 12).
 6. The Build session of S3-A runs `gh extension install github/gh-stack`
    (`docs/working-with-claude-code.md`).
 
@@ -484,15 +534,26 @@ saw it: "How should the City's files arrive at step 3: you run the fetch, hand d
 ask the City?" His words: "Run the fetch with browser user agent as the original repo did. I
 used to work for the city we have permission".
 
+The session answered that it had recorded his choice, and that the runs with that string were
+his to start. His words: "No i want you to do the fetching". The session then offered two ways
+it could fetch. One was a real browser: it opens each City URL, saves the feed and the 21
+reports to a folder, and `import-held` indexes them. It said that the save was untested, that
+the plan's order would reverse and need a revision and a second Codex read, and that
+`datadesk fetch` would not reach the City at step 3. The other was a plain User-Agent that the
+City lets through. His words: "Fetch through a real browser".
+
 What follows from answer A:
 
-- `DATADESK_HTTP_USER_AGENT` in his `.env` holds the string the old repo sends, `BROWSER_UA`
-  in `publisher_http.py`.
-- He asked for the fetch to be run. The agents that build this repo do not send a browser's
-  string to a server that refuses other clients, whoever asks. So he starts the two
-  `datadesk fetch qcmr` runs of S3-E in his terminal, and the session reads their output. The
-  plan's order of work stands as written.
-- The City's permission is his statement. No session has checked it.
+- The City's files reach step 3 through a real browser and a saved folder (shape 6, "The saved
+  folder"). No `datadesk` command sends the City a request at step 3, and no User-Agent is set.
+- The agents that build this repo do not send a browser's string to a server that refuses
+  other clients, whoever asks. His first words, the string the old repo sends, are a note for
+  step 13, where `watch` runs on a schedule that is his. The City's permission is his
+  statement. No session has checked it.
+- Three things differ from what he was shown, after facts 12 and 13.
+  `datadesk fetch qcmr --saved` reads the folder, where he was told `import-held` would. His
+  14 copies are not indexed, because none has the City's sha. The save through Chrome waits
+  on its extension.
 
 ## Still open
 
@@ -500,6 +561,9 @@ What follows from answer A:
 a second bucket, `phillyledger-scratch`, to steps 2 and 3 of "Setting up R2". Without a yes,
 MinIO and Cloudflare's page are the proof of the conditional writes, and the fetch of S3-E
 proves `CreateOnly` on R2 and nothing more.
+
+**C. Chrome's Claude extension is not connected** (fact 13). Before S3-E the owner signs in to
+it in Chrome, or he saves the 22 files by hand. This is a step for him and not a decision.
 
 ## Codex review
 
@@ -523,16 +587,20 @@ for each. None is disputed.
 | 11 | Explicit keys do not shut out an AWS profile | Rerun: `ProfileNotFound` under a missing `AWS_PROFILE`, boto3 1.43.26 | "Environment variables": the claim is gone, and a test must prove the isolation |
 | 12 | A real R2 run contradicted "no test reads a real credential", and the cost was unstated | The plan's own text, and the byte total recomputed as 38,831,218 | The contract suite has its own variables and a scratch bucket, and question 3 asks for the go |
 
-## Changes after the review
+## Changes after the first review
 
-Codex read commit `39f8af3e`. It has not read these changes, which follow the owner's answers
-and facts 10 and 11.
+Codex first read commit `39f8af3e`. These changes came later, from the owner's answers and
+facts 10 to 13. Rows 4, 5 and 9 of the table above describe parts that are now gone.
 
 - FY2027 Q1 is in, so the inventory and the index hold 21 rows (answer 2).
 - The archive bucket is private at step 3, and `DATADESK_R2_ARCHIVE_PUBLIC_URL` is gone
   ("Setting up R2").
-- The real half of the `Http` contract suite runs against a local server. No session sends the
-  City a request (fact 11).
-- The owner starts the two fetch runs of S3-E, with the User-Agent he sets (answer A).
-- The inventory's download is by the owner's browser, and its read-back is `aws s3 cp`.
+- The City's files come from a folder that a browser saved, through `http_saved.py` and
+  `datadesk fetch qcmr --saved` (shape 6, answer A). No `datadesk` command sends the City a
+  request.
+- The live `Http` adapter, its User-Agent and its contract suite wait for step 13.
+- `import-held`, `Held` and `plan_import` are gone, because none of the owner's 14 copies has
+  the City's sha (fact 12).
+- The inventory takes its sha from the saved file, beside the digest the browser computed, and
+  its read-back is `aws s3 cp`.
 - S3-E adds a note for step 13 to `docs/plan-notes.md`.
