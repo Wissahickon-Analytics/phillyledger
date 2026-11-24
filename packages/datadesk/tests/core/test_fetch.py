@@ -119,6 +119,12 @@ def finding_code(result: Period | Finding, edition: EditionKey = FY2022_Q1) -> s
             Period(date(2021, 7, 1), date(2021, 9, 30)),
             id="a_bare_date_beside_the_phrase_is_not_read",
         ),
+        pytest.param(
+            "FOR THE PERIOD ENDING SEPTEMBER 30, 2021\nPERIOD ENDINGS",
+            FY2022_Q1,
+            Period(date(2021, 7, 1), date(2021, 9, 30)),
+            id="a_longer_word_after_period_is_not_a_caption",
+        ),
     ],
 )
 def test_confirm_period_returns_the_quarter_the_cover_prints(
@@ -156,6 +162,21 @@ def test_confirm_period_returns_the_quarter_the_cover_prints(
             "FOR THE PERIOD ENDING SEPTEMBER 30, 2021\nFOR THE PERIOD ENDING SMARCH 31, 2022",
             "period_unreadable",
             id="an_unreadable_phrase_beside_a_readable_one",
+        ),
+        pytest.param(
+            "FOR THE PERIOD ENDING SEPTEMBER 30, 2021\nFOR THE PERIOD ENDING Märch 31, 2022",
+            "period_unreadable",
+            id="a_month_word_of_other_letters_beside_a_readable_phrase",
+        ),
+        pytest.param(
+            "FOR THE PERIOD ENDING SEPTEMBER 30, 2021\nFOR THE PERIOD ENDING",
+            "period_unreadable",
+            id="a_caption_with_no_date_beside_a_readable_phrase",
+        ),
+        pytest.param(
+            "SUBPERIOD ENDING SEPTEMBER 30, 2021",
+            "period_unreadable",
+            id="a_longer_word_in_place_of_the_caption",
         ),
         pytest.param(
             "FOR THE PERIOD ENDING SEPTEMBER 30, 2021\nFOR THE PERIOD ENDING DECEMBER 31, 2021",

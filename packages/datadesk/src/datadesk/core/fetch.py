@@ -18,7 +18,7 @@ TITLE = "feat(datadesk): index fetched reports"
 
 # QCASH-Q05, QOBL-Q04: the cover prints "FOR THE PERIOD ENDING <Month> <D>, <YYYY>".
 # QOBL-Q02: a line break or U+00A0 may stand between any two of its words.
-PERIOD_ENDING = compile(r"(?i)PERIOD\s+ENDING\s+([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{4})(?!\d)")
+PERIOD_ENDING = compile(r"(?i)\bPERIOD\s+ENDING\b(?:\s+(\w+)\s+(\d{1,2}),?\s+(\d{4})(?!\d))?")
 
 
 @dataclass(frozen=True, slots=True)
