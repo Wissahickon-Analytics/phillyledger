@@ -334,13 +334,20 @@ design leaves open" in `docs/plans/step-03.md`.
   ran the real adapters' contracts nightly and before release, against the network or MinIO. The
   saved-folder `Http` adapter and the pdfplumber reader need neither, so their contracts run in CI
   beside the fakes (plan, S3-D). The `ObjectStore` suite runs the dict store always and the S3
-  store only when the four `DATADESK_CONTRACT_S3_*` variables are set. The `PdfReader` contract builds its two PDFs in the
-  test, because `.gitignore` keeps every PDF out of git. With page 1 read as the last page,
+  store only when the four `DATADESK_CONTRACT_S3_*` variables are set. The `PdfReader` contract
+  builds its PDFs in the test, because `.gitignore` keeps every PDF out of git. With page 1 read as
+  the last page,
   `test_page1_text_holds_the_words_of_page_1_alone` fails. Bytes that pdfplumber cannot open and a
   PDF with no page raise `EffectError`, so the command stops with one line and not a traceback.
-  With that conversion removed, both cases of
-  `test_page1_text_of_a_file_pdfplumber_cannot_read_is_an_effect_error` fail. Design sections 4,
-  11.1 and 11.5.
+  With that conversion removed, the `bytes_that_are_not_a_pdf` and `a_pdf_with_no_page` cases of
+  `test_page1_text_of_a_file_pdfplumber_cannot_read_is_an_effect_error` fail. `document.pages[0]`
+  built every page, so a broken box on page 2 hid a readable cover, and pdfplumber's
+  `MalformedPDFException` is not a `PdfminerException`, so it escaped (Codex review of S3-D,
+  finding 8). The reader now opens the PDF with `pages=[1]` and turns `MalformedPDFException` into
+  `EffectError` too. With every page built, both cases of
+  `test_page1_text_reads_page_1_when_a_later_page_has_a_broken_box` fail, and with
+  `MalformedPDFException` left uncaught, the `a_page_1_with_a_box_with_a_name` case fails. Design
+  sections 4, 11.1 and 11.5.
 - **Step 3: `run_fetch` returns the plan and tries each effect three times** (November 24, 2026,
   S3-D). The design's sketch called `GitHost`, put each report with `public=True`, and did not say
   how a failed effect is tried again. `run_fetch` now returns the `FetchPlan` and calls no `GitHost`

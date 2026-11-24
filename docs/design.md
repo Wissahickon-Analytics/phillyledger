@@ -2521,8 +2521,11 @@ session that reads neither `AWS_PROFILE` nor the shared config and credentials f
 explicit keys, a boto3 1.44.5 client still raised `ProfileNotFound` under a missing `AWS_PROFILE`.
 `CreateOnly` and `IfMatch(None)` send `IfNoneMatch="*"`, and `IfMatch(e)` sends `IfMatch=e`. A 412
 `PreconditionFailed` raises `PreconditionFailed`, `head` of an absent key returns `None`, and `get`
-of an absent key raises `KeyError`. The pdfplumber reader raises `EffectError` for bytes it cannot
-open and for a PDF with no page.
+of an absent key raises `KeyError`. The pdfplumber reader opens a PDF with `pages=[1]`, so
+pdfplumber builds page 1 alone and a broken box on a later page does not hide the cover. It raises
+`EffectError` for bytes it cannot open, for a PDF with no page, and for a page 1 that pdfplumber
+cannot build, which raises `MalformedPDFException` when a box holds a coordinate that is not a
+number.
 
 ### 4.1 `watch`
 
@@ -4319,7 +4322,7 @@ One suite per port, run against the fake and the real adapter:
 |---|---|---|
 | `ObjectStore` | dict store | S3 API via MinIO. The real half reads its target from `DATADESK_CONTRACT_S3_ENDPOINT_URL`, `DATADESK_CONTRACT_S3_ACCESS_KEY_ID`, `DATADESK_CONTRACT_S3_SECRET_ACCESS_KEY` and `DATADESK_CONTRACT_S3_BUCKET`, and skips with a message naming them when one is unset, as in CI |
 | `Http` | replays recorded responses | `http_saved` on a folder the test writes, every commit; from step 13, one phila.gov listing, nightly |
-| `PdfReader` | none needed | `page1_text` on two PDFs the test builds, a text page and an image page; step 4 adds a text layer with a drawn grid and bold words |
+| `PdfReader` | none needed | `page1_text` on PDFs the test builds: a text page, an image page, and pages with a box pdfplumber cannot read; step 4 adds a text layer with a drawn grid and bold words |
 | `OcrService` | returns archived responses | one page against Textract, by hand, with `--spend` |
 | `GitHost` | records the plan | a sandbox repository, before release |
 | `LocalCache` | dict | temp directory |
