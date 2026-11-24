@@ -76,8 +76,19 @@ the command or the page named.
     None of the 14 copies in the owner's folder does. `FY22_Q1.pdf` holds 2,748,146 bytes, and
     the City's file for that quarter holds 1,781,180.
 13. That browser cannot write a file to disk. A click on a download link left no file, and the
-    pane blocks a page's request to `127.0.0.1` (`net::ERR_BLOCKED_BY_CLIENT`). Chrome was
-    running and its Claude extension was not connected, so a save through Chrome is untested.
+    pane blocks a page's request to `127.0.0.1` (`net::ERR_BLOCKED_BY_CLIENT`). Chrome can.
+    Once the owner had connected its Claude extension, the planning session saved the feed's
+    body and the 21 reports through Chrome, each by a click on a link to its URL. The files are
+    in `~/DataProjects/phillyledger-held/qcmr-city` with `responses.tsv`. `shasum -a 256` of
+    each report equals its sha in the second table below. The feed's body holds 388,460 bytes,
+    and its sha256 is `aa6b4e4708d780d6b005b1e74731fba7a6938427168a0799cacdad943473d837`.
+14. The FY2027 Q1 report has no text that a program can read. Its two fonts are CID TrueType
+    with `Identity-H` and no Unicode map (`pdffonts`), so `pdfplumber` returns `(cid:38)` codes
+    on pages 1, 2 and 10, and `pdftotext` returns shifted characters. `tesseract` on the cover
+    image reads "FOR THE PERIOD ENDING SEPTEMBER 30, 2026". The other 20 covers print their
+    `PERIOD ENDING` phrase as text, each with the expected quarter end, and the 21 files have
+    78, 78, 79, 79, 78, 77, 74, 73, 74, 74, 74, 74, 98, 96, 90, 88, 92, 95, 94, 92 and 92
+    pages (`pdfinfo`).
 
 The copies seen, by edition. This is not the inventory. No one has checked it by hand, and the
 City's file for an edition may differ from the copy.
@@ -143,17 +154,18 @@ The City's files, as a browser read them on November 23, 2026 (fact 12). The 21 
 | C5 | Fetching the same listing again adds nothing | S3-D | `test_fetching_the_same_listing_again_adds_nothing` in `packages/datadesk/tests/shell/test_fetch_command.py` |
 
 The tests of C1 to C3 read the index file and the inventory file from the checkout. The test
-file holds 21 edition ids as its own list: the 20 quarter ends from September 30, 2021 to June
-30, 2026, and FY2027 Q1 (answer 2). C1 requires one inventory row and an index line for each
-id, so an edition that is missing from both files fails. C2 and C3 compare pairs. Each row's
+file holds 20 edition ids as its own list, the quarter ends from September 30, 2021 to June 30,
+2026. FY2027 Q1 is not among them at step 3 (fact 14, open question D). C1 requires one
+inventory row and an index line for each id, so an edition that is missing from both files
+fails. C2 and C3 compare pairs. Each row's
 `(edition, sha256)` must be on exactly one index line, as a version of that edition. They do
 not ask for the current version, because one edition can have several versions (design line
 3483) and a later step may index a revision.
 
-S3-E shows three changes failing, each in its pull request: the shas of FY2022 Q1 and Q2
-swapped in the index, one quarter removed from both files, and FY2027 Q1 removed from both
-files. It also prints a run that compares the two files as multisets of pairs and finds them
-equal, so the index holds no line beyond the 21. That equality is a run at S3-E and not a
+S3-E shows two changes failing, each in its pull request: the shas of FY2022 Q1 and Q2
+swapped in the index, and one quarter removed from both files. It also prints a run that
+compares the two files as multisets of pairs and finds them equal, so the index holds no line
+beyond the 20. That equality is a run at S3-E and not a
 lasting test, because a later step may add a version.
 
 The index comes from `datadesk`. The inventory's `sha256` comes from `shasum` of a file that a
@@ -239,7 +251,8 @@ pull request that builds a shape records it in `docs/design.md` and in
    needs a note. QCASH-Q07 is about a cash page, and the cover of the owner's whole FY2014 Q2
    report prints December 31, 2013 (`pdftoppm` and `tesseract` on `FY14_Q2.pdf`). So unit tests
    alone prove the note path here, and a real note needs a page 1 mismatch on an archived sha.
-   A cover among the 21 that fails stops S3-E for the owner.
+   A cover among the 20 that fails stops S3-E for the owner. The cover of FY2027 Q1 fails in
+   a known way (fact 14), so `plan_fetch` rejects that report and stores nothing for it.
 9. **One store for each bucket.** R2 cannot make one object public (fact 7), so
    `ObjectStore.put` loses `public` and becomes `put(key, data, condition)`. `Deps` holds a
    store bound to the archive bucket. A later step adds a store for each bucket it needs. The
@@ -301,7 +314,7 @@ Builds on S3-A. `feat(datadesk): read the QCMR listing`.
   `admin.phila.gov` becomes `www.phila.gov` (QCASH-Q04). The edition comes from the title and
   never from the URL, so `...March-30-2026R.pdf` under its March 31 title is FY2026 Q3.
   `plan_watch` asks for one fetch for each listed edition on an empty index and none when the
-  index holds every URL. S3-E proves the 21 on the feed it saves.
+  index holds every URL. S3-E runs the saved feed, with its 21 report links.
 - Proves, on changed copies of the feed: with a second attachment appended for one quarter,
   `plan_watch` asks for the last one alone, a test ported from the old `test_qcmr.py:165`. A
   report title dated March 30, 2026 gives a finding and no fetch.
@@ -357,14 +370,16 @@ Builds on S3-C. `feat(datadesk): store reports in R2 and run fetch`.
   with a message (design 11.1). The owner of S3-D runs it against MinIO in Docker and records
   the run in the pull request. No test and no session sends the City a request (fact 11).
 
-### S3-E, `step-03/e-archive`: the 21 reports
+### S3-E, `step-03/e-archive`: the 20 reports
 
 Builds on S3-D. `feat(datadesk): index the QCMR reports from FY2022`. It adds data and no code
 under `src/`.
 
 - Files: `src/datadesk/data/index.jsonl`, `docs/evidence/inventory/qcmr.tsv`,
   `tests/test_archive_inventory.py`, `docs/plan-notes.md`, `CLAUDE.md`.
-- Before the runs, the session makes the saved folder and checks it ("The saved folder").
+- Before the runs, the session checks the saved folder, which exists ("The saved folder").
+- The session adds the quirk of fact 14 to `docs/evidence/quirks.tsv`, to `coverage.tsv` and
+  to the dossier it belongs in.
 - Runs, each recorded in the pull request with its command and output:
   `datadesk fetch qcmr --saved <folder>`, twice. The session starts both, and neither sends
   the City a request. With the owner's go (open question B), the `ObjectStore` suite also runs
@@ -382,26 +397,33 @@ under `src/`.
 ## The saved folder
 
 The saved folder holds what the City serves, as a real browser saved it: the feed's body, the
-21 reports and `responses.tsv`. It is on the owner's machine and outside git. The proposed path
-is `~/DataProjects/phillyledger-held/qcmr-city`.
+21 reports and `responses.tsv`. It is `~/DataProjects/phillyledger-held/qcmr-city`, on the
+owner's machine and outside git. The planning session made it on November 23, 2026, after the
+owner asked for the fetch through a real browser and connected Chrome (fact 13).
 
-How it is made, in S3-E:
+How it was made:
 
-1. In a browser, on a page of `https://www.phila.gov`, the session fetches each of the 21 report
-   URLs of the feed and records the status, the byte count and the sha256 that the page
-   computes. This is the run of fact 12. A sha that differs from the second table above is a
-   new upload, and it goes to the owner.
-2. The session saves the feed's body first, then the 21 files, through Chrome into the folder.
-   This is untested, and it needs Chrome's Claude extension connected (fact 13). It tries one
-   report first. The owner asked for the agent to fetch (answer A), so a save by his hand is a
-   fallback that needs his agreement.
-3. `shasum -a 256` of each saved report must equal the sha256 that the page computed for its
-   URL. The session records the sha256 of the saved feed.
-4. The session writes `responses.tsv`. Its first row maps the feed's own URL,
-   `https://api.phila.gov/phila/document-finder/v1/151831`, to the saved body. The 21 report
-   rows are read from those same feed bytes, with the host `www.phila.gov` (QCASH-Q04). The
-   run of S3-E must end with 21 editions, no rejection, and no request for a report from
-   before FY2022.
+1. In a browser, on a page of `https://www.phila.gov`, the session fetched each of the 21
+   report URLs of the feed and recorded the status, the byte count and the sha256 that the
+   page computed (fact 12).
+2. In Chrome, on that origin, it clicked a link to each report URL, with a file name for the
+   download. It then opened the feed's URL and saved its body with one more click. Chrome
+   wrote the 22 files to `~/Downloads`, and the session moved them into the folder as
+   `feed.json` and `qcmr-<period end>.pdf`.
+3. `shasum -a 256` of each saved report equals the sha256 that the page computed for its URL.
+4. A short script wrote `responses.tsv`. Its first row maps the feed's own URL,
+   `https://api.phila.gov/phila/document-finder/v1/151831`, to `feed.json`. The 21 report rows
+   are read from those same feed bytes, with the host `www.phila.gov` (QCASH-Q04).
+
+What S3-E does with it:
+
+1. It hashes the 22 files again and compares the 21 reports with the second table above.
+2. It reads the City's 21 URLs in a browser again, as in fact 12. A sha that differs from the
+   saved file is a new upload, and it goes to the owner before any run.
+3. If a file is missing or has changed, the session saves it again through Chrome. The owner
+   asked for the agent to fetch (answer A), so a save by his hand needs his agreement.
+4. Its two runs must end with 20 editions, one rejection, and no request for a report from
+   before FY2022. The rejection is FY2027 Q1, for a cover with no readable phrase (fact 14).
 
 ## The inventory
 
@@ -410,9 +432,8 @@ How it is made, in S3-E:
 
 How it is made, in S3-E:
 
-1. Before any command runs, the session writes one row for each of the 20 editions and one for
-   FY2027 Q1 (answer 2), with `edition`, `url` and `browser_sha256` from step 1 of "The saved
-   folder".
+1. Before any command runs, the session writes one row for each of the 20 editions, with
+   `edition`, `url` and `browser_sha256` from the browser run of "The saved folder".
 2. For each row, `sha256` is `shasum -a 256` of the saved file, `bytes` its size, `pages`
    comes from `pdfinfo`, and `page1_period` is the `PERIOD ENDING` phrase from
    `pdftotext -f 1 -l 1`. None of this shares code with `datadesk`.
@@ -508,15 +529,15 @@ writes to the archive bucket, and no test reads the four variables above.
 
 1. **The City's server refuses a client that is not a browser** (facts 6 and 11). At step 3 no
    `datadesk` command sends the City a request. A real browser reads the City's files (fact
-   12). The open part is the save to disk (fact 13): S3-E tries one report through Chrome
-   first, and the owner saves the files by hand if that fails.
+   12). The save to disk through Chrome worked on November 23, 2026 (fact 13).
 2. **The owner's copies are not the City's current files** (fact 12, QPOS-Q32). None of the 14
    has the City's sha, so none is indexed (answer 5). A City file may also change between
    fact 12 and the save, and step 1 of "The saved folder" catches that.
 3. **Page 1 prints the period twice**, once in the phrase and once as a bare date
    (`FY22_Q1.pdf`). `confirm_period` reads the `PERIOD ENDING` phrase alone (QCASH-Q05,
    QOBL-Q04). pdfplumber may break the phrase across lines or put U+00A0 in it (QOBL-Q02), so
-   S3-C tests both, and S3-E runs the 21 real covers.
+   S3-C tests both, and S3-E runs the 21 real covers. The cover of FY2027 Q1 is known to
+   fail (fact 14).
 4. **A title, a cover and a URL can name different days** (fact 5, FY2026 Q3). The edition
    comes from the title. The old `reports_from_feed` mapped a title date by its month alone
    (`qcmr.py:145`), so a title dated March 30 read as Q3. Here such a title is a finding
@@ -526,7 +547,8 @@ writes to the archive bucket, and no test reads the four variables above.
    that `put` and `head` return must be the same string.
 6. **The feed fixture is a recorded response** from July 28, 2026, two reports short of the
    feed today. S3-B cuts it from the old repo's recording, so the tests of S3-B to S3-D prove
-   the rules on a real feed and not the count of 21. S3-E proves the 21 on the feed it saves.
+   the rules on a real feed and not the count of 21. S3-E runs the feed saved on November 23,
+   2026, with its 21 report links.
 7. **The import pin and the socket block.** `import json` fails the purity test and
    `from json import loads` passes with a pin (design 11.1). The MinIO test needs the
    `enable_socket` marker, and a test over TLS needs `import ssl` at the top of the root
@@ -553,7 +575,9 @@ What follows from each answer:
 
 1. The City then refused two plain values (fact 11), so this answer did not settle how the
    City's files arrive. Answer A below did.
-2. The catalog entry has no last period end. The inventory and the index hold 21 rows.
+2. The catalog entry has no last period end, so the feed's 21st report is fetched. Its cover
+   cannot be read (fact 14), so it is rejected and not indexed at step 3. Open question D asks
+   what he wants.
 3. "Setting up R2" gives the steps. His answer gives no go for the contract suite on R2, so
    open question B asks again.
 4. "The inventory" stands, with the three later details it names.
@@ -589,8 +613,8 @@ What follows from answer A:
   statement. No session has checked it.
 - Three things differ from what he was shown, after facts 12 and 13.
   `datadesk fetch qcmr --saved` reads the folder, where he was told `import-held` would. His
-  14 copies are not indexed, because none has the City's sha. The save through Chrome waits
-  on its extension.
+  14 copies are not indexed, because none has the City's sha. The save through Chrome was
+  done the same day (fact 13).
 
 ## Still open
 
@@ -602,9 +626,12 @@ first run writes absent keys and its second run writes nothing. The scratch run 
 that: a second create with other bytes must raise `PreconditionFailed` and leave the first
 bytes.
 
-**C. Chrome's Claude extension is not connected** (fact 13). Before S3-E the owner signs in to
-it in Chrome. If the save through Chrome then fails, the session asks him whether he will save
-the 22 files by hand.
+**D. What happens to FY2027 Q1?** He said yes to indexing it (answer 2). Its cover has no
+text a program can read (fact 14), so `confirm_period` cannot confirm its period, and the later
+steps cannot read its tables without OCR. The plan takes the choice that publishes nothing: at
+step 3 the fetch rejects it, the index holds the 20, and each run reports the rejection. It
+enters when a later step can read it, by OCR or by a note that records a person's reading of
+the cover. The other choice is to build that note at step 3. He has not seen this question.
 
 ## Codex review
 
@@ -668,3 +695,12 @@ above is revised for each. None is disputed.
 | 10 | The contracts of two local adapters could be skipped with the real halves | The plan's own text, and `ci.yml` runs on push and pull request alone | S3-D: both run in CI, and CI skips the MinIO half alone |
 | 11 | Two runs on R2 do not prove that `CreateOnly` refuses an overwrite | The plan's own text | "Still open" B: the claim is gone, and the scratch run is the proof |
 | 12 | `shasum` with no flag prints a SHA-1 | `shasum --help` on this machine | "The inventory" step 4: `shasum -a 256` under `set -o pipefail` |
+
+## Changes after the second review
+
+These came after the revision that answers the second review. Codex has not read them.
+
+- The owner connected Chrome, and the planning session saved the feed and the 21 reports. The
+  saved folder exists, and "The saved folder" says how it was made and what S3-E does with it.
+- FY2027 Q1 has no readable text (fact 14). At step 3 the fetch rejects it, and the tests of C1
+  to C3 hold the 20 editions of the check. Open question D asks the owner.
