@@ -1102,7 +1102,9 @@ class DocumentVersion:
     edition: EditionKey
     listed_at: str             # sortable: upload stamp or "<listing date>#<position>";
                                # document-finder: the 14-digit upload stamp in the URL path;
-                               # the latest of the stamps its urls were listed at
+                               # the latest of the stamps at which each of its urls joined the
+                               # line, so a URL the line already holds, listed again at a later
+                               # stamp, changes nothing
     urls: tuple[str, ...]      # every URL that served these bytes, canonical host
     title: str                 # listing title, verbatim
     printed_period: Period | None
@@ -2173,13 +2175,15 @@ def confirm_period(series: str, page1_text: str, expected: EditionKey,
     # returns. A printed period equal to expected.period is confirmed. Another one is confirmed
     # only by a PRINTED_PERIOD note on page 1 or on no page that quotes the words that print the
     # period. Page 1 holds the note's printed text, both compared with each run of whitespace
-    # made one space. The series reader reads that text alone as the very period page 1 prints,
-    # so a blank note, or one that quotes other words, clears nothing. The note's value is the
-    # printed end in ISO form. Then the printed period is returned. Otherwise it is
-    # period_mismatch (QOBL-Q06). No note clears a code the reader returns. The caller passes only the notes of
-    # the sha at hand. Readers for later steps: "MONTH OF <month>" plus one "FY YYYY" (MCITY-Q04
-    # to Q07), "Fiscal Year YYYY Collections" (BSALES-Q11), wage months and FY (WAGE-Q14),
-    # "Quarterly School Manager Report" and its period ending date (QSMR).
+    # made one space, with no word character right before it and none right after it, so a
+    # quote cut from inside a longer word such as SUBPERIOD clears nothing. The series reader
+    # reads that text alone as the very period page 1 prints, so a blank note, or one that
+    # quotes other words, clears nothing. The note's value is the printed end in ISO form. Then
+    # the printed period is returned. Otherwise it is period_mismatch (QOBL-Q06). No note clears
+    # a code the reader returns. The caller passes only the notes of the sha at hand. Readers
+    # for later steps: "MONTH OF <month>" plus one "FY YYYY" (MCITY-Q04 to Q07), "Fiscal Year
+    # YYYY Collections" (BSALES-Q11), wage months and FY (WAGE-Q14), "Quarterly School Manager
+    # Report" and its period ending date (QSMR).
 def plan_fetch(fetched: Sequence[Fetched], index: ArchiveIndex,
                notes: Sequence[EditionNote]) -> FetchPlan: ...
     # a fold over fetched in input order. A working index starts as index and grows by
@@ -2211,10 +2215,11 @@ def plan_fetch(fetched: Sequence[Fetched], index: ArchiveIndex,
 def parse_index(jsonl: str) -> ArchiveIndex: ...         # splits on "\n" alone, then sorts
 def render_index(index: ArchiveIndex) -> str: ...        # sorted, one JSON object per line
 def add_versions(index: ArchiveIndex, new: Sequence[DocumentVersion]) -> ArchiveIndex | Finding: ...
-    # a new version whose sha and edition are indexed adds its URLs to that line, after the
-    # URLs it holds. When a URL joins, the line takes the later of its own listed_at and the
-    # new version's, and nothing else changes. A version with no new URL changes nothing. The
-    # result must pass index_problem, so a sha under another edition is a content_alias finding
+    # a new version whose sha and edition are indexed adds each URL that line lacks, after the
+    # URLs it holds. When a URL joins, the line holds each URL once and takes the later of its
+    # own listed_at and the new version's, and nothing else changes. A version with no URL the
+    # line lacks leaves the line exactly as it was, its URLs and listed_at included. The result
+    # must pass index_problem, so a sha under another edition is a content_alias finding
 
 
 # datadesk/core/records.py

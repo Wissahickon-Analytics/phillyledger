@@ -265,3 +265,36 @@ design leaves open" in `docs/plans/step-03.md`.
   reports, read with `pdftotext -f 1 -l 1 -layout`, gives the same result before and after the
   change. The 20 reports from FY2022 Q1 to FY2026 Q4 read as their own quarters, and FY2027 Q1
   is `period_unreadable`. Design section 3.2.
+- **Step 3: a note's quote must stand on page 1 as whole words** (November 24, 2026, S3-C
+  second fix round). The S3-C fix round let a note clear a mismatch when page 1 held its
+  printed text anywhere and the series reader read that text alone as the printed period. Read
+  alone, a quote cut from inside a longer word begins at a word boundary the page lacks. So a
+  December cover with `SUBPERIOD ENDING DECEMBER 31 2021` added, and a note that quotes the
+  text after `SUB`, was filed under September (Codex read of the S3-C fix round, finding 1).
+  The quote must now occur on page 1 with no word character right before it and none right
+  after it. `PURE_IMPORTS["datadesk.core"]` in `tests/test_purity.py` pins the new pair
+  `re.escape`. With the plain substring test back, both cases of
+  `test_a_note_quoted_from_inside_a_longer_word_leaves_the_mismatch` fail, and each case fails
+  with its own half of the boundary dropped. The `PERIOD ENDING` caption of each of the 20
+  readable saved City covers, quoted as printed, still meets the rule. Design section 3.2.
+- **Step 3: `listed_at` is the latest stamp at which one of its URLs joined the line**
+  (November 24, 2026, S3-C second fix round). The S3-C fix round called the field "the latest
+  of the stamps its urls were listed at", and said that `add_versions` changes nothing for a
+  version with no new URL. Both cannot hold when one URL is listed on two dates under a
+  `<listing date>#<position>` stamp (Codex read of the S3-C fix round, finding 2). The field
+  now has the meaning the code already had: the latest of the stamps at which each of its URLs
+  joined the line. A URL the line already holds, listed again at a later stamp, changes
+  nothing. So new bytes listed in March still supersede a November line whose URL was listed
+  again in June. On the document-finder feed the stamp is in the URL, so a later listing is
+  always a new URL. No code changed.
+  `test_add_versions_adds_nothing_for_an_indexed_sha_at_an_indexed_url` pins the meaning, and
+  fails when the line takes the later stamp with no URL joining. Design sections 2.2 and 3.2.
+- **Step 3: a URL joins a line only when the line lacks it** (November 24, 2026, S3-C second
+  fix round). The S3-C fix round had `add_versions` decide that a URL joined when the merged
+  URLs differed from the held ones. Dropping a URL the held line repeats also makes them
+  differ, so a version at a URL the line already held gave the line its later `listed_at`
+  (Codex read of the S3-C fix round, finding 3). A URL now joins only when the held line lacks
+  it, and a version with no such URL leaves the line exactly as it was, its URLs and
+  `listed_at` included. With the tuple comparison back,
+  `test_add_versions_leaves_a_line_that_repeats_a_url_as_it_was_when_no_url_joins` fails.
+  Design section 3.2.
