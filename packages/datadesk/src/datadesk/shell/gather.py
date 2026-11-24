@@ -17,8 +17,10 @@ class RepoSnapshot:
 
 
 def gather_repo(root: Path) -> RepoSnapshot | tuple[Finding, ...]:
-    catalog = load_catalog((root / CATALOG_PATH).read_text(encoding="utf-8"))
-    index = _read_index((root / INDEX_PATH).read_text(encoding="utf-8"))
+    catalog_text = _read(root, CATALOG_PATH, "catalog_unreadable")
+    index_text = _read(root, INDEX_PATH, "index_unreadable")
+    catalog = load_catalog(catalog_text) if isinstance(catalog_text, str) else (catalog_text,)
+    index = _read_index(index_text) if isinstance(index_text, str) else index_text
     match catalog, index:
         case SourceCatalog(), ArchiveIndex():
             return RepoSnapshot(catalog, index)
@@ -30,9 +32,19 @@ def gather_repo(root: Path) -> RepoSnapshot | tuple[Finding, ...]:
             return catalog
 
 
+def _read(root: Path, path: str, code: str) -> str | Finding:
+    try:
+        return (root / path).read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as error:
+        return _unreadable(code, path, error)
+
+
 def _read_index(text: str) -> ArchiveIndex | Finding:
     try:
         return parse_index(text)
     except (KeyError, TypeError, ValueError) as error:
-        message = f"{type(error).__name__}: {error}"
-        return Finding(Severity.BLOCK, "index_unreadable", INDEX_PATH, message)
+        return _unreadable("index_unreadable", INDEX_PATH, error)
+
+
+def _unreadable(code: str, path: str, error: Exception) -> Finding:
+    return Finding(Severity.BLOCK, code, path, f"{type(error).__name__}: {error}")

@@ -294,6 +294,27 @@ def test_a_checkout_the_command_cannot_read_stops_it_before_any_request(
     assert (root / INDEX_FILE).read_text() == index
 
 
+@pytest.mark.parametrize(
+    "path", [pytest.param(CATALOG_FILE, id="catalog"), pytest.param(INDEX_FILE, id="index")]
+)
+@pytest.mark.parametrize(
+    "body", [pytest.param(None, id="absent"), pytest.param(b"\xff\n", id="not_utf_8")]
+)
+def test_a_checkout_file_the_command_cannot_read_or_decode_stops_it_before_any_request(
+    path: str, body: bytes | None, tmp_path: Path
+) -> None:
+    root = checkout(tmp_path)
+    if body is None:
+        (root / path).unlink()
+    else:
+        (root / path).write_bytes(body)
+    listed = reports(FEED)
+    http, store = fake_http(FEED, listed), DictStore()
+    with pytest.raises(FetchStopped, match=path):
+        run(http, store, listed, root)
+    assert (http.calls, store.puts) == ([], [])
+
+
 def test_an_index_that_breaks_its_own_rules_stops_the_command(tmp_path: Path) -> None:
     listed = reports(FEED)
     one, other = listed[0], listed[1]
@@ -313,6 +334,7 @@ def test_an_index_that_breaks_its_own_rules_stops_the_command(tmp_path: Path) ->
     "body",
     [
         pytest.param(b"not json", id="a_listing_that_is_not_json"),
+        pytest.param(b"\xff[]", id="a_listing_that_is_not_utf_8"),
         pytest.param(
             feed_bytes([c for c in FEED if c["title"] != CATEGORY]),
             id="a_listing_without_the_category",
@@ -464,6 +486,40 @@ def test_main_with_a_saved_row_that_names_a_missing_file_stops_before_any_put(
     assert len(err.splitlines()) == 1
     assert store.puts == []
     assert (root / INDEX_FILE).read_text() == ""
+
+
+@pytest.mark.parametrize(
+    "broken",
+    [
+        "a_responses_file_that_is_not_utf_8",
+        "a_listing_that_is_not_utf_8",
+        "a_working_directory_that_is_not_a_checkout",
+    ],
+)
+def test_main_prints_one_line_for_an_input_it_cannot_read(
+    broken: str,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    root = checkout(tmp_path / "checkout")
+    folder = saved_folder(tmp_path / "saved", FEED, [])
+    match broken:
+        case "a_responses_file_that_is_not_utf_8":
+            (folder / "responses.tsv").write_bytes(b"url\tfile\n\xff\tfeed.json\n")
+        case "a_listing_that_is_not_utf_8":
+            (folder / "feed.json").write_bytes(b"\xff[]")
+        case "a_working_directory_that_is_not_a_checkout":
+            root = tmp_path / "elsewhere"
+            root.mkdir()
+    store = DictStore()
+    monkeypatch.setattr(cli, "s3_store", lambda settings: store)
+    for name, value in ENVIRON.items():
+        monkeypatch.setenv(name, value)
+    monkeypatch.chdir(root)
+    assert main(["fetch", "qcmr", "--saved", str(folder)]) == 1
+    out, err = capsys.readouterr()
+    assert (out, len(err.splitlines()), store.puts) == ("", 1, [])
 
 
 def test_main_requires_a_saved_folder(capsys: pytest.CaptureFixture[str]) -> None:

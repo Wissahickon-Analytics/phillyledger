@@ -2504,10 +2504,12 @@ The shell reads repository files once. `gather_repo(root)` reads each file's tex
 the checkout and passes it to a pure loader, and the values make a `RepoSnapshot`. At step 3 the
 snapshot holds `catalog: SourceCatalog` and `index: ArchiveIndex`, from `CATALOG_PATH` in
 `gather.py` and `INDEX_PATH` in `core/fetch.py`, and `gather_repo` returns
-`RepoSnapshot | tuple[Finding, ...]`. The findings are the catalog's, and one BLOCK finding
-`index_unreadable` when `parse_index` raises on the index file. Later steps add the TOML records,
-row schemas, the registry and the code tree sha (section 10). An executor then holds the snapshot
-and the plan, and passes both to pure functions only (R3 purity finding).
+`RepoSnapshot | tuple[Finding, ...]`. The findings are the catalog's, the BLOCK finding
+`catalog_unreadable` when the catalog file cannot be read or is not UTF-8, and the BLOCK finding
+`index_unreadable` when the index file cannot be read, is not UTF-8, or makes `parse_index` raise.
+Later steps add the TOML records, row schemas, the registry and the code tree sha (section 10). An
+executor then holds the snapshot and the plan, and passes both to pure functions only (R3 purity
+finding).
 
 `load_settings(environ)` reads `DATADESK_R2_ENDPOINT_URL`, `DATADESK_R2_ACCESS_KEY_ID`,
 `DATADESK_R2_SECRET_ACCESS_KEY` and `DATADESK_R2_ARCHIVE_BUCKET`, and no other variable. It returns
@@ -2613,8 +2615,9 @@ arrives at step 5.
 `run_fetch` returns the `FetchPlan` and calls no `GitHost`. `fetch_command` writes the plan's files
 into the checkout after every put, so a run that stops leaves the index file as it was, and the
 session opens the pull request. Step 13 builds `GitHost` and its adapter. Catalog or index
-findings, a source the catalog lacks, a listing status other than 200 and a listing finding each
-raise `FetchStopped` before any report is fetched, so nothing is stored and no file is written.
+findings, a source the catalog lacks, a listing status other than 200, a listing body that is not
+UTF-8 and a listing finding each raise `FetchStopped` before any report is fetched, so nothing is
+stored and no file is written.
 
 `main(argv)` is the `datadesk` script, `datadesk fetch <source> --saved <folder>`. At step 3
 `--saved` is required. The City refuses a client that is not a browser (step 3 plan, facts 6 and
@@ -2628,10 +2631,11 @@ stderr and returns 1.
 
 The saved folder holds the saved files and `responses.tsv`, whose first row is the header
 `url<TAB>file` and whose other rows each pair a URL with a file name. `SavedHttp(folder)` reads it
-when built. It refuses a file with another header, a row that is not one URL and one file name, a
-URL that does not start with `https://` or `http://` or that holds whitespace, a URL listed twice,
-and a name that is not a file directly in the folder or that is a symbolic link. `get` answers a
-listed URL with status 200 and the bytes of its file, and any other URL with 404.
+when built. It refuses a file it cannot read or that is not UTF-8, a file with another header, a
+row that is not one URL and one file name, a URL that does not start with `https://` or `http://`
+or that holds whitespace, a URL listed twice, and a name that is not a file directly in the folder
+or that is a symbolic link. `get` answers a listed URL with status 200 and the bytes of its file,
+and any other URL with 404.
 
 ### 4.3 `ocr`
 
@@ -4046,10 +4050,13 @@ Findings are collected per line (change 19). A page-level failure stops its tabl
 nothing below it can be read. A line-level problem becomes a finding and the parse continues, so
 one run shows every problem in an edition.
 
-The shell is the only place that catches exceptions, and only effect exceptions. A `ValueError`
-from the core propagates and fails the command, because it is a bug. `gather_repo` is the one
-exception. `parse_index` raises on an index file it cannot read, and `gather_repo` returns that as
-the BLOCK finding `index_unreadable`, because the file is input from the checkout (section 4).
+The shell is the only place that catches exceptions, and only effect exceptions. Reading text is
+such an effect, so the shell also catches the `UnicodeDecodeError` of a checkout file, a saved
+`responses.tsv` or a listing body that is not UTF-8, and turns it into a finding or a stop. A
+`ValueError` from the core propagates and fails the command, because it is a bug. `gather_repo` is
+the one place the shell catches a core exception. `parse_index` raises on an index file it cannot
+read, and `gather_repo` returns that as the BLOCK finding `index_unreadable`, because the file is
+input from the checkout (section 4).
 
 ## 10. Caching and determinism
 

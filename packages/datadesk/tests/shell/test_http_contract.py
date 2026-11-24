@@ -108,3 +108,10 @@ def test_saved_http_refuses_a_folder_it_cannot_trust(
 def test_saved_http_refuses_a_folder_with_no_responses_file(tmp_path: Path) -> None:
     with pytest.raises(SavedFolderError, match=r"responses\.tsv"):
         SavedHttp(tmp_path)
+
+
+def test_saved_http_refuses_a_responses_file_that_is_not_utf_8(tmp_path: Path) -> None:
+    (tmp_path / "feed.json").write_bytes(b"{}")
+    (tmp_path / "responses.tsv").write_bytes(b"url\tfile\n\xff\tfeed.json\n")
+    with pytest.raises(SavedFolderError, match=r"responses\.tsv"):
+        SavedHttp(tmp_path)

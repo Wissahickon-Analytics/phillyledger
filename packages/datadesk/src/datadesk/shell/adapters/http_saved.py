@@ -30,7 +30,7 @@ class SavedHttp:
 def _read_responses(folder: Path) -> dict[str, str]:
     try:
         lines = (folder / RESPONSES).read_text(encoding="utf-8").splitlines()
-    except OSError as error:
+    except (OSError, UnicodeDecodeError) as error:
         raise SavedFolderError(f"cannot read {RESPONSES} in {folder}: {error}") from error
     if not lines or lines[0] != HEADER:
         raise SavedFolderError(f"{RESPONSES} in {folder} does not start with the header url, file")

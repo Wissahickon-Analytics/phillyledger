@@ -379,3 +379,14 @@ design leaves open" in `docs/plans/step-03.md`.
   index, not text. With only `OSError` caught, the `an_index_that_is_not_json` case of
   `test_a_checkout_the_command_cannot_read_stops_it_before_any_request` fails. Design sections 1.4,
   4 and 9.
+- **Step 3: input the shell cannot read stops the command with one line** (November 24, 2026,
+  S3-D fix round). A checkout file that is absent or not UTF-8, a saved `responses.tsv` that is
+  not UTF-8 and a listing body that is not UTF-8 escaped as tracebacks (Codex review of S3-D,
+  finding 7). Each now stops at the boundary that reads it: `gather_repo` returns
+  `catalog_unreadable` or `index_unreadable`, `SavedHttp` raises `SavedFolderError`, and
+  `fetch_command` raises `FetchStopped`. Section 9 now counts reading text as an effect. With the
+  `UnicodeDecodeError` left uncaught in `gather_repo`, the `not_utf_8` cases of
+  `test_a_checkout_file_the_command_cannot_read_or_decode_stops_it_before_any_request` fail, and
+  left uncaught in `SavedHttp` or `fetch_command`, a case of
+  `test_main_prints_one_line_for_an_input_it_cannot_read` fails. Design sections 1.4, 4, 4.2 and
+  9.

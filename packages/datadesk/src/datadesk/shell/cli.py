@@ -42,7 +42,11 @@ def fetch_command(deps: Deps, root: Path, source: str, today: date) -> FetchRun:
     response = retried(partial(deps.http.get, entry.listing_url))
     if response.status != 200:
         raise FetchStopped(f"the listing {entry.listing_url} answered {response.status}")
-    listing = parse_listing(entry, entry.listing_url, response.text)
+    try:
+        text = response.text
+    except UnicodeDecodeError as error:
+        raise FetchStopped(f"the listing {entry.listing_url} is not UTF-8: {error}") from None
+    listing = parse_listing(entry, entry.listing_url, text)
     if isinstance(listing, Finding):
         raise FetchStopped(_findings("the listing cannot be read", (listing,)))
     watch = plan_watch(repo.catalog, [listing], repo.index, today)
