@@ -299,9 +299,9 @@ Builds on S3-A. `feat(datadesk): read the QCMR listing`.
   report before the floor gets no request, and the first one after it gets one. A link of the
   other category is never listed. "Manager's" and "Managers" read the same. The host
   `admin.phila.gov` becomes `www.phila.gov` (QCASH-Q04). The edition comes from the title and
-  never from the URL, so `...March-30-2026R.pdf` under its March 31 title is FY2026 Q3. `plan_watch` asks for one fetch for each listed edition on an
-  empty index and none when the index holds every URL. S3-E proves the 21 on the feed it
-  saves.
+  never from the URL, so `...March-30-2026R.pdf` under its March 31 title is FY2026 Q3.
+  `plan_watch` asks for one fetch for each listed edition on an empty index and none when the
+  index holds every URL. S3-E proves the 21 on the feed it saves.
 - Proves, on changed copies of the feed: with a second attachment appended for one quarter,
   `plan_watch` asks for the last one alone, a test ported from the old `test_qcmr.py:165`. A
   report title dated March 30, 2026 gives a finding and no fetch.
