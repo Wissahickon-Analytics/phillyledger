@@ -178,6 +178,35 @@ def test_a_feed_the_parser_cannot_read_is_a_finding(text: str, message: str) -> 
     assert message in read.message
 
 
+def with_first_document(change: dict[str, Any]) -> str:
+    categories = feed()
+    qcmr_documents(categories)[0].update(change)
+    return dumps(categories)
+
+
+def assert_unreadable(text: str) -> None:
+    read = parse_listing(QCMR, QCMR.listing_url, text)
+    assert isinstance(read, Finding)
+    assert (read.severity, read.code, read.subject) == (
+        Severity.BLOCK,
+        "listing_unreadable",
+        "qcmr",
+    )
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        pytest.param({"title": ""}, id="an_empty_title"),
+        pytest.param({"title": " \t"}, id="a_blank_title"),
+        pytest.param({"url": ""}, id="an_empty_url"),
+        pytest.param({"url": " "}, id="a_blank_url"),
+    ],
+)
+def test_a_blank_title_or_url_makes_the_feed_unreadable(change: dict[str, str]) -> None:
+    assert_unreadable(with_first_document(change))
+
+
 def test_a_listed_link_has_an_edition_or_a_skip_reason() -> None:
     link = listing().links[0]
     with pytest.raises(ValueError, match="edition or a skip reason"):

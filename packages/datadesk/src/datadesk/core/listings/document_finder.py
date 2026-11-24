@@ -29,7 +29,7 @@ def parse(source: SourceEntry, text: str) -> tuple[PageLink, ...] | Finding:
     links: list[PageLink] = []
     for position, document in enumerate(document for documents in groups for document in documents):
         match document:
-            case {"title": str() as title, "url": str() as url}:
+            case {"title": str() as title, "url": str() as url} if title.strip():
                 stamp = UPLOAD_STAMP.search(url)
                 if stamp is None:
                     return _unreadable(source, f"{url} has no upload stamp in its path")
