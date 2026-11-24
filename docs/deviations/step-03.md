@@ -365,8 +365,12 @@ design leaves open" in `docs/plans/step-03.md`.
   edition. With the listing's status left unchecked,
   `test_a_saved_folder_without_the_feed_s_row_stops_the_command_before_any_put` fails. With the
   bare-name check on a saved row dropped, the `a_file_outside_the_folder` case of
-  `test_saved_http_refuses_a_folder_it_cannot_trust` fails. Design sections 1.4, 4.2, 12.3 and
-  12.4.
+  `test_saved_http_refuses_a_folder_it_cannot_trust` fails. A row's URL must start with `https://`
+  or `http://` and hold no whitespace, and its file must not be a symbolic link, because
+  `Path.is_file` follows a link out of the folder (Codex review of S3-D, finding 9). With the link
+  check dropped, the `a_link_to_a_file_outside_the_folder` case fails, and with either half of the
+  URL rule dropped, `a_url_with_no_scheme` or `a_url_with_a_space` fails. Design sections 1.4,
+  4.2, 12.3 and 12.4.
 - **Step 3: an index file that `parse_index` cannot read is a finding** (November 24, 2026, S3-D).
   Section 9 lets the shell catch only effect exceptions, and `parse_index` raises `KeyError`,
   `TypeError` or `ValueError` on a file it cannot read. The index file is input from the checkout,

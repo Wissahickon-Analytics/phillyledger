@@ -64,6 +64,17 @@ def test_any_other_url_gives_404(make: MakeHttp, tmp_path: Path) -> None:
             id="a_row_with_three_fields",
         ),
         pytest.param("url\tfile\n\tfeed.json\n", {"feed.json"}, id="a_row_with_no_url"),
+        pytest.param(
+            "url\tfile\nnot a URL\tfeed.json\n", {"feed.json"}, id="a_row_that_is_not_a_url"
+        ),
+        pytest.param(
+            "url\tfile\napi.phila.gov/feed\tfeed.json\n", {"feed.json"}, id="a_url_with_no_scheme"
+        ),
+        pytest.param(
+            "url\tfile\nhttps://www.phila.gov/a report.pdf\tfeed.json\n",
+            {"feed.json"},
+            id="a_url_with_a_space",
+        ),
         pytest.param(f"url\tfile\n{FEED_URL}\t\n", {}, id="a_row_with_no_file"),
         pytest.param(
             f"url\tfile\n{FEED_URL}\tfeed.json\n{FEED_URL}\tother.json\n",
@@ -75,6 +86,9 @@ def test_any_other_url_gives_404(make: MakeHttp, tmp_path: Path) -> None:
         pytest.param(
             f"url\tfile\n{FEED_URL}\t../outside.json\n", set(), id="a_file_outside_the_folder"
         ),
+        pytest.param(
+            f"url\tfile\n{FEED_URL}\tlink.json\n", set(), id="a_link_to_a_file_outside_the_folder"
+        ),
     ],
 )
 def test_saved_http_refuses_a_folder_it_cannot_trust(
@@ -83,6 +97,7 @@ def test_saved_http_refuses_a_folder_it_cannot_trust(
     (tmp_path / "outside.json").write_bytes(b"{}")
     folder = tmp_path / "saved"
     (folder / "sub").mkdir(parents=True)
+    (folder / "link.json").symlink_to(tmp_path / "outside.json")
     for name in files:
         (folder / name).write_bytes(b"{}")
     (folder / "responses.tsv").write_text(text)

@@ -2628,10 +2628,10 @@ stderr and returns 1.
 
 The saved folder holds the saved files and `responses.tsv`, whose first row is the header
 `url<TAB>file` and whose other rows each pair a URL with a file name. `SavedHttp(folder)` reads it
-when built. It refuses a file with another
-header, a row that is not one URL and one file name, a URL listed twice, and a name that is not a
-file directly in the folder. `get` answers a listed URL with status 200 and the bytes of its file,
-and any other URL with 404.
+when built. It refuses a file with another header, a row that is not one URL and one file name, a
+URL that does not start with `https://` or `http://` or that holds whitespace, a URL listed twice,
+and a name that is not a file directly in the folder or that is a symbolic link. `get` answers a
+listed URL with status 200 and the bytes of its file, and any other URL with 404.
 
 ### 4.3 `ocr`
 

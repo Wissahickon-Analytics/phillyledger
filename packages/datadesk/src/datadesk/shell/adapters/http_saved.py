@@ -1,9 +1,11 @@
+import re
 from pathlib import Path
 
 from datadesk.shell.ports import EffectError, HttpResponse
 
 RESPONSES = "responses.tsv"
 HEADER = "url\tfile"
+URL = re.compile(r"https?://\S+")
 
 
 class SavedFolderError(Exception):
@@ -38,9 +40,12 @@ def _read_responses(folder: Path) -> dict[str, str]:
         if len(fields) != 2 or not all(fields):
             raise SavedFolderError(f"{RESPONSES} line {number} is not a url and a file")
         url, name = fields
+        if not URL.fullmatch(url):
+            raise SavedFolderError(f"{RESPONSES} line {number} lists {url!r}, not a URL")
         if url in files:
             raise SavedFolderError(f"{RESPONSES} line {number} lists {url} again")
-        if Path(name).name != name or not (folder / name).is_file():
+        path = folder / name
+        if Path(name).name != name or path.is_symlink() or not path.is_file():
             raise SavedFolderError(
                 f"{RESPONSES} line {number} names {name}, not a file in {folder}"
             )
