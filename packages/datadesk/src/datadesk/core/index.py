@@ -34,7 +34,9 @@ def add_versions(index: ArchiveIndex, new: Sequence[DocumentVersion]) -> Archive
     for version in new:
         key = (version.sha256, version.edition)
         held = lines.get(key, version)
-        lines[key] = replace(held, urls=tuple(dict.fromkeys(held.urls + version.urls)))
+        urls = tuple(dict.fromkeys(held.urls + version.urls))
+        listed_at = max(held.listed_at, version.listed_at) if urls != held.urls else held.listed_at
+        lines[key] = replace(held, urls=urls, listed_at=listed_at)
     versions = sort_versions(lines.values())
     return index_problem(versions) or ArchiveIndex(versions)
 

@@ -125,7 +125,9 @@ def _decide(
             return Rejection(request, "content_alias")
         if held != current:
             return Rejection(request, "superseded_sha_relisted")
-        return None if request.url in held.urls else replace(held, urls=(request.url,))
+        if request.url in held.urls:
+            return None
+        return replace(held, urls=(request.url,), listed_at=request.listed_at)
     own_notes = [note for note in notes if note.doc_sha256 == fetch.sha256]
     period = confirm_period(edition.series, fetch.page1_text or "", edition, own_notes)
     if isinstance(period, Finding):

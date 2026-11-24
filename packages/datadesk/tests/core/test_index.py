@@ -138,7 +138,7 @@ def test_add_versions_merges_a_new_url_into_the_line_of_the_same_sha_and_edition
         urls=(Q4_REPOST_URL, Q4_URL),
         title="Quarterly City Manager's Report - June 30, 2026",
     )
-    merged = replace(Q4, urls=(Q4_URL, Q4_REPOST_URL))
+    merged = replace(Q4, urls=(Q4_URL, Q4_REPOST_URL), listed_at="20261116120000")
     assert add_versions(ArchiveIndex((Q3, Q4)), [relisted]) == ArchiveIndex((Q3, merged))
 
 

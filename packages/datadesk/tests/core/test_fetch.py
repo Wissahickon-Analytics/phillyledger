@@ -319,10 +319,26 @@ def test_plan_fetch_adds_nothing_for_an_indexed_sha() -> None:
 def test_the_current_sha_at_a_new_url_adds_the_url_and_stores_nothing() -> None:
     plan = plan_fetch([ok(Q1_REPOST, Q1_SHA)], ArchiveIndex((Q1,)), ())
     assert plan.store == ()
-    assert plan.index_add == (replace(Q1, urls=(Q1_REPOST_URL,)),)
+    assert plan.index_add == (replace(Q1, urls=(Q1_REPOST_URL,), listed_at="20220301090000"),)
     assert plan.rejections == ()
-    merged = replace(Q1, urls=(Q1_URL, Q1_REPOST_URL))
+    merged = replace(Q1, urls=(Q1_URL, Q1_REPOST_URL), listed_at="20220301090000")
     assert plan.pull_request.files == ((INDEX_FILE, render_index(ArchiveIndex((merged,)))),)
+
+
+def test_the_current_sha_at_a_new_url_listed_earlier_keeps_the_later_stamp() -> None:
+    plan = plan_fetch([ok(Q1_EARLY, Q1_SHA)], ArchiveIndex((Q1,)), ())
+    assert plan.index_add == (replace(Q1, urls=(Q1_EARLY_URL,), listed_at="20211101090000"),)
+    merged = replace(Q1, urls=(Q1_URL, Q1_EARLY_URL))
+    assert plan.pull_request.files == ((INDEX_FILE, render_index(ArchiveIndex((merged,)))),)
+
+
+def test_older_bytes_after_a_repost_of_the_current_sha_are_listed_before_current() -> None:
+    plan = plan_fetch([ok(Q1_THIRD, Q1_SHA), ok(Q1_REPOST, NEW_Q1_SHA)], ArchiveIndex((Q1,)), ())
+    assert plan.rejections == (Rejection(Q1_REPOST, "listed_before_current"),)
+    assert plan.store == ()
+    assert plan.index_add == (replace(Q1, urls=(Q1_THIRD_URL,), listed_at="20220601090000"),)
+    june = replace(Q1, urls=(Q1_URL, Q1_THIRD_URL), listed_at="20220601090000")
+    assert plan.pull_request.files == ((INDEX_FILE, render_index(ArchiveIndex((june,)))),)
 
 
 def test_a_superseded_sha_listed_again_is_rejected_and_the_newer_bytes_stay_current() -> None:
