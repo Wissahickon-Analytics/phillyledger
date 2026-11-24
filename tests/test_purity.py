@@ -39,7 +39,6 @@ PURE_IMPORTS: dict[str, tuple[str, ...]] = {
         "types.MappingProxyType",
         "typing.Any",
         "typing.Never",
-        "urllib.parse.urlsplit",
     ),
 }
 INSIDE = {

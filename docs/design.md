@@ -3965,7 +3965,7 @@ outside the list changes the list and the pin together.
 | Package | Outside modules it imports from |
 |---|---|
 | `checkedtables` | `collections.abc`, `dataclasses`, `decimal`, `enum`, `re`, `statistics`, `typing` |
-| `datadesk.core` | `collections`, `collections.abc`, `dataclasses`, `datetime`, `enum`, `hashlib`, `json`, `re`, `tomllib`, `types`, `typing`, `urllib.parse` |
+| `datadesk.core` | `collections`, `collections.abc`, `dataclasses`, `datetime`, `enum`, `hashlib`, `json`, `re`, `tomllib`, `types`, `typing` |
 
 ### 11.2 Property tests
 

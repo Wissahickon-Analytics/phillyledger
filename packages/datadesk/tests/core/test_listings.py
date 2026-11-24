@@ -216,6 +216,7 @@ def test_a_blank_title_or_url_makes_the_feed_unreadable(change: dict[str, str]) 
         pytest.param(
             "https://admin.phila.gov/report.pdf#/media/20260515154446/", id="in_the_fragment"
         ),
+        pytest.param("https://media/20260515154446/report.pdf", id="in_the_host"),
     ],
 )
 def test_an_upload_stamp_outside_the_url_path_makes_the_feed_unreadable(url: str) -> None:

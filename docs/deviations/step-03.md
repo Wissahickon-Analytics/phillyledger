@@ -85,6 +85,10 @@ design leaves open" in `docs/plans/step-03.md`.
   edition. The owner decided that `ListedLink` gains `listed_at`, filled by the shape's parser,
   because that parser alone knows the page. For document-finder it is the 14-digit upload stamp in
   the URL path (shape 2). A document-finder URL with no stamp makes the whole listing unreadable.
+  The parser finds the path as RFC 3986, appendix B splits a URL, with one regular expression,
+  because the `datadesk core is pure` contract forbids all of `urllib` and import-linter cannot
+  forbid `urllib.request` alone. With the whole URL searched,
+  `test_an_upload_stamp_outside_the_url_path_makes_the_feed_unreadable` fails.
   All 97 QCMR links of the July 28, 2026 recording carry one, so a link without one means the page
   changed shape. A shape parser returns `PageLink(title, url, listed_at)`, and `parse_listing` reads
   the title and puts the URL on `www.phila.gov` (QCASH-Q04), so no shape module imports the
@@ -116,16 +120,13 @@ design leaves open" in `docs/plans/step-03.md`.
   failure case. The Hypothesis property
   `test_the_fiscal_quarter_turns_on_the_first_of_january_april_july_and_october` draws days from
   1900 to 2199, so a version that refuses other days fails it. Design section 3.2.
-- **Step 3: `datadesk.core` imports from five more outside modules** (November 24, 2026, S3-B).
+- **Step 3: `datadesk.core` imports from four more outside modules** (November 24, 2026, S3-B).
   `catalog.py` parses TOML with `tomllib`, `listings/__init__.py` hashes the listing with `hashlib`,
   the listing modules use `re`, and `periods.py` and `titles.py` hold constant maps in
-  `types.MappingProxyType`. `document_finder.py` reads the path of a URL with
-  `urllib.parse.urlsplit`, so a stamp in the query or the fragment is no upload stamp. Python's
-  `json.loads` accepts the bare tokens `NaN`, `Infinity` and `-Infinity`, which are not JSON, so
-  the parser passes a `parse_constant` that raises, typed `Never`, and reads any `ValueError` as
-  `listing_unreadable`. `PURE_IMPORTS["datadesk.core"]` in `tests/test_purity.py` pins eight new
-  pairs: `collections.abc.Callable`, `hashlib.sha256`, `re.compile`, `tomllib.TOMLDecodeError`,
-  `tomllib.loads`, `types.MappingProxyType`, `typing.Never` and `urllib.parse.urlsplit`. With the
-  whole URL searched, `test_an_upload_stamp_outside_the_url_path_makes_the_feed_unreadable` fails,
-  and with the default `parse_constant`, `test_a_bare_nan_or_infinity_makes_the_feed_unreadable`
-  fails. Design section 11.1.
+  `types.MappingProxyType`. Python's `json.loads` accepts the bare tokens `NaN`, `Infinity` and
+  `-Infinity`, which are not JSON, so `document_finder.py` passes a `parse_constant` that raises,
+  typed `Never`, and reads any `ValueError` as `listing_unreadable`.
+  `PURE_IMPORTS["datadesk.core"]` in `tests/test_purity.py` pins seven new pairs:
+  `collections.abc.Callable`, `hashlib.sha256`, `re.compile`, `tomllib.TOMLDecodeError`,
+  `tomllib.loads`, `types.MappingProxyType` and `typing.Never`. With the default `parse_constant`,
+  `test_a_bare_nan_or_infinity_makes_the_feed_unreadable` fails. Design section 11.1.
