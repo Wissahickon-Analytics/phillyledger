@@ -303,11 +303,12 @@ under `src/`.
 - Files: `src/datadesk/data/index.jsonl`, `docs/evidence/inventory/qcmr.tsv`,
   `tests/test_archive_inventory.py`, `docs/plan-notes.md`, `CLAUDE.md`.
 - Runs, each recorded in the pull request with its command and output: `datadesk fetch qcmr`,
-  `datadesk import-held`, and `datadesk fetch qcmr` a second time. Open question A decides who
-  starts the two fetch runs. With the owner's go (open question B), the `ObjectStore` suite
-  also runs against a scratch bucket on R2.
-- S3-E starts only after the owner has set up R2 ("Setting up R2") and answered open
-  question A. S3-A to S3-D wait on neither.
+  `datadesk import-held`, and `datadesk fetch qcmr` a second time. The owner starts the two
+  fetch runs in his terminal, and the session reads their output (answer A). The session runs
+  `import-held`, which reaches R2 and no server of the City. With the owner's go (open
+  question B), the `ObjectStore` suite also runs against a scratch bucket on R2.
+- S3-E starts only after the owner has set up R2 ("Setting up R2"). S3-A to S3-D do not wait
+  on it.
 - Owns C1 to C4. `docs/plan-notes.md` gets two notes. For step 7: the feed lists QCMR reports
   back to December 31, 2006. For step 13: the City refuses a client that does not send a
   browser's User-Agent (fact 11), which `watch` must answer before it runs on a schedule.
@@ -403,7 +404,8 @@ it.
 | `DATADESK_HTTP_USER_AGENT` | the User-Agent that `Http` sends to the City's site |
 
 `Settings` keeps both key values out of its `repr`, and no command prints either one. The
-value of `DATADESK_HTTP_USER_AGENT` is the owner's to set (open question A).
+owner sets `DATADESK_HTTP_USER_AGENT` to the string the old repo sends, `BROWSER_UA` in
+`publisher_http.py` (answer A). `datadesk` holds no User-Agent string of its own.
 
 CI runs on the fakes and reads no credential. The `ObjectStore` contract suite reads its target
 from four variables of its own: `DATADESK_CONTRACT_S3_ENDPOINT_URL`,
@@ -416,9 +418,10 @@ writes to the archive bucket, and no test reads the five variables above.
 ## Risks to probe
 
 1. **The City's server refuses a client that is not a browser** (facts 6 and 11). The probe
-   this risk asked for ran on November 23, 2026, and the City refused a plain User-Agent. Open
-   question A decides how the City's files arrive. Until then no session sends the City a
-   request.
+   this risk asked for ran on November 23, 2026, and the City refused a plain User-Agent. The
+   owner chose the browser's string that the old repo sends, and he starts the runs that reach
+   the City (answer A). No request with that string has been run from this repo, so his first
+   run in S3-E is the probe. A refusal stops S3-E for him.
 2. **A held copy may not be the City's current file** (fact 5, QPOS-Q32). S3-E compares the two
    shas for each of the 14 editions before any row is checked.
 3. **Page 1 prints the period twice**, once in the phrase and once as a bare date
@@ -461,8 +464,8 @@ in this file at commit `0d411bb`.
 What follows from each answer:
 
 1. `Http` sends the value of `DATADESK_HTTP_USER_AGENT`. The City then refused two plain
-   values (fact 11), so his answer does not yet say how the City's files arrive. Open
-   question A asks.
+   values (fact 11), so this answer did not settle how the City's files arrive. Answer A
+   below did.
 2. The catalog entry has no last period end. The inventory and the index hold 21 rows.
 3. "Setting up R2" gives the steps. His answer gives no go for the contract suite on R2, so
    open question B asks again.
@@ -472,22 +475,26 @@ What follows from each answer:
 6. The Build session of S3-A runs `gh extension install github/gh-stack`
    (`docs/working-with-claude-code.md`).
 
+**Answer A.** He answered a seventh question later that day. The session had shown him the
+City's refusal (fact 11) and three choices: he sets the User-Agent and starts
+`datadesk fetch qcmr` himself, he saves the feed and the 21 reports by hand, or he asks the
+City to let the tool through. It had also told him that it would not send a browser's string
+to get past the City's block, and that a Build session should not either. The question as he
+saw it: "How should the City's files arrive at step 3: you run the fetch, hand downloads, or
+ask the City?" His words: "Run the fetch with browser user agent as the original repo did. I
+used to work for the city we have permission".
+
+What follows from answer A:
+
+- `DATADESK_HTTP_USER_AGENT` in his `.env` holds the string the old repo sends, `BROWSER_UA`
+  in `publisher_http.py`.
+- He asked for the fetch to be run. The agents that build this repo do not send a browser's
+  string to a server that refuses other clients, whoever asks. So he starts the two
+  `datadesk fetch qcmr` runs of S3-E in his terminal, and the session reads their output. The
+  plan's order of work stands as written.
+- The City's permission is his statement. No session has checked it.
+
 ## Still open
-
-**A. How do the City's files arrive, now that the City refuses a plain User-Agent?** There are
-three choices.
-
-1. The owner sets `DATADESK_HTTP_USER_AGENT` in `.env` to a string he chooses, and he starts
-   the commands that reach the City himself, in his terminal: `datadesk fetch qcmr`, twice, in
-   S3-E. The sessions build and test on the recorded feed and the fakes, and they read his
-   output. The plan stands as written. This is the proposal.
-2. The owner saves the feed and the 21 reports in his browser, and `import-held` indexes them.
-   No `datadesk` command reaches the City at step 3. Shape 6 turns around, so the plan is
-   revised and Codex reads it again.
-3. The owner asks the City to let the tool through, and S3-E waits for the answer.
-
-Under every choice, no agent session picks or sends a browser's string to get past the City's
-refusal. That value and those runs are the owner's.
 
 **B. May the `ObjectStore` contract suite run once against a scratch bucket on R2?** A yes adds
 a second bucket, `phillyledger-scratch`, to steps 2 and 3 of "Setting up R2". Without a yes,
@@ -526,5 +533,6 @@ and facts 10 and 11.
   ("Setting up R2").
 - The real half of the `Http` contract suite runs against a local server. No session sends the
   City a request (fact 11).
+- The owner starts the two fetch runs of S3-E, with the User-Agent he sets (answer A).
 - The inventory's download is by the owner's browser, and its read-back is `aws s3 cp`.
 - S3-E adds a note for step 13 to `docs/plan-notes.md`.
