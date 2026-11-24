@@ -2056,10 +2056,12 @@ def parse(source: SourceEntry, text: str) -> tuple[PageLink, ...] | Finding: ...
 TITLE_RULES: MappingProxyType[str, Callable[[str], EditionKey | str]]   # series -> its rule
 def qcmr_title(title: str) -> EditionKey | str: ...
     # "infographic" anywhere in the title: "infographic". "Quarterly City Managers Report" or
-    # "Quarterly City Manager's Report", a hyphen or an en dash, then "<Month> <D>, <YYYY>" and
-    # nothing more: the edition Period(first day of the fiscal quarter, that date) when the date
-    # is a quarter end, else "not_a_quarter_end". Any other title: "unrelated". The edition comes
-    # from the title alone, never from the URL.
+    # "Quarterly City Manager's Report", a hyphen or an en dash, then "<Word> <D>, <YYYY>" and
+    # nothing more, where <Word> is any run of letters, is a report title. A report title whose
+    # date is a quarter end gives the edition Period(first day of the fiscal quarter, that date).
+    # Any other report title is "not_a_quarter_end", one whose word names no month included, so
+    # it raises a WARN instead of vanishing. Any other title: "unrelated". The edition comes from
+    # the title alone, never from the URL.
 
 
 # datadesk/core/watch.py
@@ -2106,9 +2108,10 @@ def plan_watch(catalog: SourceCatalog, listings: Sequence[Listing], index: Archi
     # position, since the feed lists its quarters newest first. An edition that ends before its
     # entry's first_period_end is dropped. A kept link is requested unless an indexed version of
     # its own edition holds its URL, with reason "new" when the edition has no version and
-    # "revision" when it has one. A URL that another edition holds is still requested, so
-    # plan_fetch sees the bytes and rejects them as content_alias. Each link skipped as
-    # not_a_quarter_end is a WARN finding with that code. An earlier sha stays as a superseded
+    # "revision" when it has one. A URL that another edition holds is still requested, and
+    # plan_fetch rejects the bytes as content_alias when their sha is already indexed under that
+    # other edition. New bytes behind a reused URL (WAGE-Q10) have no such sha. Each link skipped
+    # as not_a_quarter_end is a WARN finding with that code. An earlier sha stays as a superseded
     # version (plan_fetch). Step 3 builds the rules above, and step 13 the rules below. A URL
     # whose sha changed under an older listing becomes url_reused plus a WaybackLookup
     # (WAGE-Q10, Q11).
@@ -2432,8 +2435,10 @@ def run_watch(deps: Deps, repo: RepoSnapshot, today: date) -> str | None:
     fetches = plan_listing_fetches(catalog, today)                          # pure
     responses = [deps.http.get(f.url) for f in fetches]                     # effect
     problems = judge_listing_responses(fetches, [r.status for r in responses])   # pure
-    listings = [parse_listing(catalog.entry(f.source), f.url, r.text)      # pure per response
-                for f, r in zip(fetches, responses) if r.status == 200]
+    parsed = [parse_listing(catalog.entry(f.source), f.url, r.text)        # pure per response
+              for f, r in zip(fetches, responses) if r.status == 200]
+    listings = [p for p in parsed if isinstance(p, Listing)]
+    problems = (*problems, *(p for p in parsed if isinstance(p, Finding)))
     plan = plan_watch(catalog, listings, index, today)                      # pure
     picks = [pick_capture(parse_cdx(deps.http.get(cdx_url(w.url)).text), w)  # effect, then pure
              for w in plan.wayback]
@@ -2443,9 +2448,11 @@ def run_watch(deps: Deps, repo: RepoSnapshot, today: date) -> str | None:
 ```
 
 The pull request carries `watch/plan-<date>.json` (the plan itself) and a readable summary.
-`watch` downloads no PDF and parses nothing. The executor branches only on HTTP status, which is
-the effect's outcome. Whether a 404 matters is decided by `judge_listing_responses` from the
-catalog's `missing_ok` fact (R2: the port has no `accept_404` flag).
+`watch` downloads no PDF and parses nothing. A finding from `parse_listing` joins the problems,
+and only a `Listing` reaches `plan_watch`. Apart from that split, the executor branches only on
+HTTP status, which is the effect's outcome. Whether a 404 matters is decided by
+`judge_listing_responses` from the catalog's `missing_ok` fact (R2: the port has no `accept_404`
+flag).
 
 ### 4.2 `fetch`
 

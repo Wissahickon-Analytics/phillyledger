@@ -76,31 +76,37 @@ design leaves open" in `docs/plans/step-03.md`.
   title with "infographic" is `infographic`, a report title with any other date is
   `not_a_quarter_end` (shape 5), and every other title is `unrelated`. So the old test's "Quarterly
   City Managers Report Revised - June 30, 2025" is `unrelated`, and an executive summary or an
-  excerpt titled after a report is never read as the report. The City's second uploads keep the
-  title (plan fact 5). With the apostrophe dropped from the rule,
+  excerpt titled after a report is never read as the report. The word in the month's place is any
+  run of letters, so "Smarch 31, 2026" is `not_a_quarter_end` too, and a report title with a bad
+  date raises a WARN instead of vanishing. The City's second uploads keep the title (plan fact 5).
+  With the apostrophe dropped from the rule,
   `test_managers_and_manager_s_read_the_same` fails, and with the quarter-end check dropped,
-  `test_a_report_title_dated_on_any_other_day_is_not_a_quarter_end` fails. Design section 3.2.
+  `test_a_report_title_dated_on_any_other_day_is_not_a_quarter_end` fails. With a word that names
+  no month read as `unrelated`, the `a_month_that_is_not_a_month` case of
+  `test_qcmr_title_reads_an_edition_or_a_skip_reason` fails. Design section 3.2.
 - **Step 3: `ListedLink.listed_at`, and a parser per page shape** (November 24, 2026, S3-B). The
   design gave `ListedLink` no upload time, so `plan_watch` could not find the last link of an
   edition. The owner decided that `ListedLink` gains `listed_at`, filled by the shape's parser,
   because that parser alone knows the page. For document-finder it is the 14-digit upload stamp in
   the URL path (shape 2). A document-finder URL with no stamp makes the whole listing unreadable.
-  The parser finds the path as RFC 3986, appendix B splits a URL, with one regular expression,
-  because the `datadesk core is pure` contract forbids all of `urllib` and import-linter cannot
-  forbid `urllib.request` alone. With the whole URL searched,
-  `test_an_upload_stamp_outside_the_url_path_makes_the_feed_unreadable` fails.
   All 97 QCMR links of the July 28, 2026 recording carry one, so a link without one means the page
-  changed shape. A shape parser returns `PageLink(title, url, listed_at)`, and `parse_listing` reads
-  the title and puts the URL on `www.phila.gov` (QCASH-Q04), so no shape module imports the
-  `listings` package. `ListedLink` refuses a link with both an edition and a skip reason, or
-  neither. With `listed_at` left empty, `test_each_link_is_listed_at_its_upload_stamp_in_feed_order`
-  and three tests of `plan_watch` fail. Design section 3.2.
+  changed shape. One regular expression finds the path the way RFC 3986, appendix B splits a URL,
+  because the `datadesk core is pure` contract forbids all of `urllib`, and import-linter cannot
+  forbid `urllib.request` alone. With the whole URL searched,
+  `test_an_upload_stamp_outside_the_url_path_makes_the_feed_unreadable` fails. A shape parser
+  returns `PageLink(title, url, listed_at)`, and `parse_listing` reads the title and puts the URL on
+  `www.phila.gov` (QCASH-Q04), so no shape module imports the `listings` package. `ListedLink`
+  refuses a link with both an edition and a skip reason, or neither. With `listed_at` left empty,
+  `test_each_link_is_listed_at_its_upload_stamp_in_feed_order` and three tests of `plan_watch`
+  fail. Design section 3.2.
 - **Step 3: `parse_listing` returns `Listing | Finding`** (November 24, 2026, S3-B). The design
   returned a `Listing` alone, so a feed that is not JSON, a category that is missing, a shape with
   no parser yet (`phila_documents`, `manual`) and a series with no title rule had no answer but an
   exception. Each is now a BLOCK finding, `listing_unreadable` or `listing_unsupported`.
   `test_a_shape_with_no_parser_yet_is_a_finding`, `test_a_series_with_no_title_rule_is_a_finding`
-  and `test_a_feed_the_parser_cannot_read_is_a_finding` show each case. Design section 3.2.
+  and `test_a_feed_the_parser_cannot_read_is_a_finding` show each case. The `run_watch` sketch adds
+  each such finding to the run's problems and passes only a `Listing` to `plan_watch`, which reads
+  `listing.links`. Design sections 3.2 and 4.1.
 - **Step 3: `plan_watch`, first cut** (November 24, 2026, S3-B). The design's comment named rules
   for step 13 and no first cut. S3-B builds shape 5. The last link of each edition wins, an edition
   that ends before `first_period_end` is dropped, and a kept link is asked for unless an indexed
@@ -112,8 +118,9 @@ design leaves open" in `docs/plans/step-03.md`.
   period enters the index, and the other editions are still fetched. `PullRequestPlan` holds `files`
   as `(path, text)` pairs. With the tie rule reversed,
   `test_a_tie_of_upload_stamps_goes_to_the_link_listed_first` fails. With feed order in place of the
-  stamp, `test_the_last_of_two_attachments_for_one_quarter_is_asked_for_alone` fails. With the floor
-  removed, four tests fail. With the URL matched against every edition,
+  stamp, `test_an_earlier_stamp_listed_last_does_not_win` and
+  `test_a_tie_of_upload_stamps_goes_to_the_link_listed_first` fail. With the floor removed, four
+  tests fail. With the URL matched against every edition,
   `test_a_url_that_another_edition_holds_is_still_asked_for` fails. Design sections 3.2 and 6.3.
 - **Step 3: `fiscal_quarter` takes any date** (November 24, 2026, S3-B). The design gave the quarter
   of a quarter end alone. Any date now gives the fiscal quarter it falls in, so the function has no
