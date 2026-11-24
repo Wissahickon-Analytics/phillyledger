@@ -79,7 +79,7 @@ def confirm_period(
         return _block(printed, expected, f"the {series} period reader refuses page 1")
     if printed == expected.period:
         return expected.period
-    if any(_clears(note, page1_text, printed) for note in notes):
+    if any(_clears(note, page1_text, printed, reader) for note in notes):
         return printed
     return _block("period_mismatch", expected, f"page 1 prints the period ending {printed.end}")
 
@@ -167,11 +167,14 @@ def _printed_date(month: str, day: str, year: str) -> date | None:
         return None
 
 
-def _clears(note: EditionNote, page1_text: str, printed: Period) -> bool:
+def _clears(
+    note: EditionNote, page1_text: str, printed: Period, reader: Callable[[str], Period | str]
+) -> bool:
     return (
         note.kind == NoteKind.PRINTED_PERIOD
         and note.page in (None, 1)
         and _collapsed(note.printed) in _collapsed(page1_text)
+        and reader(note.printed) == printed
         and note.value == printed.end.isoformat()
     )
 

@@ -213,6 +213,15 @@ def test_a_printed_period_note_clears_a_mismatch(page1: str, note: EditionNote) 
         pytest.param(replace(NOTE, kind=NoteKind.CUTOFF), id="a_note_of_another_kind"),
         pytest.param(replace(NOTE, value="2021-09-30"), id="a_note_whose_value_is_not_printed"),
         pytest.param(replace(NOTE, page=2), id="a_note_on_another_page"),
+        pytest.param(replace(NOTE, printed=""), id="a_blank_note"),
+        pytest.param(
+            replace(NOTE, printed="QUARTERLY CITY MANAGERS REPORT"),
+            id="a_note_that_quotes_other_words",
+        ),
+        pytest.param(
+            replace(NOTE, printed="FOR THE PERIOD ENDING DECEMBER 31 2021"),
+            id="a_note_that_reads_as_the_period_in_words_page_1_lacks",
+        ),
     ],
 )
 def test_a_note_that_does_not_fit_the_cover_leaves_the_mismatch(note: EditionNote) -> None:
