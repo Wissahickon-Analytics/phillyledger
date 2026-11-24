@@ -1,7 +1,7 @@
 from dataclasses import dataclass
-from json import JSONDecodeError, loads
+from json import loads
 from re import compile
-from typing import Any
+from typing import Any, Never
 from urllib.parse import urlsplit
 
 from checkedtables.table import Finding, Severity
@@ -19,8 +19,8 @@ class PageLink:
 
 def parse(source: SourceEntry, text: str) -> tuple[PageLink, ...] | Finding:
     try:
-        feed = loads(text)
-    except JSONDecodeError as error:
+        feed = loads(text, parse_constant=_not_json)
+    except ValueError as error:
         return _unreadable(source, f"the feed is not JSON: {error}")
     if not isinstance(feed, list):
         return _unreadable(source, "the feed is not a list of categories")
@@ -45,6 +45,10 @@ def _holds_documents(group: Any, category: str) -> bool:
         case {"title": str() as title, "documents": list()}:
             return title == category
     return False
+
+
+def _not_json(constant: str) -> Never:
+    raise ValueError(f"{constant} is not a JSON value")
 
 
 def _unreadable(source: SourceEntry, message: str) -> Finding:

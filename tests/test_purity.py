@@ -31,7 +31,6 @@ PURE_IMPORTS: dict[str, tuple[str, ...]] = {
         "datetime.date",
         "enum.StrEnum",
         "hashlib.sha256",
-        "json.JSONDecodeError",
         "json.dumps",
         "json.loads",
         "re.compile",
@@ -39,6 +38,7 @@ PURE_IMPORTS: dict[str, tuple[str, ...]] = {
         "tomllib.loads",
         "types.MappingProxyType",
         "typing.Any",
+        "typing.Never",
         "urllib.parse.urlsplit",
     ),
 }

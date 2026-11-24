@@ -120,9 +120,12 @@ design leaves open" in `docs/plans/step-03.md`.
   `catalog.py` parses TOML with `tomllib`, `listings/__init__.py` hashes the listing with `hashlib`,
   the listing modules use `re`, and `periods.py` and `titles.py` hold constant maps in
   `types.MappingProxyType`. `document_finder.py` reads the path of a URL with
-  `urllib.parse.urlsplit`, so a stamp in the query or the fragment is no upload stamp.
-  `PURE_IMPORTS["datadesk.core"]` in `tests/test_purity.py` pins eight new pairs:
-  `collections.abc.Callable`, `hashlib.sha256`, `json.JSONDecodeError`, `re.compile`,
-  `tomllib.TOMLDecodeError`, `tomllib.loads`, `types.MappingProxyType` and `urllib.parse.urlsplit`.
-  With the whole URL searched, `test_an_upload_stamp_outside_the_url_path_makes_the_feed_unreadable`
+  `urllib.parse.urlsplit`, so a stamp in the query or the fragment is no upload stamp. Python's
+  `json.loads` accepts the bare tokens `NaN`, `Infinity` and `-Infinity`, which are not JSON, so
+  the parser passes a `parse_constant` that raises, typed `Never`, and reads any `ValueError` as
+  `listing_unreadable`. `PURE_IMPORTS["datadesk.core"]` in `tests/test_purity.py` pins eight new
+  pairs: `collections.abc.Callable`, `hashlib.sha256`, `re.compile`, `tomllib.TOMLDecodeError`,
+  `tomllib.loads`, `types.MappingProxyType`, `typing.Never` and `urllib.parse.urlsplit`. With the
+  whole URL searched, `test_an_upload_stamp_outside_the_url_path_makes_the_feed_unreadable` fails,
+  and with the default `parse_constant`, `test_a_bare_nan_or_infinity_makes_the_feed_unreadable`
   fails. Design section 11.1.

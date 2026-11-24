@@ -222,6 +222,13 @@ def test_an_upload_stamp_outside_the_url_path_makes_the_feed_unreadable(url: str
     assert_unreadable(with_first_document({"url": url}))
 
 
+@pytest.mark.parametrize("token", ["NaN", "Infinity", "-Infinity"])
+def test_a_bare_nan_or_infinity_makes_the_feed_unreadable(token: str) -> None:
+    text = with_first_document({"modified": float(token)})
+    assert f'"modified": {token},' in text
+    assert_unreadable(text)
+
+
 def test_a_listed_link_has_an_edition_or_a_skip_reason() -> None:
     link = listing().links[0]
     with pytest.raises(ValueError, match="edition or a skip reason"):
