@@ -298,3 +298,13 @@ design leaves open" in `docs/plans/step-03.md`.
   `listed_at` included. With the tuple comparison back,
   `test_add_versions_leaves_a_line_that_repeats_a_url_as_it_was_when_no_url_joins` fails.
   Design section 3.2.
+- **Step 3: section 6.3 says a joined line holds each URL once** (November 24, 2026, S3-C
+  third fix round). Section 3.2 says that when a URL joins, the line holds each URL once. The
+  section 6.3 row for the same bytes at a new URL said the URL joins after the ones the line
+  holds and that nothing else changes, which is false for a line that repeats a URL: `(A, A)`
+  with `B` joining gives `(A, B)` (Codex read of the S3-C second fix round, finding 1). The row
+  now agrees with 3.2: the line holds each URL once, the held ones first, and takes the later
+  `listed_at`. No code changed.
+  `test_add_versions_holds_each_url_once_when_a_url_joins_a_line_that_repeats_one` pins the
+  rule, and fails when the merge keeps the held tuple as it is and appends the new URLs.
+  Design section 6.3.

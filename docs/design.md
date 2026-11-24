@@ -3635,7 +3635,7 @@ editions never overlap and FY2026 Q4 is `qcmr:2026-06-30:none`.
 |---|---|---|
 | Revised attachment listed after the original (QPOS-Q32, RTT-Q06, MCITY-Q02) | Later `listed_at` wins, and on equal ones the link listed later; the earlier version stays in the index with `supersedes` pointing at it | `plan_watch` |
 | Same bytes under two periods (MSCH-Q01, MCITY-Q08) | Rejected as `content_alias`; the missing period is reported as a gap | `plan_fetch`, `plan_watch`, `add_versions` |
-| Same bytes of the same edition at a new URL | When the bytes are the edition's current version, the URL joins that version's `urls`, after the ones it holds, and the version takes the later of the two `listed_at`. Nothing is stored, and nothing else changes | `plan_fetch`, `add_versions` |
+| Same bytes of the same edition at a new URL | When the bytes are the edition's current version, the URL joins that version's `urls`, after the ones it holds. The line then holds each URL once, the held ones first, and takes the later of the two `listed_at`. Nothing is stored | `plan_fetch`, `add_versions` |
 | Superseded bytes listed again: bytes A, then B, then A | Rejected as `superseded_sha_relisted`, for the owner. B stays current, because one line for each sha cannot say that A now supersedes B | `plan_fetch` |
 | New bytes listed before the current version | Rejected as `listed_before_current`, for the owner. New bytes supersede the current version only when their `listed_at` is later or the same | `plan_fetch` |
 | A URL whose bytes changed, old pages pointing at new bytes (WAGE-Q10) | The index keys by sha, so the change is visible; `url_reused` plus a Wayback lookup for the old period | `plan_watch`, `pick_capture` |
