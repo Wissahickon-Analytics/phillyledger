@@ -2109,12 +2109,12 @@ def plan_watch(catalog: SourceCatalog, listings: Sequence[Listing], index: Archi
     # ends before its entry's first_period_end is dropped. A kept link is requested unless an
     # indexed version of its own edition holds its URL, with reason "new" when the edition has no
     # version and "revision" when it has one. A URL that another edition holds is still
-    # requested, and plan_fetch rejects the bytes as content_alias when their sha is already
-    # indexed under that other edition. New bytes behind a reused URL (WAGE-Q10) have no such
-    # sha. Each link skipped as not_a_quarter_end is a WARN finding with that code. An earlier sha
-    # stays as a superseded version (plan_fetch). Step 3 builds the rules above, and step 13 the
-    # rules below. A URL whose sha changed under an older listing becomes url_reused plus a
-    # WaybackLookup (WAGE-Q10, Q11).
+    # requested. plan_fetch rejects the bytes as content_alias when their sha is indexed under an
+    # edition other than the request's, whatever URL served them. Each link skipped as
+    # not_a_quarter_end is a WARN finding with that code. An earlier sha stays as a superseded
+    # version (plan_fetch). Step 3 builds the rules above, and step 13 the rules below. A URL
+    # whose sha changed under an older listing becomes url_reused plus a WaybackLookup
+    # (WAGE-Q10, Q11).
     # Expected editions from the catalog minus indexed ones become gaps, after the declared lag.
     # Indexed URLs not fetched within the catalog's recheck interval become `recheck` requests:
     # the executor downloads and hashes them, and a new sha behind an unchanged listing goes
