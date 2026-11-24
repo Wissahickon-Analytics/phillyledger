@@ -2104,17 +2104,17 @@ def judge_listing_responses(fetches: Sequence[ListingFetch],
     # a 404 on a page the catalog marks missing_ok is no finding; any other non-200 is BLOCK
 def plan_watch(catalog: SourceCatalog, listings: Sequence[Listing], index: ArchiveIndex,
                today: date) -> WatchPlan: ...
-    # Last link per edition wins: the greatest listed_at, and on equal ones the earliest
-    # position, since the feed lists its quarters newest first. An edition that ends before its
-    # entry's first_period_end is dropped. A kept link is requested unless an indexed version of
-    # its own edition holds its URL, with reason "new" when the edition has no version and
-    # "revision" when it has one. A URL that another edition holds is still requested, and
-    # plan_fetch rejects the bytes as content_alias when their sha is already indexed under that
-    # other edition. New bytes behind a reused URL (WAGE-Q10) have no such sha. Each link skipped
-    # as not_a_quarter_end is a WARN finding with that code. An earlier sha stays as a superseded
-    # version (plan_fetch). Step 3 builds the rules above, and step 13 the rules below. A URL
-    # whose sha changed under an older listing becomes url_reused plus a WaybackLookup
-    # (WAGE-Q10, Q11).
+    # Last link per edition wins: the greatest listed_at, and on equal ones the latest position,
+    # since the City appends a revised attachment after the original (QPOS-Q32). An edition that
+    # ends before its entry's first_period_end is dropped. A kept link is requested unless an
+    # indexed version of its own edition holds its URL, with reason "new" when the edition has no
+    # version and "revision" when it has one. A URL that another edition holds is still
+    # requested, and plan_fetch rejects the bytes as content_alias when their sha is already
+    # indexed under that other edition. New bytes behind a reused URL (WAGE-Q10) have no such
+    # sha. Each link skipped as not_a_quarter_end is a WARN finding with that code. An earlier sha
+    # stays as a superseded version (plan_fetch). Step 3 builds the rules above, and step 13 the
+    # rules below. A URL whose sha changed under an older listing becomes url_reused plus a
+    # WaybackLookup (WAGE-Q10, Q11).
     # Expected editions from the catalog minus indexed ones become gaps, after the declared lag.
     # Indexed URLs not fetched within the catalog's recheck interval become `recheck` requests:
     # the executor downloads and hashes them, and a new sha behind an unchanged listing goes
@@ -3581,7 +3581,7 @@ editions never overlap and FY2026 Q4 is `qcmr:2026-06-30:none`.
 
 | Case | Rule | Where |
 |---|---|---|
-| Revised attachment listed after the original (QPOS-Q32, RTT-Q06, MCITY-Q02) | Later `listed_at` wins, and on equal ones the link listed first; the earlier version stays in the index with `supersedes` pointing at it | `plan_watch` |
+| Revised attachment listed after the original (QPOS-Q32, RTT-Q06, MCITY-Q02) | Later `listed_at` wins, and on equal ones the link listed later; the earlier version stays in the index with `supersedes` pointing at it | `plan_watch` |
 | Same bytes under two periods (MSCH-Q01, MCITY-Q08) | Rejected as `content_alias`; the missing period is reported as a gap | `plan_fetch`, `plan_watch`, `add_versions` |
 | Same bytes of the same edition at a new URL | The URL joins that version's `urls`, after the ones it holds; nothing else changes | `add_versions` |
 | A URL whose bytes changed, old pages pointing at new bytes (WAGE-Q10) | The index keys by sha, so the change is visible; `url_reused` plus a Wayback lookup for the old period | `plan_watch`, `pick_capture` |

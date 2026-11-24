@@ -152,13 +152,15 @@ def test_an_earlier_stamp_listed_last_does_not_win() -> None:
     assert [request.url for request in fetch if request.edition == FY2025_Q4] == [Q4_2025_URL]
 
 
-def test_a_tie_of_upload_stamps_goes_to_the_link_listed_first() -> None:
+def test_a_tie_of_upload_stamps_goes_to_the_link_listed_later() -> None:
     changed = feed()
     first = qcmr_documents(changed)[0]
     second = {**first, "url": first["url"].replace("R.pdf", "-1.pdf")}
     qcmr_documents(changed).insert(1, second)
     fetch = plan(changed).fetch
-    assert [request.url for request in fetch if request.edition == FY2026_Q3] == [Q3_URL]
+    assert [request.url for request in fetch if request.edition == FY2026_Q3] == [
+        Q3_URL.replace("R.pdf", "-1.pdf")
+    ]
 
 
 def test_a_report_title_dated_march_30_gives_a_finding_and_no_fetch() -> None:

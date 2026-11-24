@@ -79,7 +79,8 @@ def plan_watch(
 
 def _recency(kept: tuple[EditionKey, ListedLink]) -> tuple[str, int]:
     _, link = kept
-    return link.listed_at, -link.position
+    # QPOS-Q32: the City appends a revised attachment after the original.
+    return link.listed_at, link.position
 
 
 def _request(edition: EditionKey, link: ListedLink, index: ArchiveIndex) -> FetchRequest | None:

@@ -111,15 +111,14 @@ design leaves open" in `docs/plans/step-03.md`.
   for step 13 and no first cut. S3-B builds shape 5. The last link of each edition wins, an edition
   that ends before `first_period_end` is dropped, and a kept link is asked for unless an indexed
   version of its own edition holds its URL, with the reason `new` or `revision`. The last link is
-  the one with the greatest `listed_at`. On equal stamps the link listed first wins, since the feed
-  lists its quarters newest first. No edition has two links in the July recording or in the feed
-  saved on November 23, 2026, so the tie rule is fixed and stated rather than shown by a page. A
-  `not_a_quarter_end` link is a WARN finding of that code. The link is never fetched, so no wrong
-  period enters the index, and the other editions are still fetched. `PullRequestPlan` holds `files`
-  as `(path, text)` pairs. With the tie rule reversed,
-  `test_a_tie_of_upload_stamps_goes_to_the_link_listed_first` fails. With feed order in place of the
-  stamp, `test_an_earlier_stamp_listed_last_does_not_win` and
-  `test_a_tie_of_upload_stamps_goes_to_the_link_listed_first` fail. With the floor removed, four
+  the one with the greatest `listed_at`. On equal stamps the link listed later wins, because the
+  City appends a revised attachment after the original (QPOS-Q32). No edition has two links in the
+  July recording or in the feed saved on November 23, 2026, so the tie rule is fixed and stated
+  rather than shown by a page. A `not_a_quarter_end` link is a WARN finding of that code. The link
+  is never fetched, so no wrong period enters the index, and the other editions are still fetched.
+  `PullRequestPlan` holds `files` as `(path, text)` pairs. With the tie rule reversed,
+  `test_a_tie_of_upload_stamps_goes_to_the_link_listed_later` fails. With feed order in place of
+  the stamp, `test_an_earlier_stamp_listed_last_does_not_win` fails. With the floor removed, four
   tests fail. With the URL matched against every edition,
   `test_a_url_that_another_edition_holds_is_still_asked_for` fails. Design sections 3.2 and 6.3.
 - **Step 3: `fiscal_quarter` takes any date** (November 24, 2026, S3-B). The design gave the quarter
