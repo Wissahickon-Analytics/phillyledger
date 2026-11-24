@@ -2449,7 +2449,8 @@ def run_watch(deps: Deps, repo: RepoSnapshot, today: date) -> str | None:
 
 The pull request carries `watch/plan-<date>.json` (the plan itself) and a readable summary.
 `watch` downloads no PDF and parses nothing. A finding from `parse_listing` joins the problems,
-and only a `Listing` reaches `plan_watch`. Apart from that split, the executor branches only on
+and only a `Listing` reaches `plan_watch`. The executor opens no pull request for a
+`PullRequestPlan` with no files. Apart from those two branches, the executor branches only on
 HTTP status, which is the effect's outcome. Whether a 404 matters is decided by
 `judge_listing_responses` from the catalog's `missing_ok` fact (R2: the port has no `accept_404`
 flag).
