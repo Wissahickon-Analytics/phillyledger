@@ -40,8 +40,8 @@ All four are from November 25, 2026.
    the list in hard rule 6. It had told him that proposal 4 pins the two enums and that the
    change edits a hard rule. He answered "Yes, add them".
 
-Everything else in this plan was worked out after the first three answers. Each item under "Proposals" is
-a proposal until he lands this plan.
+Everything else in this plan was worked out after the first three answers. Each item under
+"Proposals" is a proposal until he lands this plan.
 
 ## Proposals
 
@@ -346,9 +346,13 @@ Plain text passed as a sha is a `ty` error, and a `ValueError` at the four const
   `docs/deviations/step-NN.md` and a check in design section 15. Sweep B has none of the three
   under those names. The Build session runs the same `codex exec` command as `run.sh pr` does,
   in a throwaway worktree, with a prompt that gives Codex this file as the plan, the table
-  above as the check, `docs/deviations/step-03.md` as the deviations, the sha of the base, and
-  the full path of `gov-budget-data`. `run.sh` takes that path from the parent of the checkout,
-  which is wrong in a worktree. The audits of `verify-step` stay.
+  above as the check, `docs/deviations/step-03.md` as the deviations, and the sha of the base.
+  The audits of `verify-step` stay.
+- The prompt names `gov-budget-data` for the audit that nothing there changed. No path is
+  written by hand. The folder sits beside the main checkout, and from a worktree
+  `git rev-parse --path-format=absolute --git-common-dir` gives the main checkout's `.git`.
+  `run.sh` takes the parent of the current checkout, which from a worktree is
+  `.claude/worktrees`, where no `gov-budget-data` exists.
 - The fix review gets the same prompt changes and the report of the first review. The Plan run
   did the same with the `plan` prompt.
 - One fix round, then Codex reads the fix diff. One Fable read of the whole diff.
