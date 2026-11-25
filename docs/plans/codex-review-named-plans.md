@@ -18,10 +18,11 @@ of the release protocol. The design names neither skill, so no deviation is reco
 
 ## The pull request
 
-One pull request on the branch `tools/codex-review-named-plans`, cut from `standards/sweep-a`
-at `665d3da`, with base `standards/sweep-a`. It is not part of a GitHub stack. Sweep B's build
-branch is cut from `standards/sweep-a` too, so it gets the fix once this pull request lands on
-that branch, or by a rebase onto this branch's head.
+One pull request on the branch `tools/codex-review-named-plans`, with base `main`. It was cut
+from `standards/sweep-a` at `665d3da`. Pull request 40 then landed on `main` as `cab37c5`, whose
+tree is the same, so the branch moved onto `main` by a rebase that left its `git patch-id`
+unchanged. It is not part of a GitHub stack. Sweep B's build branch gets the fix when it is cut
+from `main` after this pull request lands.
 
 ## The check
 
