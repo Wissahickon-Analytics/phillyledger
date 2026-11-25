@@ -440,10 +440,11 @@ file, `docs/progress.md`, `docs/followups.md` or `docs/deviations/`.
   S3-E). The City's report for September 30, 2026 is saved as `qcmr-2026-09-30.pdf` in
   `/Users/nhand/DataProjects/phillyledger-held/qcmr-city`, with sha
   `640068cb7a8a5d6c621f0ac6a0b2e16df6c290fc1036ea95f2260057be58f365`, 1,072,165 bytes and 92
-  pages. It has no text a program can read (QPOS-Q38), so `confirm_period` returns
+  pages. Its cover has no text a program can read (QPOS-Q38), so `confirm_period` returns
   `period_unreadable`, and `plan_fetch` rejects it and neither stores nor indexes it (step 3 plan,
-  fact 14). The
-  owner chose to let it wait until a later step can read its cover (answer D). Step 7 adds
-  `datadesk ocr --spend` (design section 15), and Textract calls need the owner's go-ahead (hard
-  rule 8 of `CLAUDE.md`). Step 4 ports the font repair for `(cid:N)` words. Whether that repair
-  reads this cover was not run.
+  fact 14). Later pages have such text. `pdftotext -f 6 -l 6 -layout` prints "For the Period
+  Ending September 30, 2026", and page 50 prints a table of performance measures. Only pages 1,
+  6 and 50 were read, so no run says which other pages need OCR. The owner chose to let it wait
+  until a later step can read its cover (answer D). Step 7 adds `datadesk ocr --spend` (design
+  section 15), and Textract calls need the owner's go-ahead (hard rule 8 of `CLAUDE.md`). Step 4
+  ports the font repair for `(cid:N)` words. Whether that repair reads this cover was not run.
