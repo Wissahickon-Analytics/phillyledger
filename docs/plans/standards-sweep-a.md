@@ -39,9 +39,13 @@ which `docs/plans/step-03.md` does not name.
 All runs are from November 25, 2026, in a scratch script that imitates `cli.py`.
 
 - **Version.** `typer>=0.28,<0.29`. PyPI lists `pydantic>=2.5.3` among the dependencies of
-  typer 0.29.0, released November 9, 2026, and none for 0.28.0. Section 8.7 of
-  `docs/principles.md` takes no pydantic. typer 0.28.0 and 0.29.2 gave the same output and exit
-  code for every case below. Lifting the cap is the owner's call.
+  typer 0.29.0, released November 9, 2026, and none for 0.28.0. typer 0.28.0 and 0.29.2 gave
+  the same output and exit code for every case below. The owner was shown this recommendation:
+  keep the cap for sweep A, and decide pydantic when a step builds the big TOML loaders, most
+  likely step 5, with a run that compares a hand-written loader to a strict pydantic loader on
+  the same input. He answered "Keep the cap" on November 25, 2026. Asked "Should section 8.7 say
+  pydantic is undecided for datadesk until step 5?", he answered "Yes, update 8.7", and section
+  8.7 of `docs/principles.md` now says so.
 - **A callback.** typer runs an app with one command as that command. Without a callback the
   usage line read `datadesk [OPTIONS] {source}`, and `datadesk fetch qcmr --saved x` stopped with
   `Error: Got unexpected extra argument(s) (qcmr)`, because `fetch` was read as the source. With
@@ -88,7 +92,8 @@ and records the command, the output and the exit code in the pull request. No ro
 - Docstrings, and no code, in every other module under `packages/*/src`.
 - `packages/checkedtables/tests/test_library_shape.py` and
   `packages/datadesk/tests/shell/test_fetch_command.py`.
-- `docs/design.md`, `docs/deviations/step-03.md`, `docs/progress.md` and `CLAUDE.md`.
+- `docs/design.md`, `docs/deviations/step-03.md`, `docs/progress.md`, `docs/principles.md`
+  and `CLAUDE.md`.
 
 ## Verification
 

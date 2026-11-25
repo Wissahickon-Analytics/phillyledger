@@ -246,7 +246,8 @@ keep it inside the shell's job.
   what tests call, as they call `fetch_command` at head `3643f40`. A command function holds no
   branch on the data (section 1).
 - typer's own traceback printing is switched off with `pretty_exceptions_enable=False`. typer
-  0.29.2 has it on by default (read from `typer.Typer` on November 25, 2026). `main` sends
+  0.28.0, the version the lock pins, has it on by default (read from the signature of
+  `typer.Typer` in the installed package on November 25, 2026). `main` sends
   every line it prints through `hide_keys`, and a traceback that typer prints itself would not
   pass through it (hard rule 8).
 - Design section 9 says how each kind of stop exits. typer and click have their own handling
@@ -270,11 +271,14 @@ the code.
 
 ### 8.7 What this repo does not take
 
-- No runtime validation library such as pydantic. `checkedtables` is published with no
-  dependencies, and one checked builder for each type gives the rule a single home in plain
-  Python. This is the choice to look at again if hand-written parsers keep missing cases. The
-  review of pull request 38 found two in `parse_index`: a sha that was not a string, and a
-  `urls` list whose elements were not strings.
+- `checkedtables` takes no runtime validation library such as pydantic, because it is
+  published with no dependencies. For `datadesk` the choice is not made. The owner makes it at
+  the step that builds the TOML loaders, most likely step 5, from a run that reads the same TOML
+  with a hand-written loader and with a strict pydantic loader. The run includes the two cases
+  that the review of pull request 38 found in `parse_index`: a sha that was not a string, and a
+  `urls` list whose items were not strings. Until then typer stays below 0.29, because typer
+  0.29.0 depends on pydantic, so pydantic is not installed. The owner chose this on November 25,
+  2026, with the words "Keep the cap".
 - No event system and no plug-in loading. Plans are small dataclasses and executors are short
   loops (section 6).
 - No inheritance trees.
