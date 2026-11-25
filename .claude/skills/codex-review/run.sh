@@ -38,13 +38,16 @@ esac
 
 root=$(git rev-parse --show-toplevel)
 case $step in
-'' | -* | step-* | *[!a-z0-9-]*) usage ;;
+'' | step-* | *[!a-z0-9-]*) usage ;;
 *[!0-9]*)
     plan=docs/plans/$step.md
-    git -C "$root" cat-file -e "HEAD:$plan" 2>/dev/null || {
-        echo "No plan at $plan in HEAD." >&2
+    case $(git -C "$root" ls-tree HEAD -- "$plan" | cut -c1-6) in
+    100644 | 100755) ;;
+    *)
+        echo "No plan file at $plan in HEAD." >&2
         usage
-    }
+        ;;
+    esac
     nn=
     label=$step
     form=named other=step
