@@ -271,8 +271,11 @@ by its title is in `docs/plan-notes.md`, `docs/progress.md` or `docs/deviations/
     compares the whole period, start included (pull request 35).
   - Rule 3 of `plan_fetch` has no test at a held URL. With the `superseded_sha_relisted` check and
     the known-URL check swapped, 156 tests pass (pull request 35).
-  - The fixed branch `fetch/index` and its title have no test. With either changed, 156 tests
-    pass. No step 3 code uses them (plan shape 10, pull request 35).
+  - The fixed branch `fetch/index` has no test, and no step 3 code reads it. With `BRANCH`
+    changed, `uv run pytest packages/datadesk/tests tests` gives 297 passed and 7 skipped. The
+    title is held, since `main` prints it. With `TITLE` changed,
+    `test_main_runs_the_fetch_from_the_working_directory_and_prints_the_plan` fails (plan shape
+    10, pull request 35).
   - No test fails when the S3 client reads `~/.aws/config` and `~/.aws/credentials`. The
     ambient-profile test plants its files only through the two variables (pull request 36).
   - No test fails when botocore's own retries come back. With the `retries` line dropped, a put
@@ -281,9 +284,12 @@ by its title is in `docs/plan-notes.md`, `docs/progress.md` or `docs/deviations/
     in any probe, and no test fails without them (pull request 36).
   - No test compares an inventory row's `sha256` with its `browser_sha256`. All 20 agree at the
     head by the read-back run (pull request 37).
-  - No test reads the index's `holding`, `printed_period`, `via`, `urls`, `title` or `listed_at`,
-    or the inventory's `bytes`, `pages`, `page1_period`, `url` or `browser_sha256`. With each
-    changed in the real files, the four inventory tests pass (pull request 37).
+  - No test compares a valid value of the index's `holding`, `printed_period`, `via`, `urls`,
+    `title` or `listed_at` with the evidence. The inventory tests parse the index, so a value
+    outside its type fails them. With the first line's `holding` set to `invalid`, 3 fail and 1
+    passes. With it set to `excerpt`, or its `via` set to `manual`, all four pass. They read only
+    the inventory's `edition`, `sha256` and `checked`, so they pass with its `bytes`, `pages`,
+    `page1_period`, `url` and `browser_sha256` set to any text (pull request 37).
   - The purity test misses `Counter()` at module scope, because its list of mutable constructors
     holds `list`, `dict`, `set` and `bytearray` alone (pull request 32).
   - A category with the entry's title whose `documents` is not a list is skipped with no finding
