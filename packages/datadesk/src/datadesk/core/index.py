@@ -36,7 +36,7 @@ def parse_index(jsonl: str) -> ArchiveIndex:
     Raises
     ------
     ValueError
-        For a line that is not JSON, and for each check above that fails.
+        For a line that `json.loads` cannot decode, and for each check above that fails.
     KeyError, TypeError
         For a line, an edition or a period that lacks a key or is not a JSON object, for a
         period date that is not a string, and for unchecked values that the sort cannot compare,
