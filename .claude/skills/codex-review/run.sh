@@ -41,7 +41,8 @@ case $step in
 '' | step-* | *[!a-z0-9-]*) usage ;;
 *[!0-9]*)
     plan=docs/plans/$step.md
-    found=$(printf 'HEAD:%s\n' "$plan" | git -C "$root" cat-file --batch-check --follow-symlinks)
+    found=$(printf 'HEAD:%s\n' "$plan" | git -C "$root" cat-file --batch-check --follow-symlinks |
+        head -n 1)
     case $found in
     *' blob '*) ;;
     *)

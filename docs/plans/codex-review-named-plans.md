@@ -77,3 +77,7 @@ from `main` after this pull request lands.
    added words "in this repository" a reworded check under hard rule 2. Asked what clause 5
    should say, the owner chose "Keep "in this repository" (Recommended)" on November 25, 2026.
    Clause 5 covers this repository's layout, where `.git` is a folder in the main checkout.
+2. A plan that is a link written as `./standards-sweep-a.md` stops with the usage line, since
+   `git cat-file --batch-check --follow-symlinks` reports it as `dangling`. Accepting it means
+   resolving links in the script. Asked whether to fix it, the owner answered "Yes, that split"
+   on November 25, 2026, which leaves it a follow-up. No plan here is a link.
