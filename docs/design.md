@@ -4432,8 +4432,9 @@ fake store and compares the manifest with a golden file.
 ## 12. Module layout
 
 Three packages in one uv workspace. Estimates are lines of Python without tests or data. They are
-estimates; nothing has been written. Like the counts in section 5, they leave out docstrings,
-blank lines and comments, and so does the kit size report that CI prints.
+estimates; nothing has been written. They leave out docstrings, blank lines and comments, as the
+kit size report that CI prints does. The counts in section 5 leave out only docstrings and blank
+lines.
 
 ### 12.1 `packages/checkedtables` (on PyPI)
 

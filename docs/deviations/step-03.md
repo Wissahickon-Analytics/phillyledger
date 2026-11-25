@@ -603,5 +603,6 @@ design are recorded here.
 - **The kit size report leaves docstrings out.** It counted every line that was not blank or a
   comment, docstrings included, where section 5 and `CLAUDE.md` (Code) leave them out. It now
   finds each module, class and function docstring with `ast`. It printed 1431 lines at
-  `36807de` and prints 735 at the sweep's head. Section 12 now says the estimates leave
-  docstrings out. Design section 12.
+  `36807de` and prints 735 at the sweep's head. Section 12 now says that the estimates and the
+  report leave out docstrings, blank lines and comments, and that section 5's counts leave out
+  only docstrings and blank lines. Design section 12.
