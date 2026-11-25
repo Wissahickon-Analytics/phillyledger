@@ -1,12 +1,17 @@
 #!/bin/sh
-# Run a Codex review of a step plan, a step's pull request, or a pull request's fix round.
+# Run a Codex review of a plan, of a pull request, or of a pull request's fix round.
 #
-#   run.sh plan <step>
-#   run.sh pr <step> [base-branch]
-#   run.sh fix <step> <reviewed-head>
+#   run.sh plan <step | plan-name>
+#   run.sh pr <step | plan-name> [base-branch]
+#   run.sh fix <step | plan-name> <reviewed-head>
+#
+# A step is a build step's number, and its plan is docs/plans/step-NN.md. A plan name is the
+# name of a file under docs/plans/ without .md, such as standards-sweep-b, for a plan that has no
+# entry in design section 15. Its own check table is the check.
 #
 # Reviews the committed HEAD of the current checkout. Writes Codex's report to
-# .codex-review/step-NN-<kind>-<sha>.md and prints that path on the last line.
+# .codex-review/step-NN-<kind>-<sha>.md, or .codex-review/<plan-name>-<kind>-<sha>.md, and prints
+# that path on the last line.
 #
 # plan runs in a read-only sandbox in this checkout. pr and fix run in a throwaway worktree at
 # HEAD with its own synced environment, in a workspace-write sandbox, so Codex can run the
@@ -14,7 +19,7 @@
 set -eu
 
 usage() {
-    echo "usage: run.sh plan <step> | run.sh pr <step> [base-branch] | run.sh fix <step> <reviewed-head>" >&2
+    echo "usage: run.sh plan <step | plan-name> | run.sh pr <step | plan-name> [base-branch] | run.sh fix <step | plan-name> <reviewed-head>" >&2
     exit 2
 }
 
@@ -30,14 +35,37 @@ fix)
     ;;
 *) usage ;;
 esac
-case $step in *[!0-9]* | '') usage ;; esac
+
+root=$(git rev-parse --show-toplevel)
+case $step in
+'' | -* | step-* | *[!a-z0-9-]*) usage ;;
+*[!0-9]*)
+    plan=docs/plans/$step.md
+    [ -f "$root/$plan" ] || {
+        echo "No plan at $plan." >&2
+        usage
+    }
+    nn=
+    label=$step
+    form=named other=step
+    deviations=$(grep -o 'docs/deviations/step-[0-9][0-9]*\.md' "$root/$plan" | sort -u |
+        awk '{ printf "%s`%s`", (NR > 1 ? ", " : ""), $0 }')
+    ;;
+*)
+    nn=$(printf '%02d' "$step")
+    plan=docs/plans/step-$nn.md
+    label=step-$nn
+    form=step other=named
+    deviations=
+    ;;
+esac
+[ -n "$deviations" ] || deviations=none
 
 command -v codex >/dev/null 2>&1 || {
     echo "codex is not on PATH. Install the Codex CLI and log in, then rerun." >&2
     exit 3
 }
 
-root=$(git rev-parse --show-toplevel)
 if [ -n "$(git -C "$root" status --porcelain)" ]; then
     echo "Uncommitted changes. Codex reviews the committed HEAD, so commit first." >&2
     exit 4
@@ -48,24 +76,32 @@ base_sha=$(git -C "$root" rev-parse --verify --quiet "$base^{commit}") || {
     exit 5
 }
 
-nn=$(printf '%02d' "$step")
+common=$(git -C "$root" rev-parse --path-format=absolute --git-common-dir)
+reference=$(dirname "$(dirname "$common")")/gov-budget-data
+[ -d "$reference" ] || {
+    echo "No old repository at $reference. It sits beside the main checkout." >&2
+    exit 7
+}
+
 sha=$(git -C "$root" rev-parse --short=8 "$head")
-reference=$(cd "$root/.." && pwd)/gov-budget-data
 here=$(cd "$(dirname "$0")" && pwd)
 outdir=$root/.codex-review
-prompt=$outdir/step-$nn-$kind-$sha.prompt.md
-out=$outdir/step-$nn-$kind-$sha.md
+prompt=$outdir/$label-$kind-$sha.prompt.md
+out=$outdir/$label-$kind-$sha.md
 base8=$(git -C "$root" rev-parse --short=8 "$base_sha")
-prior=$outdir/step-$nn-pr-$base8.md
-[ -s "$prior" ] || prior=$outdir/step-$nn-fix-$base8.md
+prior=$outdir/$label-pr-$base8.md
+[ -s "$prior" ] || prior=$outdir/$label-fix-$base8.md
 if [ "$kind" = fix ] && [ ! -s "$prior" ]; then
     echo "No report of a pr or fix review of $base8 in $outdir. A fix review answers one, so run it first." >&2
     exit 6
 fi
 mkdir -p "$outdir"
 
-sed -e "s|{{STEP}}|$step|g" -e "s|{{NN}}|$nn|g" -e "s|{{BASE}}|$base_sha|g" \
-    -e "s|{{HEAD}}|$sha|g" -e "s|{{REFERENCE}}|$reference|g" -e "s|{{PRIOR}}|$prior|g" \
+sed -e "/^{{#$other}}\$/,/^{{\/$other}}\$/d" -e "/^{{[#/]$form}}\$/d" \
+    -e "s|{{STEP}}|$step|g" -e "s|{{NN}}|$nn|g" -e "s|{{PLAN}}|$plan|g" \
+    -e "s|{{DEVIATIONS}}|$deviations|g" \
+    -e "s|{{BASE}}|$base_sha|g" -e "s|{{HEAD}}|$sha|g" -e "s|{{REFERENCE}}|$reference|g" \
+    -e "s|{{PRIOR}}|$prior|g" \
     "$here/prompts/$kind.md" >"$prompt"
 
 if [ "$kind" = plan ]; then

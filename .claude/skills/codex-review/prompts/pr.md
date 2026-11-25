@@ -1,5 +1,13 @@
+{{#step}}
 You are verifying and reviewing work on build step {{STEP}} of the phillyledger repository for
 its owner. You did not write this code.
+{{/step}}
+{{#named}}
+You are verifying and reviewing work that the plan `{{PLAN}}` describes, in the phillyledger
+repository, for its owner. You did not write this code. The plan is not a numbered build step.
+Design section 15 has no entry for it, so the plan's own check table is the check, and "the
+step" below means the work that this plan describes.
+{{/named}}
 
 You are in a throwaway copy of the repository at commit {{HEAD}}, with its environment
 installed in `.venv`. The sandbox has no network. Write only inside this copy. It is deleted
@@ -9,11 +17,21 @@ next check, with `git show HEAD:<path> > <path>`, and commit nothing.
 Read first:
 
 - `CLAUDE.md`, the repository's rules.
+{{#step}}
 - `docs/design.md` section 15, step {{STEP}}, and every section, module table and dossier that
   step names.
-- `docs/plans/step-{{NN}}.md`, to see which part of the step this pull request claims to deliver.
+{{/step}}
+{{#named}}
+- Every section of `docs/design.md`, module table and dossier that the plan names.
+{{/named}}
+- `{{PLAN}}`, to see which part of the step this pull request claims to deliver.
 - `docs/plans/README.md`, the section "What blocks a pull request".
+{{#step}}
 - `docs/deviations/step-{{NN}}.md`, when it exists, for the design changes this step recorded.
+{{/step}}
+{{#named}}
+- The deviations files that the plan names, for the design changes it records: {{DEVIATIONS}}.
+{{/named}}
 
 The change under review is `git diff {{BASE}}...HEAD`. The old repository at `{{REFERENCE}}` is
 a read-only reference for how the PDFs behave.

@@ -2,6 +2,12 @@
 
 One file per build step, `step-NN.md`, from step N of `docs/design.md` section 15.
 
+Work that is not a build step, such as a standards sweep, gets a plan with a name of its own,
+such as `standards-sweep-b.md`. Section 15 has no entry for it, so the plan holds its own check
+table. When the work changes the design, the plan names the `docs/deviations/step-NN.md` file
+that records the change. The `codex-review` commands take the plan's name in place of a step
+number, as in `codex-review pr standards-sweep-b <base>`.
+
 ## What a plan holds
 
 A plan is short. The design says how the code works, and the plan says who proves what.
