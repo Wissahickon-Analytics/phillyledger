@@ -41,17 +41,19 @@ case $step in
 '' | step-* | *[!a-z0-9-]*) usage ;;
 *[!0-9]*)
     plan=docs/plans/$step.md
-    case $(git -C "$root" ls-tree HEAD -- "$plan" | cut -c1-6) in
-    100644 | 100755 | 120000) [ -f "$root/$plan" ] ;;
-    *) false ;;
-    esac || {
+    found=$(printf 'HEAD:%s\n' "$plan" | git -C "$root" cat-file --batch-check --follow-symlinks)
+    case $found in
+    *' blob '*) ;;
+    *)
         echo "No plan file at $plan in HEAD." >&2
         usage
-    }
+        ;;
+    esac
     nn=
     label=$step
     form=named other=step
-    deviations=$(grep -o 'docs/deviations/step-[0-9][0-9]*\.md' "$root/$plan" | sort -u |
+    deviations=$(git -C "$root" cat-file blob "${found%% *}" |
+        grep -o 'docs/deviations/step-[0-9][0-9]*\.md' | sort -u |
         awk '{ printf "%s`%s`", (NR > 1 ? ", " : ""), $0 }')
     ;;
 *)
