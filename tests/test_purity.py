@@ -20,7 +20,19 @@ PURE_IMPORTS: dict[str, tuple[str, ...]] = {
         "statistics.median",
         "typing.TYPE_CHECKING",
     ),
-    "datadesk.core": (),
+    "datadesk.core": (
+        "collections.Counter",
+        "collections.abc.Iterable",
+        "collections.abc.Sequence",
+        "dataclasses.asdict",
+        "dataclasses.dataclass",
+        "dataclasses.replace",
+        "datetime.date",
+        "enum.StrEnum",
+        "json.dumps",
+        "json.loads",
+        "typing.Any",
+    ),
 }
 INSIDE = {
     "checkedtables": ("checkedtables",),

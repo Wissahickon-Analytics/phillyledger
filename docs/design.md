@@ -1077,7 +1077,9 @@ class Period:
 @dataclass(frozen=True, slots=True, order=True)
 class EditionKey:
     series: str                # "qcmr", "collections_city", "birt_sector", "qsmr", ...
-    period: Period             # the period the edition reports; BIRT: its coverage of tax years
+    period: Period             # the period the edition reports; BIRT: its coverage of tax years;
+                               # QCMR: its fiscal quarter, from the quarter's first day to the
+                               # printed end, so FY2026 Q4 is 2026-04-01 to 2026-06-30
     stage: Stage = Stage.NONE
 
     def id(self) -> str: ...   # "qcmr:2023-06-30:none"
@@ -1098,33 +1100,46 @@ class Holding(StrEnum):
 class DocumentVersion:
     sha256: str
     edition: EditionKey
-    listed_at: str             # sortable: upload stamp or "<listing date>#<position>"
+    listed_at: str             # sortable: upload stamp or "<listing date>#<position>";
+                               # document-finder: the 14-digit upload stamp in the URL path
     urls: tuple[str, ...]      # every URL that served these bytes, canonical host
     title: str                 # listing title, verbatim
     printed_period: Period | None
-    supersedes: str | None     # sha of the earlier version of the same edition
+    supersedes: str | None     # sha of the earlier version of the same edition; its listed_at
+                               # may equal this one's (new bytes behind an unchanged URL)
     via: Via = Via.PUBLISHER
     holding: Holding = Holding.WHOLE
 
 
 @dataclass(frozen=True, slots=True)
 class ArchiveIndex:
-    versions: tuple[DocumentVersion, ...]   # sorted by (edition, listed_at)
+    versions: tuple[DocumentVersion, ...]   # sorted by (edition, listed_at, sha256)
 
     def __post_init__(self) -> None:
-        shas = [v.sha256 for v in self.versions]
-        if len(shas) != len(set(shas)):
-            raise ValueError("one sha indexed twice")
+        if problem := index_problem(self.versions):
+            raise ValueError(problem.message)
 
     def current(self, edition: EditionKey) -> DocumentVersion | None: ...
+        # the edition's version that no other version supersedes
     def by_sha(self, sha: str) -> DocumentVersion | None: ...
+
+
+def sort_versions(versions: Iterable[DocumentVersion]) -> tuple[DocumentVersion, ...]: ...
+def index_problem(versions: tuple[DocumentVersion, ...]) -> Finding | None: ...
+    # the rules an index never breaks, each a BLOCK finding: versions sorted by
+    # (edition, listed_at, sha256); one sha on one line (content_alias); supersedes names a
+    # version of the same edition (supersedes_outside_edition); one version per edition that
+    # nothing supersedes (two_current_versions); following supersedes from that version reaches
+    # every version of its edition once and then ends, so a version that supersedes itself or a
+    # cycle of versions is refused (broken_chain)
 ```
 
 What this makes impossible:
 
 - identity from a file path (BSALES-Q04, SUPCAP-Q03);
 - two editions sharing one set of bytes without a rejection (MSCH-Q01);
-- a revision that silently replaces bytes (RTT-Q07).
+- a revision that silently replaces bytes (RTT-Q07);
+- an edition whose versions are not one chain from one current version.
 
 ```python
 # datadesk/core/records.py   (all loaded from TOML text by pure functions)
@@ -2077,9 +2092,17 @@ def plan_fetch(fetched: Sequence[Fetched], index: ArchiveIndex,
 
 
 # datadesk/core/index.py
-def parse_index(jsonl: str) -> ArchiveIndex: ...
+# The index file is packages/datadesk/src/datadesk/data/index.jsonl. Each line is one
+# DocumentVersion as a JSON object: its keys sorted at every level (section 10), the edition as
+# series, period start, period end and stage (never the id alone, which drops the start), dates
+# in ISO form, printed_period an object or null, and a newline after every line. The empty
+# index is "".
+def parse_index(jsonl: str) -> ArchiveIndex: ...         # splits on "\n" alone, then sorts
 def render_index(index: ArchiveIndex) -> str: ...        # sorted, one JSON object per line
 def add_versions(index: ArchiveIndex, new: Sequence[DocumentVersion]) -> ArchiveIndex | Finding: ...
+    # a new version whose sha and edition are indexed adds its URLs to that line, after the
+    # URLs it holds, and changes nothing else; the result must pass index_problem, so a sha
+    # under another edition is a content_alias finding
 
 
 # datadesk/core/records.py
@@ -3481,12 +3504,16 @@ match only the unlabeled valued line right after that row. Any other unlabeled v
 ### 6.3 Editions
 
 An edition is what the publisher reports for one period: `EditionKey(series, period, stage)`. A
-document is bytes: `DocumentVersion`, keyed by sha. One edition can have several versions.
+document is bytes: `DocumentVersion`, keyed by sha. One edition can have several versions. They
+form one chain through `supersedes`, and `current` is the one version that nothing supersedes. A
+QCMR edition's period is its fiscal quarter, `Period(first day of the quarter, printed end)`, so
+editions never overlap and FY2026 Q4 is `qcmr:2026-06-30:none`.
 
 | Case | Rule | Where |
 |---|---|---|
 | Revised attachment listed after the original (QPOS-Q32, RTT-Q06, MCITY-Q02) | Later `listed_at` wins; the earlier version stays in the index with `supersedes` pointing at it | `plan_watch` |
-| Same bytes under two periods (MSCH-Q01, MCITY-Q08) | Rejected as `content_alias`; the missing period is reported as a gap | `plan_fetch`, `plan_watch` |
+| Same bytes under two periods (MSCH-Q01, MCITY-Q08) | Rejected as `content_alias`; the missing period is reported as a gap | `plan_fetch`, `plan_watch`, `add_versions` |
+| Same bytes of the same edition at a new URL | The URL joins that version's `urls`, after the ones it holds; nothing else changes | `add_versions` |
 | A URL whose bytes changed, old pages pointing at new bytes (WAGE-Q10) | The index keys by sha, so the change is visible; `url_reused` plus a Wayback lookup for the old period | `plan_watch`, `pick_capture` |
 | Printed period disagrees with the listing (QOBL-Q06, QCASH-Q07) | Rejected unless a `PRINTED_PERIOD` note names the sha and the printed text | `confirm_period` |
 | BIRT same-coverage revision (BSALES-Q04) | A new sha for the same `EditionKey` is a new version; nothing is keyed by path | `plan_watch` |
@@ -3875,7 +3902,7 @@ outside the list changes the list and the pin together.
 | Package | Outside modules it imports from |
 |---|---|
 | `checkedtables` | `collections.abc`, `dataclasses`, `decimal`, `enum`, `re`, `statistics`, `typing` |
-| `datadesk.core` | none |
+| `datadesk.core` | `collections`, `collections.abc`, `dataclasses`, `datetime`, `enum`, `json`, `typing` |
 
 ### 11.2 Property tests
 
@@ -4116,7 +4143,7 @@ estimates; nothing has been written.
 
 | Module | Job | Lines |
 |---|---|---:|
-| `core/domain.py` | `Stage`, `Period`, `EditionKey`, `Via`, `Holding`, `DocumentVersion`, `ArchiveIndex` | 150 |
+| `core/domain.py` | `Stage`, `Period`, `EditionKey`, `Via`, `Holding`, `DocumentVersion`, `ArchiveIndex`, `sort_versions`, `index_problem` | 150 |
 | `core/vocab.py` | `Kind`, `Version`, `Window`, `How`, `Dim`, `Quantity`, `DIM_VALUES`, `DEFINITIONS` | 120 |
 | `core/measures.py` | `Basis`, `Stated`, `Derived`, `NotPublished`, `MeasureSpec`, `RowMeasure`, `MeasureSet`, `Scope`, `Subject`, `scope_for`, `measure_for`, `period_of`, `subject_of`, `description` | 230 |
 | `core/context.py` | `ParseContext`, `Parsed`, `Failed` | 80 |
