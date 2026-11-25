@@ -20,7 +20,7 @@ follows, on Opus, after the owner's go.
 
 ## The owner's answers
 
-All four are from November 25, 2026.
+All five are from November 25, 2026.
 
 1. The planning session asked "Plan sweep B as its own short step before step 4's plan?" He
    answered "Yes, plan it". He was shown this scope. One `Sha256` type, defined in the kit and
@@ -39,9 +39,13 @@ All four are from November 25, 2026.
 4. After Codex's review, this Plan run asked whether to add "the readers' refusal codes" to
    the list in hard rule 6. It had told him that proposal 4 pins the two enums and that the
    change edits a hard rule. He answered "Yes, add them".
+5. This Plan run then asked "Keep the four kit constructors refusing a sha that is plain
+   text?" It had told him that `WordRef`, `Page`, `Document` and `ReviewedReading` would refuse
+   a sha that is not a `Sha256`, and that a kit user who passes plain text gets a `ValueError`.
+   He answered "Yes, keep it".
 
 Everything else in this plan was worked out after the first three answers. Each item under
-"Proposals" is a proposal until he lands this plan.
+"Proposals" is a proposal until he lands this plan, except where an answer above settles it.
 
 ## Proposals
 
@@ -50,7 +54,8 @@ Everything else in this plan was worked out after the first three answers. Each 
 2. `WordRef`, `Page`, `Document` and `ReviewedReading` refuse a sha that is not a `Sha256`.
    The first three refuse an empty one now. A caller with no type checker, such as a user of
    the kit from PyPI, then gets a `ValueError` at the constructor. `ty` does not see plain text
-   that `dataclasses.replace` passes, and `test_records.py` has such a call.
+   that `dataclasses.replace` passes, and `test_records.py` has such a call. Answer 5 keeps
+   this.
 3. The refusals are two enums, one for each family of readers. `PERIOD_READERS` and
    `TITLE_RULES` each need one return type for every reader they hold. One shared enum would
    let `qcmr_title` return `period_ambiguous` with no report from `ty`.
