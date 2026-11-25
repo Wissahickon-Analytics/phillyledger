@@ -1,3 +1,4 @@
+import ast
 import builtins
 import dataclasses
 import importlib
@@ -172,14 +173,28 @@ def bool_fields(classes: Iterable["type[DataclassInstance]"]) -> set[tuple[str, 
     }
 
 
+def docstring_lines(tree: ast.Module) -> set[int]:
+    documented = ast.Module | ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef
+    return {
+        number
+        for node in ast.walk(tree)
+        if isinstance(node, documented) and ast.get_docstring(node) is not None
+        for number in range(node.body[0].lineno, (node.body[0].end_lineno or 0) + 1)
+    }
+
+
 def source_lines(package: ModuleType) -> int:
-    return sum(
-        1
-        for folder in package.__path__
-        for path in Path(folder).rglob("*.py")
-        for line in path.read_text().splitlines()
-        if line.strip() and not line.lstrip().startswith("#")
-    )
+    count = 0
+    for folder in package.__path__:
+        for path in Path(folder).rglob("*.py"):
+            text = path.read_text()
+            docstrings = docstring_lines(ast.parse(text))
+            count += sum(
+                1
+                for number, line in enumerate(text.splitlines(), start=1)
+                if number not in docstrings and line.strip() and not line.lstrip().startswith("#")
+            )
+    return count
 
 
 def public_names(package: ModuleType) -> list[str]:
@@ -278,6 +293,61 @@ def test_kit_dataclass_fields_are_pinned() -> None:
 
 def test_bool_fields_are_page_facts_only() -> None:
     assert bool_fields(kit_dataclasses()) == {("Word", "bold")}
+
+
+def planted_package(folder: Path, text: str) -> ModuleType:
+    folder.mkdir()
+    (folder / "boxes.py").write_text(text)
+    package = ModuleType("planted")
+    package.__path__ = [str(folder)]
+    return package
+
+
+def test_source_lines_leaves_out_docstrings(tmp_path: Path) -> None:
+    bare = (
+        "import re\n"
+        "\n"
+        "\n"
+        "class Box:\n"
+        "    top: int\n"
+        "\n"
+        "    def height(self) -> int:\n"
+        "        # a comment\n"
+        "        return self.top\n"
+        "\n"
+        "\n"
+        "def name() -> str:\n"
+        '    return "a string, not a docstring"\n'
+    )
+    documented = (
+        '"""Boxes on a page."""\n'
+        "\n"
+        "import re\n"
+        "\n"
+        "\n"
+        "class Box:\n"
+        '    """A box.\n'
+        "\n"
+        "    Attributes\n"
+        "    ----------\n"
+        "    top\n"
+        "        Points from the top of the page.\n"
+        '    """\n'
+        "\n"
+        "    top: int\n"
+        "\n"
+        "    def height(self) -> int:\n"
+        '        """Return the top."""\n'
+        "        # a comment\n"
+        "        return self.top\n"
+        "\n"
+        "\n"
+        "def name() -> str:\n"
+        '    """Name it."""\n'
+        '    return "a string, not a docstring"\n'
+    )
+    assert source_lines(planted_package(tmp_path / "bare", bare)) == 7
+    assert source_lines(planted_package(tmp_path / "documented", documented)) == 7
 
 
 def test_closed_lists_are_pinned() -> None:
