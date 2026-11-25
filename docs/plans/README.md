@@ -62,7 +62,8 @@ Each pull request gets one Build session on Opus (`CLAUDE.md`, "How work runs he
 7. The session hands the pull request to the owner with its verdict and its follow-ups.
 
 No Claude agent verifies the pull request, reviews its comments or reviews a decision trail.
-The Opus owner applies the `no-comments` and `deslop` skills to its own diff.
+The Opus owner applies the `no-comments` and `deslop` skills to its own diff. Both keep the
+docstrings that the Code section of `CLAUDE.md` asks for.
 
 Codex's sandbox has no network. A clause that needs a run outside it, such as a CI run on a
 planted change or a call to R2, is proven by the Opus owner, who records the run in the pull

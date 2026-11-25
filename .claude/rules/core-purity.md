@@ -17,5 +17,10 @@ These modules decide; they never act. Design sections 1.4, 3 and 11.4 are the re
 - Problems are findings with a code and a severity, returned with the result. Raise only for a
   broken invariant, which is a bug.
 - Values are frozen, slotted dataclasses. Unions are closed and matched exhaustively.
+- A value with a rule of its own has a type of its own, built by one function that checks the
+  rule. A result with more than one outcome is a union of named types, never a bare `str` or
+  `tuple` (`docs/principles.md`, section 8).
+- Every public module, class, function and method has a numpy docstring that says what its
+  signature cannot (`CLAUDE.md`, Code).
 - In `checkedtables`: no Philadelphia names, no `bool` parameters, no flag fields. `checks`
   imports nothing that knows about words.

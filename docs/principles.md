@@ -2,6 +2,7 @@
 
 Written from primary sources on November 21, 2026. Claims about Oxide come only from its
 public Reconfigurator document. Anything not found in a source is marked "not confirmed".
+Section 8 was added on November 25, 2026, with no copy of its source at hand, and says so.
 
 ## 1. Functional core, imperative shell
 
@@ -124,6 +125,174 @@ longer shows what will happen.
 8. Is there module-level mutable state, a registry filled at import time, or a cache inside
    the core?
 
+## 8. Types and docstrings that say what the code means
+
+Added on November 25, 2026. The owner read the pull requests of step 3 and wrote: "we need to
+maintain docstring standards. I see some functions without any docstrings. We need the code to
+be readable. I'd like to also follow the principles outlined in the "Robust Python" book by
+Patrick Viafore. I'd like to incorporate those principles with our existing core/shell set up
+too". In the same message he chose typer for the command line. This section is the repo's
+answer, and `CLAUDE.md` (Code) holds the rules in short form.
+
+Not confirmed: every claim below about what the book says. The session that wrote this section
+had no copy of the book, and O'Reilly's page for it refused the request that day. The section
+names the book's four parts from memory and quotes nothing from it.
+
+### 8.1 What the book argues
+
+Code is read and changed for years by people who cannot ask its author what was meant. Robust
+code tells them. A name, a type and an interface are each a message to that later reader, and
+the best message is one a tool checks on every commit. The book has four parts.
+
+- "Annotating Your Code with Types": a type hint is a checked statement of intent. The narrow
+  forms (`Optional`, `Union`, `Literal`, `NewType`, `Final` and the collection types) say more
+  than `str` or `list` can.
+- "Defining Your Own Types": an enum for a closed set, a data class for fields that vary
+  freely, a class when the fields must obey a rule together, interfaces that are easy to use
+  correctly and hard to use incorrectly, protocols, and a check on outside data at the point
+  where it enters the program.
+- "Extensible Python": new behavior arrives without edits to what exists, dependencies stay
+  visible, and policy is kept apart from mechanism.
+- "Building a Safety Net": linters, tests that state behavior, property tests and mutation
+  tests.
+
+### 8.2 How it joins the core and the shell
+
+Sections 1 to 4 say where effects go. The book says what the values that cross the boundary
+should look like. Together they give one rule: text is parsed once, and past the parser the
+code takes only types.
+
+- The shell reads bytes, text, environment variables and command-line words. One pure function
+  for each format turns them into typed values, as `parse_index` and `parse_listing` do. A
+  value that breaks its type's rule stops there, as a finding or as refused input.
+- Past the parser no function takes a `str`, a `dict` or a `tuple` whose meaning the reader
+  has to look up. It takes the type.
+- The function that builds a type checks its rule, so the core does not check it again. A
+  defensive check deep in the core is a sign that some type is too loose.
+- A plan is already this kind of value. It is specific, immutable and printable (section 3),
+  so the executor has nothing left to decide and nothing left to validate.
+
+### 8.3 Rules, with reasons
+
+- A value with a rule of its own has a type of its own. A sha256 is 64 lowercase hex
+  characters, and `str` says none of that. Where there is a rule to check, the type is a
+  frozen, slotted dataclass with one builder that checks it. Where there is only a meaning to
+  keep apart, such as two kinds of id, `typing.NewType` is enough. What the builder does with a
+  bad value follows section 5: a problem in the publisher's data comes back as a value. Step 3
+  shows the cost of the loose form. Pull request 38 added a guard to `parse_index` for a sha
+  that was not 64 lowercase hex characters, and its review then found the sha that was not a
+  string at all.
+- A result with more than one outcome is a union of named types. It is never a bare `str` or
+  `tuple` that stands for "it failed". The caller handles each member and ends with
+  `typing.assert_never`, so `ty check` fails at every caller that ignores a new member. A run
+  on November 25, 2026 showed that `ty` reports the missed member after a `match` and after a
+  chain of `isinstance` checks. At head `3643f40`, `qcmr_period` returns `Period | str`, where
+  the `str` is a refusal code, and `fetch_command` tells a repo from its findings with
+  `isinstance(repo, tuple)`. Both are the loose form.
+- A closed set of values is a `StrEnum`, pinned by a test (hard rule 6). A `str` parameter that
+  takes one of four words is an enum that nobody wrote.
+- Fields that vary freely are a frozen dataclass. Fields that must agree with each other get
+  one builder that checks the agreement, and nothing else builds the type.
+- An interface is written from the caller's side. What a function needs is a typed parameter,
+  never something to set up first. Gather, plan, execute already works this way: `run_fetch`
+  takes the plan that `plan_watch` returned, so it cannot run before it. When two parameters
+  share a type, a caller can swap them and no tool notices. Give one a type of its own, or make
+  both keyword-only.
+- Behavior varies by a `Protocol` port or by a member of a union. It never varies by a subclass
+  that overrides part of its parent, and never by a flag. Hard rule 5 holds the last point for
+  the kit.
+- A name comes first, then a type, then a test, then a docstring. Each says what the one before
+  could not. A docstring tells the reader what the value means on the printed page, its unit
+  and its period, what comes back when the input is bad, and which page or quirk forced a
+  choice. A docstring that repeats its signature tells the reader nothing, and it can still go
+  out of date.
+- A docstring is a sentence, and it can be false. A reviewer reads it against the code under
+  it, the same way as a sentence in the design.
+
+### 8.4 One docstring, before and after
+
+At head `3643f40`, `qcmr_period` has no docstring. Its name and types leave three questions
+open: which text on the page it reads, what the `str` is, and why a date can be refused. This
+docstring answers them.
+
+```python
+def qcmr_period(page1_text: str) -> Period | str:
+    """Read the quarter that a QCMR cover prints.
+
+    The cover prints "FOR THE PERIOD ENDING <Month> <D>, <YYYY>" (QCASH-Q05, QOBL-Q04). Every
+    such caption on page 1 is read, and all of them must give one date.
+
+    Returns
+    -------
+    Period | str
+        The three months that end on the printed date. Otherwise a refusal code:
+        "period_unreadable" when the page has no caption, or has one with no date a program
+        can read, "period_ambiguous" when two captions give different dates, and
+        "period_not_a_quarter_end" for a date that ends no quarter.
+    """
+```
+
+`"""Read the period."""` would pass ruff and tell the reader nothing. Under the second rule of
+8.3 the `str` becomes a named type, and the `Returns` section shrinks to a line.
+
+### 8.5 The command line
+
+The rule: `datadesk` uses typer, in `datadesk.shell.cli` and nowhere else. At head `3643f40` it
+still uses `argparse`. A typer command is a function whose typed parameters are the command's
+arguments. The signature is the specification, and `--help` is generated from it. Three limits
+keep it inside the shell's job.
+
+- A command function builds `Deps`, calls one plain function and prints. The plain function is
+  what tests call, as they call `fetch_command` at head `3643f40`. A command function holds no
+  branch on the data (section 1).
+- typer's own traceback printing is switched off with `pretty_exceptions_enable=False`. typer
+  0.29.2 has it on by default (read from `typer.Typer` on November 25, 2026). `main` sends
+  every line it prints through `hide_keys`, and a traceback that typer prints itself would not
+  pass through it (hard rule 8).
+- Design section 9 says how each kind of stop exits. typer and click have their own handling
+  of `--help`, a usage error and Ctrl-C, so the pull request that moves `datadesk` to typer
+  writes that section again from runs.
+
+### 8.6 The safety net
+
+The book's last part maps onto gates this repo already runs.
+
+| The book asks for | Here |
+|---|---|
+| A type checker and a linter on every change | `ty check` and ruff, among the six gates |
+| Checks written for this code base alone | the purity test, the shape test, the pin tests and import-linter |
+| Tests that state what a user was promised | the clauses of each step's check, each proven by a named test |
+| Property tests | Hypothesis |
+| Mutation tests | each new test is run with its rule removed, and the pull request records the run |
+
+No mutation tool runs in the gates. A session makes each mutant by hand, runs it and restores
+the code.
+
+### 8.7 What this repo does not take
+
+- No runtime validation library such as pydantic. `checkedtables` is published with no
+  dependencies, and one checked builder for each type gives the rule a single home in plain
+  Python. This is the choice to look at again if hand-written parsers keep missing cases. The
+  review of pull request 38 found two in `parse_index`: a sha that was not a string, and a
+  `urls` list whose elements were not strings.
+- No event system and no plug-in loading. Plans are small dataclasses and executors are short
+  loops (section 6).
+- No inheritance trees.
+- No separate language for acceptance tests. A step's check is prose in design section 15, and
+  a named test proves each clause.
+
+### 8.8 Checklist for a reviewer
+
+1. Past the parser, does a function take a `str`, `int`, `dict` or `tuple` whose meaning a type
+   could carry?
+2. Does a core function recheck a rule that a type's builder already holds?
+3. Can a caller ignore one outcome of a result while `ty check` still passes?
+4. Does a public name lack a docstring? Does a docstring only repeat its signature?
+5. Is each docstring true of the code under it?
+6. Does anything outside `datadesk.shell.cli` import typer? Does a command function branch on
+   the data?
+7. Can `datadesk` print a line that did not pass through `hide_keys`?
+
 ## Sources
 
 - Gary Bernhardt, "Functional Core, Imperative Shell" (screencast):
@@ -134,3 +303,6 @@ longer shows what will happen.
   https://sans-io.readthedocs.io/how-to-sans-io.html
 - Oxide, `omicron` repository, `docs/reconfigurator.adoc`:
   https://github.com/oxidecomputer/omicron (read through a mirror of that file)
+- Patrick Viafore, "Robust Python: Write Clean and Maintainable Code", O'Reilly Media, July
+  2021, ISBN 9781098100650 (not read for section 8, as that section says):
+  https://www.oreilly.com/library/view/robust-python/9781098100650/
