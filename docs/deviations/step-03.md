@@ -27,9 +27,10 @@ design leaves open" in `docs/plans/step-03.md`.
   `test_current_is_the_version_that_nothing_supersedes` fails. With the `broken_chain` rule
   removed, `test_index_refuses_an_edition_whose_versions_are_not_one_chain`,
   `test_add_versions_refuses_a_version_that_supersedes_itself` and
-  `test_add_versions_refuses_two_versions_that_supersede_each_other_beside_a_third` fail, and
-  with only the stop on a repeated version removed, the `a_chain_that_runs_into_a_cycle` case
-  fails. Design sections 2.2, 6.3 and 12.3.
+  `test_add_versions_refuses_two_versions_that_supersede_each_other_beside_a_third` fail. With
+  `sha is not None or` removed from the chain check, the `a_chain_that_runs_into_a_cycle` case
+  fails. With the stop on a repeated version removed, the walk never ends on that case, and a
+  run under `timeout 60` was stopped with no result. Design sections 2.2, 6.3 and 12.3.
 - **Step 3: the index sorts by `(edition, listed_at, sha256)`** (November 23, 2026, S3-A). The
   design sorted by `(edition, listed_at)`, which is not a total order once two versions of one
   edition share a `listed_at`. The sha is the last key. `ArchiveIndex` refuses an unsorted
@@ -157,10 +158,12 @@ design leaves open" in `docs/plans/step-03.md`.
   `a_year_run_on_into_another_digit` case fails. With spaces alone between its words, the
   `a_phrase_broken_across_lines` and `a_phrase_spaced_with_no_break_spaces` cases fail. With the
   words "PERIOD ENDING" made optional, the two bare date cases fail. With each fiscal quarter
-  that starts in July or October moved back a year, every case that prints September 30 or
-  December 31 fails, `september_opens_the_next_fiscal_year` and
-  `december_is_in_the_next_fiscal_year` among them (QPOS-Q34), and the March and June cases
-  pass. Without the check for two dates, the `two_phrases_with_two_dates` case fails, and
+  that starts in July or October moved back a year in `qcmr_period`, 32 tests fail, 19 in
+  `core/test_fetch.py` and 13 in `shell/test_fetch_command.py`,
+  `september_opens_the_next_fiscal_year` and `december_is_in_the_next_fiscal_year` among them
+  (QPOS-Q34). The `march` and `june_closes_the_fiscal_year` cases pass. So does each case that
+  expects a finding, `two_phrases_with_two_dates` and `the_same_quarter_a_year_later` among
+  them, though their covers print September 30 or December 31. Without the check for two dates, the `two_phrases_with_two_dates` case fails, and
   without the quarter end check, `a_date_that_is_not_a_quarter_end` fails. Design section 3.2.
 - **Step 3: a `PRINTED_PERIOD` note clears a mismatch only when it fits the cover** (November
   24, 2026, S3-C). The design said that a note is the only way past a mismatch (QOBL-Q06) and
@@ -252,9 +255,12 @@ design leaves open" in `docs/plans/step-03.md`.
   period, though the design called such a phrase `period_unreadable` (Codex review of S3-C,
   finding 3). The pattern also matched inside a longer word, so `SUBPERIOD ENDING SEPTEMBER 30,
   2021` read as FY2022 Q1. `qcmr_period` now finds every `PERIOD ENDING` caption, with a word
-  boundary before `PERIOD` and after `ENDING`. Each caption must be followed by a readable date,
-  whose month word is any run of word characters, as in the title rule. Otherwise the page is
-  `period_unreadable`. With the S3-C pattern, the cases
+  boundary before `PERIOD` and after `ENDING`. Each caption must be followed by a readable date.
+  Otherwise the page is `period_unreadable`. The month word of `PERIOD_ENDING` is any run of
+  word characters, so `Mar½ch` and `Mar_ch` match it. `_printed_date` finds neither in `MONTHS`,
+  so `qcmr_period` returns `period_unreadable` for both. The title rule also wants every
+  character of its month word to be a letter, so it reads
+  `Quarterly City Managers Report - Mar½ch 31, 2026` as `unrelated`. With the S3-C pattern, the cases
   `a_month_word_of_other_letters_beside_a_readable_phrase`,
   `a_caption_with_no_date_beside_a_readable_phrase` and `a_longer_word_in_place_of_the_caption`
   of `test_confirm_period_returns_a_finding_for_a_cover_it_cannot_confirm` fail. The `Märch` case
@@ -285,8 +291,9 @@ design leaves open" in `docs/plans/step-03.md`.
   now has the meaning the code already had: the latest of the stamps at which each of its URLs
   joined the line. A URL the line already holds, listed again at a later stamp, changes
   nothing. So new bytes listed in March still supersede a November line whose URL was listed
-  again in June. On the document-finder feed the stamp is in the URL, so a later listing is
-  always a new URL. No code changed.
+  again in June. On the document-finder feed the stamp is in the URL path, so a later upload
+  stamp is always a new URL. A later listing need not be one. The feed saved on November 23,
+  2026 lists again all 34 QCMR URLs of the July 28, 2026 fixture. No code changed.
   `test_add_versions_adds_nothing_for_an_indexed_sha_at_an_indexed_url` pins the meaning, and
   fails when the line takes the later stamp with no URL joining. Design sections 2.2 and 3.2.
 - **Step 3: a URL joins a line only when the line lacks it** (November 24, 2026, S3-C second
@@ -352,8 +359,11 @@ design leaves open" in `docs/plans/step-03.md`.
   saved-folder `Http` adapter and the pdfplumber reader need neither, so their contracts run in CI
   beside the fakes (plan, S3-D). The `ObjectStore` suite runs the dict store always and the S3
   store only when the four `DATADESK_CONTRACT_S3_*` variables are set. The `PdfReader` contract
-  builds its PDFs in the test, because `.gitignore` keeps every PDF out of git. With page 1 read as
-  the last page, `test_page1_text_holds_the_words_of_page_1_alone` fails. Bytes that pdfplumber
+  builds its PDFs in the test, because `.gitignore` keeps every PDF out of git. With the reader of
+  the second fix round, below, changed to read the last page that `PDFPage.create_pages` gives in
+  place of the first, `test_page1_text_holds_the_words_of_page_1_alone` fails. With the first fix
+  round's `pages=[1]`, pdfplumber's page list held page 1 alone, so reading its last page passed
+  that test. Bytes that pdfplumber
   cannot open and a PDF with no page raise `EffectError`, so the command stops with one line and
   not a traceback. With that conversion removed, the `bytes_that_are_not_a_pdf` and
   `a_pdf_with_no_page` cases of
@@ -436,18 +446,20 @@ design leaves open" in `docs/plans/step-03.md`.
   that the shell is the only place that catches exceptions, which was false, because
   `document_finder.parse` returns the `ValueError` of `json.loads` as `listing_unreadable` (Codex
   read of the second fix round, finding 1). In the third fix round section 9 says a core function
-  may catch a library's exception on bad input to return a finding or a code, and names the three
-  catches in the core: `load_catalog`, `document_finder.parse` and `_printed_date`, which lets
-  `qcmr_period` return `period_unreadable`. `checkedtables` catches none. `rg -n "except"
-  packages/datadesk/src packages/checkedtables/src` lists those three catches in the core and none
-  in the kit, and `load_catalog("[x")` returns `catalog_not_toml`. That round's paragraph also said
-  that `main` prints the traceback of any exception raised while it builds `Deps` or runs the fetch,
-  though it prints one message for each stop that section 4.2 names, and that a `ValueError` that
-  escapes the core is a bug, though `gather_repo` turns the one from `parse_index` into
-  `index_unreadable` (Codex read of the third fix round, findings 1 and 2). In the fourth fix round
-  the paragraph names the `parse_index` case before it calls any other escaping exception a bug, and
-  says that `main` prints the message of each stop that section 4.2 names and the traceback of any
-  other exception. Design sections 4.2 and 9.
+  may catch a library's exception on bad input to return a finding or a code, and names three
+  catches in the core, `load_catalog`, `document_finder.parse` and `qcmr_period`. `checkedtables`
+  catches none, and `load_catalog("[x")` returns `catalog_not_toml`. That round's paragraph also
+  said that `main` prints the traceback of any exception raised while it builds `Deps` or runs the
+  fetch, though it prints one message for each stop that section 4.2 names, and that a `ValueError`
+  that escapes the core is a bug, though `gather_repo` turns the one from `parse_index` into
+  `index_unreadable` (Codex read of the third fix round, findings 1 and 2). It named `qcmr_period`,
+  though `_printed_date` holds the `except ValueError` that lets `qcmr_period` return
+  `period_unreadable` (same read, a follow-up). In the fourth fix round the paragraph names the
+  `parse_index` case before it calls any other escaping exception a bug, says that `main` prints
+  the message of each stop that section 4.2 names and the traceback of any other exception, and
+  names `_printed_date` in place of `qcmr_period`. `rg -n "except" packages/datadesk/src
+  packages/checkedtables/src` prints those three catches in the core. In the kit it prints one
+  docstring line of `checkedtables/text.py` and no catch. Design sections 4.2 and 9.
 - **Step 3: an index file that `parse_index` cannot read is a finding** (November 24, 2026, S3-D).
   Section 9 let the shell catch only effect exceptions, and `parse_index` raises `KeyError`,
   `TypeError` or `ValueError` on a file it cannot read. The index file is input from the checkout,
@@ -472,20 +484,22 @@ design leaves open" in `docs/plans/step-03.md`.
   `test_a_checkout_the_command_cannot_read_stops_it_before_any_request` fails. Design sections 4,
   4.2 and 9.
 - **Step 3: the unreadable FY2027 Q1 cover, and three coverage rows moved** (November 24, 2026,
-  S3-E). `quirks.tsv` gains QPOS-Q38, inherent. The FY2027 Q1 report has no text a program can
-  read, because its page 1 fonts have no Unicode map, so `confirm_period` returns
+  S3-E). `quirks.tsv` gains QPOS-Q38, inherent. The cover of the FY2027 Q1 report has no text a
+  program can read, because its page 1 fonts have no Unicode map, so `confirm_period` returns
   `period_unreadable`, `plan_fetch` rejects it, and it waits for a later step (plan fact 14,
-  answer D). A follow-up of pull
+  answer D). Later pages have such text. `pdftotext -f 6 -l 6 -layout` prints "For the Period
+  Ending September 30, 2026", and page 50 prints a table of performance measures. A follow-up of
+  pull
   request 35 found three rows of `coverage.tsv` on the wrong function. QOBL-Q04 and QPOS-Q34
   move from `periods.fiscal_period`, which is for windowed periods and does not exist before
   step 5, to `fetch.qcmr_period`, which section 3.2 credits with both and which maps the cover's
   period end to its fiscal quarter. `periods.fiscal_quarter` does the same mapping, but no code
   under `src/` calls it. QOBL-Q06 moves from `fetch.plan_fetch` to `fetch.confirm_period`, the
-  function section 6.3 names. So section 13 counts 438 inherent quirks, and four rows of its
-  table change: `confirm_period` carries 10, `fiscal_period` 3, `qcmr_period` 2 and `plan_fetch`
-  1. A script that recomputes the table from the two files found no difference before the
-  change. Run on the new files against the old table, it names those four rows, and against the
-  new table, none. Design section 13.
+  function section 6.3 names. So section 13 counts 438 inherent quirks. Three rows of its table
+  change, `confirm_period` from 8 to 10, `fiscal_period` from 5 to 3 and `plan_fetch` from 2 to 1,
+  and `qcmr_period` is a new row with 2. A script that recomputes the table from the two files
+  found no difference before the change. Run on the new files against the old table, it names
+  those four mechanisms, and against the new table, none. Design section 13.
 - **Step 3: `parse_index` refuses a sha that is not lowercase hex, and `urls` that is not a list**
   (November 25, 2026, step 3 cleanup). The design gave a line's `sha256` no form and did not say
   that `urls` is a list. So the FY2022 Q1 line beside a hand-edited copy under FY2022 Q2, with the
