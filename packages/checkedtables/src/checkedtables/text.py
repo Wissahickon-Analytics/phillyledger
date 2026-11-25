@@ -1,3 +1,5 @@
+"""Normalize the text of labels, and read a label from its words."""
+
 from collections.abc import Sequence
 from dataclasses import replace
 from re import compile

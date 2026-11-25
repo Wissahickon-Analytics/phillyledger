@@ -1,3 +1,5 @@
+"""An `Http` adapter that answers from a folder of responses that a browser saved."""
+
 import re
 from pathlib import Path
 
@@ -9,15 +11,34 @@ URL = re.compile(r"https?://\S+")
 
 
 class SavedFolderError(Exception):
-    pass
+    """A saved folder that `SavedHttp` refuses. The message names the file or line and why."""
 
 
 class SavedHttp:
+    """Answer GET requests from the files of a saved folder.
+
+    The folder holds the saved files and `responses.tsv`, whose first row is the header
+    `url<TAB>file` and whose other rows each pair a URL with a file name. A listed URL answers 200
+    with its file's bytes, and any other URL answers 404.
+
+    Building one reads `responses.tsv` and raises SavedFolderError for a file it cannot read or
+    that is not UTF-8, another header, a row that is not one URL and one file name, a URL that
+    does not start with https:// or http:// or that holds whitespace, a URL listed twice, and a
+    name that is not a file directly in the folder or that is a symbolic link.
+    """
+
     def __init__(self, folder: Path) -> None:
         self.folder = folder
         self.files = _read_responses(folder)
 
     def get(self, url: str) -> HttpResponse:
+        """Return 200 and the file's bytes for a listed URL, and 404 for any other.
+
+        Raises
+        ------
+        EffectError
+            When the listed file cannot be read.
+        """
         name = self.files.get(url)
         if name is None:
             return HttpResponse(404, b"")

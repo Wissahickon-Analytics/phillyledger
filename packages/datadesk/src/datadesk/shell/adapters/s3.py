@@ -1,3 +1,5 @@
+"""An `ObjectStore` adapter for an S3 bucket, such as the archive bucket on R2."""
+
 from dataclasses import dataclass
 from os import devnull
 from typing import Any
@@ -33,10 +35,22 @@ CLIENT_CONFIG = Config(
 
 @dataclass(frozen=True, slots=True)
 class S3Store:
+    """One bucket of an S3 service.
+
+    `client` is a boto3 S3 client whose own retries are off, so the executor's tries are the
+    only ones.
+    """
+
     client: Any
     bucket: str
 
     def put(self, key: str, data: bytes, condition: Condition) -> str:
+        """Write `data` under `key` when `condition` holds, and return the new ETag.
+
+        CreateOnly and IfMatch(None) send If-None-Match: *, and IfMatch(etag) sends If-Match. A
+        refused precondition raises PreconditionFailed with the key. Any other client or botocore
+        error raises EffectError.
+        """
         match condition:
             case CreateOnly() | IfMatch(None):
                 precondition = {"IfNoneMatch": "*"}
@@ -55,6 +69,7 @@ class S3Store:
         return response["ETag"]
 
     def head(self, key: str) -> str | None:
+        """Return the ETag under `key`, or None on a 404. Any other error raises EffectError."""
         try:
             response = self.client.head_object(Bucket=self.bucket, Key=key)
         except ClientError as error:
@@ -66,6 +81,7 @@ class S3Store:
         return response["ETag"]
 
     def get(self, key: str) -> bytes:
+        """Return the bytes under `key`. NoSuchKey raises KeyError, any other error EffectError."""
         try:
             return self.client.get_object(Bucket=self.bucket, Key=key)["Body"].read()
         except ClientError as error:
@@ -77,6 +93,15 @@ class S3Store:
 
 
 def s3_store(settings: Settings) -> S3Store:
+    """Build the store for the archive bucket from `settings` alone.
+
+    The botocore session maps none of its session variables, AWS_PROFILE among them, to the
+    environment, and reads `os.devnull` as its config and credentials files, so `settings` alone
+    gives the endpoint, the keys and the bucket. botocore still reads some variables that are
+    not session variables. `CLIENT_CONFIG` sets the three S3 settings that it reads from AWS_S3_*
+    variables, which overrides them, and design section 4 names others it reads, such as
+    AWS_EXECUTION_ENV and the proxy variables.
+    """
     session = Session(botocore_session=BotocoreSession(session_vars=QUIET_SESSION_VARIABLES))
     client = session.client(
         "s3",

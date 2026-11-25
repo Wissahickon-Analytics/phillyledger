@@ -1,3 +1,5 @@
+"""Decide what a fetch stores and indexes, from the bytes it downloaded and the index."""
+
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, replace
 from datetime import date
@@ -23,6 +25,12 @@ PERIOD_ENDING = compile(r"(?i)\bPERIOD\s+ENDING\b(?:\s+(\w+)\s+(\d{1,2}),?\s+(\d
 
 @dataclass(frozen=True, slots=True)
 class Fetched:
+    """What the shell got for one fetch request, before any decision.
+
+    `size` is the length of the body. `page1_text` is the text the PDF reader read from page 1.
+    For a status other than 200, `sha256` and `page1_text` are None and `size` is 0.
+    """
+
     request: FetchRequest
     status: int
     sha256: str | None
@@ -32,18 +40,32 @@ class Fetched:
 
 @dataclass(frozen=True, slots=True)
 class StoreObject:
+    """A file to put in the archive bucket, under the key "pdf/<sha[:2]>/<sha>.pdf"."""
+
     sha256: str
     dest_key: str
 
 
 @dataclass(frozen=True, slots=True)
 class Rejection:
+    """A fetch request whose bytes are not indexed, and why.
+
+    `reason` is a code such as "period_mismatch", "content_alias" or "http_404".
+    """
+
     request: FetchRequest
     reason: str
 
 
 @dataclass(frozen=True, slots=True)
 class FetchPlan:
+    """Everything a fetch decided: what to store, what to index, what it refused, and the PR.
+
+    `pull_request.files` is empty when no line is added. Otherwise it holds one file,
+    `INDEX_PATH` with the whole index after every added line. The body lists each added line
+    (edition id, sha, URLs) and each rejection (edition id, URL, reason).
+    """
+
     store: tuple[StoreObject, ...]
     index_add: tuple[DocumentVersion, ...]
     rejections: tuple[Rejection, ...]
@@ -51,6 +73,19 @@ class FetchPlan:
 
 
 def qcmr_period(page1_text: str) -> Period | str:
+    """Read the quarter that a QCMR cover prints.
+
+    The cover prints "FOR THE PERIOD ENDING <Month> <D>, <YYYY>" (QCASH-Q05, QOBL-Q04). Every
+    such caption on page 1 is read, and all of them must give one date.
+
+    Returns
+    -------
+    Period | str
+        The three months that end on the printed date. Otherwise a refusal code:
+        "period_unreadable" when the page has no caption, or has one with no date a program
+        can read, "period_ambiguous" when two captions give different dates, and
+        "period_not_a_quarter_end" for a date that ends no quarter.
+    """
     read = [_printed_date(*phrase) for phrase in PERIOD_ENDING.findall(page1_text)]
     ends = {end for end in read if end is not None}
     if not read or None in read:
@@ -71,6 +106,22 @@ PERIOD_READERS: MappingProxyType[str, Callable[[str], Period | str]] = MappingPr
 def confirm_period(
     series: str, page1_text: str, expected: EditionKey, notes: Sequence[EditionNote]
 ) -> Period | Finding:
+    """Confirm the period that page 1 prints against the period the listing gave.
+
+    The listing date and the printed period can disagree (QOBL-Q06). A printed period equal to
+    `expected.period` is confirmed. Another one is confirmed only by a PRINTED_PERIOD note, on
+    page 1 or on no page, that quotes words page 1 prints, with each run of whitespace read as
+    one space and no word character right before or after the quote. The series' reader must
+    read the quote alone as that same period, and the note's value must be its end in ISO form.
+    No note clears a code the reader returns. The caller passes only the notes on the file.
+
+    Returns
+    -------
+    Period | Finding
+        The confirmed period, or a BLOCK finding whose subject is `expected.id()`:
+        period_unsupported for a series with no reader, a code the reader returns, or
+        period_mismatch.
+    """
     reader = PERIOD_READERS.get(series)
     if reader is None:
         return _block("period_unsupported", expected, f"no period reader for {series!r}")
@@ -87,6 +138,24 @@ def confirm_period(
 def plan_fetch(
     fetched: Sequence[Fetched], index: ArchiveIndex, notes: Sequence[EditionNote]
 ) -> FetchPlan:
+    """Decide, for each fetched file in order, whether to store it, index it or refuse it.
+
+    A working index starts as `index` and grows after each added line, so two requests in one
+    batch see each other. The first rule that fits a fetch decides it.
+
+    1. A status other than 200 is refused as "http_<status>".
+    2. A sha indexed under another edition is refused as content_alias (MSCH-Q01).
+    3. A sha indexed under the request's edition that is not its current version is refused as
+       superseded_sha_relisted. With bytes A, then B, then A again, B stays current.
+    4. The current sha at a URL its line holds adds nothing.
+    5. The current sha at a new URL stores nothing and adds the URL to its line, which keeps the
+       later listed_at.
+    6. A new sha must pass `confirm_period`, with the notes on that sha. New bytes listed before
+       the current version are refused as listed_before_current. Otherwise the sha gets one
+       object to store and a line that supersedes the current version.
+
+    A finding from `add_versions` refuses the fetch with its code.
+    """
     working = index
     store: list[StoreObject] = []
     index_add: list[DocumentVersion] = []

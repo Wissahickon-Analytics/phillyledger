@@ -1,3 +1,5 @@
+"""Group a page's words into printed lines."""
+
 from collections.abc import Sequence
 from dataclasses import dataclass
 from re import compile

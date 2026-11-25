@@ -1,3 +1,5 @@
+"""Records that a person writes to change cells: reviewed readings and dash rules."""
+
 from collections.abc import Sequence
 from dataclasses import dataclass
 

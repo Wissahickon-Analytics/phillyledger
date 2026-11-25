@@ -1,3 +1,5 @@
+"""The catalog of sources: each publisher listing that the archive reads."""
+
 from collections import Counter
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -11,6 +13,8 @@ from checkedtables.table import Finding, Severity
 
 
 class ListingShape(StrEnum):
+    """The layout of a publisher's listing page, which picks the parser that reads it."""
+
     DOCUMENT_FINDER = "document_finder"
     PHILA_DOCUMENTS = "phila_documents"
     MANUAL = "manual"
@@ -18,6 +22,18 @@ class ListingShape(StrEnum):
 
 @dataclass(frozen=True, slots=True)
 class SourceEntry:
+    """One publisher listing that the archive reads, from one `[[source]]` table.
+
+    Attributes
+    ----------
+    series
+        The series of its editions, and the key of its title rule.
+    category
+        For a document-finder listing, the category whose documents are read.
+    first_period_end
+        An edition that ends before this date is never fetched.
+    """
+
     id: str
     series: str
     shape: ListingShape
@@ -28,13 +44,23 @@ class SourceEntry:
 
 @dataclass(frozen=True, slots=True)
 class SourceCatalog:
+    """Every source that catalog.toml lists, each id once."""
+
     entries: tuple[SourceEntry, ...]
 
     def __post_init__(self) -> None:
+        """Raise ValueError when an id is listed more than once."""
         if repeated := _repeated(entry.id for entry in self.entries):
             raise ValueError(f"the catalog lists {', '.join(repeated)} more than once")
 
     def entry(self, id: str) -> SourceEntry:
+        """Return the source with this id.
+
+        Raises
+        ------
+        KeyError
+            When the catalog has no source with this id.
+        """
         for entry in self.entries:
             if entry.id == id:
                 return entry
@@ -54,6 +80,13 @@ FIELDS: MappingProxyType[str, type] = MappingProxyType(
 
 
 def load_catalog(text: str) -> SourceCatalog | tuple[Finding, ...]:
+    """Read the text of catalog.toml, or return every problem in it as a BLOCK finding.
+
+    The file holds one `[[source]]` table for each listing, with the six fields of `SourceEntry`.
+    The codes are catalog_not_toml, catalog_unknown_field for a key other than `source` or a field
+    that `SourceEntry` lacks, catalog_missing_field, catalog_wrong_type (a date and time is not a
+    date), catalog_unknown_shape and catalog_duplicate_id.
+    """
     try:
         tables = loads(text)
     except TOMLDecodeError as error:

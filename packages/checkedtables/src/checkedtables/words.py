@@ -1,3 +1,5 @@
+"""Words, rules and pages, as one source read them from a publisher's file."""
+
 from dataclasses import dataclass
 
 from checkedtables.kinds import SourceKind

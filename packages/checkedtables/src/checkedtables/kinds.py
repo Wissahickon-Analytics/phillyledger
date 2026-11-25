@@ -1,3 +1,5 @@
+"""Closed lists that say where words came from and how a column's cells print."""
+
 from enum import StrEnum
 
 

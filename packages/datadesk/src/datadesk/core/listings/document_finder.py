@@ -1,3 +1,5 @@
+"""Read the JSON feed of a document-finder listing into its links."""
+
 from dataclasses import dataclass
 from json import loads
 from re import compile
@@ -12,12 +14,24 @@ UPLOAD_STAMP = compile(r"(?>(?:[^:/?#]+:)?(?://[^/?#]*)?)[^?#]*?/media/(\d{14})/
 
 @dataclass(frozen=True, slots=True)
 class PageLink:
+    """One document that the feed lists, before its title is read.
+
+    `listed_at` is the 14-digit upload stamp in the path of `url`.
+    """
+
     title: str
     url: str
     listed_at: str
 
 
 def parse(source: SourceEntry, text: str) -> tuple[PageLink, ...] | Finding:
+    """Read the documents of the feed's categories titled `source.category`, in feed order.
+
+    The feed is a JSON list of categories, each with a title and its documents. Each of these is
+    a BLOCK listing_unreadable finding: text that is not JSON (NaN and Infinity included), a feed
+    that is not a list, no category with that title, a document with no title, a blank title or
+    no URL, and a URL with no upload stamp in its path.
+    """
     try:
         feed = loads(text, parse_constant=_not_json)
     except ValueError as error:

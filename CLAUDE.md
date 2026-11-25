@@ -166,9 +166,8 @@ Step 1 creates these. Keep this list true as tooling changes.
   type rule asks for, change the design in the same pull request (hard rule 7). If a module
   runs well past its estimate in section 12, say so in progress.md. Docstrings do not count
   against the estimate.
-- The type, docstring and typer rules date from November 25, 2026. Code built before then does
-  not meet them yet, and until it does ruff checks docstrings in `checkedtables` and
-  `phillyledger` alone. `docs/progress.md` says what still has to change.
+- The type rules date from November 25, 2026. Code built before then does not meet them yet.
+  `docs/progress.md` says what still has to change.
 
 ## Tests
 

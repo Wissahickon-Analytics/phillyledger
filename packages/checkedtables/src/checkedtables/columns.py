@@ -1,3 +1,5 @@
+"""The columns a table declares, and how each one prints its numbers."""
+
 from dataclasses import dataclass
 
 from checkedtables.kinds import DashMeaning, PercentSign, Presence, ValueKind
