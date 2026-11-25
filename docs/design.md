@@ -2213,9 +2213,11 @@ def plan_fetch(fetched: Sequence[Fetched], index: ArchiveIndex,
 # in ISO form, printed_period an object or null, and a newline after every line. The empty
 # index is "".
 def parse_index(jsonl: str) -> ArchiveIndex: ...         # splits on "\n" alone, then sorts
-    # raises ValueError on a line whose sha256 is not 64 lowercase hex characters, the form
-    # hexdigest() writes, or whose urls is not a JSON list. Only a hand edit makes either line,
-    # and parse_index refuses it rather than fold the case or split a string into characters
+    # raises ValueError on a line whose sha256 is not a string of 64 lowercase hex characters,
+    # the form hexdigest() writes, or whose urls is not a JSON list. A fetch run writes neither
+    # line, since the shell passes plan_fetch the hexdigest() of the bytes and render_index
+    # writes urls as a list. So in the checkout only a hand edit makes one, and parse_index
+    # refuses it rather than fold the case or split a string into characters
 def render_index(index: ArchiveIndex) -> str: ...        # sorted, one JSON object per line
 def add_versions(index: ArchiveIndex, new: Sequence[DocumentVersion]) -> ArchiveIndex | Finding: ...
     # a new version whose sha and edition are indexed adds each URL that line lacks, after the

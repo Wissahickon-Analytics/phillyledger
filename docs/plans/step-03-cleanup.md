@@ -37,9 +37,10 @@ say what a run shows, and the run is recorded in the pull request.
 | 26 | `parse_index` raises on a line whose `urls` is not a JSON list. `gather_repo` already turns the raise into `index_unreadable`. | A test in `packages/datadesk/tests/core/test_index.py`, run before the guard (the bare string parses as 95 URLs) and after. |
 | 27 | `parse_index` raises on a line whose `sha256` is not 64 lowercase hex characters. The design states no form for the sha, so the rule joins the `core/index.py` block of the design and a deviation entry. | A test with the FY2022 Q1 line beside a copy under FY2022 Q2 whose sha is the same in upper case, run before the guard (two versions) and after. |
 
-Item 27 refuses the line and does not fold its case. `hexdigest()` writes lowercase, so another
-form can come only from a hand edit, and a number is published only from what the input says
-(`CLAUDE.md`, hard rule 4). Folding would rewrite input without a finding.
+Item 27 refuses the line and does not fold its case. The shell indexes the lowercase
+`hexdigest()` of the bytes, so in the checkout another form comes only from a hand edit, and a
+number is published only from what the input says (`CLAUDE.md`, hard rule 4). Folding would
+rewrite input without a finding.
 
 ## Follow-ups after step 3
 

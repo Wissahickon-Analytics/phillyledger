@@ -506,13 +506,21 @@ design leaves open" in `docs/plans/step-03.md`.
   same sha in upper case, parsed as two versions, and `index_problem` saw no `content_alias`. The
   FY2022 Q1 line with its one URL as a bare string parsed as 95 URLs, the first `'h'`. The index
   is input from the checkout (section 9). `parse_index` now raises `ValueError` on a `sha256` that
-  is not 64 lowercase hex characters, the form `hexdigest()` writes, and on `urls` that is not a
-  JSON list, and `gather_repo` turns the raise into `index_unreadable`. It refuses the line and
-  does not fold the case, because only a hand edit makes such a line and folding would rewrite
-  input with no finding. Before the guards, the five cases of
+  is not a string of 64 lowercase hex characters, the form `hexdigest()` writes, and on `urls`
+  that is not a JSON list, and `gather_repo` turns the raise into `index_unreadable`. A fetch run
+  writes neither line, since the shell passes `plan_fetch` the `hexdigest()` of the bytes and
+  `render_index` writes `urls` as a list. So in the checkout only a hand edit makes one.
+  `plan_fetch` does not check the sha it is given. Given an empty sha, it plans the key
+  `pdf//.pdf` and an index line that `parse_index` refuses (kept follow-up, "An empty digest").
+  `parse_index`
+  refuses the line and does not fold the case, because folding would rewrite input with no
+  finding. Before the guards, the first five cases of
   `test_parse_index_refuses_a_line_whose_urls_is_not_a_list` and
-  `test_parse_index_refuses_a_sha_that_is_not_64_lowercase_hex_characters` fail. After them they
-  pass, and the 20 committed index lines still parse. Design section 3.2.
+  `test_parse_index_refuses_a_sha_that_is_not_64_lowercase_hex_characters` fail. The fix round
+  added five sha cases. A `sha256` of null, a number, an object or a list raised `TypeError`
+  until the guard checked for a string, and a 65-character sha passes when `fullmatch` becomes
+  `match`. At the head all the cases pass, and the 20 committed index lines still parse. Design
+  section 3.2.
 - **Step 3: a `KeyboardInterrupt` is the operator's stop, not a bug** (November 25, 2026, step 3
   cleanup). Section 9 called any exception that escapes the core a bug, the `parse_index` case
   aside. Section 4.2 had `main` print the traceback of any other exception, `KeyboardInterrupt`
