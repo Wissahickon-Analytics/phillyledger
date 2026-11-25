@@ -587,9 +587,10 @@ design are recorded here.
 - **Who reads the environment.** Section 4.2 said `main` reads the environment once with
   `load_settings`. typer reads `TYPER_USE_RICH`, `_DATADESK_COMPLETE` and
   `TYPER_STANDARD_TRACEBACK`, and click reads `COLUMNS`, `LINES` and the locale variables, so the
-  section now says `fetch` calls `load_settings` once and names the others. `load_settings`
-  reads each variable it finds set twice from the mapping, once to test it and once to take
-  it, as a counting mapping showed. A run of `cli.main` with `os.environ` wrapped showed each
+  section now says `fetch` calls `load_settings` once and names the others. With all four
+  variables set, `load_settings` reads each twice from the mapping, once to test it and once to
+  take it. With one unset, it raises after one read of each. A counting mapping showed both. A
+  run of `cli.main` with `os.environ` wrapped showed each
   read but `TYPER_STANDARD_TRACEBACK`, which typer's `except_hook` reads (`typer/main.py`).
   Design section 4.2.
 - **A ninth import-linter contract.** "only the command line imports typer" forbids typer in all
