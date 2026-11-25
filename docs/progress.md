@@ -8,7 +8,7 @@ Every session reads this file first, so it stays short.
 |---|---|---|---|---|
 | 1 | Workspace, tooling, purity and shape tests | check passed | `step-01/a-workspace`, `step-01/b-import-contracts`, `step-01/c-kit-shape`, `step-01/d-test-isolation` | November 22, 2026, runs 45093444380, 45094817250, 45094829990 and 45092206629 |
 | 2 | Kit, words to cells | check passed | `step-02/a-import-pin`, `step-02/b-value-types`, `step-02/c-words-to-lines`, `step-02/d-lexer`, `step-02/e-records` | November 23, 2026, head `73d428e2`, run 45130645501 |
-| 3 | Archive for the QCMR from FY2022 | in progress | `step-03/a-index`, `step-03/b-listing`, `step-03/c-fetch-plan`, `step-03/d-shell` | |
+| 3 | Archive for the QCMR from FY2022 | check passed | `step-03/a-index`, `step-03/b-listing`, `step-03/c-fetch-plan`, `step-03/d-shell`, `step-03/e-archive` | November 24, 2026, head `647b868b`, run 45538468977 |
 | 4 | Words: PDF adapter with font repair, word cache, codec | not started | | |
 | 5 | QCMR positions parser, registry, row schemas, column vocabulary | not started | | |
 | 6 | Checks, gate and release for positions (first release-quality dataset) | not started | | |
@@ -180,6 +180,13 @@ session needs it. A note for one later step goes in `docs/plan-notes.md`.
   ty resolves that name because `[tool.ty.environment] root` in the root `pyproject.toml` ends
   with `"."`. Without it, `uv run ty check` fails with `import-not-found`. A relative import
   passes pytest and fails ty the same way. ruff sorts the import with the outside packages.
+- **The archive bucket from a worktree** (November 24, 2026, step 3, S3-E). The archive bucket
+  on R2 holds the 20 QCMR reports from FY2022 Q1 to FY2026 Q4, each under
+  `pdf/<sha[:2]>/<sha>.pdf`, and `index.jsonl` lists them. git ignores `.env`, so a worktree has
+  none, and a command that needs the bucket runs as
+  `uv run --env-file /Users/nhand/DataProjects/phillyledger/.env ...` from the worktree's root.
+  The `aws` CLI reads the bucket with the keys passed through the environment, as "Setting up
+  R2" in `docs/plans/step-03.md` shows, and never through a profile (hard rule 8).
 - **Docstrings put `refs` past its estimate** (November 23, 2026, step 2, S2-B). The kit size
   report counts every line that is not blank or a comment, docstrings included. At the S2-B head
   it prints 592 lines. At the S2-E head after its fix round 2 it prints 1,420, and `records`
