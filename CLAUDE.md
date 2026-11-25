@@ -169,5 +169,5 @@ section. The pull request holds the history of its rounds.
 ## Data this repo does not hold
 
 PDFs never go in git. From step 3 they live in the archive bucket on Cloudflare R2, keyed by
-sha256. Before that, the owner's held reports are on his machine: ask for the path when step 3
-starts.
+sha256. The City's feed and 21 QCMR reports, as a browser saved them on November 23, 2026, are in
+`/Users/nhand/DataProjects/phillyledger-held/qcmr-city`, which `datadesk fetch qcmr --saved` reads.

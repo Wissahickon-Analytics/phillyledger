@@ -4656,8 +4656,9 @@ contract. Build step 1 planted `import os`, `from pathlib import Path`, `import 
 in this version, it also has one row for each of the 87 unsure quirks, as R2 asked.
 It starts from design C's file. Every renamed mechanism and every quirk whose handling changed
 was updated. Of the 437 inherent rows, 85 changed, 50 of them to a new mechanism, and three
-mechanism names changed module. Mechanisms over the inherent
-quirks, with the number each carries:
+mechanism names changed module. `docs/evidence/coverage.tsv` started with the same counts, 437
+inherent rows and 87 unsure rows, and step 3 added one inherent quirk, QPOS-Q38. Mechanisms over
+the 438 inherent quirks of `docs/evidence/coverage.tsv`, with the number each carries:
 
 | Mechanism | Quirks | By dossier |
 |---|---:|---|
@@ -4672,12 +4673,12 @@ quirks, with the number each carries:
 | `checkedtables.columns.bind_columns` | 13 | BIB 1, MCITY 3, MSCH 3, QCASH 3, QOBL 2, SUPOP 1 |
 | `datadesk.core.tables.supp_common.split_statements` | 13 | SUPCAP 5, SUPOP 8 |
 | `checkedtables.columns.choose_era` | 10 | BIB 1, BSALES 1, MCITY 1, MSCH 2, QCASH 2, QOBL 1, SUPCAP 1, WAGE 1 |
+| `datadesk.core.fetch.confirm_period` | 10 | MCITY 4, MSCH 2, QCASH 1, QOBL 1, QPOS 1, WAGE 1 |
 | `datadesk.core.watch.plan_watch` | 10 | MCITY 3, MSCH 1, QCASH 1, QPOS 1, RTT 2, WAGE 2 |
 | `DATA:Era` | 9 | BIB 2, QCASH 1, QOBL 1, QPOS 1, RTT 2, SUPCAP 1, VAL 1 |
 | `checkedtables.checks.dsl.Tolerance` | 9 | BSALES 1, MCITY 1, QCASH 2, QOBL 1, QPOS 1, RTT 2, VAL 1 |
 | `checkedtables.text.parse_label` | 9 | BIB 2, BSALES 1, ENT 1, QOBL 2, QPOS 1, RTT 1, WAGE 1 |
 | `checkedtables.pages.slice_body` | 8 | BIB 1, BSALES 1, QOBL 1, SUPCAP 1, SUPOP 2, VAL 1, WAGE 1 |
-| `datadesk.core.fetch.confirm_period` | 8 | MCITY 4, MSCH 2, QCASH 1, WAGE 1 |
 | `DATA:MeasureSpec` | 7 | BIB 1, MSCH 1, QCASH 1, QOBL 1, QPOS 1, SUPOP 1, VAL 1 |
 | `DATA:WordSourcePlan` | 7 | BIB 1, MSCH 1, QCASH 1, SUPCAP 1, VAL 3 |
 | `checkedtables.table.Additivity` | 7 | BSALES 1, ENT 1, QCASH 1, QPOS 1, RTT 1, WAGE 2 |
@@ -4688,7 +4689,6 @@ quirks, with the number each carries:
 | `DATA:EditionNote` | 5 | MCITY 1, QCASH 1, RTT 1, VAL 1, WAGE 1 |
 | `DATA:SourceCatalog` | 5 | RTT 1, SUPCAP 2, SUPOP 1, WAGE 1 |
 | `checkedtables.pages.find_runs` | 5 | BIB 2, QCASH 2, QOBL 1 |
-| `datadesk.core.periods.fiscal_period` | 5 | QOBL 1, QPOS 1, RTT 1, WAGE 2 |
 | `datadesk.core.registry.resolve_fund` | 5 | BIB 2, ENT 3 |
 | `checkedtables.lex.split_numeric_runs` | 4 | BSALES 1, VAL 3 |
 | `datadesk.core.tables.bib_cross.cross_checks` | 4 | BIB 4 |
@@ -4700,13 +4700,14 @@ quirks, with the number each carries:
 | `DATA:DashRule` | 3 | MCITY 1, MSCH 1, VAL 1 |
 | `DATA:ReviewedReading` | 3 | MSCH 1, QCASH 2 |
 | `checkedtables.text.normalize_label` | 3 | BSALES 2, SUPOP 1 |
+| `datadesk.core.periods.fiscal_period` | 3 | RTT 1, WAGE 2 |
 | `datadesk.core.tables.bib_revenue_schedule.parse` | 3 | BIB 3 |
 | `datadesk.core.tables.rtt.split_zones` | 3 | ENT 1, RTT 2 |
 | `datadesk.core.tables.sales.parse` | 3 | BSALES 3 |
 | `checkedtables.checks.acks.match_acknowledgments` | 2 | QCASH 1, VAL 1 |
 | `checkedtables.records.apply_reading` | 2 | VAL 2 |
 | `checkedtables.text.split_line_prefix` | 2 | ENT 1, QPOS 1 |
-| `datadesk.core.fetch.plan_fetch` | 2 | MCITY 1, QOBL 1 |
+| `datadesk.core.fetch.qcmr_period` | 2 | QOBL 1, QPOS 1 |
 | `datadesk.core.tables.bib_revenue_schedule.grammar_for` | 2 | BIB 1, ENT 1 |
 | `datadesk.core.tables.collections_city.parse` | 2 | MCITY 2 |
 | `datadesk.core.tables.qcmr_obligations.parse` | 2 | QOBL 2 |
@@ -4722,6 +4723,7 @@ quirks, with the number each carries:
 | `checkedtables.rows.join_rows` | 1 | BIB 1 |
 | `checkedtables.words.WordSource` | 1 | VAL 1 |
 | `datadesk.core.checks.series.cross_edition_checks` | 1 | WAGE 1 |
+| `datadesk.core.fetch.plan_fetch` | 1 | MCITY 1 |
 | `datadesk.core.measures.measure_for` | 1 | QCASH 1 |
 | `datadesk.core.registry.resolve` | 1 | QOBL 1 |
 | `datadesk.core.release.rows.to_release_rows` | 1 | BSALES 1 |

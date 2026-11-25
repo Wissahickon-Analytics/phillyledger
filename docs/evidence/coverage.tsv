@@ -264,9 +264,9 @@ QCASH-Q61	datadesk.core.watch.plan_watch	Expected editions come from the catalog
 QOBL-Q01	checkedtables.pages.find_runs	Header band predicate "TABLE O-2" or "TABLE O-3", exact code.
 QOBL-Q02	checkedtables.text.normalize_space	NBSP collapses before band matching.
 QOBL-Q03	checkedtables.pages.only_run	Every run is returned; the contents page is outside the header band, and two runs are a finding.
-QOBL-Q04	datadesk.core.periods.fiscal_period	Period end to fiscal quarter; Sep and Dec belong to the next FY.
+QOBL-Q04	datadesk.core.fetch.qcmr_period	Period end to fiscal quarter; Sep and Dec belong to the next FY.
 QOBL-Q05	datadesk.core.listings.parse_listing	Infographics skipped by title.
-QOBL-Q06	datadesk.core.fetch.plan_fetch	Printed and listed period disagree: rejection unless a PRINTED_PERIOD note exists.
+QOBL-Q06	datadesk.core.fetch.confirm_period	Printed and listed period disagree: rejection unless a PRINTED_PERIOD note exists.
 QOBL-Q10	datadesk.core.watch.plan_watch	Missing O-3 quarters are gaps in the watch pull request.
 QOBL-Q12	datadesk.core.tables.qcmr_personal_services.parse	Metric rows are keyed under their section.
 QOBL-Q13	datadesk.core.tables.qcmr_personal_services.citywide_end	Value-less TOTAL GENERAL FUND starts the citywide block of three metric rows.
@@ -332,10 +332,11 @@ QPOS-Q29	checkedtables.table.Additivity	Civilian and Uniform are BREAKDOWN rows,
 QPOS-Q30	checkedtables.pages.find_runs	The band rule runs on whole reports; editions held only as cut files wait for decision 1.
 QPOS-Q32	datadesk.core.watch.plan_watch	Later attachment for one quarter supersedes the earlier one.
 QPOS-Q33	datadesk.core.listings.parse_listing	Infographics skipped by title.
-QPOS-Q34	datadesk.core.periods.fiscal_period	Quarter mapping from period end.
+QPOS-Q34	datadesk.core.fetch.qcmr_period	Quarter mapping from period end.
 QPOS-Q35	checkedtables.pages.only_run	A three-page run is read as found; a split run is a finding.
 QPOS-Q36	DATA:MeasureSpec	MeasureSpec basis POINT for counts.
 QPOS-Q37	DATA:RowSchema	The subtotal RowDef declares forms "{name} Total" and "{name} - Total"; the name comes from the registry.
+QPOS-Q38	datadesk.core.fetch.confirm_period	Page 1 gives no readable PERIOD ENDING phrase, so the reader returns period_unreadable and plan_fetch stores and indexes nothing.
 RTT-Q01	DATA:SourceCatalog	Listing URL pattern per year with the 2015 slug exception.
 RTT-Q02	datadesk.core.listings.parse_listing	Links kept only when title plus filename name the tax.
 RTT-Q03	datadesk.core.listings.parse_listing	Title is the witness; filename never decides.

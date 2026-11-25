@@ -282,6 +282,7 @@ distinct printed label count is not recoverable without artifacts.
 | QPOS-Q35 | FY2025 Q4 sub-PDF is 3 pages and 5 times the size | `playground-sample.json` | unsure: extra page or image content; open the PDF |
 | QPOS-Q36 | Quarter-end count is a point-in-time value stored as `month_actual` | `config/semantics.yml:2542`; `temporal_contracts.json` | inherent meaning; role name is artifact |
 | QPOS-Q37 | Parent labels print as "X Total" or "X - Total", both in one edition | continuity `:204`; `qcmr-positions.yml:45` | inherent |
+| QPOS-Q38 | The FY2027 Q1 report (`qcmr-2026-09-30.pdf`, sha `640068cb...f365`, uploaded November 16, 2026) has no text a program can read. Page 1 has two fonts, `TimesNewRomanPS-BoldMT` and `TimesNewRomanPSMT`, each CID TrueType with `Identity-H` and no Unicode map (`pdffonts -f 1 -l 1`). `pdftotext -f 1 -l 1 -layout` prints the third line of the cover as `)25^C7+(^C3(5,2'^C(1',1*^C6(37(0%(5^C^V^S^O^C^U^S^U^Y` (control bytes shown by `cat -v`), and page 1's text holds no `PERIOD ENDING`. Tesseract on the cover image read "FOR THE PERIOD ENDING SEPTEMBER 30, 2026" in the step 3 planning session (`docs/plans/step-03.md`, fact 14) | None. The old repo never held this file. Its last commit, `22f355d` of November 12, 2026, is older than the upload, and `rg -uu` over its tree finds neither the upload stamp `20261116163840` nor the sha | inherent |
 
 ## 10. Old code that serves this family
 

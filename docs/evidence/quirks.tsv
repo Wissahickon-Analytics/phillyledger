@@ -437,6 +437,7 @@ QPOS-Q34	inherent	Fiscal quarter from period-ending date; Sep and Dec belong to 
 QPOS-Q35	unsure	FY2025 Q4 sub-PDF is 3 pages and 5 times the size
 QPOS-Q36	inherent	Quarter-end count is a point-in-time value stored as `month_actual`
 QPOS-Q37	inherent	Parent labels print as "X Total" or "X - Total", both in one edition
+QPOS-Q38	inherent	FY2027 Q1 report has no readable text; its page 1 fonts have no Unicode map
 RTT-Q01	inherent	One listing page per calendar year; 2015 slug ends `-2`
 RTT-Q02	inherent	Listing pages carry unrelated PDFs
 RTT-Q03	unsure	Filename can name the wrong year or month; title is the better witness

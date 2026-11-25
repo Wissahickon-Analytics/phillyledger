@@ -420,3 +420,30 @@ file, `docs/progress.md`, `docs/followups.md` or `docs/deviations/`.
     so the idea of counting a confusable only inside a word with a digit would still take
     `0.0%`. The other two ideas would refuse it, since the page is a text layer and `I` and `V`
     are not pinned confusables. That is read from the rule and not run.
+- **The City's feed lists QCMR reports back to 2006, a note for the step 7 plan** (November 24,
+  2026, step 3, S3-E). Read in a browser on November 23, 2026, the City's feed
+  `https://api.phila.gov/phila/document-finder/v1/151831` has a category titled "Quarterly City
+  Managers Report" with 99 documents, back to December 31, 2006 (step 3 plan, fact 4). The
+  catalog entry of step 3 starts at September 30, 2021 (`first_period_end`), so the fetch asks
+  for none of the older ones. Step 7 indexes the owner's whole reports from FY2008 to FY2021.
+- **The City refuses a client without a browser's User-Agent, a note for the step 13 plan**
+  (November 24, 2026, step 3, S3-E). On November 23, 2026, `curl` asked for the feed as
+  `datadesk/0.1` and as `datadesk/0.1 (+https://github.com/Wissahickon-Analytics/phillyledger)`,
+  and both got HTTP 403 from `awselb/2.0` behind CloudFront. A browser got the feed (step 3 plan,
+  facts 6 and 11). The owner's answer for a run that is his is the string the old repo sends (answer A,
+  `publisher_http.py:199`). The step 3 plan also records that the agents that build this repo do
+  not send that string themselves, and that the City's permission is the owner's statement, which
+  no session has checked. At step 3 the City's files came through a real browser and the saved
+  folder, and no `datadesk` command sent the City a request. The live `Http` adapter waits for
+  step 13.
+- **The FY2027 Q1 report waits for OCR, a note for the step 7 plan** (November 24, 2026, step 3,
+  S3-E). The City's report for September 30, 2026 is saved as `qcmr-2026-09-30.pdf` in
+  `/Users/nhand/DataProjects/phillyledger-held/qcmr-city`, with sha
+  `640068cb7a8a5d6c621f0ac6a0b2e16df6c290fc1036ea95f2260057be58f365`, 1,072,165 bytes and 92
+  pages. It has no text a program can read (QPOS-Q38), so `confirm_period` returns
+  `period_unreadable`, and `plan_fetch` rejects it and neither stores nor indexes it (step 3 plan,
+  fact 14). The
+  owner chose to let it wait until a later step can read its cover (answer D). Step 7 adds
+  `datadesk ocr --spend` (design section 15), and Textract calls need the owner's go-ahead (hard
+  rule 8 of `CLAUDE.md`). Step 4 ports the font repair for `(cid:N)` words. Whether that repair
+  reads this cover was not run.
