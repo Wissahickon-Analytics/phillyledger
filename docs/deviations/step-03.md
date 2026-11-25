@@ -624,16 +624,20 @@ proposal, marked so below.
   forms with their pytest and `ty` counts, whether the index bytes change and their `repr`, he
   chose "Checked str subclass (Recommended)". The Plan run found at `36807de` that a frozen
   dataclass failed 56 tests and rendered other index bytes, since `asdict` writes it as an
-  object. With the base's tests and two names added to the import pin, `uv run pytest` gives 491
-  passed and 7 skipped both at the base `199c2bb` and with the sweep's code at `d77274a`. Design
-  sections 1.3, 2.1, 2.2, 3.1, 3.2, 4, 4.2, 4.3, 4.5, 12.1 and 18.3.
+  object. `uv run pytest` gives 491 passed and 7 skipped at the untouched base `199c2bb`. It
+  gives the same count with the sweep's code at `d77274a`, the base's tests, and
+  `typing.assert_never` and `typing.Self` added to the import pin in `tests/test_purity.py`.
+  Design sections 1.3, 2.1, 2.2, 3.1, 3.2, 4, 4.2, 4.3, 4.5, 12.1 and 18.3.
 - **Positions not built yet take `Sha256` too.** Proposal of the plan. `Table`, `FailureKey`,
   `WordSourcePlan`, `TablePages`, `ReleaseRow`, `WordJob`, `ParseJob`, `ExpectedTables`,
   `ArticleFigure`, `records_for`, `illegible_pages`, `textract_to_document` and
   `PdfReader.words` name a file's sha, and so do `Alias.editions` and the `scope` of
-  `match_acknowledgments`. The cache keys and the `accepted_diff` of `release_command` stay
-  `str`. A cache key names no file, and the diff's sha is a word from the command line. Design
-  sections 2.1, 2.2, 3.1, 3.2, 4 and 18.3.
+  `match_acknowledgments`. The keys computed from several inputs (`cache_key`, `word_keys`,
+  `compare_keys` and the code tree sha) and the `accepted_diff` of `release_command` stay `str`.
+  Such a key is the sha256 of no one file, and the diff's sha is a word from the command line.
+  The reader's download cache is keyed by a file's sha, and step 13 decides how the reader types
+  it, since `phillyledger` does not import the kit. Design sections 2.1, 2.2, 3.1, 3.2, 4 and
+  18.3.
 - **The four kit constructors refuse plain text.** `WordRef`, `Page`, `Document` and
   `ReviewedReading` raise `ValueError` for a sha that is not a `Sha256`, so a kit user with no
   type checker cannot pass plain text. The check takes the place of the check for an empty sha,
@@ -644,17 +648,18 @@ proposal, marked so below.
   changes, and so does the one `doc_of` raises for pages of two files. The tests of clause 3 of
   the plan show the refusals. Design section 2.1.
 - **The readers name their refusals.** `qcmr_period` returns `Period | PeriodRefusal` and
-  `qcmr_title` returns `EditionKey | SkipReason`, where each returned a bare `str`. Each member's
-  value is the string the reader returned before. `confirm_period` and `parse_listing` match
-  every member and end in `assert_never`, and `confirm_period` puts the refusal's value in
-  `Finding.code`, so the code stays a plain `str`. With the refusal arm removed from either
-  function, `uv run ty check` fails with `type-assertion-failure` at its `assert_never`. Told
-  that section 3.2 lists `unstaged`, the owner was asked "Keep unstaged in SkipReason, though no
-  reader returns it yet?" and answered "Yes, keep it". Both enums are pinned in
-  `test_closed_lists_are_pinned`. Told that this pins them and edits a hard rule, he answered
-  "Yes, add them" to adding "the readers' refusal codes" to hard rule 6. Two enums rather than
-  one is a proposal of the plan, since one shared enum would let `qcmr_title` return
-  `period_ambiguous` with no report from `ty`. Design sections 1.3, 3.2 and 11.4.
+  `qcmr_title` returns `EditionKey | SkipReason`, where each returned a bare `str`. Each
+  member's value is the string the reader returned before, except `unstaged`. It is new, and no
+  reader returns it yet. `confirm_period` and `parse_listing` match every member and end in
+  `assert_never`, and `confirm_period` puts the refusal's value in `Finding.code`, so the code
+  stays a plain `str`. With the refusal arm removed from either function, `uv run ty check`
+  fails with `type-assertion-failure` at its `assert_never`. Told that section 3.2 lists
+  `unstaged`, the owner was asked "Keep unstaged in SkipReason, though no reader returns it
+  yet?" and answered "Yes, keep it". Both enums are pinned in `test_closed_lists_are_pinned`.
+  Told that this pins them and edits a hard rule, he answered "Yes, add them" to adding "the
+  readers' refusal codes" to hard rule 6. Two enums rather than one is a proposal of the plan,
+  since one shared enum would let `qcmr_title` return `period_ambiguous` with no report from
+  `ty`. Design sections 1.3, 3.2 and 11.4.
 - **`parse_index` builds the sha.** `_version` builds `sha256` with `Sha256` where the guard of
   pull request 38 stood, before it reads `urls`, and builds `supersedes` unless it is JSON
   `null`. For a `supersedes` that is not a sha, the base said "supersedes ..., not of its

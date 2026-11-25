@@ -180,7 +180,9 @@ code takes only types.
   with one builder that checks it. Where the value is one piece of text with a rule, the type may
   instead be a `str` subclass with empty `__slots__` whose constructor checks the rule and builds
   from the text it checked, as `Sha256` is. It equals its text, and a dictionary key, a path or JSON
-  takes it as text, so the files it is written to keep their bytes. It overrides only `__new__` and
+  takes it as text, so text and JSON written from it keep their bytes, as `index.jsonl` does. Its
+  `repr` is `Sha256('...')`, not the text, so a word fixture that prints a sha with `repr` writes
+  that expression, and importing the fixture rebuilds a `Sha256`. It overrides only `__new__` and
   `__repr__`, so it changes how a value is built and printed, not what code does with it. Where
   there is only a meaning to keep apart, such as two kinds of id, `typing.NewType` is enough. What
   the builder does with a bad value follows section 5: a problem in the publisher's data comes back

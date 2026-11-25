@@ -235,20 +235,24 @@ What these make impossible:
 - a page number that refers to a cut file, because no type stands for a cut file;
 - "not bold" and "style unknown" as one state.
 
-`Sha256` is the one type in this section that is not a dataclass. It is the sha256 of a file's
-bytes: a publisher file, a listing's HTML or a release manifest. It is a `str` subclass, so it
-equals its text, a dictionary key, a path or JSON takes it as text, and `render_index` writes the
-same bytes as before. A slice of one, such as `sha[:8]`, is plain text. A dataclass would change the
-index, since `asdict` writes it as an object. Its constructor is its one builder and checks the
-rule. It builds from the characters it matched, so a `str` subclass whose `__str__` gives other text
-cannot give a `Sha256` of another length. It raises `ValueError` and returns no finding, because a
-sha is never the publisher's data. Code computes it from bytes or reads it from one of the repo's
-own files, and the shell turns the error into a finding there, as `gather_repo` gives
-index_unreadable for the index. Because `Sha256(x) == x` holds, a type checker does not report a
-comparison of a sha with text that no builder checked, so each parser builds the `Sha256` where the
-text enters. `WordRef`, `Page`, `Document` and `ReviewedReading` refuse a sha that is not a
-`Sha256`, so a caller with no type checker gets a `ValueError` at the constructor. A cache key is
-also a sha256, of a tuple of inputs. It names no file, so it stays a `str` (section 10).
+`Sha256` is the one class in this section that is neither a dataclass nor a `StrEnum`. It is the
+sha256 of a file's bytes: a publisher file, a listing's HTML or a release manifest. It is a `str`
+subclass, so it equals its text, a dictionary key, a path or JSON takes it as text, and
+`render_index` writes the same bytes as before. A slice of one, such as `sha[:8]`, is plain text. A
+dataclass would change the index, since `asdict` writes it as an object. Its constructor is its one
+builder and checks the rule. It builds from the characters it matched, so a `str` subclass whose
+`__str__` gives other text cannot give a `Sha256` of another length. It raises `ValueError` and
+returns no finding, because a sha is never the publisher's data. Code computes it from bytes or
+reads it from one of the repo's own files, and the shell turns the error into a finding there, as
+`gather_repo` gives index_unreadable for the index. Because `Sha256(x) == x` holds, a type checker
+does not report a comparison of a sha with text that no builder checked, so each parser builds the
+`Sha256` where the text enters. `WordRef`, `Page`, `Document` and `ReviewedReading` refuse a sha
+that is not a `Sha256`, so a caller with no type checker gets a `ValueError` at the constructor. A
+key computed from several inputs is also a sha256, but of no one file's bytes. `cache_key`,
+`word_keys`, `compare_keys` and the code tree sha are such keys, so they stay `str`. Two caches in
+section 10 are keyed by the sha of a file itself: the PDFs by the doc sha and the reader's downloads
+by the file sha. The desk's sha of a PDF is a `Sha256`. Step 13 decides how the reader types the sha
+of a download, since `phillyledger` does not import the kit.
 
 ```python
 # checkedtables/lines.py
