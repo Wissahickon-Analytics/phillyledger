@@ -20,7 +20,7 @@ follows, on Opus, after the owner's go.
 
 ## The owner's answers
 
-All seven are from November 25, 2026.
+All eight are from November 25, 2026.
 
 1. The planning session asked "Plan sweep B as its own short step before step 4's plan?" He
    answered "Yes, plan it". He was shown this scope. One `Sha256` type, defined in the kit and
@@ -47,6 +47,9 @@ All seven are from November 25, 2026.
    had told him that design section 3.2 lists `unstaged`. He answered "Yes, keep it".
 7. This Plan run then asked "Build sweep B on the open sweep A branch, or wait until 39 and 40
    land?" He answered "Build on sweep A". The answer is not the go for the Build run.
+8. This Plan run then asked "Should what sweep B leaves wait for the step that next changes
+   each file?" It had told him the list under "What sweep B leaves". He answered "Yes, wait
+   per step".
 
 Everything else in this plan was worked out after the first three answers. Each item under
 "Proposals" is a proposal until he lands this plan, except where an answer above settles it.
@@ -323,6 +326,9 @@ The build makes these in the same pull request (hard rule 7). The counts are fro
 
 ## What sweep B leaves
 
+No later sweep takes these. By answer 8, each waits for the plan of the step that next changes
+its file, and the note in `docs/progress.md` says so.
+
 - `SourceCatalog | tuple[Finding, ...]` and `gather_repo`'s result, by answer 1.
 - `_read_cell` in the kit's `lex.py`, which returns `Decimal | str`. Its `str` is the value of
   the public field `Unreadable.reason`, which design section 2.1 lists as `"grouping",
@@ -364,6 +370,9 @@ Plain text passed as a sha is a `ty` error, and a `ValueError` at the four const
   `.claude/worktrees`, where no `gov-budget-data` exists.
 - The fix review gets the same prompt changes and the report of the first review. The Plan run
   did the same with the `plan` prompt.
+- On November 25, 2026 the owner started a session that lets `run.sh` take a named plan. If its
+  pull request is under SB's branch when the Build run reviews, the session runs
+  `codex-review pr standards-sweep-b <base>` and writes no prompt by hand.
 - One fix round, then Codex reads the fix diff. One Fable read of the whole diff.
 
 ## Codex review
