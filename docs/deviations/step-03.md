@@ -141,3 +141,170 @@ design leaves open" in `docs/plans/step-03.md`.
   `collections.abc.Callable`, `hashlib.sha256`, `re.compile`, `tomllib.TOMLDecodeError`,
   `tomllib.loads`, `types.MappingProxyType` and `typing.Never`. With the default `parse_constant`,
   `test_a_bare_nan_or_infinity_makes_the_feed_unreadable` fails. Design section 11.1.
+- **Step 3: `confirm_period` reads the QCMR cover** (November 24, 2026, S3-C). The design named
+  the "PERIOD ENDING" reader and gave it no rule or finding codes. `PERIOD_READERS` maps a
+  series to its reader, as `TITLE_RULES` does for titles, and holds `qcmr_period` alone. A
+  series with no reader is `period_unsupported`. `qcmr_period` reads every
+  `PERIOD ENDING <Month> <D>, <YYYY>` phrase on page 1 (QCASH-Q05, QOBL-Q04), in any case, with
+  any run of whitespace between words (QOBL-Q02), the comma optional, and the year not followed
+  by another digit. It ports the shape of `_PERIOD_ENDING_RE` in the old repo's `qcmr.py`. It
+  never reads the bare date that the cover also prints (plan risk 3). A cover with no phrase, or
+  with a phrase it cannot read, is `period_unreadable`. Two dates are `period_ambiguous`, and a
+  date that is not a quarter end is `period_not_a_quarter_end`. Any other date gives the fiscal
+  quarter it ends, and `confirm_period` confirms it only when it equals the whole expected
+  period, start included. The build session chose the whole period over the end date alone, so
+  a wrong first day of a quarter cannot pass. With `(?!\d)` dropped from the phrase, the
+  `a_year_run_on_into_another_digit` case fails. With spaces alone between its words, the
+  `a_phrase_broken_across_lines` and `a_phrase_spaced_with_no_break_spaces` cases fail. With the
+  words "PERIOD ENDING" made optional, the two bare date cases fail. With each fiscal quarter
+  that starts in July or October moved back a year, every case that prints September 30 or
+  December 31 fails, `september_opens_the_next_fiscal_year` and
+  `december_is_in_the_next_fiscal_year` among them (QPOS-Q34), and the March and June cases
+  pass. Without the check for two dates, the `two_phrases_with_two_dates` case fails, and
+  without the quarter end check, `a_date_that_is_not_a_quarter_end` fails. Design section 3.2.
+- **Step 3: a `PRINTED_PERIOD` note clears a mismatch only when it fits the cover** (November
+  24, 2026, S3-C). The design said that a note is the only way past a mismatch (QOBL-Q06) and
+  did not say when a note fits. A note fits when its kind is `PRINTED_PERIOD`, its page is 1 or
+  none, page 1 holds its printed text, and its value is the printed end date in ISO form. Both
+  texts are compared with each run of whitespace made one space, so a line break on the page
+  does not hide the text (QOBL-Q02). `confirm_period` then returns the printed period, not the
+  expected one (shape 8). No note clears a code that the reader returns, so a note cannot file a
+  report under a date that is not a quarter end. `plan_fetch` passes only the notes whose
+  `doc_sha256` is the fetched sha. With the kind, the page, the text or the value left out of
+  the fit, the matching case of `test_a_note_that_does_not_fit_the_cover_leaves_the_mismatch`
+  fails. With the texts compared as they are, the `a_page_that_spaces_the_text_another_way`
+  case fails. With every note passed through, the second half of
+  `test_plan_fetch_clears_a_mismatch_only_with_a_note_for_the_fetched_sha` fails. Design
+  section 3.2.
+- **Step 3: `plan_fetch` decides each fetch against one working index** (November 24, 2026,
+  S3-C). The design gave `plan_fetch` the `content_alias` rule alone. It is now a fold over the
+  fetched reports in input order. A working index starts as the given index and grows by
+  `add_versions` after each added line, so two requests in one batch see each other, and every
+  question of what is already indexed goes to that one index. The first rule that fits decides
+  a fetch: a status other than 200 (`http_<status>`), a sha under another edition
+  (`content_alias`, MSCH-Q01), a superseded sha, the current sha at a known URL (nothing), the
+  current sha at a new URL (the URL alone, shape 7), and then a new sha. A new sha goes through
+  `confirm_period`, and a `Fetched` with no page 1 text reads as an empty page, so it is
+  `period_unreadable` with no branch of its own. The new version supersedes the current one,
+  and a new version is stored once. A finding from `add_versions` becomes a rejection with its
+  code. With the input index in place of the working one,
+  `test_one_sha_fetched_for_two_editions_in_one_batch_is_a_content_alias` fails. With the alias
+  check removed, both `content_alias` tests fail. With every added line stored,
+  `test_the_current_sha_at_a_new_url_adds_the_url_and_stores_nothing` fails, and with a known
+  URL added again, `test_plan_fetch_adds_nothing_for_an_indexed_sha` fails. With `supersedes`
+  left empty, `add_versions` returns `two_current_versions` and both cases of
+  `test_new_bytes_of_an_indexed_edition_supersede_its_current_version` fail. Design section 3.2.
+- **Step 3: a superseded sha listed again is a rejection** (November 24, 2026, S3-C). With bytes
+  A, then B, then A again at a later stamp, the design's URL merge would add the URL to A's line
+  and leave B current. One line for each sha cannot say that A now supersedes B, and the later
+  `listed_at` must win (shape 7). So `plan_fetch` rejects the third fetch as
+  `superseded_sha_relisted`, for the owner. Without the rule,
+  `test_a_superseded_sha_listed_again_is_rejected_and_the_newer_bytes_stay_current` fails.
+  Design sections 3.2 and 6.3.
+- **Step 3: new bytes listed before the current version are a rejection** (November 24, 2026,
+  S3-C). The design said that the later `listed_at` wins and did not say what happens to new
+  bytes listed earlier than the edition's current version. `index_problem` does not compare a
+  version's `listed_at` with the one it supersedes, so such bytes would become current. They are
+  now the rejection `listed_before_current`, for the owner (shape 2, follow-up 5 of pull request
+  32). The same `listed_at` still supersedes, so new bytes behind an unchanged URL are recorded
+  (design 18.1). Without the rule,
+  `test_new_bytes_listed_before_the_current_version_are_rejected` fails, and with `<=` in place
+  of `<`, the `new_bytes_behind_the_same_listing` case fails. Design sections 3.2 and 6.3.
+- **Step 3: `FetchPlan.pull_request` holds the index file** (November 24, 2026, S3-C). The
+  design said only that the pull request holds the new index lines. `fetch.py` defines
+  `INDEX_PATH` (shape 3). When `index_add` is empty, `files` is empty. Otherwise it holds one
+  pair, the path and the rendered index after every added line, so S3-D writes the whole file.
+  The branch is `fetch/index` and the title is fixed. The body lists each added line by
+  edition id, sha and URL, and each rejection by edition id, URL and reason. With the file
+  written whatever was added, nine tests fail, among them
+  `test_plan_fetch_adds_nothing_for_an_indexed_sha`. Design section 3.2.
+- **Step 3: a `PRINTED_PERIOD` note must quote the printed period** (November 24, 2026, S3-C
+  fix round). The S3-C rule let a note clear a mismatch when page 1 held its printed text. The
+  empty string is on every page, so a blank note filed a December report under September (Codex
+  review of S3-C, finding 1). A note now fits only when the series reader also reads its printed
+  text alone as the very period page 1 prints. A blank note, or one that quotes other words on
+  the cover, clears nothing. The kind, page, on-page text and value conditions stay. With the
+  reader condition dropped, the `a_blank_note` and `a_note_that_quotes_other_words` cases of
+  `test_a_note_that_does_not_fit_the_cover_leaves_the_mismatch` fail. The reader now also
+  refuses the older `a_note_whose_text_page_1_lacks` case, so the new case
+  `a_note_that_reads_as_the_period_in_words_page_1_lacks` keeps the on-page text condition
+  tested, and it fails with that condition dropped. Design sections 3.2 and 6.3.
+- **Step 3: a URL that joins a line brings its `listed_at`** (November 24, 2026, S3-C fix
+  round). S3-A had `add_versions` add a new URL to a held line and change nothing else (shape 7).
+  So when the current bytes came back in June at a new URL, the line kept its November stamp.
+  Other bytes listed in March then became current with no rejection, though the later
+  `listed_at` wins (shape 2, Codex review of S3-C, finding 2). When a URL joins a line,
+  `add_versions` now gives the line the later of its own `listed_at` and the new version's. A
+  version with no new URL still changes nothing. `plan_fetch` adds the URL with the request's
+  `listed_at`, so the March bytes are `listed_before_current` and the June line stays current.
+  With the held stamp kept,
+  `test_older_bytes_after_a_repost_of_the_current_sha_are_listed_before_current`,
+  `test_the_current_sha_at_a_new_url_adds_the_url_and_stores_nothing` and
+  `test_add_versions_merges_a_new_url_into_the_line_of_the_same_sha_and_edition` fail. With the
+  new stamp taken whatever its order,
+  `test_the_current_sha_at_a_new_url_listed_earlier_keeps_the_later_stamp` fails. With the later
+  stamp taken when no URL joins,
+  `test_add_versions_adds_nothing_for_an_indexed_sha_at_an_indexed_url` fails. Design sections
+  3.2 and 6.3.
+- **Step 3: every `PERIOD ENDING` caption must carry a readable date** (November 24, 2026, S3-C
+  fix round). The S3-C pattern matched a whole phrase with an ASCII month word. So
+  `PERIOD ENDING Märch 31, 2022` never matched, and a readable phrase beside it decided the
+  period, though the design called such a phrase `period_unreadable` (Codex review of S3-C,
+  finding 3). The pattern also matched inside a longer word, so `SUBPERIOD ENDING SEPTEMBER 30,
+  2021` read as FY2022 Q1. `qcmr_period` now finds every `PERIOD ENDING` caption, with a word
+  boundary before `PERIOD` and after `ENDING`. Each caption must be followed by a readable date,
+  whose month word is any run of word characters, as in the title rule. Otherwise the page is
+  `period_unreadable`. With the S3-C pattern, the cases
+  `a_month_word_of_other_letters_beside_a_readable_phrase`,
+  `a_caption_with_no_date_beside_a_readable_phrase` and `a_longer_word_in_place_of_the_caption`
+  of `test_confirm_period_returns_a_finding_for_a_cover_it_cannot_confirm` fail. The `Märch` case
+  passes with either half of the change alone, the optional date or the wider month word. With
+  the date required after the caption, the caption case fails. Without the boundary before
+  `PERIOD`, the `SUBPERIOD` case fails, and without the one after `ENDING`, the
+  `a_longer_word_after_period_is_not_a_caption` case fails. Page 1 of the owner's 21 saved City
+  reports, read with `pdftotext -f 1 -l 1 -layout`, gives the same result before and after the
+  change. The 20 reports from FY2022 Q1 to FY2026 Q4 read as their own quarters, and FY2027 Q1
+  is `period_unreadable`. Design section 3.2.
+- **Step 3: a note's quote must stand on page 1 as whole words** (November 24, 2026, S3-C
+  second fix round). The S3-C fix round let a note clear a mismatch when page 1 held its
+  printed text anywhere and the series reader read that text alone as the printed period. Read
+  alone, a quote cut from inside a longer word begins at a word boundary the page lacks. So a
+  December cover with `SUBPERIOD ENDING DECEMBER 31 2021` added, and a note that quotes the
+  text after `SUB`, was filed under September (Codex read of the S3-C fix round, finding 1).
+  The quote must now occur on page 1 with no word character right before it and none right
+  after it. `PURE_IMPORTS["datadesk.core"]` in `tests/test_purity.py` pins the new pair
+  `re.escape`. With the plain substring test back, both cases of
+  `test_a_note_quoted_from_inside_a_longer_word_leaves_the_mismatch` fail, and each case fails
+  with its own half of the boundary dropped. The `PERIOD ENDING` caption of each of the 20
+  readable saved City covers, quoted as printed, still meets the rule. Design section 3.2.
+- **Step 3: `listed_at` is the latest stamp at which one of its URLs joined the line**
+  (November 24, 2026, S3-C second fix round). The S3-C fix round called the field "the latest
+  of the stamps its urls were listed at", and said that `add_versions` changes nothing for a
+  version with no new URL. Both cannot hold when one URL is listed on two dates under a
+  `<listing date>#<position>` stamp (Codex read of the S3-C fix round, finding 2). The field
+  now has the meaning the code already had: the latest of the stamps at which each of its URLs
+  joined the line. A URL the line already holds, listed again at a later stamp, changes
+  nothing. So new bytes listed in March still supersede a November line whose URL was listed
+  again in June. On the document-finder feed the stamp is in the URL, so a later listing is
+  always a new URL. No code changed.
+  `test_add_versions_adds_nothing_for_an_indexed_sha_at_an_indexed_url` pins the meaning, and
+  fails when the line takes the later stamp with no URL joining. Design sections 2.2 and 3.2.
+- **Step 3: a URL joins a line only when the line lacks it** (November 24, 2026, S3-C second
+  fix round). The S3-C fix round had `add_versions` decide that a URL joined when the merged
+  URLs differed from the held ones. Dropping a URL the held line repeats also makes them
+  differ, so a version at a URL the line already held gave the line its later `listed_at`
+  (Codex read of the S3-C fix round, finding 3). A URL now joins only when the held line lacks
+  it, and a version with no such URL leaves the line exactly as it was, its URLs and
+  `listed_at` included. With the tuple comparison back,
+  `test_add_versions_leaves_a_line_that_repeats_a_url_as_it_was_when_no_url_joins` fails.
+  Design section 3.2.
+- **Step 3: section 6.3 says a joined line holds each URL once** (November 24, 2026, S3-C
+  third fix round). Section 3.2 says that when a URL joins, the line holds each URL once. The
+  section 6.3 row for the same bytes at a new URL said the URL joins after the ones the line
+  holds and that nothing else changes, which is false for a line that repeats a URL: `(A, A)`
+  with `B` joining gives `(A, B)` (Codex read of the S3-C second fix round, finding 1). The row
+  now agrees with 3.2: the line holds each URL once, the held ones first, and takes the later
+  `listed_at`. No code changed.
+  `test_add_versions_holds_each_url_once_when_a_url_joins_a_line_that_repeats_one` pins the
+  rule, and fails when the merge keeps the held tuple as it is and appends the new URLs.
+  Design section 6.3.

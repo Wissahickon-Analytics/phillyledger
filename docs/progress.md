@@ -8,7 +8,7 @@ Every session reads this file first, so it stays short.
 |---|---|---|---|---|
 | 1 | Workspace, tooling, purity and shape tests | check passed | `step-01/a-workspace`, `step-01/b-import-contracts`, `step-01/c-kit-shape`, `step-01/d-test-isolation` | November 22, 2026, runs 45093444380, 45094817250, 45094829990 and 45092206629 |
 | 2 | Kit, words to cells | check passed | `step-02/a-import-pin`, `step-02/b-value-types`, `step-02/c-words-to-lines`, `step-02/d-lexer`, `step-02/e-records` | November 23, 2026, head `73d428e2`, run 45130645501 |
-| 3 | Archive for the QCMR from FY2022 | in progress | `step-03/a-index`, `step-03/b-listing` | |
+| 3 | Archive for the QCMR from FY2022 | in progress | `step-03/a-index`, `step-03/b-listing`, `step-03/c-fetch-plan` | |
 | 4 | Words: PDF adapter with font repair, word cache, codec | not started | | |
 | 5 | QCMR positions parser, registry, row schemas, column vocabulary | not started | | |
 | 6 | Checks, gate and release for positions (first release-quality dataset) | not started | | |
@@ -93,12 +93,13 @@ session needs it. A note for one later step goes in `docs/plan-notes.md`.
   `typing.get_type_hints`. A kit dataclass with the field `amount: "Decimal"` and that import
   fails `test_bool_fields_are_page_facts_only` with `NameError`, so import a field's type at run
   time.
-- **`test_closed_lists_are_pinned` is not written yet** (November 22, 2026, step 1, S1-C. Updated
-  November 23, 2026, S2-B). None of the lists it pins exists at step 1. Each list's pin lands in
-  the pull request that creates the list, in the same test file (`CLAUDE.md`, hard rule 6). S2-B
-  creates the `StrEnum` classes `SourceKind`, `ValueKind`, `DashMeaning`, `Presence`,
-  `PercentSign`, `Reading` and `Severity`, and the `Cell` union. Design section 11.4 pins none of
-  them, so the test is still not written.
+- **`test_closed_lists_are_pinned` pins `NoteKind` alone** (November 22, 2026, step 1, S1-C.
+  Updated November 24, 2026, S3-C). Each list's pin lands in the pull request that creates the
+  list, in `packages/checkedtables/tests/test_library_shape.py` (`CLAUDE.md`, hard rule 6). S3-C
+  creates `NoteKind` and writes the test with its pin. The other lists that design section 11.4
+  pins (`Check`, `RowSel`, `Kind`, `Version`, `Window`, `How`, `Dim` and `Quantity`) do not exist
+  yet. The `StrEnum` classes that S2-B created, such as `Severity`, are pinned nowhere, because
+  section 11.4 does not list them.
 - **Every test runs with sockets blocked** (November 22, 2026, step 1, S1-D). `--disable-socket`
   and the audit hook in the root `conftest.py` apply to every test, so a later adapter contract
   test that needs the network opts in with the `enable_socket` marker of pytest-socket. The
