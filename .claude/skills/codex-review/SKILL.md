@@ -1,7 +1,7 @@
 ---
 name: codex-review
 description: Get Codex to review a build step's plan, to verify and review a pull request in one pass, or to read a fix round, then confirm each Codex finding before acting on it. Use after a step plan is written, after a pull request passes the gates, and after its fix round.
-argument-hint: "plan <step> | pr <step> [base-branch] | fix <step> <reviewed-head>"
+argument-hint: "plan <step | plan-name> | pr <step | plan-name> [base-branch] | fix <step | plan-name> <reviewed-head>"
 ---
 
 Codex is the reviewer from another vendor, and its usage is not the scarce budget. It does the
@@ -14,14 +14,21 @@ ones a run or a quote confirms.
 2. Run `.claude/skills/codex-review/run.sh $ARGUMENTS` in the background and wait for it to
    finish. Do not poll it. The last line it prints is the path of Codex's report under
    `.codex-review/`.
+   - `N` is a build step's number, and its plan is `docs/plans/step-NN.md`. In its place, give
+     the name of a plan that is not a numbered step, the file name under `docs/plans/` without
+     `.md`, such as `standards-sweep-b`. Codex then takes the plan's own check table as the
+     check, and the `pr` review reads each `docs/deviations/step-NN.md` that the plan names.
+     The reports are `.codex-review/<name>-<kind>-<sha>.md`.
    - `plan N` reads the plan of step N in a read-only sandbox.
    - `pr N <base>` runs the check and the audits of the `verify-step` skill, then the review,
      on `git diff <base>...HEAD`. Codex works in a throwaway worktree with its own environment,
      in a sandbox with no network, so it runs tests and breaks code there to test a claim.
    - `fix N <reviewed-head>` reads only the fix round, `git diff <reviewed-head>..HEAD`. It
      needs the report of the `pr` or `fix` review of that head, and stops without it.
-3. If the script stops because `codex` is missing or the tree is dirty, report that in one line
-   and go on. Never install Codex or change its configuration.
+3. If the script stops because `codex` is missing, the tree is dirty, or no `gov-budget-data`
+   sits beside the folder that holds the repository's `.git`, which is the main checkout in this
+   repository, report that in one line and go on. Never install Codex or change its
+   configuration.
 
 ## Confirm each finding
 
@@ -37,7 +44,7 @@ Every other one is a follow-up. Codex labels each finding, and its label is a le
 
 ## Act
 
-- **Plan review.** Revise `docs/plans/step-NN.md` for each kept finding, or write why you
+- **Plan review.** Revise the plan for each kept finding, or write why you
   disagree under a `## Codex review` heading at the end of the plan. Show the owner the kept
   findings with the revised plan before the build starts.
 - **Pull request review.** Give the findings that block to one fresh `pstack:poteto-agent` on

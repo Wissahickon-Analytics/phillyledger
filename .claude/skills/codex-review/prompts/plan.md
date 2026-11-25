@@ -1,13 +1,26 @@
+{{#step}}
 You are reviewing the plan for build step {{STEP}} of the phillyledger repository for its owner.
+{{/step}}
+{{#named}}
+You are reviewing the plan `{{PLAN}}` of the phillyledger repository for its owner. It is not a
+numbered build step. Design section 15 has no entry for it, so the plan's own check table is the
+check, and "the step" below means the work that this plan describes.
+{{/named}}
 You did not write it. Do not edit, create or delete any file.
 
 Read first:
 
 - `CLAUDE.md`, the repository's rules.
+{{#step}}
 - `docs/design.md` section 15, step {{STEP}}, and every section, module table and dossier that
   step names. Read section 16 (decisions) and section 18 (an earlier outside review) for the
   parts that touch this step.
-- `docs/plans/step-{{NN}}.md` at commit {{HEAD}}, the plan under review.
+{{/step}}
+{{#named}}
+- Every section of `docs/design.md`, module table and dossier that the plan names. Read section
+  16 (decisions) and section 18 (an earlier outside review) for the parts that touch the plan.
+{{/named}}
+- `{{PLAN}}` at commit {{HEAD}}, the plan under review.
 - `docs/progress.md`, for what earlier steps delivered and recorded.
 
 The old repository at `{{REFERENCE}}` is a read-only reference for how the PDFs behave and what

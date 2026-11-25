@@ -1,19 +1,25 @@
 ---
 name: verify-step
 description: Verify a phillyledger pull request or build step against the design. Proves each clause of the step's check with a named test, and audits the diff for weakened checks, purity breaks and altered numbers. Codex runs it for every pull request, through the codex-review skill.
-argument-hint: "[step-number] [base-branch]"
+argument-hint: "[step-number | plan-name] [base-branch]"
 ---
 
 Verify build step $0 on the current branch against `docs/design.md`. The base is `$1`, or `main`
 when no base is given. Report findings. Do not fix anything.
 
+`$0` is a step number, or the name of a plan that is not a numbered step. That name is the
+plan's file name under `docs/plans/` without `.md`, such as `standards-sweep-b`. Design section
+15 has no entry for a named plan, so its own check table is the check, and "the step" below
+means the work that it describes.
+
 ## Gather
 
 - `git diff <base>...HEAD` and `git log <base>..HEAD`.
-- Step $0 in design section 15, the module tables in section 12, and every section the step
-  names.
-- `docs/plans/step-NN.md` for the pull request this branch is meant to deliver, and the commit
-  messages and `docs/deviations/step-NN.md` for what the builder claims.
+- The check, which is step $0 in design section 15 or the check table of `docs/plans/$0.md`.
+  Then the module tables in section 12, and every section that the step or the plan names.
+- The plan, `docs/plans/step-NN.md` or `docs/plans/$0.md`, for the pull request this branch is
+  meant to deliver. The commit messages and the deviations file for what the builder claims.
+  A step's deviations file is `docs/deviations/step-NN.md`. A named plan names its own when it changes the design.
 
 ## Gates
 
@@ -23,10 +29,10 @@ the tools are in `.venv/bin`.
 
 ## The check
 
-Go through the step's check in section 15 clause by clause. For each clause this pull request
-owns in the plan, name the test that proves it and run that test alone. A clause with no test, or
-a test that would still pass if the clause were false, is a finding. Prove that second case by
-breaking the code the clause describes in a scratch copy and showing the test still passes.
+Go through the check clause by clause. For each clause this pull request owns in the plan, name
+the test that proves it and run that test alone. A clause with no test, or a test that would
+still pass if the clause were false, is a finding. Prove that second case by breaking the code
+the clause describes in a scratch copy and showing the test still passes.
 
 ## Audits
 
@@ -34,7 +40,7 @@ breaking the code the clause describes in a scratch copy and showing the test st
    broad `except`, `# type: ignore`, `noqa`, fixtures regenerated without a reason in the
    commit.
 2. **Design drift.** Names, signatures, types and module boundaries that differ from the design
-   without an entry in `docs/deviations/step-NN.md`.
+   without an entry in the deviations file.
 3. **Purity.** Anything in `checkedtables` or `datadesk.core` that touches files, sockets,
    processes, the clock, the environment, randomness or logging, or keeps mutable module state.
 4. **Honest numbers.** Code that changes a printed value, fills a missing one, guesses, or binds
