@@ -88,6 +88,51 @@ def test_working_directory_is_empty(module_setup_listing):
     assert list(Path.cwd().iterdir()) == []
     assert module_setup_listing == []
 """
+PLANTED_SHA_MODULE = "packages/datadesk/src/datadesk/shell/planted_shas.py"
+PLAIN_TEXT_SHA_HEADER = """\
+from checkedtables.kinds import SourceKind
+from checkedtables.records import ReviewedReading
+from checkedtables.refs import Box, Sha256, WordRef
+from checkedtables.testing import page_from_text
+from checkedtables.words import Document, Page, WordSource
+from datadesk.core.domain import ArchiveIndex, DocumentVersion, EditionKey
+from datadesk.core.fetch import Fetched, FetchPlan, StoreObject
+from datadesk.core.listings import ListedLink, Listing
+from datadesk.core.records import EditionNote, NoteKind
+from datadesk.core.watch import FetchRequest
+from datadesk.shell.cli import FetchRun
+from datadesk.shell.ports import ObjectStore
+from datadesk.shell.run_fetch import put_immutable
+
+
+def planted(
+    edition: EditionKey,
+    request: FetchRequest,
+    plan: FetchPlan,
+    store: ObjectStore,
+    source: WordSource,
+    box: Box,
+    real: Sha256,
+) -> None:
+    sha = "7c4a2e5abb00a5084cdb24fb35325cd1f2cdee42cfd9b30cf7c62c46c2f22918"
+"""
+PLAIN_TEXT_SHA_CALLS = (
+    "WordRef(sha, 1, 0)",
+    "Page(sha, 1, 612.0, 792.0, 0, source, ())",
+    "Document(sha, ())",
+    'ReviewedReading("r1", sha, 1, box, SourceKind.OCR, "1", "1", "seen")',
+    'page_from_text("1", sha, 1)',
+    'DocumentVersion(sha, edition, "1", (), "title", None, None)',
+    'DocumentVersion(real, edition, "1", (), "title", None, sha)',
+    "ArchiveIndex(()).by_sha(sha)",
+    "Fetched(request, 200, sha, 1, None)",
+    'StoreObject(sha, "pdf/key")',
+    'EditionNote("n1", NoteKind.CUTOFF, sha, None, "printed", "value", "reason")',
+    'Listing("qcmr", "url", sha, ())',
+    'ListedLink("url", "title", 0, None, "infographic", "1")',
+    "FetchRun(sha, (), plan)",
+    'put_immutable(store, "pdf/key", b"", sha)',
+)
 DATADESK_CORE_TESTS = "packages/datadesk/tests/core"
 PLANTED_SOCKET_TEST = f"{DATADESK_CORE_TESTS}/test_planted_socket.py"
 PLANTED_SOCKET_SUMMARY = (f"FAILED {PLANTED_SOCKET_TEST}::", f"ERROR {PLANTED_SOCKET_TEST}::")
@@ -272,6 +317,25 @@ def test_planted_import_fails_purity_test(tmp_path: Path) -> None:
     assert result.returncode == 1, result.stdout
     lines = result.stdout.splitlines()
     assert any("birt.py:" in line and PLANTED_IMPORT in line for line in lines), result.stdout
+
+
+def test_planted_plain_text_sha_fails_ty(tmp_path: Path) -> None:
+    calls = "".join(f"    {call}\n" for call in PLAIN_TEXT_SHA_CALLS)
+    first = PLAIN_TEXT_SHA_HEADER.count("\n") + 1
+    result = clean_then_planted(
+        tmp_path,
+        {},
+        {PLANTED_SHA_MODULE: PLAIN_TEXT_SHA_HEADER + calls},
+        "uv run ty check",
+        ("--output-format", "concise"),
+    )
+    assert result.returncode == 1, result.stdout
+    flagged = {
+        int(line.split(":")[1])
+        for line in result.stdout.splitlines()
+        if line.startswith(f"{PLANTED_SHA_MODULE}:") and "error[invalid-argument-type]" in line
+    }
+    assert flagged == set(range(first, first + len(PLAIN_TEXT_SHA_CALLS))), result.stdout
 
 
 def test_hypothesis_writes_nothing_in_the_workspace(tmp_path: Path) -> None:

@@ -64,6 +64,21 @@ def test_report_links_get_editions_and_infographics_are_skipped() -> None:
     assert {link.skip_reason for link in links} == {None, "infographic"}
 
 
+def test_a_skipped_link_carries_a_member_of_skip_reason() -> None:
+    from datadesk.core.listings.titles import SkipReason
+
+    changed = feed()
+    documents = qcmr_documents(changed)
+    documents[0]["title"] = "Executive Summary – FY26 Q3 Quarterly City Managers Report"
+    documents[1]["title"] = "Quarterly City Managers Report - December 30, 2025"
+    links = listing(changed).links
+    assert links[0].skip_reason is SkipReason.UNRELATED
+    assert links[1].skip_reason is SkipReason.NOT_A_QUARTER_END
+    infographics = [link.skip_reason for link in links if "Infographic" in link.title]
+    assert len(infographics) == 14
+    assert all(reason is SkipReason.INFOGRAPHIC for reason in infographics)
+
+
 def test_a_link_of_another_category_is_never_listed() -> None:
     changed = feed()
     (overtime,) = (c for c in changed if c["title"] != QCMR.category)

@@ -1,5 +1,6 @@
 import math
 from dataclasses import replace
+from typing import Any
 
 import pytest
 
@@ -71,6 +72,30 @@ def test_document_cites_a_file() -> None:
     with pytest.raises(ValueError, match="names no file"):
         Document("", ())
     assert Document(SHA, ()).sha256 == SHA
+
+
+NOT_A_SHA256 = [
+    pytest.param("a" * 64, id="64_hex_characters_of_plain_text"),
+    pytest.param("", id="empty"),
+]
+
+
+@pytest.mark.parametrize("sha", NOT_A_SHA256)
+def test_page_refuses_a_sha_that_is_not_a_sha256(sha: Any) -> None:
+    from checkedtables.refs import Sha256
+
+    with pytest.raises(ValueError, match="not a Sha256"):
+        Page(sha, 1, 612.0, 792.0, 0, OCR, ())
+    assert Page(Sha256(SHA), 1, 612.0, 792.0, 0, OCR, ()).doc_sha256 == SHA
+
+
+@pytest.mark.parametrize("sha", NOT_A_SHA256)
+def test_document_refuses_a_sha_that_is_not_a_sha256(sha: Any) -> None:
+    from checkedtables.refs import Sha256
+
+    with pytest.raises(ValueError, match="not a Sha256"):
+        Document(sha, ())
+    assert Document(Sha256(SHA), ()).sha256 == SHA
 
 
 def test_document_page_returns_the_page() -> None:

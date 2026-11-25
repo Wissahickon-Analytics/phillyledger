@@ -351,12 +351,26 @@ def test_source_lines_leaves_out_docstrings(tmp_path: Path) -> None:
 
 
 def test_closed_lists_are_pinned() -> None:
+    from datadesk.core.fetch import PeriodRefusal
+    from datadesk.core.listings.titles import SkipReason
+
     assert [k.value for k in NoteKind] == [
         "printed_period",
         "cutoff",
         "header_misprint",
         "drop_line",
         "header_illegible",
+    ]
+    assert [k.value for k in PeriodRefusal] == [
+        "period_unreadable",
+        "period_ambiguous",
+        "period_not_a_quarter_end",
+    ]
+    assert [k.value for k in SkipReason] == [
+        "infographic",
+        "unrelated",
+        "not_a_quarter_end",
+        "unstaged",
     ]
 
 

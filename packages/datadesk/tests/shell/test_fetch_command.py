@@ -640,3 +640,81 @@ def test_main_prints_one_line_for_an_input_it_cannot_read(
 def test_main_requires_a_saved_folder(capsys: pytest.CaptureFixture[str]) -> None:
     assert main(["fetch", "qcmr"]) == 2
     assert "--saved" in capsys.readouterr().err
+
+
+def test_fetch_prints_exact_lines(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    feed = only(FEED, "Quarterly City Managers Report - September 30, 2021")
+    (report,) = reports(feed)
+    store = DictStore()
+    monkeypatch.setattr(cli, "s3_store", lambda settings: store)
+    for name, value in ENVIRON.items():
+        monkeypatch.setenv(name, value)
+    pdf = replace(report, body=text_pdf(report.cover))
+    folder = saved_folder(tmp_path / "saved", feed, [pdf])
+    monkeypatch.chdir(checkout(tmp_path / "checkout"))
+    assert main(["fetch", "qcmr", "--saved", str(folder)]) == 0
+    added = capsys.readouterr()
+    assert main(["fetch", "qcmr", "--saved", str(folder)]) == 0
+    unchanged = capsys.readouterr()
+    skipped = with_report(
+        feed,
+        "https://admin.phila.gov/media/20260515154446/Quarterly-City-Managers-Report-March-30-2026.pdf",
+        "Quarterly City Managers Report - March 30, 2026",
+    )
+    blank = replace(report, body=text_pdf("QUARTERLY CITY MANAGERS REPORT"))
+    other = saved_folder(tmp_path / "other_saved", skipped, [blank])
+    monkeypatch.chdir(checkout(tmp_path / "other_checkout"))
+    assert main(["fetch", "qcmr", "--saved", str(other)]) == 0
+    refused = capsys.readouterr()
+
+    assert list(store.objects) == [
+        "pdf/40/402039f30108899e0dd8664ebfb42f483ace8319c09929a70743c2b767dab42d.pdf"
+    ]
+    assert (added.err, unchanged.err, refused.err) == ("", "", "")
+    assert added.out == (
+        "listing sha256 17803f848ad777e61c97a17566f04164d4d5bd84456534f653122f14d3e04f3d\n"
+        "\n"
+        "feat(datadesk): index fetched reports\n"
+        "\n"
+        "Index lines added:\n"
+        "- qcmr:2021-09-30:none "
+        "402039f30108899e0dd8664ebfb42f483ace8319c09929a70743c2b767dab42d "
+        "https://www.phila.gov/media/20211116102946/"
+        "Quarterly-City-Managers-Report-September-30-2021.pdf\n"
+        "\n"
+        "Rejected:\n"
+        "- none\n"
+        "\n"
+        "wrote packages/datadesk/src/datadesk/data/index.jsonl\n"
+    )
+    assert unchanged.out == (
+        "listing sha256 17803f848ad777e61c97a17566f04164d4d5bd84456534f653122f14d3e04f3d\n"
+        "\n"
+        "feat(datadesk): index fetched reports\n"
+        "\n"
+        "Index lines added:\n"
+        "- none\n"
+        "\n"
+        "Rejected:\n"
+        "- none\n"
+        "\n"
+    )
+    assert refused.out == (
+        "listing sha256 ed32c215ba93bf69ec53f96b823db194306b19161f9e8632e83e18bb7d01cbb8\n"
+        "warn not_a_quarter_end https://www.phila.gov/media/20260515154446/"
+        "Quarterly-City-Managers-Report-March-30-2026.pdf: "
+        "'Quarterly City Managers Report - March 30, 2026' reads as a report whose date is not "
+        "a quarter end, so it is not fetched\n"
+        "\n"
+        "feat(datadesk): index fetched reports\n"
+        "\n"
+        "Index lines added:\n"
+        "- none\n"
+        "\n"
+        "Rejected:\n"
+        "- qcmr:2021-09-30:none https://www.phila.gov/media/20211116102946/"
+        "Quarterly-City-Managers-Report-September-30-2021.pdf period_unreadable\n"
+        "\n"
+    )

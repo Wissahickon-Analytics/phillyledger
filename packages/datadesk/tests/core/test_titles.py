@@ -87,6 +87,32 @@ def test_qcmr_title_reads_an_edition_or_a_skip_reason(
     assert qcmr_title(title) == reading
 
 
+@pytest.mark.parametrize(
+    ("title", "reason"),
+    [
+        pytest.param(
+            "Quarterly City Managers Report Infographic - September 30, 2024",
+            "infographic",
+            id="an_infographic",
+        ),
+        pytest.param(
+            "Executive Summary – FY18 Q1 Quarterly City Managers Report",
+            "unrelated",
+            id="an_executive_summary",
+        ),
+        pytest.param(
+            "Quarterly City Managers Report - March 30, 2026",
+            "not_a_quarter_end",
+            id="a_date_that_is_not_a_quarter_end",
+        ),
+    ],
+)
+def test_qcmr_title_skips_with_a_member_of_skip_reason(title: str, reason: str) -> None:
+    from datadesk.core.listings.titles import SkipReason
+
+    assert qcmr_title(title) is SkipReason(reason)
+
+
 def test_title_rules_hold_the_qcmr_rule() -> None:
     assert TITLE_RULES["qcmr"] is qcmr_title
 

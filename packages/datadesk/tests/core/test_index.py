@@ -156,6 +156,45 @@ def test_parse_index_refuses_a_sha_that_is_not_64_lowercase_hex_characters(sha: 
         parse_index(text)
 
 
+def test_parse_index_builds_a_sha256_for_each_digest_and_none_for_null() -> None:
+    from checkedtables.refs import Sha256
+
+    revised, older = parse_index(render_index(ArchiveIndex((REVISED_Q4, Q4)))).versions
+    assert (revised.sha256, revised.supersedes) == (REVISED_Q4_SHA, Q4_SHA)
+    assert (older.sha256, older.supersedes) == (Q4_SHA, None)
+    assert type(revised.sha256) is Sha256
+    assert type(revised.supersedes) is Sha256
+    assert type(older.sha256) is Sha256
+
+
+@pytest.mark.parametrize(
+    "supersedes",
+    [
+        pytest.param(Q4_SHA.upper(), id="the_sha_of_another_line_in_upper_case"),
+        pytest.param(Q4_SHA[:63], id="63_characters"),
+        pytest.param(f"{Q4_SHA}0", id="65_characters"),
+        pytest.param(f"{Q4_SHA[:63]}g", id="a_letter_that_is_not_hex"),
+        pytest.param(5, id="a_number"),
+        pytest.param({}, id="an_object"),
+        pytest.param([Q4_SHA], id="a_list"),
+    ],
+)
+def test_parse_index_refuses_a_supersedes_that_is_not_64_lowercase_hex_characters(
+    supersedes: object,
+) -> None:
+    revised, older = render_index(ArchiveIndex((REVISED_Q4, Q4))).splitlines(keepends=True)
+    text = dumps(loads(revised) | {"supersedes": supersedes}) + "\n" + older
+    with pytest.raises(ValueError, match="is not 64 lowercase hex characters"):
+        parse_index(text)
+
+
+def test_parse_index_reports_a_bad_sha_before_a_bad_urls() -> None:
+    line = loads(render_index(ArchiveIndex((Q3,))))
+    text = dumps(line | {"sha256": Q3_SHA.upper(), "urls": Q3_URL}) + "\n"
+    with pytest.raises(ValueError, match="is not 64 lowercase hex characters"):
+        parse_index(text)
+
+
 @given(archive_indexes())
 def test_parse_index_reads_back_what_render_index_writes(index: ArchiveIndex) -> None:
     assert parse_index(render_index(index)) == index

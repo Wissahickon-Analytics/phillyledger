@@ -1,6 +1,8 @@
 import math
 import operator
+from enum import Enum
 from itertools import product
+from typing import Any
 
 import pytest
 from hypothesis import given
@@ -9,6 +11,7 @@ from hypothesis import strategies as st
 from checkedtables.refs import Box, WordRef
 
 COMPARISONS = (operator.lt, operator.le, operator.gt, operator.ge)
+HEX = "7c4a2e5abb00a5084cdb24fb35325cd1f2cdee42cfd9b30cf7c62c46c2f22918"
 coordinates = st.floats(min_value=-1e6, max_value=1e6, allow_nan=False)
 
 
@@ -97,3 +100,83 @@ def test_word_refs_compare_only_with_word_refs() -> None:
     for compare in COMPARISONS:
         with pytest.raises(TypeError):
             compare(WordRef("a" * 64, 1, 0), 1)
+
+
+class OtherText(str):
+    def __str__(self) -> str:
+        return "other text"
+
+
+class Digest(str, Enum):  # noqa: UP042
+    SAMPLE = HEX
+
+
+@given(st.text("0123456789abcdef", min_size=64, max_size=64))
+def test_sha256_holds_64_lowercase_hex_characters_and_equals_its_text(text: str) -> None:
+    from checkedtables.refs import Sha256
+
+    sha = Sha256(text)
+    assert type(sha) is Sha256
+    assert sha == text
+    assert hash(sha) == hash(text)
+    assert (type(str(sha)), str(sha)) == (str, text)
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        pytest.param("", id="empty"),
+        pytest.param(HEX.replace("c", "C", 1), id="an_uppercase_digit"),
+        pytest.param(HEX[:63], id="63_characters"),
+        pytest.param(f"{HEX}0", id="65_characters"),
+        pytest.param(f"{HEX}\n", id="a_trailing_newline"),
+        pytest.param(f"{HEX[:63]}g", id="a_letter_that_is_not_hex"),
+        pytest.param(None, id="none"),
+        pytest.param(int(HEX, 16), id="a_number"),
+        pytest.param(HEX.encode(), id="bytes"),
+        pytest.param([HEX], id="a_list"),
+    ],
+)
+def test_sha256_refuses_any_other_value(value: Any) -> None:
+    from checkedtables.refs import Sha256
+
+    with pytest.raises(ValueError, match="is not 64 lowercase hex characters"):
+        Sha256(value)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        pytest.param(OtherText(HEX), id="a_str_subclass_with_its_own_str"),
+        pytest.param(Digest.SAMPLE, id="a_member_of_a_str_enum"),
+    ],
+)
+def test_sha256_of_a_str_subclass_holds_the_text_it_checked(text: str) -> None:
+    from checkedtables.refs import Sha256
+
+    assert str(text) != HEX
+    sha = Sha256(text)
+    assert (type(sha), str(sha), len(sha)) == (Sha256, HEX, 64)
+
+
+def test_the_repr_of_a_word_ref_rebuilds_its_sha256() -> None:
+    from checkedtables.refs import Sha256
+
+    ref = WordRef(Sha256(HEX), 2, 5, 1)
+    names = {"Sha256": Sha256, "WordRef": WordRef}
+    assert repr(Sha256(HEX)) == f"Sha256({HEX!r})"
+    rebuilt = eval(repr(ref), names)
+    assert rebuilt == ref
+    assert type(rebuilt.doc_sha256) is Sha256
+
+
+@pytest.mark.parametrize(
+    "sha",
+    [pytest.param(HEX, id="64_hex_characters_of_plain_text"), pytest.param("", id="empty")],
+)
+def test_word_ref_refuses_a_sha_that_is_not_a_sha256(sha: Any) -> None:
+    from checkedtables.refs import Sha256
+
+    with pytest.raises(ValueError, match="not a Sha256"):
+        WordRef(sha, 1, 0)
+    assert WordRef(Sha256(HEX), 1, 0).doc_sha256 == HEX
