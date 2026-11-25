@@ -53,6 +53,14 @@ No session reads these by default. Open one when the work needs it.
 Commands that matter and traps in the tooling. A note belongs here only when every later
 session needs it. A note for one later step goes in `docs/plan-notes.md`.
 
+- **The code standards changed, and the built code has not caught up** (November 25, 2026). The
+  owner asked for typer, docstrings and the type rules of the book Robust Python. `CLAUDE.md`
+  (Code) and section 8 of `docs/principles.md` hold them. Steps 1 to 3 were built to the older
+  rule. At head `3643f40`, `datadesk` has 82 public classes, functions and methods and none has
+  a docstring, no module in any of the three packages has one, `datadesk.shell.cli` uses
+  `argparse`, and `pyproject.toml` turns ruff's `D` rules off outside `checkedtables` and
+  `phillyledger` and ignores `D100`. New code follows the new rules. A sweep brings the built
+  code to them, and this note goes when it has landed.
 - **`uv.lock` and `exclude-newer`** (November 22, 2026, step 1). The owner's uv config and
   `UV_EXCLUDE_NEWER` set `exclude-newer = "1 week"`, and `uv lock` records that span in
   `uv.lock`. A machine without the setting, such as a CI runner, rejects the lock: `uv lock

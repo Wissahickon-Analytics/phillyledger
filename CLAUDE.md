@@ -36,10 +36,11 @@ step is finished when its check passes.
   other one is a follow-up, listed in the pull request's text.
 - **Codex verifies, and no Claude agent does.** No Claude agent verifies a pull request, reviews
   its comments or reviews a decision trail, and no swarm runs. The Opus owner applies
-  `no-comments` and `deslop` to its own diff. The plan and the design give the shapes, the names
-  and the signatures, so the session marks the Feature playbook's `how` and `architect` steps
-  `skip` and runs no `arena`. This differs from pstack, and the project rule wins.
-  `docs/plans/README.md` has the measurements behind it.
+  `no-comments` and `deslop` to its own diff, and both keep the docstrings that the Code section
+  asks for. The plan and the design give the shapes, the names and the signatures, so the
+  session marks the Feature playbook's `how` and `architect` steps `skip` and runs no `arena`.
+  This differs from pstack, and the project rule wins. `docs/plans/README.md` has the
+  measurements behind it.
 - Pull requests stack only where one builds on another. From step 3 on, a step's stacked pull
   requests are one GitHub stack, built and kept linear with `gh stack` (`docs/plans/README.md`).
   Contested design goes to `/pstack:interrogate`.
@@ -66,7 +67,8 @@ step is finished when its check passes.
 - `docs/deviations/step-NN.md`: what each step changed in the design, and why.
 - `docs/plan-notes.md`: notes a step left for the plan of a later step.
 - `docs/followups.md`: confirmed findings that did not block their pull request.
-- `docs/principles.md`: functional core, imperative shell, and plan-then-execute, with sources.
+- `docs/principles.md`: functional core, imperative shell and plan-then-execute, then the rules
+  for types, docstrings and the command line (section 8), with sources.
 - `docs/evidence/dossiers/<FAMILY>.md`: what the PDFs actually contain. Quirk ids such as
   `QPOS-Q12` refer to these files. `docs/evidence/quirks.tsv` lists every quirk, and
   `docs/evidence/coverage.tsv` says which module handles each one.
@@ -137,14 +139,36 @@ Step 1 creates these. Keep this list true as tooling changes.
 
 - Python 3.12 or later. Frozen, slotted dataclasses for values, `StrEnum` for closed lists,
   `Decimal` for every amount, never `float`. Type hints everywhere; `ty check` passes.
+- Types say what a value means (`docs/principles.md`, section 8). A value with a rule of its
+  own, such as a sha256, has a type of its own, and the one function that builds it checks the
+  rule. A result with more than one outcome is a union of named types, never a bare `str` or
+  `tuple` that stands for a failure. The caller handles each member and ends with
+  `assert_never`, so `ty check` fails when one is missed.
 - ruff, line length 100. Start from the rule set in `../gov-budget-data/pyproject.toml`.
-- Docstrings (numpy style) only on the public API of `checkedtables` and `phillyledger`, the
-  names users import. Apply ruff's `D` rules to those two packages only. Elsewhere names and
-  types carry the meaning. This narrows the old repo's rule set to fit pstack's `no-comments`.
+- Docstrings (numpy style) on every public module, class, function and method under
+  `packages/*/src`, checked by ruff's `D` rules. The first line says what the thing is for. The
+  rest says what the signature cannot: what a value means on the printed page, its unit and
+  period, the rule it holds, what comes back when the input is bad, and the page or quirk
+  behind a choice. Add a `Parameters`, `Returns` or `Raises` section where a name and its type
+  leave a question open. A private helper gets a docstring when its name and types do not say
+  why it exists. Tests get none: a test's name is its sentence.
+- A docstring never repeats its signature, and it is true of the code under it. Inline comments
+  still follow pstack's `no-comments`. pstack keeps doc comments on a public API alone. Here
+  every docstring this section asks for stays, on internal and private names too. This differs
+  from pstack, and the project rule wins.
 - A comment that explains a PDF quirk cites its dossier id (`# QPOS-Q12: ...`). The publisher's
   PDFs are an outside source this repo cannot reshape, so these comments stay.
-- Keep the names and signatures the design gives. If a module runs well past its estimate in
-  section 12, say so in progress.md.
+- Build the `datadesk` command line with typer, and import typer only in `datadesk.shell.cli`. A
+  command there is a thin typed function. It builds `Deps`, calls a plain function that tests
+  call directly, and prints. Keep typer's own traceback printing off, so every line `datadesk`
+  prints passes through `hide_keys` (hard rule 8).
+- Keep the names and signatures the design gives. Where the design gives a looser type than the
+  type rule asks for, change the design in the same pull request (hard rule 7). If a module
+  runs well past its estimate in section 12, say so in progress.md. Docstrings do not count
+  against the estimate.
+- The type, docstring and typer rules date from November 25, 2026. Code built before then does
+  not meet them yet, and until it does ruff checks docstrings in `checkedtables` and
+  `phillyledger` alone. `docs/progress.md` says what still has to change.
 
 ## Tests
 

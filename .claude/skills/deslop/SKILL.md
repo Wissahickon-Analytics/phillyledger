@@ -13,9 +13,10 @@ Check the diff against `main` and remove AI-generated slop introduced in the bra
 
 ## Focus areas
 
-- Comments that narrate the code or repeat its names. Keep the ones `CLAUDE.md` keeps: public
-  API docstrings in `checkedtables` and `phillyledger`, and comments that cite a dossier quirk
-  id.
+- Comments that narrate the code or repeat its names. Keep the ones `CLAUDE.md` keeps: the
+  docstrings its Code section asks for, and comments that cite a dossier quirk id.
+- A docstring that only repeats its signature. Do not delete it. Rewrite it to say what the
+  types cannot.
 - Defensive checks or `try`/`except` blocks that are abnormal for trusted internal code. Inside
   `checkedtables` and `datadesk.core`, types are already parsed at the boundary.
 - `typing.cast`, `Any` or `# type: ignore` used only to get past the type checker.
