@@ -2657,10 +2657,11 @@ each finding, the plan's title and body and each file it wrote, and returns 0. A
 a saved folder that `SavedHttp` refuses, a `FetchStopped` or an `EffectError` prints one line to
 stderr and returns 1. A `PreconditionFailed` that reaches `main` means the store holds other bytes
 under a report's key, and it prints one line naming that object and returns 1. Any other exception
-raised while `main` builds `Deps` or runs the fetch, `KeyboardInterrupt` included, prints its
-traceback to stderr, and `main` returns 1, so a bug stays visible. Python would print an uncaught
-exception with the messages of the exceptions chained to it, such as the S3 error under a
-`PreconditionFailed`, so `main` catches each of these itself. `main` prints neither R2 key. Once
+raised while `main` builds `Deps` or runs the fetch prints its traceback to stderr, and `main`
+returns 1, so a bug stays visible. A `KeyboardInterrupt` there is the operator's stop, not a bug
+(section 9), and `main` prints its traceback the same way and returns 1. Python would print an
+uncaught exception with the messages of the exceptions chained to it, such as the S3 error under
+a `PreconditionFailed`, so `main` catches each of these itself. `main` prints neither R2 key. Once
 `Settings` is loaded, everything it prints, a traceback included, goes through `hide_keys`, which
 replaces each non-empty key with `$` and the name of its variable, so a service message that echoes
 the access key prints `$DATADESK_R2_ACCESS_KEY_ID` in its place.
@@ -4096,10 +4097,11 @@ file, a saved `responses.tsv` or a listing body that is not UTF-8 is an effect e
 shell turns it into a finding or a stop. `gather_repo` is the one place the shell turns a core
 exception into a finding. `parse_index` raises on an index file it cannot read, and
 `gather_repo` returns that as the BLOCK finding `index_unreadable`, because the file is input
-from the checkout (section 4). Any other exception that escapes the core is a bug and fails the
+from the checkout (section 4). A `KeyboardInterrupt` is the operator's stop, wherever it is
+raised, and is not a bug. Any other exception that escapes the core is a bug and fails the
 command. `main` prints the message of each stop that section 4.2 names, and the traceback of any
-other exception raised while it builds `Deps` or runs the fetch, and returns 1. Once `Settings`
-is loaded, everything it prints goes through `hide_keys`.
+other exception raised while it builds `Deps` or runs the fetch, a `KeyboardInterrupt` included,
+and returns 1. Once `Settings` is loaded, everything it prints goes through `hide_keys`.
 
 ## 10. Caching and determinism
 

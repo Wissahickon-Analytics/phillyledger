@@ -499,3 +499,12 @@ design leaves open" in `docs/plans/step-03.md`.
   `test_parse_index_refuses_a_line_whose_urls_is_not_a_list` and
   `test_parse_index_refuses_a_sha_that_is_not_64_lowercase_hex_characters` fail. After them they
   pass, and the 20 committed index lines still parse. Design section 3.2.
+- **Step 3: a `KeyboardInterrupt` is the operator's stop, not a bug** (November 25, 2026, step 3
+  cleanup). Section 9 called any exception that escapes the core a bug, the `parse_index` case
+  aside. Section 4.2 had `main` print the traceback of any other exception, `KeyboardInterrupt`
+  included, and return 1, "so a bug stays visible". A Ctrl-C that arrives while core code runs
+  also escapes the core, so the two sections called the operator's stop a bug (Codex read of the
+  fourth fix round of S3-D). Section 9 now says a `KeyboardInterrupt` is the operator's stop
+  wherever it is raised, and both sections say that `main` prints its traceback and returns 1. No
+  code changed. With `fetch_command` replaced by a function that raises `KeyboardInterrupt`,
+  `main` prints the traceback and returns 1. Design sections 4.2 and 9.
