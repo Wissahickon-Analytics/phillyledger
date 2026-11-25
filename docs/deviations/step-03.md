@@ -486,3 +486,16 @@ design leaves open" in `docs/plans/step-03.md`.
   1. A script that recomputes the table from the two files found no difference before the
   change. Run on the new files against the old table, it names those four rows, and against the
   new table, none. Design section 13.
+- **Step 3: `parse_index` refuses a sha that is not lowercase hex, and `urls` that is not a list**
+  (November 25, 2026, step 3 cleanup). The design gave a line's `sha256` no form and did not say
+  that `urls` is a list. So the FY2022 Q1 line beside a hand-edited copy under FY2022 Q2, with the
+  same sha in upper case, parsed as two versions, and `index_problem` saw no `content_alias`. The
+  FY2022 Q1 line with its one URL as a bare string parsed as 95 URLs, the first `'h'`. The index
+  is input from the checkout (section 9). `parse_index` now raises `ValueError` on a `sha256` that
+  is not 64 lowercase hex characters, the form `hexdigest()` writes, and on `urls` that is not a
+  JSON list, and `gather_repo` turns the raise into `index_unreadable`. It refuses the line and
+  does not fold the case, because only a hand edit makes such a line and folding would rewrite
+  input with no finding. Before the guards, the five cases of
+  `test_parse_index_refuses_a_line_whose_urls_is_not_a_list` and
+  `test_parse_index_refuses_a_sha_that_is_not_64_lowercase_hex_characters` fail. After them they
+  pass, and the 20 committed index lines still parse. Design section 3.2.

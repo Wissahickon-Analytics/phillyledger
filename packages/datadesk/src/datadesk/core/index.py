@@ -2,6 +2,7 @@ from collections.abc import Sequence
 from dataclasses import asdict, replace
 from datetime import date
 from json import dumps, loads
+from re import compile
 from typing import Any
 
 from checkedtables.table import Finding
@@ -16,6 +17,8 @@ from datadesk.core.domain import (
     index_problem,
     sort_versions,
 )
+
+SHA256 = compile(r"[0-9a-f]{64}")
 
 
 def parse_index(jsonl: str) -> ArchiveIndex:
@@ -46,11 +49,17 @@ def add_versions(index: ArchiveIndex, new: Sequence[DocumentVersion]) -> Archive
 def _version(line: dict[str, Any]) -> DocumentVersion:
     edition = line["edition"]
     printed = line["printed_period"]
+    sha256 = line["sha256"]
+    urls = line["urls"]
+    if not SHA256.fullmatch(sha256):
+        raise ValueError(f"sha256 {sha256!r} is not 64 lowercase hex characters")
+    if not isinstance(urls, list):
+        raise ValueError(f"urls {urls!r} is not a list")
     return DocumentVersion(
-        sha256=line["sha256"],
+        sha256=sha256,
         edition=EditionKey(edition["series"], _period(edition["period"]), Stage(edition["stage"])),
         listed_at=line["listed_at"],
-        urls=tuple(line["urls"]),
+        urls=tuple(urls),
         title=line["title"],
         printed_period=None if printed is None else _period(printed),
         supersedes=line["supersedes"],
