@@ -255,3 +255,57 @@ by its title is in `docs/plan-notes.md`, `docs/progress.md` or `docs/deviations/
     example `0.0` read as `(0.0)`, since the words it draws hold no parenthesis, and
     `test_a_reviewed_zero_keeps_its_sign` reads `(0.0)` as `(0.0)`. With `apply_reading` patched
     in memory so that a reviewed zero loses its sign, both tests fail.
+- **Follow-ups after step 3** (November 25, 2026). Step 3's five pull requests, 32, 33, 35, 36
+  and 37, found these and did not fix them. Each was checked against `d3b0666`, the head of
+  stack 34. The sorted list marked these 21 to keep, and the owner chose the 15 it marked to fix
+  for the cleanup pull request ("Your 15 picks").
+  - `test_index_refuses_one_sha_twice` uses two editions, so a guard that refuses a repeated sha
+    only across editions still passes it (pull request 32).
+  - The watch tests never index a URL as a version's second URL or on a superseded version, so
+    two mutants of `_request` in `watch.py` survive (pull request 33).
+  - No test holds the "and nothing more" of the title rule. With `search` in place of
+    `fullmatch`, 48 title, listing and watch tests pass (pull request 33).
+  - The HTTP test of `plan_fetch` cannot tell a bad status from a missing sha. With
+    `status != 200` removed from the guard, both of its cases pass (pull request 35).
+  - The tests of `confirm_period` allow a confirmation by the end date alone, though the rule
+    compares the whole period, start included (pull request 35).
+  - Rule 3 of `plan_fetch` has no test at a held URL. With the `superseded_sha_relisted` check and
+    the known-URL check swapped, 156 tests pass (pull request 35).
+  - The fixed branch `fetch/index` has no test, and no step 3 code reads it. With `BRANCH`
+    changed, `uv run pytest packages/datadesk/tests tests` gives 297 passed and 7 skipped. The
+    title is held, since `main` prints it. With `TITLE` changed,
+    `test_main_runs_the_fetch_from_the_working_directory_and_prints_the_plan` fails (plan shape
+    10, pull request 35).
+  - No test fails when the S3 client reads `~/.aws/config` and `~/.aws/credentials`. The
+    ambient-profile test plants its files only through the two variables (pull request 36).
+  - No test fails when botocore's own retries come back. With the `retries` line dropped, a put
+    answered 500 sent three requests (pull request 36).
+  - The client's `use_arn_region` and `s3_disable_multiregion_access_points` values change no put
+    in any probe, and no test fails without them (pull request 36).
+  - No test compares an inventory row's `sha256` with its `browser_sha256`. All 20 agree at the
+    head by the read-back run (pull request 37).
+  - No test compares a valid value of the index's `holding`, `printed_period`, `via`, `urls`,
+    `title` or `listed_at` with the evidence. The inventory tests parse the index, so a value
+    outside its type fails them. With the first line's `holding` set to `invalid`, 3 fail and 1
+    passes. With it set to `excerpt`, or its `via` set to `manual`, all four pass. They read only
+    the inventory's `edition`, `sha256` and `checked`, so they pass with its `bytes`, `pages`,
+    `page1_period`, `url` and `browser_sha256` set to any text (pull request 37).
+  - The purity test misses `Counter()` at module scope, because its list of mutable constructors
+    holds `list`, `dict`, `set` and `bytearray` alone (pull request 32).
+  - A category with the entry's title whose `documents` is not a list is skipped with no finding
+    when a readable category with that title is beside it (pull request 33).
+  - A retitled revision such as "Quarterly City Managers Report Revised - June 30, 2025" reads as
+    `unrelated` with no finding. The old repo's `test_qcmr.py:165` read it as the winning
+    revision, and step 13's gap rule cannot see it, because the quarter is already indexed (pull
+    request 33). Of the kept items, this is the one that could change what gets published, since
+    a revised report would be missed with no finding. Step 13's plan should read it.
+  - An empty digest gives the store key `pdf//.pdf` (pull request 35).
+  - `qcmr_period` reads digits that are not ASCII and the year 0001, where the title rule wants
+    `[1-9]\d{3}` (pull request 35).
+  - A 412 with no body is read as `EffectError`, so `put_immutable` does not read the object back
+    (pull request 36).
+  - A service message with a newline prints two stderr lines (pull request 36).
+  - `https://?q=1` passes the saved-folder URL rule, which the design states as a scheme and no
+    whitespace (pull request 36).
+  - An endpoint with no scheme ends `main` in a `ValueError` traceback from inside `s3_store`. It
+    prints no key (pull request 36).

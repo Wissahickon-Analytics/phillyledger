@@ -2213,6 +2213,11 @@ def plan_fetch(fetched: Sequence[Fetched], index: ArchiveIndex,
 # in ISO form, printed_period an object or null, and a newline after every line. The empty
 # index is "".
 def parse_index(jsonl: str) -> ArchiveIndex: ...         # splits on "\n" alone, then sorts
+    # raises ValueError on a line whose sha256 is not a string of 64 lowercase hex characters,
+    # the form hexdigest() writes, or whose urls is not a JSON list. A fetch run writes neither
+    # line, since the shell passes plan_fetch the hexdigest() of the bytes and render_index
+    # writes urls as a list. So in the checkout only a hand edit makes one, and parse_index
+    # refuses it rather than fold the case or split a string into characters
 def render_index(index: ArchiveIndex) -> str: ...        # sorted, one JSON object per line
 def add_versions(index: ArchiveIndex, new: Sequence[DocumentVersion]) -> ArchiveIndex | Finding: ...
     # a new version whose sha and edition are indexed adds each URL that line lacks, after the
@@ -2654,10 +2659,11 @@ each finding, the plan's title and body and each file it wrote, and returns 0. A
 a saved folder that `SavedHttp` refuses, a `FetchStopped` or an `EffectError` prints one line to
 stderr and returns 1. A `PreconditionFailed` that reaches `main` means the store holds other bytes
 under a report's key, and it prints one line naming that object and returns 1. Any other exception
-raised while `main` builds `Deps` or runs the fetch, `KeyboardInterrupt` included, prints its
-traceback to stderr, and `main` returns 1, so a bug stays visible. Python would print an uncaught
-exception with the messages of the exceptions chained to it, such as the S3 error under a
-`PreconditionFailed`, so `main` catches each of these itself. `main` prints neither R2 key. Once
+raised while `main` builds `Deps` or runs the fetch prints its traceback to stderr, and `main`
+returns 1, so a bug stays visible. A `KeyboardInterrupt` there is the operator's stop, not a bug
+(section 9), and `main` prints its traceback the same way and returns 1. Python would print an
+uncaught exception with the messages of the exceptions chained to it, such as the S3 error under
+a `PreconditionFailed`, so `main` catches each of these itself. `main` prints neither R2 key. Once
 `Settings` is loaded, everything it prints, a traceback included, goes through `hide_keys`, which
 replaces each non-empty key with `$` and the name of its variable, so a service message that echoes
 the access key prints `$DATADESK_R2_ACCESS_KEY_ID` in its place.
@@ -4058,7 +4064,8 @@ records, since no format inserts a decimal point (QCASH-Q21).
 
 ## 9. Errors
 
-A problem in the documents is a returned value. An exception means a bug or a failed effect.
+A problem in the documents is a returned value. An exception means input the command refuses, a
+failed effect, a bug or the operator's stop, a `KeyboardInterrupt`.
 
 | Situation | Kind | Who handles it |
 |---|---|---|
@@ -4093,10 +4100,14 @@ file, a saved `responses.tsv` or a listing body that is not UTF-8 is an effect e
 shell turns it into a finding or a stop. `gather_repo` is the one place the shell turns a core
 exception into a finding. `parse_index` raises on an index file it cannot read, and
 `gather_repo` returns that as the BLOCK finding `index_unreadable`, because the file is input
-from the checkout (section 4). Any other exception that escapes the core is a bug and fails the
-command. `main` prints the message of each stop that section 4.2 names, and the traceback of any
-other exception raised while it builds `Deps` or runs the fetch, and returns 1. Once `Settings`
-is loaded, everything it prints goes through `hide_keys`.
+from the checkout (section 4). A `KeyboardInterrupt` is the operator's stop, wherever it is
+raised, and is not a bug. Any other exception that escapes the core is a bug and fails the
+command. `main` prints the message of each stop that section 4.2 names: a `MissingSettings`, a
+saved folder that `SavedHttp` refuses, a `FetchStopped`, an `EffectError` and a
+`PreconditionFailed`. A `KeyboardInterrupt` is not one of those stops. `main` prints its
+traceback, as it does for any other exception raised while it builds `Deps` or runs the fetch.
+It returns 1 in each case. Once `Settings` is loaded, everything it prints goes through
+`hide_keys`.
 
 ## 10. Caching and determinism
 

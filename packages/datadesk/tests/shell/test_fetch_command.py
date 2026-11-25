@@ -521,6 +521,28 @@ def test_main_prints_neither_r2_key_when_the_store_echoes_both(
     assert not [key for key in keys if key in out + err]
 
 
+def test_main_prints_neither_r2_key_when_the_plan_it_prints_holds_both(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = checkout(tmp_path / "checkout")
+    keys = (ENVIRON["DATADESK_R2_ACCESS_KEY_ID"], ENVIRON["DATADESK_R2_SECRET_ACCESS_KEY"])
+    feed = only(FEED, reports(FEED)[0].title)
+    (category,) = (category for category in feed if category["title"] == CATEGORY)
+    (document,) = category["documents"]
+    document["url"] = document["url"].replace(".pdf", f"-{keys[0]}-{keys[1]}.pdf")
+    pdfs = [replace(report, body=text_pdf(report.cover)) for report in reports(feed)]
+    folder = saved_folder(tmp_path / "saved", feed, pdfs)
+    monkeypatch.setattr(cli, "s3_store", lambda settings: DictStore())
+    for name, value in ENVIRON.items():
+        monkeypatch.setenv(name, value)
+    monkeypatch.chdir(root)
+    assert main(["fetch", "qcmr", "--saved", str(folder)]) == 0
+    out, err = capsys.readouterr()
+    assert "-$DATADESK_R2_ACCESS_KEY_ID-$DATADESK_R2_SECRET_ACCESS_KEY.pdf" in out
+    assert not [key for key in keys if key in out + err]
+    assert all(key in (root / INDEX_FILE).read_text() for key in keys)
+
+
 @pytest.mark.parametrize("read_back", ["other_bytes", "no_such_key"])
 def test_main_prints_neither_r2_key_when_a_refused_put_ends_the_run(
     read_back: str,
