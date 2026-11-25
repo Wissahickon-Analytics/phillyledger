@@ -471,3 +471,16 @@ design leaves open" in `docs/plans/step-03.md`.
   that check dropped, the `KeyError` escapes and the `a_source_the_catalog_lacks` case of
   `test_a_checkout_the_command_cannot_read_stops_it_before_any_request` fails. Design sections 4,
   4.2 and 9.
+- **Step 3: the unreadable FY2027 Q1 cover, and three coverage rows moved** (November 24, 2026,
+  S3-E). `quirks.tsv` gains QPOS-Q38, inherent. The FY2027 Q1 report has no text a program can
+  read, because its page 1 fonts have no Unicode map, so `confirm_period` rejects it as
+  `period_unreadable` and it waits for a later step (plan fact 14, answer D). A follow-up of pull
+  request 35 found three rows of `coverage.tsv` on the wrong function. QOBL-Q04 and QPOS-Q34
+  move from `periods.fiscal_period`, which is for windowed periods and does not exist before
+  step 5, to `periods.fiscal_quarter`, which maps a period end to its fiscal quarter. QOBL-Q06
+  moves from `fetch.plan_fetch` to `fetch.confirm_period`, the function section 6.3 names. So
+  section 13 counts 438 inherent quirks, and four rows of its table change: `confirm_period`
+  carries 10, `fiscal_period` 3, `fiscal_quarter` 2 and `plan_fetch` 1. A script that recomputes
+  the table from the two files found no difference before the change. Run on the new files
+  against the old table, it names those four rows, and against the new table, none. Design
+  section 13.
