@@ -348,11 +348,24 @@ design leaves open" in `docs/plans/step-03.md`.
   `test_page1_text_of_a_file_pdfplumber_cannot_read_is_an_effect_error` fail. `document.pages[0]`
   built every page, so a broken box on page 2 hid a readable cover, and pdfplumber's
   `MalformedPDFException` is not a `PdfminerException`, so it escaped (Codex review of S3-D,
-  finding 8). The reader now opens the PDF with `pages=[1]` and turns `MalformedPDFException` into
-  `EffectError` too. With every page built, both cases of
+  finding 8). The first fix round opened the PDF with `pages=[1]` and turned
+  `MalformedPDFException` into `EffectError` too. With every page built, the two `/ArtBox` cases of
   `test_page1_text_reads_page_1_when_a_later_page_has_a_broken_box` fail, and with
-  `MalformedPDFException` left uncaught, the `a_page_1_with_a_box_with_a_name` case fails. Design
-  sections 4, 11.1 and 11.5.
+  `MalformedPDFException` left uncaught, the `a_page_1_with_a_box_with_a_name` case fails. With
+  `pages=[1]`, pdfplumber still had pdfminer build every page, so a `/CropBox` that is one number on
+  page 2 hid the cover, and a box that is one number on page 1 escaped as `TypeError` (Codex read of
+  the fix, findings 2 and 3). In the second fix round the reader hands the first page of pdfminer's
+  `PDFPage.create_pages` to pdfplumber's `Page`, builds no other page and does not close the
+  document, because `close` builds every page again. It turns any exception raised while pdfplumber
+  opens the PDF and reads page 1 into `EffectError`. Page 1 of the 21 saved City reports, read with
+  this reader, gave the same text as with the reader it replaces, and `qcmr_period` read the 20 from
+  FY2022 Q1 to FY2026 Q4 as their own quarters and FY2027 Q1 as `period_unreadable`. With
+  `pages=[1]` back, the `a_crop_box_that_is_one_number` case of
+  `test_page1_text_reads_page_1_when_a_later_page_has_a_broken_box` fails, and with the document
+  closed in a `with` block, all three of its cases fail. With the handler of the first fix round,
+  the `a_page_1_with_a_box_that_is_one_number` case of
+  `test_page1_text_of_a_file_pdfplumber_cannot_read_is_an_effect_error` fails. Design sections 4,
+  11.1 and 11.5.
 - **Step 3: `run_fetch` returns the plan and tries each effect three times** (November 24, 2026,
   S3-D). The design's sketch called `GitHost`, put each report with `public=True`, and did not say
   how a failed effect is tried again. `run_fetch` now returns the `FetchPlan` and calls no `GitHost`

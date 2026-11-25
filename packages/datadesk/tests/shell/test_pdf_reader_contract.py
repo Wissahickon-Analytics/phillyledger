@@ -17,12 +17,13 @@ def test_page1_text_holds_the_words_of_page_1_alone() -> None:
 @pytest.mark.parametrize(
     "box",
     [
-        pytest.param("[0 0]", id="a_box_with_two_numbers"),
-        pytest.param("[0 0 612 /Wide]", id="a_box_with_a_name"),
+        pytest.param("/ArtBox [0 0]", id="a_box_with_two_numbers"),
+        pytest.param("/ArtBox [0 0 612 /Wide]", id="a_box_with_a_name"),
+        pytest.param("/CropBox 42", id="a_crop_box_that_is_one_number"),
     ],
 )
 def test_page1_text_reads_page_1_when_a_later_page_has_a_broken_box(box: str) -> None:
-    text = PdfPlumberReader().page1_text(text_pdf(COVER, SECOND_PAGE, art_boxes={2: box}))
+    text = PdfPlumberReader().page1_text(text_pdf(COVER, SECOND_PAGE, boxes={2: box}))
     assert COVER in text
 
 
@@ -36,7 +37,11 @@ def test_page1_text_of_an_image_page_is_empty() -> None:
         pytest.param(b"<html>Request blocked</html>", id="bytes_that_are_not_a_pdf"),
         pytest.param(text_pdf(), id="a_pdf_with_no_page"),
         pytest.param(
-            text_pdf(COVER, art_boxes={1: "[0 0 612 /Wide]"}), id="a_page_1_with_a_box_with_a_name"
+            text_pdf(COVER, boxes={1: "/ArtBox [0 0 612 /Wide]"}),
+            id="a_page_1_with_a_box_with_a_name",
+        ),
+        pytest.param(
+            text_pdf(COVER, boxes={1: "/ArtBox 42"}), id="a_page_1_with_a_box_that_is_one_number"
         ),
     ],
 )

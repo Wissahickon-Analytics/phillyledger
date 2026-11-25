@@ -4,7 +4,7 @@ from io import BytesIO
 from PIL import Image
 
 
-def text_pdf(*pages: str, art_boxes: Mapping[int, str] | None = None) -> bytes:
+def text_pdf(*pages: str, boxes: Mapping[int, str] | None = None) -> bytes:
     kids = " ".join(f"{4 + 2 * number} 0 R" for number in range(len(pages)))
     objects = [
         b"<< /Type /Catalog /Pages 2 0 R >>",
@@ -13,11 +13,11 @@ def text_pdf(*pages: str, art_boxes: Mapping[int, str] | None = None) -> bytes:
     ]
     for number, words in enumerate(pages):
         content = f"BT /F1 12 Tf 72 720 Td ({words}) Tj ET".encode()
-        box = (art_boxes or {}).get(number + 1)
+        box = (boxes or {}).get(number + 1)
         objects += [
             (
                 f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
-                f"{'' if box is None else f'/ArtBox {box} '}"
+                f"{'' if box is None else f'{box} '}"
                 f"/Resources << /Font << /F1 3 0 R >> >> /Contents {5 + 2 * number} 0 R >>"
             ).encode(),
             b"<< /Length %d >>\nstream\n%s\nendstream" % (len(content), content),

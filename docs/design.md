@@ -2529,11 +2529,15 @@ change TLS, and botocore reads its own `BOTO_*` and `BOTOCORE_*` switches. botoc
 one S3 region redirect inside a call, so one call can send two requests.
 `CreateOnly` and `IfMatch(None)` send `IfNoneMatch="*"`, and `IfMatch(e)` sends `IfMatch=e`. A 412
 `PreconditionFailed` raises `PreconditionFailed`, `head` of an absent key returns `None`, and `get`
-of an absent key raises `KeyError`. The pdfplumber reader opens a PDF with `pages=[1]`, so
-pdfplumber builds page 1 alone and a broken box on a later page does not hide the cover. It raises
-`EffectError` for bytes it cannot open, for a PDF with no page, and for a page 1 that pdfplumber
-cannot build, which raises `MalformedPDFException` when a box holds a coordinate that is not a
-number.
+of an absent key raises `KeyError`. The pdfplumber reader builds page 1 alone. It hands the first
+page that pdfminer's `PDFPage.create_pages` yields to pdfplumber's `Page` and builds no other page,
+so a broken box on a later page does not hide the cover. In pdfplumber 0.11.10 the document's page
+list has pdfminer build every page, even when `pages=[1]` limits the pages pdfplumber builds, and
+`close` builds that list again, so the reader uses neither. Any `Exception` raised while pdfplumber
+opens the PDF and reads page 1 becomes `EffectError`, chained. Bytes it cannot open, a PDF with no
+page and a box on page 1 that pdfminer or pdfplumber cannot read each end there. The two libraries
+raise many types on a malformed PDF, such as `TypeError` for a box that is one number,
+`IndexError` for a box of two numbers and `MalformedPDFException` for a box that holds a name.
 
 ### 4.1 `watch`
 
