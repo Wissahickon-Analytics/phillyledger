@@ -20,7 +20,7 @@ follows, on Opus, after the owner's go.
 
 ## The owner's answers
 
-All five are from November 25, 2026.
+All six are from November 25, 2026.
 
 1. The planning session asked "Plan sweep B as its own short step before step 4's plan?" He
    answered "Yes, plan it". He was shown this scope. One `Sha256` type, defined in the kit and
@@ -43,6 +43,8 @@ All five are from November 25, 2026.
    text?" It had told him that `WordRef`, `Page`, `Document` and `ReviewedReading` would refuse
    a sha that is not a `Sha256`, and that a kit user who passes plain text gets a `ValueError`.
    He answered "Yes, keep it".
+6. This Plan run then asked "Keep unstaged in SkipReason, though no reader returns it yet?" It
+   had told him that design section 3.2 lists `unstaged`. He answered "Yes, keep it".
 
 Everything else in this plan was worked out after the first three answers. Each item under
 "Proposals" is a proposal until he lands this plan, except where an answer above settles it.
@@ -62,7 +64,7 @@ Everything else in this plan was worked out after the first three answers. Each 
 4. Both enums are pinned in `test_closed_lists_are_pinned` and in design section 11.4. Answer
    4 lets the list in hard rule 6 of `CLAUDE.md` name them.
 5. `SkipReason` has the four values that design section 3.2 gives `ListedLink.skip_reason`.
-   The fourth, `unstaged`, has no reader that returns it yet.
+   The fourth, `unstaged`, has no reader that returns it yet. Answer 6 keeps it.
 6. `ListedLink.skip_reason` takes the type `SkipReason | None`. It holds what a title rule
    returned and nothing else.
 7. `parse_index` builds `supersedes` with `Sha256` too, since it is the sha of an earlier
