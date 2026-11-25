@@ -41,14 +41,15 @@ case $step in
 '' | -* | step-* | *[!a-z0-9-]*) usage ;;
 *[!0-9]*)
     plan=docs/plans/$step.md
-    [ -f "$root/$plan" ] || {
-        echo "No plan at $plan." >&2
+    git -C "$root" cat-file -e "HEAD:$plan" 2>/dev/null || {
+        echo "No plan at $plan in HEAD." >&2
         usage
     }
     nn=
     label=$step
     form=named other=step
-    deviations=$(grep -o 'docs/deviations/step-[0-9][0-9]*\.md' "$root/$plan" | sort -u |
+    deviations=$(git -C "$root" show "HEAD:$plan" |
+        grep -o 'docs/deviations/step-[0-9][0-9]*\.md' | sort -u |
         awk '{ printf "%s`%s`", (NR > 1 ? ", " : ""), $0 }')
     ;;
 *)
@@ -79,7 +80,7 @@ base_sha=$(git -C "$root" rev-parse --verify --quiet "$base^{commit}") || {
 common=$(git -C "$root" rev-parse --path-format=absolute --git-common-dir)
 reference=$(dirname "$(dirname "$common")")/gov-budget-data
 [ -d "$reference" ] || {
-    echo "No old repository at $reference. It sits beside the main checkout." >&2
+    echo "No old repository at $reference. It sits beside the folder that holds .git." >&2
     exit 7
 }
 

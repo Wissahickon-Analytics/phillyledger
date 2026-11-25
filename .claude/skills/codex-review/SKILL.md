@@ -26,8 +26,8 @@ ones a run or a quote confirms.
    - `fix N <reviewed-head>` reads only the fix round, `git diff <reviewed-head>..HEAD`. It
      needs the report of the `pr` or `fix` review of that head, and stops without it.
 3. If the script stops because `codex` is missing, the tree is dirty, or no `gov-budget-data`
-   sits beside the main checkout, report that in one line and go on. Never install Codex or
-   change its configuration.
+   sits beside the folder that holds the repository's `.git`, which is the main checkout, report
+   that in one line and go on. Never install Codex or change its configuration.
 
 ## Confirm each finding
 

@@ -19,7 +19,7 @@ means the work that it describes.
   Then the module tables in section 12, and every section that the step or the plan names.
 - The plan, `docs/plans/step-NN.md` or `docs/plans/$0.md`, for the pull request this branch is
   meant to deliver. The commit messages and the deviations file for what the builder claims.
-  A step's deviations file is `docs/deviations/step-NN.md`. A named plan names its own.
+  A step's deviations file is `docs/deviations/step-NN.md`. A named plan names its own when it changes the design.
 
 ## Gates
 
