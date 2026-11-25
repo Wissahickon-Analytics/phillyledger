@@ -1,5 +1,6 @@
+"""The `datadesk` command line, the one module that imports typer."""
+
 import sys
-from argparse import ArgumentParser
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date
@@ -7,6 +8,9 @@ from functools import partial
 from os import environ
 from pathlib import Path
 from traceback import format_exc
+from typing import Annotated
+
+import typer
 
 from checkedtables.table import Finding
 from datadesk.core.fetch import FetchPlan
@@ -20,19 +24,44 @@ from datadesk.shell.ports import Deps, EffectError, PreconditionFailed
 from datadesk.shell.run_fetch import retried, run_fetch
 from datadesk.shell.settings import MissingSettings, hide_keys, load_settings
 
+app = typer.Typer(add_completion=False, pretty_exceptions_enable=False, rich_markup_mode=None)
+
 
 @dataclass(frozen=True, slots=True)
 class FetchRun:
+    """What one fetch did: the listing's digest, the watch findings and the fetch plan.
+
+    `listing_sha256` is the sha256 of the listing's text, and `findings` are the findings that
+    `plan_watch` returned.
+    """
+
     listing_sha256: str
     findings: tuple[Finding, ...]
     plan: FetchPlan
 
 
 class FetchStopped(Exception):
-    pass
+    """A fetch stopped before it fetched any report. The message says why."""
 
 
 def fetch_command(deps: Deps, root: Path, source: str, today: date) -> FetchRun:
+    """Fetch the reports that a source's listing names, store them, and index them.
+
+    `root` is the checkout. The files of the plan are written last, after every put, each to a
+    temporary file with a fixed name in the same folder and then renamed, so a run that stops
+    leaves the index file as it was.
+
+    Raises
+    ------
+    FetchStopped
+        Before any report is fetched, for a checkout that cannot be read, a source the catalog
+        lacks, a listing that answers with a status other than 200 or is not UTF-8, and a
+        listing that `parse_listing` cannot read.
+    EffectError
+        When an effect fails on its third try.
+    PreconditionFailed
+        When the store holds other bytes under a report's key.
+    """
     repo = gather_repo(root)
     if isinstance(repo, tuple):
         raise FetchStopped(_findings("the checkout cannot be read", repo))
@@ -59,46 +88,64 @@ def fetch_command(deps: Deps, root: Path, source: str, today: date) -> FetchRun:
     return FetchRun(listing.html_sha256, watch.findings, plan)
 
 
-def main(argv: Sequence[str] | None = None) -> int:
-    parser = ArgumentParser(prog="datadesk")
-    commands = parser.add_subparsers(dest="command", required=True)
-    fetch = commands.add_parser("fetch", help="archive the reports a listing names")
-    fetch.add_argument("source", help="a source id from catalog.toml, such as qcmr")
-    fetch.add_argument(
-        "--saved", type=Path, required=True, help="a folder of saved responses with responses.tsv"
-    )
-    args = parser.parse_args(argv)
+@app.callback()
+def datadesk() -> None:
+    """Archive Philadelphia's budget and finance reports."""
+
+
+@app.command()
+def fetch(
+    source: Annotated[str, typer.Argument(help="a source id from catalog.toml, such as qcmr")],
+    saved: Annotated[Path, typer.Option(help="a folder of saved responses with responses.tsv")],
+) -> None:
+    """Archive the reports a listing names."""
     today = date.today()
     try:
         settings = load_settings(environ)
     except MissingSettings as error:
         print(f"datadesk: {error}", file=sys.stderr)
-        return 1
+        raise typer.Exit(1) from None
     try:
-        deps = Deps(SavedHttp(args.saved), s3_store(settings), PdfPlumberReader())
-        run = fetch_command(deps, Path.cwd(), args.source, today)
+        deps = Deps(SavedHttp(saved), s3_store(settings), PdfPlumberReader())
+        run = fetch_command(deps, Path.cwd(), source, today)
+        lines = [
+            f"listing sha256 {run.listing_sha256}",
+            *(f"{f.severity} {f.code} {f.subject}: {f.message}" for f in run.findings),
+            "",
+            run.plan.pull_request.title,
+            "",
+            run.plan.pull_request.body,
+            *(f"wrote {path}" for path, _ in run.plan.pull_request.files),
+        ]
+        print(hide_keys("\n".join(lines), settings))
     except (SavedFolderError, FetchStopped, EffectError) as error:
         print(hide_keys(f"datadesk: {error}", settings), file=sys.stderr)
-        return 1
+        raise typer.Exit(1) from None
     except PreconditionFailed as error:
         print(
             hide_keys(f"datadesk: the store holds other bytes under {error}", settings),
             file=sys.stderr,
         )
-        return 1
+        raise typer.Exit(1) from None
     except BaseException:  # noqa: BLE001
         print(hide_keys(format_exc(), settings), end="", file=sys.stderr)
-        return 1
-    lines = [
-        f"listing sha256 {run.listing_sha256}",
-        *(f"{f.severity} {f.code} {f.subject}: {f.message}" for f in run.findings),
-        "",
-        run.plan.pull_request.title,
-        "",
-        run.plan.pull_request.body,
-        *(f"wrote {path}" for path, _ in run.plan.pull_request.files),
-    ]
-    print(hide_keys("\n".join(lines), settings))
+        raise typer.Exit(1) from None
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    """Run the `datadesk` command line on `argv`, or on `sys.argv[1:]`, and return its exit code.
+
+    typer ends a run by raising SystemExit, and `main` returns its code: 0 for a run that ends
+    normally or for help, 1 for a refused input, a failed effect, a bug or a Ctrl-C after the
+    settings load, 2 for a usage error, and 130 for a Ctrl-C before the settings load. An
+    exception other than a Ctrl-C raised before the settings load is a bug, and it propagates.
+    """
+    try:
+        app(args=argv, prog_name="datadesk")
+    except SystemExit as stop:
+        if isinstance(stop.code, int):
+            return stop.code
+        raise
     return 0
 
 

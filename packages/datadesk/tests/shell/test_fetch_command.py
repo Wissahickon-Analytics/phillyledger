@@ -638,7 +638,5 @@ def test_main_prints_one_line_for_an_input_it_cannot_read(
 
 
 def test_main_requires_a_saved_folder(capsys: pytest.CaptureFixture[str]) -> None:
-    with pytest.raises(SystemExit) as raised:
-        main(["fetch", "qcmr"])
-    assert raised.value.code != 0
+    assert main(["fetch", "qcmr"]) == 2
     assert "--saved" in capsys.readouterr().err

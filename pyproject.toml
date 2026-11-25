@@ -160,3 +160,10 @@ forbidden_modules = ["datadesk.core.tables.catalog", "datadesk.core.tables.qcmr_
                      "datadesk.core.tables.supp_activity", "datadesk.core.tables.supp_revenues",
                      "datadesk.core.tables.supp_by_source", "datadesk.core.tables.supp_summaries",
                      "datadesk.core.tables.supp_capital"]
+
+[[tool.importlinter.contracts]]
+name = "only the command line imports typer"
+type = "forbidden"
+source_modules = ["checkedtables", "phillyledger", "datadesk"]
+forbidden_modules = ["typer"]
+ignore_imports = ["datadesk.shell.cli -> typer"]
