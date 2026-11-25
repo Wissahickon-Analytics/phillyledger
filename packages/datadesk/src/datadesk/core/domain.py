@@ -38,8 +38,10 @@ class Period:
 class EditionKey:
     """One edition of a series: the period it reports and its budget stage.
 
-    A QCMR edition's period runs from the first day of its fiscal quarter to the end date that the
-    cover prints, so FY2026 Q4 is 2026-04-01 to 2026-06-30.
+    A QCMR edition's period runs from the first day of its fiscal quarter to the date that the
+    listing's title gives, so FY2026 Q4 is 2026-04-01 to 2026-06-30. The period that the cover
+    prints is `DocumentVersion.printed_period`. At fetch the two are equal unless a
+    PRINTED_PERIOD note confirms another period that the cover prints (`confirm_period`).
     """
 
     series: str

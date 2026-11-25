@@ -26,16 +26,21 @@ SHA256 = compile(r"[0-9a-f]{64}")
 def parse_index(jsonl: str) -> ArchiveIndex:
     """Read the text of index.jsonl into an index.
 
-    Lines end at each line feed, empty lines are skipped, and the versions are sorted.
+    Lines end at each line feed, empty lines are skipped, and the versions are sorted. The parser
+    checks that each sha256 is a string of 64 lowercase hex characters, the form that
+    `hexdigest()` writes, that `urls` is a JSON list, that the stage, via and holding name members
+    of their enums, that each period holds two ISO dates and does not end before it starts, and
+    that the versions pass `index_problem`. It does not check the series, `listed_at`, `title`
+    or the items of `urls`.
 
     Raises
     ------
     ValueError
-        For a sha256 that is not a string of 64 lowercase hex characters, the form that
-        `hexdigest()` writes, for `urls` that is not a JSON list, for a line that is not JSON or
-        holds a value no field takes, and for versions that break a rule of `index_problem`.
+        For a line that is not JSON, and for each check above that fails.
     KeyError, TypeError
-        For a line that lacks a key or is not a JSON object.
+        For a line, an edition or a period that lacks a key or is not a JSON object, for a
+        period date that is not a string, and for unchecked values that the sort cannot compare,
+        such as a series that is a number.
     """
     return ArchiveIndex(sort_versions(_version(loads(line)) for line in jsonl.split("\n") if line))
 

@@ -1,4 +1,4 @@
-"""The settings of the archive bucket on R2, read once from the environment."""
+"""The settings of the archive bucket on R2, which a command loads from the environment once."""
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field

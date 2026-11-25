@@ -95,8 +95,12 @@ class S3Store:
 def s3_store(settings: Settings) -> S3Store:
     """Build the store for the archive bucket from `settings` alone.
 
-    The botocore session reads no AWS_* variable, no config file and no credentials file, so
-    `settings` alone gives the endpoint, the keys and the bucket.
+    The botocore session maps none of its session variables, AWS_PROFILE among them, to the
+    environment, and reads `os.devnull` as its config and credentials files, so `settings` alone
+    gives the endpoint, the keys and the bucket. botocore still reads some variables that are
+    not session variables. `CLIENT_CONFIG` sets the three S3 settings that it reads from AWS_S3_*
+    variables, which overrides them, and design section 4 names others it reads, such as
+    AWS_EXECUTION_ENV and the proxy variables.
     """
     session = Session(botocore_session=BotocoreSession(session_vars=QUIET_SESSION_VARIABLES))
     client = session.client(

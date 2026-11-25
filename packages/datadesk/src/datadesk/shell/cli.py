@@ -58,7 +58,8 @@ def fetch_command(deps: Deps, root: Path, source: str, today: date) -> FetchRun:
         lacks, a listing that answers with a status other than 200 or is not UTF-8, and a
         listing that `parse_listing` cannot read.
     EffectError
-        When an effect fails on its third try.
+        When a GET or a put fails on its third try, or when the PDF reader cannot read a
+        report's page 1, which it tries once.
     PreconditionFailed
         When the store holds other bytes under a report's key.
     """
@@ -135,10 +136,12 @@ def fetch(
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the `datadesk` command line on `argv`, or on `sys.argv[1:]`, and return its exit code.
 
-    typer ends a run by raising SystemExit, and `main` returns its code: 0 for a run that ends
-    normally or for help, 1 for a refused input, a failed effect, a bug or a Ctrl-C after the
-    settings load, 2 for a usage error, and 130 for a Ctrl-C before the settings load. An
-    exception other than a Ctrl-C raised before the settings load is a bug, and it propagates.
+    The code is that of the SystemExit that typer raises. typer raises none for an exception
+    while it builds the click command, a Ctrl-C included, and that exception propagates. While
+    typer parses `argv`, it gives 0 for help and 2 for a usage error. Until `fetch` has loaded
+    the settings, typer gives 130 for a Ctrl-C and 1 for an EOFError, and a bug propagates.
+    `fetch` gives 1 for a refused input, a failed effect or any exception after the settings
+    load, and 0 for a run that ends normally.
     """
     try:
         app(args=argv, prog_name="datadesk")

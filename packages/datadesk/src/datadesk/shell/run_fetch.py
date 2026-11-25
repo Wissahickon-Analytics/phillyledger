@@ -31,8 +31,10 @@ def put_immutable(store: ObjectStore, key: str, data: bytes, sha: str) -> None:
     ------
     PreconditionFailed
         When the key holds other bytes.
-    KeyError, EffectError
-        When the bytes under the key cannot be read back.
+    EffectError
+        When the put fails for another reason, or the bytes under the key cannot be read back.
+    KeyError
+        When the key holds no object by the time its bytes are read back.
     """
     try:
         store.put(key, data, CreateOnly())
