@@ -137,9 +137,16 @@ def test_parse_index_refuses_a_line_whose_urls_is_not_a_list(urls: str) -> None:
         parse_index(unlisted)
 
 
+def builder_message(json_value: object) -> str:
+    with pytest.raises(ValueError) as refused:
+        Sha256(loads(dumps(json_value)))
+    return str(refused.value)
+
+
 @pytest.mark.parametrize(
     "sha",
     [
+        pytest.param("", id="empty"),
         pytest.param(Q3_SHA.upper(), id="the_sha_of_another_line_in_upper_case"),
         pytest.param(Q3_SHA[:63], id="63_characters"),
         pytest.param(f"{Q3_SHA}0", id="65_characters"),
@@ -153,8 +160,9 @@ def test_parse_index_refuses_a_line_whose_urls_is_not_a_list(urls: str) -> None:
 def test_parse_index_refuses_a_sha_that_is_not_64_lowercase_hex_characters(sha: object) -> None:
     copy = render_index(ArchiveIndex((replace(Q3, edition=FY2026_Q4, printed_period=None),)))
     text = render_index(ArchiveIndex((Q3,))) + dumps(loads(copy) | {"sha256": sha}) + "\n"
-    with pytest.raises(ValueError, match="sha256"):
+    with pytest.raises(ValueError) as refused:
         parse_index(text)
+    assert str(refused.value) == builder_message(sha)
 
 
 def test_parse_index_builds_a_sha256_for_each_digest_and_none_for_null() -> None:
@@ -169,6 +177,7 @@ def test_parse_index_builds_a_sha256_for_each_digest_and_none_for_null() -> None
 @pytest.mark.parametrize(
     "supersedes",
     [
+        pytest.param("", id="empty"),
         pytest.param(Q4_SHA.upper(), id="the_sha_of_another_line_in_upper_case"),
         pytest.param(Q4_SHA[:63], id="63_characters"),
         pytest.param(f"{Q4_SHA}0", id="65_characters"),
@@ -183,8 +192,9 @@ def test_parse_index_refuses_a_supersedes_that_is_not_64_lowercase_hex_character
 ) -> None:
     revised, older = render_index(ArchiveIndex((REVISED_Q4, Q4))).splitlines(keepends=True)
     text = dumps(loads(revised) | {"supersedes": supersedes}) + "\n" + older
-    with pytest.raises(ValueError, match="is not 64 lowercase hex characters"):
+    with pytest.raises(ValueError) as refused:
         parse_index(text)
+    assert str(refused.value) == builder_message(supersedes)
 
 
 def test_parse_index_reports_a_bad_sha_before_a_bad_urls() -> None:

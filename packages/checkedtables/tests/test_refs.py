@@ -131,6 +131,7 @@ def test_sha256_holds_64_lowercase_hex_characters_and_equals_its_text(text: str)
         pytest.param(f"{HEX}0", id="65_characters"),
         pytest.param(f"{HEX}\n", id="a_trailing_newline"),
         pytest.param(f"{HEX[:63]}g", id="a_letter_that_is_not_hex"),
+        pytest.param(f"\N{FULLWIDTH DIGIT ZERO}{HEX[1:]}", id="a_decimal_digit_that_is_not_ascii"),
         pytest.param(None, id="none"),
         pytest.param(int(HEX, 16), id="a_number"),
         pytest.param(HEX.encode(), id="bytes"),
@@ -166,7 +167,11 @@ def test_the_repr_of_a_word_ref_rebuilds_its_sha256() -> None:
 
 @pytest.mark.parametrize(
     "sha",
-    [pytest.param(HEX, id="64_hex_characters_of_plain_text"), pytest.param("", id="empty")],
+    [
+        pytest.param(HEX, id="64_hex_characters_of_plain_text"),
+        pytest.param("", id="empty"),
+        pytest.param(None, id="none"),
+    ],
 )
 def test_word_ref_refuses_a_sha_that_is_not_a_sha256(sha: Any) -> None:
     with pytest.raises(ValueError, match="not a Sha256"):

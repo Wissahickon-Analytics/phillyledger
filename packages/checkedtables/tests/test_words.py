@@ -79,6 +79,7 @@ def test_document_cites_a_file() -> None:
 NOT_A_SHA256 = [
     pytest.param("a" * 64, id="64_hex_characters_of_plain_text"),
     pytest.param("", id="empty"),
+    pytest.param(None, id="none"),
 ]
 
 

@@ -437,6 +437,7 @@ def test_a_reading_needs_an_id() -> None:
     [
         pytest.param("0123456789abcdef" * 4, id="64_hex_characters_of_plain_text"),
         pytest.param("", id="empty"),
+        pytest.param(None, id="none"),
     ],
 )
 def test_reviewed_reading_refuses_a_sha_that_is_not_a_sha256(sha: Any) -> None:
