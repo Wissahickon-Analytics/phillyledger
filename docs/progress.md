@@ -77,7 +77,10 @@ session needs it. A note for one later step goes in `docs/plan-notes.md`.
   exist before their code. At the head of sweep A, 36 modules hold only a docstring that gives
   the job design section 12 lists for them: 6 in `checkedtables`, 5 in `phillyledger` and 25 in
   `datadesk.core.tables`. Nine packages hold only a docstring in `__init__.py`. Later steps fill
-  them. Deleting one breaks `uv run lint-imports`, whose nine contracts name them.
+  them. Deleting any of the 36 modules breaks `uv run lint-imports`, and so does deleting the
+  `__init__.py` of `checkedtables.checks`, `datadesk.core`, `datadesk.core.tables`,
+  `datadesk.shell` or `phillyledger._shell`. Deleting the `__init__.py` of `checkedtables`,
+  `datadesk`, `datadesk.shell.adapters` or `phillyledger` leaves all nine contracts kept.
 - **ruff skips Markdown** (November 22, 2026, step 1). ruff 0.17 includes `*.md` by default and
   formats the Python blocks in it. `uv run ruff format --check .` failed on `docs/design.md`,
   whose code blocks align their comments on purpose. The root `pyproject.toml` excludes `*.md`.

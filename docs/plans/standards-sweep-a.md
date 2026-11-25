@@ -11,7 +11,10 @@ B, a later pull request, gives values such as a sha256 their own types and chang
 Light track. The owner chose it on November 25, 2026, with the words "Light track". A docstring
 changes no value, label, period or release step. The kit's public shape is its names, signatures
 and fields, and a docstring changes none of them. The command line keeps its one command, its
-arguments and its exit codes, except for a Ctrl-C before the settings load (see below).
+source argument and its `--saved` option. It loses `-h` and the abbreviations of `--saved` that
+`argparse` took, such as `--sav`, which are now usage errors. A run that spells its options in
+full keeps its exit code, unless `_DATADESK_COMPLETE` is set to a non-empty value, and some stops
+print differently (see below).
 
 ## The pull request
 
@@ -60,22 +63,25 @@ All runs are from November 25, 2026, in a scratch script that imitates `cli.py`.
   `sys.excepthook` to typer's hook on every call, and with this off the hook prints Python's
   standard traceback.
 
-## The stops, as the scratch runs showed them
+## The stops, as runs of the real script showed them
 
 | Stop | Prints | Exit |
 | --- | --- | --- |
 | `--help`, `fetch --help` | help, on stdout | 0 |
 | A usage error, such as no `--saved` | the usage line and `Error: ...`, on stderr | 2 |
-| A refused input or a failed effect | one line, on stderr | 1 |
-| A bug or a Ctrl-C after the settings load | the traceback through `hide_keys` | 1 |
+| `--saved` with no value | `Error: ...` alone, on stderr | 2 |
+| A refused input, an `EffectError` or a `PreconditionFailed` | one line, on stderr | 1 |
+| A bug or a Ctrl-C after the settings load, or a checkout file that cannot be written | the traceback through `hide_keys` | 1 |
 | A bug before the settings load | Python's traceback, as under `argparse`. No key is loaded yet. | 1 |
-| A Ctrl-C before the settings load | nothing | 130 |
+| A Ctrl-C before typer parses the arguments | Python's traceback, as under `argparse` | 130 |
+| A Ctrl-C while typer parses the arguments or `fetch` loads the settings | nothing | 130 |
 
-The last row changes behavior. typer turns a `KeyboardInterrupt` that reaches it into exit 130
-(`typer/core.py`, `_main`), where `argparse` let Python print the traceback. A bug or a Ctrl-C
-while the plan prints also changes: `main` printed Python's traceback outside `hide_keys`, and
-`fetch` prints it through `hide_keys`. The build runs the real `datadesk` script for each row
-and records the command, the output and the exit code in the pull request. No row may call R2.
+The last row changes behavior. typer turns a `KeyboardInterrupt` that reaches it while it parses
+the arguments or runs the command into exit 130 (`typer/core.py`, `_main`), where `argparse` let
+Python print the traceback. A bug or a Ctrl-C while the plan prints also changes: `main` printed
+Python's traceback outside `hide_keys`, and `fetch` prints it through `hide_keys`. The build runs
+the real `datadesk` script for each row and records the command, the output and the exit code in
+the pull request. No row may call R2.
 
 - A refused input runs with placeholder `DATADESK_R2_*` values and a saved folder with no
   `responses.tsv`. `MissingSettings` runs with no values set.
