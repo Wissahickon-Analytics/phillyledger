@@ -214,8 +214,8 @@ the test's name alone.
 
 - **Branch.** `standards/sweep-b`, cut from `standards/sweep-a`, the branch of pull request 40,
   at the head that has pull request 40's verdict, by answer 7. That head was `363b9b5` when
-  this plan was written. Sweep A wrote docstrings in every file that sweep B changes, so B cannot be built
-  beside it.
+  this plan was written. Sweep A wrote docstrings in every file that sweep B changes, so B
+  cannot be built beside it.
 - **Base and title.** Base `standards/sweep-a`. Title
   `refactor(standards): give a sha256 its own type and name the readers' refusals`.
 - **Landing order.** The step 3 stack (32, 33, 35, 36, 37, 38), then 39, then 40, then SB. The
