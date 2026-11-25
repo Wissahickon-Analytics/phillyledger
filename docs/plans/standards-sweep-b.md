@@ -20,7 +20,7 @@ follows, on Opus, after the owner's go.
 
 ## The owner's answers
 
-All six are from November 25, 2026.
+All seven are from November 25, 2026.
 
 1. The planning session asked "Plan sweep B as its own short step before step 4's plan?" He
    answered "Yes, plan it". He was shown this scope. One `Sha256` type, defined in the kit and
@@ -45,6 +45,8 @@ All six are from November 25, 2026.
    He answered "Yes, keep it".
 6. This Plan run then asked "Keep unstaged in SkipReason, though no reader returns it yet?" It
    had told him that design section 3.2 lists `unstaged`. He answered "Yes, keep it".
+7. This Plan run then asked "Build sweep B on the open sweep A branch, or wait until 39 and 40
+   land?" He answered "Build on sweep A". The answer is not the go for the Build run.
 
 Everything else in this plan was worked out after the first three answers. Each item under
 "Proposals" is a proposal until he lands this plan, except where an answer above settles it.
@@ -211,8 +213,8 @@ the test's name alone.
 ## The pull request
 
 - **Branch.** `standards/sweep-b`, cut from `standards/sweep-a`, the branch of pull request 40,
-  at the head that has pull request 40's verdict. That head was `363b9b5` when this plan was
-  written. Sweep A wrote docstrings in every file that sweep B changes, so B cannot be built
+  at the head that has pull request 40's verdict, by answer 7. That head was `363b9b5` when
+  this plan was written. Sweep A wrote docstrings in every file that sweep B changes, so B cannot be built
   beside it.
 - **Base and title.** Base `standards/sweep-a`. Title
   `refactor(standards): give a sha256 its own type and name the readers' refusals`.
