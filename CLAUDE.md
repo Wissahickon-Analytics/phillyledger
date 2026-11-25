@@ -95,6 +95,9 @@ Step 1 creates these. Keep this list true as tooling changes.
 - `uv run prek run --all-files`
 - `just check`, `just test`, `just fix` and `just gates` wrap the commands above (`Justfile`).
   `just gates` runs the six gates that CI runs, and a test keeps the two lists equal.
+- `uv run --env-file .env datadesk fetch qcmr --saved <folder>` archives the reports that a folder
+  of saved City responses lists, then writes the index file. `.env` holds the four
+  `DATADESK_R2_*` variables. The command sends the City no request.
 
 ## Hard rules
 

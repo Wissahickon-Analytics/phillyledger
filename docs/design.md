@@ -57,15 +57,15 @@ publisher listings --watch--> WatchPlan --exec--> pull request (index lines, gap
 
 | Effect | Port (Protocol) | Adapter | Called from |
 |---|---|---|---|
-| HTTP to phila.gov, philasd.org and the Wayback CDX | `Http` | `datadesk.shell.adapters.http_httpx` | `watch` and `fetch` executors |
-| Object store (public PDFs, private Textract JSON, releases) | `ObjectStore` | `datadesk.shell.adapters.s3` | `fetch`, `ocr`, `words` and `release` executors |
+| HTTP to phila.gov, philasd.org and the Wayback CDX | `Http` | `datadesk.shell.adapters.http_saved`, which answers from a folder that a browser saved; `datadesk.shell.adapters.http_httpx` from step 13 | `fetch_command` and the `fetch` executor; the `watch` executor from step 13 |
+| Object store (PDFs in the archive bucket, which is private at step 3, and the step that first needs a public read decides whether they get a public copy; private Textract JSON; releases) | `ObjectStore` | `datadesk.shell.adapters.s3` | `fetch`, `ocr`, `words` and `release` executors |
 | Textract | `OcrService` | `datadesk.shell.adapters.textract` | the `ocr` executor only, and only with `--spend` |
 | PDF words, rules and page-1 text | `PdfReader` | `datadesk.shell.adapters.pdf_pdfplumber` | `fetch` and `words` executors |
 | Local content-addressed cache | `LocalCache` | `datadesk.shell.adapters.cache_dir`, `phillyledger._shell.cache_dir` | executors, reader |
-| Git and pull requests | `GitHost` | `datadesk.shell.adapters.github` | `watch` and `fetch` executors |
+| Git and pull requests | `GitHost`, from step 13 | `datadesk.shell.adapters.github` | the `watch` executor. At step 3, `fetch_command` writes the index file into the checkout and the session opens the pull request |
 | Clock | none; `cli.main` reads the time once and passes a `date` and a `datetime` down | `datadesk.shell.cli` | CLI entry only |
 | Environment | none; `load_settings(environ)` returns a frozen `Settings` once | `datadesk.shell.settings` | CLI entry only |
-| Repository files (TOML records, index, schemas) | none; `gather_repo` reads text once into a `RepoSnapshot` | `datadesk.shell.gather` | CLI entry only |
+| Repository files (TOML records, index, schemas) | none; `gather_repo` reads each file's text once and passes it to a pure loader, and the values make a `RepoSnapshot` | `datadesk.shell.gather` | CLI entry only |
 | Logging and progress | none; findings are values | `datadesk.shell.report` | executors |
 
 ## 2. Domain model
@@ -2416,13 +2416,22 @@ def predecessor_spans(registry_rows: Sequence[Mapping[str, object]], entity: str
 
 ## 4. The imperative shell
 
-Every effect sits behind one `typing.Protocol` with one real adapter and one fake. There are six
-ports. The `Clock` port is gone: `cli.main` reads the time once and passes values down (change 20).
+Every effect sits behind one `typing.Protocol` with a real adapter and one fake. `Http` has two
+real adapters, `http_saved` from step 3 and `http_httpx` from step 13. There are six ports. The
+`Clock` port is gone: `cli.main` reads the time once and passes values down (change 20).
 
 ```python
 # datadesk/shell/ports.py
+@dataclass(frozen=True, slots=True)
+class HttpResponse:
+    status: int
+    body: bytes
+    @property
+    def text(self) -> str: ...                       # body decoded as UTF-8
+
+
 class Http(Protocol):
-    def get(self, url: str) -> HttpResponse: ...     # any status is a result; transport errors raise
+    def get(self, url: str) -> HttpResponse: ...     # any status is a result; a failed effect raises
 
 
 @dataclass(frozen=True, slots=True)
@@ -2432,19 +2441,22 @@ class CreateOnly:
 
 @dataclass(frozen=True, slots=True)
 class IfMatch:
-    etag: str | None                   # None: the key must not exist yet
+    etag: str | None                   # None: the key must not exist yet, as CreateOnly
 
 
-Condition = CreateOnly | IfMatch
+type Condition = CreateOnly | IfMatch
 
 
-class PreconditionFailed(Exception): ...
+class PreconditionFailed(Exception): ...   # the condition did not hold; never tried again
 
 
-class ObjectStore(Protocol):
-    def put(self, key: str, data: bytes, public: bool, condition: Condition) -> str: ...  # new etag
-    def head(self, key: str) -> str | None: ...                                          # etag
-    def get(self, key: str) -> bytes: ...
+class EffectError(Exception): ...          # an effect failed and may be tried again
+
+
+class ObjectStore(Protocol):               # bound to one bucket
+    def put(self, key: str, data: bytes, condition: Condition) -> str: ...   # new etag
+    def head(self, key: str) -> str | None: ...                               # etag
+    def get(self, key: str) -> bytes: ...                                     # KeyError if absent
     def exists(self, key: str) -> bool: ...
     def list(self, prefix: str) -> tuple[str, ...]: ...   # one caller: archived OCR keys for plan_parse
 
@@ -2454,8 +2466,8 @@ class OcrService(Protocol):
 
 
 class PdfReader(Protocol):
+    def page1_text(self, pdf: bytes) -> str: ...                     # "" for a page with no text
     def words(self, pdf: bytes, sha256: str, pages: Sequence[int]) -> Document: ...
-    def page1_text(self, pdf: bytes) -> str: ...
     def render(self, pdf: bytes, page: int, dpi: int) -> bytes: ...  # for OCR and review images
 
 
@@ -2467,15 +2479,71 @@ class LocalCache(Protocol):
 
 class GitHost(Protocol):
     def open_pull_request(self, plan: PullRequestPlan) -> str: ...  # files, branch, title, body
+
+
+@dataclass(frozen=True, slots=True)
+class Deps:
+    http: Http
+    store: ObjectStore                     # the archive bucket
+    pdf: PdfReader
 ```
+
+Step 3 builds `HttpResponse`, `Http`, the conditions, both exceptions, `ObjectStore` with `put`,
+`head` and `get`, `PdfReader` with `page1_text`, and `Deps` with those three ports. `exists` and
+`list` join `ObjectStore` at the step that first calls them, `words` and `render` join `PdfReader`
+at step 4, and each later port joins `Deps` at the step that builds it. Each adapter turns its
+library's failures into `EffectError`, chained with `from`, and `PreconditionFailed` is not an
+`EffectError`. R2 has no setting that makes one object public, because its S3 API does not take
+`x-amz-acl` (step 3 plan, fact 7). So `put` takes no `public` flag, and each store is bound to one
+bucket. A step that needs another bucket adds a store for it to `Deps`.
 
 `textract_to_document` is a pure function in `datadesk.core.ocr`; only the call to Textract is an
 effect. Archived responses live privately at `ocr/<sha>/<page>/<config-hash>.json` (VAL-Q07).
 
-The shell reads repository files once. `gather_repo(root)` returns a `RepoSnapshot` of text:
-TOML records, row schemas, the registry, the catalog and the archive index. Pure loaders turn the
-text into values. An executor then holds the snapshot and the plan, and passes both to pure
-functions only (R3 purity finding).
+The shell reads repository files once. `gather_repo(root)` reads each file's text at its path in
+the checkout and passes it to a pure loader, and the values make a `RepoSnapshot`. At step 3 the
+snapshot holds `catalog: SourceCatalog` and `index: ArchiveIndex`, from `CATALOG_PATH` in
+`gather.py` and `INDEX_PATH` in `core/fetch.py`, and `gather_repo` returns
+`RepoSnapshot | tuple[Finding, ...]`. The findings are the catalog's, the BLOCK finding
+`catalog_unreadable` when the catalog file cannot be read or is not UTF-8, and the BLOCK finding
+`index_unreadable` when the index file cannot be read, is not UTF-8, or makes `parse_index` raise.
+Later steps add the TOML records, row schemas, the registry and the code tree sha (section 10). An
+executor then holds the snapshot and the plan, and passes both to pure functions only (R3 purity
+finding).
+
+`load_settings(environ)` reads `DATADESK_R2_ENDPOINT_URL`, `DATADESK_R2_ACCESS_KEY_ID`,
+`DATADESK_R2_SECRET_ACCESS_KEY` and `DATADESK_R2_ARCHIVE_BUCKET`, and no other variable. It returns
+`Settings(endpoint_url, access_key_id, secret_access_key, archive_bucket)`, frozen, with both keys
+left out of its `repr`. An absent or empty variable is missing, and one `MissingSettings` names
+every missing variable and holds no value. `s3_store(settings)` builds the S3 adapter's client with
+region `auto`, path-style addressing and botocore's own retries off. Its botocore session maps none
+of its session variables to an environment variable and reads `os.devnull` as its config and
+credentials files, so no environment variable behind a session variable, `AWS_PROFILE` and
+`AWS_REQUEST_CHECKSUM_CALCULATION` among them, changes the client. Given only explicit keys, a boto3
+1.44.5 client still raised `ProfileNotFound` under a missing `AWS_PROFILE`. botocore 1.44.5 still
+reads some variables that are not session variables. It reads `AWS_S3_US_EAST_1_REGIONAL_ENDPOINT`,
+`AWS_S3_USE_ARN_REGION` and `AWS_S3_DISABLE_MULTIREGION_ACCESS_POINTS` into its S3 settings, and it
+checks the first when it builds a client, so an invalid value would stop the client from being
+built. The client's `Config` sets those three S3 settings to the values botocore assumes when none
+is given, `legacy`, true and false, and a value in `Config` overrides the environment's. So an
+invalid `AWS_S3_US_EAST_1_REGIONAL_ENDPOINT` builds the client and sends the same put, and in a
+probe no value tried for the other two changed a put. `AWS_BEARER_TOKEN_S3` changed no put or get
+in a probe.
+`AWS_EXECUTION_ENV` joins the user agent, and `AWS_LAMBDA_FUNCTION_NAME` with `_X_AMZN_TRACE_ID`
+adds a trace header. urllib reads the proxy variables, `REQUESTS_CA_BUNDLE` and `SSLKEYLOGFILE`
+change TLS, and botocore reads its own `BOTO_*` and `BOTOCORE_*` switches. botocore may also follow
+one S3 region redirect inside a call, so one call can send two requests.
+`CreateOnly` and `IfMatch(None)` send `IfNoneMatch="*"`, and `IfMatch(e)` sends `IfMatch=e`. A 412
+`PreconditionFailed` raises `PreconditionFailed`, `head` of an absent key returns `None`, and `get`
+of an absent key raises `KeyError`. The pdfplumber reader builds page 1 alone. It hands the first
+page that pdfminer's `PDFPage.create_pages` yields to pdfplumber's `Page` and builds no other page,
+so a broken box on a later page does not hide the cover. In pdfplumber 0.11.10 the document's page
+list has pdfminer build every page, even when `pages=[1]` limits the pages pdfplumber builds, and
+`close` builds that list again, so the reader uses neither. Any `Exception` raised while pdfplumber
+opens the PDF and reads page 1 becomes `EffectError`, chained, as for bytes it cannot open, a PDF
+with no page or a box on page 1 that pdfminer or pdfplumber cannot read. The two libraries raise
+many types on a malformed PDF, such as `TypeError` for a box that is one number, `IndexError` for a
+box of two numbers and `MalformedPDFException` for a box that holds a name.
 
 ### 4.1 `watch`
 
@@ -2510,28 +2578,97 @@ flag).
 
 ```python
 # datadesk/shell/run_fetch.py
+TRIES = 3
+
+
+def retried[T](effect: Callable[[], T]) -> T: ...   # runs effect up to TRIES times while it raises
+                                                    # EffectError; the last failure propagates
+
+
 def run_fetch(deps: Deps, plan: WatchPlan, repo: RepoSnapshot) -> FetchPlan:
     held: dict[str, bytes] = {}                                   # bytes by sha, in memory
     fetched: list[Fetched] = []
     for req in plan.fetch:
-        r = deps.http.get(req.url)
+        r = retried(partial(deps.http.get, req.url))
         if r.status != 200:
             fetched.append(Fetched(req, r.status, None, 0, None))
             continue
         sha = sha256(r.body).hexdigest()
         held[sha] = r.body
         fetched.append(Fetched(req, 200, sha, len(r.body), deps.pdf.page1_text(r.body)))
-    result = plan_fetch(fetched, repo.index, repo.records.notes)  # pure: every decision
+    result = plan_fetch(fetched, repo.index, ())                  # pure: every decision
     for obj in result.store:
-        deps.store.put(obj.dest_key, held[obj.sha256], public=True)
-    deps.git.open_pull_request(result.pull_request)
+        retried(partial(put_immutable, deps.store, obj.dest_key, held[obj.sha256], obj.sha256))
     return result
+
+
+# datadesk/shell/cli.py (excerpt)
+@dataclass(frozen=True, slots=True)
+class FetchRun:
+    listing_sha256: str
+    findings: tuple[Finding, ...]                  # plan_watch's findings
+    plan: FetchPlan
+
+
+def fetch_command(deps: Deps, root: Path, source: str, today: date) -> FetchRun:
+    repo = gather_repo(root)                       # findings: FetchStopped
+    entry = repo.catalog.entry(source)             # a source the catalog lacks: FetchStopped
+    r = retried(partial(deps.http.get, entry.listing_url))     # not 200: FetchStopped
+    listing = parse_listing(entry, entry.listing_url, r.text)   # a finding: FetchStopped
+    watch = plan_watch(repo.catalog, [listing], repo.index, today)
+    plan = run_fetch(deps, watch, repo)
+    for path, text in plan.pull_request.files:     # last, after every put
+        written = (root / path).with_name(f".{Path(path).name}.tmp")
+        written.write_text(text, encoding="utf-8", newline="")
+        written.replace(root / path)               # a rename within one folder
+    return FetchRun(listing.html_sha256, watch.findings, plan)
 ```
 
 Download, hash and decide is a loop of small plans, as the principles allow. Bytes stay in memory
 keyed by hash until `plan_fetch` decides; nothing is staged and copied (R2). A watch pull request
-adds a handful of PDFs, so memory is not a concern. The index change goes through a pull request,
-so `GitHost` needs one method.
+adds a handful of PDFs, so memory is not a concern. `put_immutable` (section 4.5) lives in
+`run_fetch.py`, its first caller. Each `http.get` and each `put_immutable` is tried up to three
+times while it raises `EffectError`, and the third failure propagates (section 9). botocore's own
+retries are off, so these are the only retries, though botocore may follow one S3 region redirect
+inside a call (section 4). Other bytes under a report's key raise `PreconditionFailed`, which is not
+tried again. `plan_fetch` gets no notes until `load_records` arrives at step 5.
+
+`run_fetch` returns the `FetchPlan` and calls no `GitHost`. `fetch_command` writes the plan's files
+into the checkout after every put, each to a temporary file with a fixed name in the same folder and
+then renamed. So a run alone that stops leaves the index file as it was, and the session opens the
+pull request. One checkout runs one fetch at a time. The fixed name lets the next run overwrite a
+temporary file that a crash left behind. Two runs at once on one checkout share the temporary file,
+and the file renamed last becomes the index. A line one run added can then be lost, and a run that
+stops can have the file it wrote renamed into place by the other. Step 13 builds `GitHost` and its
+adapter. Catalog or index findings, a source the catalog lacks, a listing status other than 200, a
+listing body that is not UTF-8 and a listing finding each raise `FetchStopped` before any report is
+fetched, so nothing is stored and no file is written.
+
+`main(argv)` is the `datadesk` script, `datadesk fetch <source> --saved <folder>`. At step 3
+`--saved` is required. The City refuses a client that is not a browser (step 3 plan, facts 6 and
+11), so no command sends the City a request. A browser saves the listing and the reports, and the
+command reads the saved folder. `main` reads the clock once, the environment once with
+`load_settings`, and the working directory as the checkout. It builds `Deps` from
+`SavedHttp(folder)`, `s3_store(settings)` and the pdfplumber reader. It prints the listing digest,
+each finding, the plan's title and body and each file it wrote, and returns 0. A missing variable,
+a saved folder that `SavedHttp` refuses, a `FetchStopped` or an `EffectError` prints one line to
+stderr and returns 1. A `PreconditionFailed` that reaches `main` means the store holds other bytes
+under a report's key, and it prints one line naming that object and returns 1. Any other exception
+raised while `main` builds `Deps` or runs the fetch, `KeyboardInterrupt` included, prints its
+traceback to stderr, and `main` returns 1, so a bug stays visible. Python would print an uncaught
+exception with the messages of the exceptions chained to it, such as the S3 error under a
+`PreconditionFailed`, so `main` catches each of these itself. `main` prints neither R2 key. Once
+`Settings` is loaded, everything it prints, a traceback included, goes through `hide_keys`, which
+replaces each non-empty key with `$` and the name of its variable, so a service message that echoes
+the access key prints `$DATADESK_R2_ACCESS_KEY_ID` in its place.
+
+The saved folder holds the saved files and `responses.tsv`, whose first row is the header
+`url<TAB>file` and whose other rows each pair a URL with a file name. `SavedHttp(folder)` reads it
+when built. It refuses a file it cannot read or that is not UTF-8, a file with another header, a
+row that is not one URL and one file name, a URL that does not start with `https://` or `http://`
+or that holds whitespace, a URL listed twice, and a name that is not a file directly in the folder
+or that is a symbolic link. `get` answers a listed URL with status 200 and the bytes of its file,
+and any other URL with 404.
 
 ### 4.3 `ocr`
 
@@ -2542,7 +2679,8 @@ def run_ocr(deps: Deps, plan: OcrPlan) -> tuple[str, ...]:
     for item in plan.items:
         pdf = deps.store.get(item.pdf_key)
         image = deps.pdf.render(pdf, item.page, item.dpi)
-        deps.store.put(item.archive_key, deps.ocr.analyze(image, item.config), public=False)
+        response = deps.ocr.analyze(image, item.config)
+        put_immutable(deps.store, item.archive_key, response, sha256(response).hexdigest())
         written.append(item.archive_key)
     return tuple(written)
 
@@ -2596,24 +2734,24 @@ def run_release(deps: Deps, planned: ReleasePlanned) -> Released:
     plan, blobs = planned.plan, planned.blobs                 # plan lists files by sha only
     prefix = f"releases/{plan.release_id}"
     for f in plan.files:
-        put_immutable(deps.store, f"{prefix}/staged/{f.path}", blobs[f.sha256], f.sha256, public=False)
+        put_immutable(deps.store, f"{prefix}/staged/{f.path}", blobs[f.sha256], f.sha256)
     for f in plan.files:                                      # gate step 2: what was staged
         if sha256(deps.store.get(f"{prefix}/staged/{f.path}")).hexdigest() != f.sha256:
             raise StagingCorrupted(f.path)
     for f in plan.files:
-        put_immutable(deps.store, f"{prefix}/{f.path}", blobs[f.sha256], f.sha256, public=True)
-    deps.store.put("releases/latest.json", blobs[plan.pointer.new_sha256], public=True,
-                   condition=IfMatch(plan.pointer.previous_etag))   # PreconditionFailed: replan
+        put_immutable(deps.public, f"{prefix}/{f.path}", blobs[f.sha256], f.sha256)
+    deps.public.put("releases/latest.json", blobs[plan.pointer.new_sha256],
+                    IfMatch(plan.pointer.previous_etag))     # PreconditionFailed: replan
     return Released(plan.manifest)
 
 
-def put_immutable(store: ObjectStore, key: str, data: bytes, sha: str, public: bool) -> None:
+# datadesk/shell/run_fetch.py (excerpt)
+def put_immutable(store: ObjectStore, key: str, data: bytes, sha: str) -> None:
     try:
-        store.put(key, data, public, condition=CreateOnly())
+        store.put(key, data, CreateOnly())
     except PreconditionFailed:                                # a retry or a racing run wrote it
         if sha256(store.get(key)).hexdigest() != sha:
             raise
-
 
 # datadesk/shell/cli.py (excerpt)
 def release_command(deps: Deps, repo: RepoSnapshot, release_id: str, now: datetime,
@@ -2621,13 +2759,17 @@ def release_command(deps: Deps, repo: RepoSnapshot, release_id: str, now: dateti
     parsed = run_parse(deps, repo)                            # editions that need OCR come back
     report_ocr_needed(parsed.ocr_needed)                      # as withheld, not as a stop
     checked = check_all(parsed, repo)                         # pure: checks, coverage, gates
-    previous = load_previous_release(deps.store)              # effect: manifest, rows, pointer etag
+    previous = load_previous_release(deps.public)             # effect: manifest, rows, pointer etag
     outcome = plan_release(ReleaseInputs(checked, previous, release_id, now, accepted_diff))
     if isinstance(outcome, ReleaseBlocked):
         return report_blocked(outcome)
     run_release(deps, outcome)
     return 0
 ```
+
+Each store is bound to one bucket (section 4). This sketch stages in the private archive bucket
+through `deps.store` and publishes through `deps.public`, a store bound to a public bucket. That
+store and the choice of buckets are a proposal. The step that builds the release decides them.
 
 `ReleasePlan` holds `files` (path, sha, size), `manifest`, `diff`, `withheld` and `pointer`. The
 bytes travel beside it in `ReleasePlanned.blobs`, keyed by sha. A dry run prints the plan without
@@ -3934,15 +4076,27 @@ A problem in the documents is a returned value. An exception means a bug or a fa
 | Printed period mismatch at fetch | `Rejection` in the plan | the watch or fetch pull request shows it |
 | Key or entity change between releases | `RowDiff.key_changed` or `entity_changed`; blocks without `--accept-diff` | the owner reviews the diff |
 | `Table` or `RowSchema` invariant violated in `__post_init__` | `ValueError` | a bug: a loader or `assemble` should have produced a finding |
-| HTTP, S3 or Textract error | exception from the adapter | the executor retries the same plan item up to three times, then stops; index and pointer are written last, so nothing is half committed |
+| HTTP, S3 or Textract error | `EffectError` from the adapter | the executor tries the same plan item three times in all, then stops; index and pointer are written last, so nothing is half committed. A `PreconditionFailed` is not an `EffectError` and is never tried again |
 | Hash mismatch on staged or downloaded bytes | `StagingCorrupted`, `IntegrityError` | stop; never retried silently |
 
 Findings are collected per line (change 19). A page-level failure stops its table, because
 nothing below it can be read. A line-level problem becomes a finding and the parse continues, so
 one run shows every problem in an edition.
 
-The shell is the only place that catches exceptions, and only effect exceptions. A `ValueError`
-from the core propagates and fails the command, because it is a bug.
+A core function may catch the exception a library raises on bad input, to return a finding or a
+code for that input. `load_catalog` returns the `TOMLDecodeError` of `tomllib` as the BLOCK
+finding `catalog_not_toml`, `document_finder.parse` returns the `ValueError` of `json.loads` as
+the BLOCK finding `listing_unreadable`, and `_printed_date` catches the `ValueError` of `date`,
+so `qcmr_period` returns `period_unreadable`. `checkedtables` catches no exception. The shell
+catches effect exceptions. Reading text is an effect, so the `UnicodeDecodeError` of a checkout
+file, a saved `responses.tsv` or a listing body that is not UTF-8 is an effect exception, and the
+shell turns it into a finding or a stop. `gather_repo` is the one place the shell turns a core
+exception into a finding. `parse_index` raises on an index file it cannot read, and
+`gather_repo` returns that as the BLOCK finding `index_unreadable`, because the file is input
+from the checkout (section 4). Any other exception that escapes the core is a bug and fails the
+command. `main` prints the message of each stop that section 4.2 names, and the traceback of any
+other exception raised while it builds `Deps` or runs the fetch, and returns 1. Once `Settings`
+is loaded, everything it prints goes through `hide_keys`.
 
 ## 10. Caching and determinism
 
@@ -3955,7 +4109,7 @@ staleness graph.
 | Words, text layer | `sha256(doc sha, page set, tool string)` | encoded `Document` | `LocalCache`; optional shared copy in the object store |
 | Words, OCR | `sha256(doc sha, page, Textract config)` | raw Textract JSON | private object store, permanent (it costs money) |
 | Parse results | `sha256(word keys, code tree sha, record slice sha, registry sha, schema sha)` | encoded `ParseResult` | `LocalCache` |
-| PDFs | doc sha | bytes | public object store; git-ignored local copy |
+| PDFs | doc sha | bytes | the archive bucket, private at step 3, where the step that first needs a public read decides whether they get a public copy; git-ignored local copy |
 | Reader downloads | file sha | bytes | `phillyledger` cache dir |
 
 The code tree sha is the SHA-256 of every source file under `checkedtables/` and
@@ -3990,7 +4144,7 @@ Determinism rules:
 | `datadesk.core` unit | listing parsers, period readers, `plan_watch`, `plan_fetch`, `plan_parse`, registry lint, vintage, release plan | literal strings and values | every commit |
 | Table fixtures | each table parser on frozen word fixtures of real pages | fixture modules (Python values) | every commit |
 | Records | every TOML record loads, every ack and reading is used, lint passes | the data directory, read by a shell-side conftest | every commit |
-| Adapter contracts | each port's fake and real adapter pass the same tests | network or MinIO for the real ones | nightly and before release |
+| Adapter contracts | each port's fake and real adapter pass the same tests | network or MinIO for some real ones | every commit for an adapter that needs neither, such as `http_saved` and `pdf_pdfplumber`; nightly and before release for the others |
 | Corpus | every archived edition parses and its gate passes | the archive | before release |
 | Canary | one full run from bytes to a staged release | fakes plus two archived PDFs | every commit |
 | Purity | AST scan of `checkedtables` and `datadesk.core` for `open`, `print`, `input`, `.now()`, `.today()`, `os.`, `random`, `time.`, `builtins`, `__import__`, and mutable module state: a module-level assignment of a list, dict or set display, a comprehension of one, or a call to `list`, `dict`, `set` or `bytearray`. The scan also fails every relative import, and every import from outside the package that the import pin below does not hold | nothing | every commit |
@@ -4203,9 +4357,9 @@ One suite per port, run against the fake and the real adapter:
 
 | Port | Fake | Real |
 |---|---|---|
-| `ObjectStore` | dict store | S3 API via MinIO |
-| `Http` | replays recorded responses | one phila.gov listing, nightly |
-| `PdfReader` | none needed | two committed tiny PDFs: a text layer with a drawn grid and bold words, and an image page |
+| `ObjectStore` | dict store | S3 API via MinIO. The real half reads its target from `DATADESK_CONTRACT_S3_ENDPOINT_URL`, `DATADESK_CONTRACT_S3_ACCESS_KEY_ID`, `DATADESK_CONTRACT_S3_SECRET_ACCESS_KEY` and `DATADESK_CONTRACT_S3_BUCKET`, and skips with a message naming them when one is unset, as in CI |
+| `Http` | replays recorded responses | `http_saved` on a folder the test writes, every commit; from step 13, one phila.gov listing, nightly |
+| `PdfReader` | none needed | `page1_text` on PDFs the test builds: a text page, an image page, and pages with a box pdfplumber cannot read; step 4 adds a text layer with a drawn grid and bold words |
 | `OcrService` | returns archived responses | one page against Textract, by hand, with `--spend` |
 | `GitHost` | records the plan | a sandbox repository, before release |
 | `LocalCache` | dict | temp directory |
@@ -4329,7 +4483,8 @@ estimates; nothing has been written.
 | `shell/ports.py` | the six protocols | 80 |
 | `shell/settings.py` | `Settings`, `load_settings(environ)` | 50 |
 | `shell/gather.py` | `gather_repo`, `RepoSnapshot`, code tree sha | 110 |
-| `shell/adapters/http_httpx.py` | `Http` adapter | 60 |
+| `shell/adapters/http_saved.py` | `Http` adapter over a folder that a browser saved (step 3) | 50 |
+| `shell/adapters/http_httpx.py` | live `Http` adapter (step 13) | 60 |
 | `shell/adapters/s3.py` | `ObjectStore` adapter | 140 |
 | `shell/adapters/textract.py` | `OcrService` adapter | 80 |
 | `shell/adapters/pdf_pdfplumber.py` | `PdfReader` adapter | 210 |
@@ -4342,7 +4497,7 @@ estimates; nothing has been written.
 | `shell/run_release.py` | release executor | 75 |
 | `shell/report.py` | printing findings, plans and gates | 140 |
 | `shell/cli.py` | `datadesk` commands; reads the clock once | 240 |
-| **total** | 75 modules | **10,105** |
+| **total** | 76 modules | **10,155** |
 
 `datadesk/data/` holds data, not code: `catalog.toml`, `rows/*.toml` (one per table),
 `registry/`, `acks/` and `records/`. It is not in the line counts.
@@ -4353,10 +4508,10 @@ estimates; nothing has been written.
 |---|---:|---:|
 | `checkedtables` | 24 | 3,680 |
 | `phillyledger` | 8 | 840 |
-| `datadesk` (core 8,465, shell 1,640) | 75 | 10,105 |
-| **Grand total** | **107** | **14,625** |
+| `datadesk` (core 8,465, shell 1,690) | 76 | 10,155 |
+| **Grand total** | **108** | **14,675** |
 | QSMR, added in build step 14 | 13 | 1,290 |
-| Grand total with the QSMR | 120 | 15,915 |
+| Grand total with the QSMR | 121 | 15,965 |
 
 QSMR modules, for the last build step:
 

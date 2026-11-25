@@ -1,4 +1,8 @@
 import shutil
+
+# ssl.SSLSocket subclasses socket.socket when ssl is first imported, so ssl must load before
+# pytest-socket swaps that class, or a test marked enable_socket cannot open TLS.
+import ssl  # noqa: F401
 import sys
 import tempfile
 from collections.abc import Generator

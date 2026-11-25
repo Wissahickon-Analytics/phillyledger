@@ -308,3 +308,166 @@ design leaves open" in `docs/plans/step-03.md`.
   `test_add_versions_holds_each_url_once_when_a_url_joins_a_line_that_repeats_one` pins the
   rule, and fails when the merge keeps the held tuple as it is and appends the new URLs.
   Design section 6.3.
+- **Step 3: the ports as step 3 builds them** (November 24, 2026, S3-D). The design's
+  `ObjectStore.put` took `public`, and R2 has no setting that makes one object public (plan fact
+  7). So `put(key, data, condition)` takes no flag, each store is bound to one bucket, and `Deps`
+  holds `http`, a `store` bound to the archive bucket, and `pdf` (shape 9). `ObjectStore` has
+  `put`, `head` and `get` at step 3, and `PdfReader` has `page1_text` alone (shape 11).
+  `HttpResponse` holds `status` and `body`, and `text` decodes the body as UTF-8. A new
+  `EffectError` marks a failed effect that may be tried again. Each adapter raises it from its
+  library's failure, and `PreconditionFailed` is not one. With `PreconditionFailed` made a
+  subclass of `EffectError`, `test_other_bytes_under_a_report_s_key_stop_the_command_after_one_put`
+  fails, because the put is tried three times. The sketches in sections 4.3 and 4.5 no longer pass
+  `public`. The 4.5 sketch publishes through `deps.public`, a store bound to a public bucket, which
+  is a proposal for the step that builds the release. Sections 1.4 and 10 still said PDFs live in a
+  public object store, while the archive bucket holds every report and the plan keeps it private
+  at step 3 ("Setting up R2"; Fable read of S3-D, finding 1). In the second fix round both say PDFs
+  are in the archive bucket, private at step 3, and that the step that first needs a public read
+  decides whether they get a public copy. No publishing decision is made here. Design sections
+  1.4, 4, 4.3, 4.5 and 10.
+- **Step 3: `Settings` and the S3 client** (November 24, 2026, S3-D). The design named `Settings`
+  and gave it no fields. It holds the endpoint, the two keys and the archive bucket from the four
+  `DATADESK_R2_*` variables of the plan, and leaves both keys out of its `repr`. An empty variable
+  counts as missing. With explicit keys alone, a boto3 1.44.5 client raised `ProfileNotFound` under
+  an `AWS_PROFILE` that names no profile. A session that shut out only the profile and the two
+  files still let `AWS_REQUEST_CHECKSUM_CALCULATION` drop the checksum header (Codex review of
+  S3-D, finding 6). So `s3_store` builds its client on a botocore session that maps none of its
+  variables to an environment variable and whose config and credentials files are `os.devnull`.
+  Section 4 lists the variables botocore still reads that are not session variables. botocore's
+  own retries are off, so the executor's three tries are the only retries, but botocore may follow
+  one S3 region redirect inside a call. A probe saw a 301 and then a 503 for one `put` (finding 5).
+  With a default session, `test_s3_client_ignores_the_ambient_aws_profile` fails with
+  `ProfileNotFound`, and with only the profile and the two files shut out,
+  `test_s3_client_ignores_the_ambient_aws_settings` fails. With the keys in the `repr`,
+  `test_settings_keep_both_keys_out_of_their_repr` fails. botocore also reads three `AWS_S3_*`
+  variables into its S3 settings outside the session variables, and an invalid
+  `AWS_S3_US_EAST_1_REGIONAL_ENDPOINT` stopped the client from being built (Codex read of the fix,
+  finding 5). In the second fix round the client's `Config` sets those three settings to the values
+  botocore assumes when none is set, and a value in `Config` overrides the environment's. With the
+  us-east-1 setting left to the environment, `test_s3_client_ignores_the_ambient_aws_settings` fails
+  on the invalid value. No test fails with either of the other two left out, because no value tried
+  for them changed a put in a probe. Design sections 4 and 4.2.
+- **Step 3: contract suites that run on every commit** (November 24, 2026, S3-D). Section 11.1
+  ran the real adapters' contracts nightly and before release, against the network or MinIO. The
+  saved-folder `Http` adapter and the pdfplumber reader need neither, so their contracts run in CI
+  beside the fakes (plan, S3-D). The `ObjectStore` suite runs the dict store always and the S3
+  store only when the four `DATADESK_CONTRACT_S3_*` variables are set. The `PdfReader` contract
+  builds its PDFs in the test, because `.gitignore` keeps every PDF out of git. With page 1 read as
+  the last page, `test_page1_text_holds_the_words_of_page_1_alone` fails. Bytes that pdfplumber
+  cannot open and a PDF with no page raise `EffectError`, so the command stops with one line and
+  not a traceback. With that conversion removed, the `bytes_that_are_not_a_pdf` and
+  `a_pdf_with_no_page` cases of
+  `test_page1_text_of_a_file_pdfplumber_cannot_read_is_an_effect_error` fail. `document.pages[0]`
+  built every page, so a broken box on page 2 hid a readable cover, and pdfplumber's
+  `MalformedPDFException` is not a `PdfminerException`, so it escaped (Codex review of S3-D,
+  finding 8). The first fix round opened the PDF with `pages=[1]` and turned
+  `MalformedPDFException` into `EffectError` too. With every page built, the two `/ArtBox` cases of
+  `test_page1_text_reads_page_1_when_a_later_page_has_a_broken_box` fail, and with
+  `MalformedPDFException` left uncaught, the `a_page_1_with_a_box_with_a_name` case fails. With
+  `pages=[1]`, pdfplumber still had pdfminer build every page, so a `/CropBox` that is one number on
+  page 2 hid the cover, and a box that is one number on page 1 escaped as `TypeError` (Codex read of
+  the fix, findings 2 and 3). In the second fix round the reader hands the first page of pdfminer's
+  `PDFPage.create_pages` to pdfplumber's `Page`, builds no other page and does not close the
+  document, because `close` builds every page again. It turns any `Exception` raised while
+  pdfplumber opens the PDF and reads page 1 into `EffectError`. Page 1 of the 21 saved City reports, read with
+  this reader, gave the same text as with the reader it replaces, and `qcmr_period` read the 20 from
+  FY2022 Q1 to FY2026 Q4 as their own quarters and FY2027 Q1 as `period_unreadable`. With
+  `pages=[1]` back, the `a_crop_box_that_is_one_number` case of
+  `test_page1_text_reads_page_1_when_a_later_page_has_a_broken_box` fails, and with the document
+  closed in a `with` block, all three of its cases fail. With the handler of the first fix round,
+  the `a_page_1_with_a_box_that_is_one_number` case of
+  `test_page1_text_of_a_file_pdfplumber_cannot_read_is_an_effect_error` fails. Design sections 4,
+  11.1 and 11.5.
+- **Step 3: `run_fetch` returns the plan and tries each effect three times** (November 24, 2026,
+  S3-D). The design's sketch called `GitHost`, put each report with `public=True`, and did not say
+  how a failed effect is tried again. `run_fetch` now returns the `FetchPlan` and calls no `GitHost`
+  (shape 10). Each `http.get` and each `put_immutable` is tried three times in all while it raises
+  `EffectError`, and the third failure propagates. `put_immutable` writes with `CreateOnly` and, on
+  `PreconditionFailed`, hashes the stored object, so a put whose reply was lost completes on the
+  next try. With two tries, the `2-listing` case of
+  `test_three_failures_stop_the_command_with_the_index_unchanged` fails, and with four, the
+  `3-listing` case fails. With a failed put skipped, the `3-put` case fails. With the read-back
+  removed, `test_put_immutable_completes_when_the_store_holds_the_same_bytes` fails. Design
+  sections 1.4, 4.2, 4.5 and 9.
+- **Step 3: the fetch command reads a saved folder and writes the index last** (November 24, 2026,
+  S3-D). The design gave the fetch command no shape, and its `Http` adapter sent requests. The City
+  refuses a client that is not a browser (plan facts 6 and 11), so at step 3 `datadesk fetch
+  <source> --saved <folder>` reads a folder that a browser saved, through `SavedHttp` (shape 6).
+  `fetch_command` returns `FetchRun(listing_sha256, findings, plan)`, raises `FetchStopped` before
+  any report is fetched when the checkout or the listing cannot be read, and writes the plan's files
+  after every put, each to a temporary file in its folder and then renamed. One checkout runs one
+  fetch at a time. Two runs at once share the temporary file, so a line one run added can be lost,
+  or a run that stops can have its file renamed into place by the other (Codex review of S3-D,
+  finding 2). The temporary file keeps its fixed name, so the next run overwrites one that a crash
+  left behind, and section 4.2 now says that a run alone that stops leaves the index file as it
+  was. No code changed for this. A command that returns before it asks for the listing when the
+  index holds lines fails `test_fetching_the_same_listing_again_adds_nothing` on the call log of the
+  second run. One that fetches nothing when the index holds lines fails it at the third run, which
+  must store the new edition. That test passed with `run_fetch` putting every fetched body instead
+  of each `StoreObject`, because no report in its feed was fetched and rejected (Codex review of
+  S3-D, finding 3). The saved City feed has one, FY2027 Q1, which every run rejects as
+  `period_unreadable`. So the test now runs a fourth and a fifth time on a feed that gains a report
+  whose cover prints no `PERIOD ENDING` phrase. Each run rejects it and puts nothing, and the fifth
+  writes no file. With every fetched body put, the test fails at the fourth run. With the
+  listing's status left unchecked,
+  `test_a_saved_folder_without_the_feed_s_row_stops_the_command_before_any_put` fails. With the
+  bare-name check on a saved row dropped, the `a_file_outside_the_folder` case of
+  `test_saved_http_refuses_a_folder_it_cannot_trust` fails. A row's URL must start with `https://`
+  or `http://` and hold no whitespace, and its file must not be a symbolic link, because
+  `Path.is_file` follows a link out of the folder (Codex review of S3-D, finding 9). With the link
+  check dropped, the `a_link_to_a_file_outside_the_folder` case fails, and with either half of the
+  URL rule dropped, `a_url_with_no_scheme` or `a_url_with_a_space` fails. Design sections 1.4,
+  4.2, 12.3 and 12.4.
+- **Step 3: `main` prints neither R2 key** (November 24, 2026, S3-D fix round). The S3 adapter
+  puts the service's message in its `EffectError`, and `main` printed it, so a 403 whose message
+  held the access key printed the key (Codex review of S3-D, finding 1, hard rule 8). Once
+  `Settings` is loaded, every line `main` prints now goes through `hide_keys`, which replaces each
+  non-empty key with the name of its variable. With `hide_keys` dropped from the error line, or
+  with either key left out of it, `test_main_prints_neither_r2_key_when_the_store_echoes_both`
+  fails. A `PreconditionFailed` for other bytes under a report's key, and the `KeyError` of a
+  read-back whose object had gone, still escaped `main`, and Python printed the chained S3 message
+  unfiltered (Codex read of the fix, finding 1). In the second fix round `main` prints a
+  `PreconditionFailed` as one line naming the object, and any other exception raised while it builds
+  `Deps` or runs the fetch as its traceback through `hide_keys`, and returns 1. So section 9 no
+  longer says the shell catches only effect exceptions. With that traceback printed without
+  `hide_keys`, or with the handler for any other exception dropped, the `no_such_key` case of
+  `test_main_prints_neither_r2_key_when_a_refused_put_ends_the_run` fails, and with the
+  `PreconditionFailed` handler dropped, its `other_bytes` case fails. That round kept the sentence
+  that the shell is the only place that catches exceptions, which was false, because
+  `document_finder.parse` returns the `ValueError` of `json.loads` as `listing_unreadable` (Codex
+  read of the second fix round, finding 1). In the third fix round section 9 says a core function
+  may catch a library's exception on bad input to return a finding or a code, and names the three
+  catches in the core: `load_catalog`, `document_finder.parse` and `_printed_date`, which lets
+  `qcmr_period` return `period_unreadable`. `checkedtables` catches none. `rg -n "except"
+  packages/datadesk/src packages/checkedtables/src` lists those three catches in the core and none
+  in the kit, and `load_catalog("[x")` returns `catalog_not_toml`. That round's paragraph also said
+  that `main` prints the traceback of any exception raised while it builds `Deps` or runs the fetch,
+  though it prints one message for each stop that section 4.2 names, and that a `ValueError` that
+  escapes the core is a bug, though `gather_repo` turns the one from `parse_index` into
+  `index_unreadable` (Codex read of the third fix round, findings 1 and 2). In the fourth fix round
+  the paragraph names the `parse_index` case before it calls any other escaping exception a bug, and
+  says that `main` prints the message of each stop that section 4.2 names and the traceback of any
+  other exception. Design sections 4.2 and 9.
+- **Step 3: an index file that `parse_index` cannot read is a finding** (November 24, 2026, S3-D).
+  Section 9 let the shell catch only effect exceptions, and `parse_index` raises `KeyError`,
+  `TypeError` or `ValueError` on a file it cannot read. The index file is input from the checkout,
+  so `gather_repo` returns that as the BLOCK finding `index_unreadable`, beside any catalog
+  findings, and the command stops before any request. `RepoSnapshot` holds the loaded catalog and
+  index, not text. With only `OSError` caught, the `an_index_that_is_not_json` case of
+  `test_a_checkout_the_command_cannot_read_stops_it_before_any_request` fails. Design sections 1.4,
+  4 and 9.
+- **Step 3: input the shell cannot read stops the command with one line** (November 24, 2026,
+  S3-D fix round). A checkout file that is absent or not UTF-8, a saved `responses.tsv` that is
+  not UTF-8 and a listing body that is not UTF-8 escaped as tracebacks (Codex review of S3-D,
+  finding 7). Each now stops at the boundary that reads it: `gather_repo` returns
+  `catalog_unreadable` or `index_unreadable`, `SavedHttp` raises `SavedFolderError`, and
+  `fetch_command` raises `FetchStopped`. Section 9 now counts reading text as an effect. With the
+  `UnicodeDecodeError` left uncaught in `gather_repo`, the `not_utf_8` cases of
+  `test_a_checkout_file_the_command_cannot_read_or_decode_stops_it_before_any_request` fail, and
+  left uncaught in `SavedHttp` or `fetch_command`, a case of
+  `test_main_prints_one_line_for_an_input_it_cannot_read` fails. `fetch_command` also caught the
+  `KeyError` of `SourceCatalog.entry`, so `gather_repo` was not the one place the shell catches a
+  core exception (finding 11). It now checks the source against the catalog's entries first. With
+  that check dropped, the `KeyError` escapes and the `a_source_the_catalog_lacks` case of
+  `test_a_checkout_the_command_cannot_read_stops_it_before_any_request` fails. Design sections 4,
+  4.2 and 9.
