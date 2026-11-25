@@ -1,5 +1,6 @@
 from dataclasses import replace
 from datetime import date
+from json import dumps, loads
 
 import pytest
 from hypothesis import given
@@ -140,12 +141,17 @@ def test_parse_index_refuses_a_line_whose_urls_is_not_a_list(urls: str) -> None:
     [
         pytest.param(Q3_SHA.upper(), id="the_sha_of_another_line_in_upper_case"),
         pytest.param(Q3_SHA[:63], id="63_characters"),
+        pytest.param(f"{Q3_SHA}0", id="65_characters"),
         pytest.param(f"{Q3_SHA[:63]}g", id="a_letter_that_is_not_hex"),
+        pytest.param(None, id="null"),
+        pytest.param(5, id="a_number"),
+        pytest.param({}, id="an_object"),
+        pytest.param([], id="a_list"),
     ],
 )
-def test_parse_index_refuses_a_sha_that_is_not_64_lowercase_hex_characters(sha: str) -> None:
-    copy = replace(Q3, sha256=sha, edition=FY2026_Q4, printed_period=None)
-    text = render_index(ArchiveIndex((Q3,))) + render_index(ArchiveIndex((copy,)))
+def test_parse_index_refuses_a_sha_that_is_not_64_lowercase_hex_characters(sha: object) -> None:
+    copy = render_index(ArchiveIndex((replace(Q3, edition=FY2026_Q4, printed_period=None),)))
+    text = render_index(ArchiveIndex((Q3,))) + dumps(loads(copy) | {"sha256": sha}) + "\n"
     with pytest.raises(ValueError, match="sha256"):
         parse_index(text)
 

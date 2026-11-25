@@ -51,7 +51,7 @@ def _version(line: dict[str, Any]) -> DocumentVersion:
     printed = line["printed_period"]
     sha256 = line["sha256"]
     urls = line["urls"]
-    if not SHA256.fullmatch(sha256):
+    if not (isinstance(sha256, str) and SHA256.fullmatch(sha256)):
         raise ValueError(f"sha256 {sha256!r} is not 64 lowercase hex characters")
     if not isinstance(urls, list):
         raise ValueError(f"urls {urls!r} is not a list")
