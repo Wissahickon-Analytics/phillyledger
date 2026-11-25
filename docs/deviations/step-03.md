@@ -527,9 +527,11 @@ design leaves open" in `docs/plans/step-03.md`.
   aside. Section 4.2 had `main` print the traceback of any other exception, `KeyboardInterrupt`
   included, and return 1, "so a bug stays visible". A Ctrl-C that arrives while core code runs
   also escapes the core, so the two sections called the operator's stop a bug (Codex read of the
-  fourth fix round of S3-D). Section 9 now opens with three kinds of exception, a bug, a failed
-  effect and the operator's stop, and says a `KeyboardInterrupt` is the operator's stop wherever
-  it is raised. It says `main` prints one line for each stop exception that section 4.2 names,
-  and a traceback for a `KeyboardInterrupt`. Both sections say that `main` returns 1. No code
-  changed. With `fetch_command` replaced by a function that raises `KeyboardInterrupt`,
-  `main` prints the traceback and returns 1. Design sections 4.2 and 9.
+  fourth fix round of S3-D). Section 9 now opens with four kinds of exception, input the command
+  refuses, a failed effect, a bug and the operator's stop, and says a `KeyboardInterrupt` is the
+  operator's stop wherever it is raised. Section 9 also says `main` prints the message of each
+  stop that section 4.2 names, and a traceback for a `KeyboardInterrupt`. Both sections say that
+  `main` returns 1. Refused input is a kind of its own because Codex ran `fetch_command` for a
+  source the catalog lacks, and it raised `FetchStopped`. No code changed. With `fetch_command`
+  replaced by a function that raises `KeyboardInterrupt`, `main` prints the traceback and
+  returns 1. Design sections 4.2 and 9.
