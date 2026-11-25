@@ -487,19 +487,20 @@ design leaves open" in `docs/plans/step-03.md`.
   S3-E). `quirks.tsv` gains QPOS-Q38, inherent. The cover of the FY2027 Q1 report has no text a
   program can read, because its page 1 fonts have no Unicode map, so `confirm_period` returns
   `period_unreadable`, `plan_fetch` rejects it, and it waits for a later step (plan fact 14,
-  answer D). Later pages have such text. `pdftotext -f 6 -l 6 -layout` prints "For the Period
-  Ending September 30, 2026", and page 50 prints a table of performance measures. A follow-up of
-  pull
-  request 35 found three rows of `coverage.tsv` on the wrong function. QOBL-Q04 and QPOS-Q34
-  move from `periods.fiscal_period`, which is for windowed periods and does not exist before
-  step 5, to `fetch.qcmr_period`, which section 3.2 credits with both and which maps the cover's
-  period end to its fiscal quarter. `periods.fiscal_quarter` does the same mapping, but no code
-  under `src/` calls it. QOBL-Q06 moves from `fetch.plan_fetch` to `fetch.confirm_period`, the
-  function section 6.3 names. So section 13 counts 438 inherent quirks. Three rows of its table
-  change, `confirm_period` from 8 to 10, `fiscal_period` from 5 to 3 and `plan_fetch` from 2 to 1,
-  and `qcmr_period` is a new row with 2. A script that recomputes the table from the two files
-  found no difference before the change. Run on the new files against the old table, it names
-  those four mechanisms, and against the new table, none. Design section 13.
+  answer D). Other pages differ. Page 2, and the title lines and amounts of page 10, have no such
+  text either, while pages 6 and 50 do. `pdftotext -f 6 -l 6 -layout` prints "For the Period
+  Ending September 30, 2026", and page 50 prints a table of performance measures. No run has
+  sorted the other 87 pages. A follow-up of pull request 35 found three rows of `coverage.tsv` on
+  the wrong function. QOBL-Q04 and QPOS-Q34 move from `periods.fiscal_period`, which is for
+  windowed periods and does not exist before step 5, to `fetch.qcmr_period`, which section 3.2
+  credits with both and which maps the cover's period end to its fiscal quarter.
+  `periods.fiscal_quarter` does the same mapping, but no code under `src/` calls it. QOBL-Q06
+  moves from `fetch.plan_fetch` to `fetch.confirm_period`, the function section 6.3 names. So
+  section 13 counts 438 inherent quirks. Three rows of its table change, `confirm_period` from 8
+  to 10, `fiscal_period` from 5 to 3 and `plan_fetch` from 2 to 1, and `qcmr_period` is a new row
+  with 2. A script that recomputes the table from the two files found no difference before the
+  change. Run on the new files against the old table, it names those four mechanisms, and against
+  the new table, none. Design section 13.
 - **Step 3: `parse_index` refuses a sha that is not lowercase hex, and `urls` that is not a list**
   (November 25, 2026, step 3 cleanup). The design gave a line's `sha256` no form and did not say
   that `urls` is a list. So the FY2022 Q1 line beside a hand-edited copy under FY2022 Q2, with the
