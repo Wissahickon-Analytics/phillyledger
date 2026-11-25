@@ -175,22 +175,21 @@ code takes only types.
 
 ### 8.3 Rules, with reasons
 
-- A value with a rule of its own has a type of its own. A sha256 is 64 lowercase hex
-  characters, and `str` says none of that. Where there is a rule to check, the type is a
-  frozen, slotted dataclass with one builder that checks it. Where the value is one piece of
-  text with a rule, the type may instead be a `str` subclass with empty `__slots__` whose
-  constructor checks the rule and builds from the text it checked, as `Sha256` is. It equals
-  its text and serves as a key, a path or JSON, so the files it is written to keep their bytes.
-  It overrides only `__new__` and `__repr__`, so it changes how a value is built and printed,
-  not what code does with it. Where there is only a meaning to keep apart, such as two kinds of id, `typing.NewType` is
-  enough. What the builder does with a bad value follows section 5: a problem in the
-  publisher's data comes back as a value. Step 3 shows the cost of the loose form. Pull request
-  38 added a guard to `parse_index` for a sha that was not 64 lowercase hex characters, and its
-  review then found the sha that was not a string at all. Standards sweep B gave the sha its
-  type. On November 25, 2026 the owner was shown three forms of `Sha256` with their pytest and
-  `ty` counts, whether the index bytes change and their `repr`, and chose "Checked str
-  subclass (Recommended)". Its text said the form "needs 8.3 reworded to allow this form for a
-  value that is one piece of text".
+- A value with a rule of its own has a type of its own. A sha256 is 64 lowercase hex characters, and
+  `str` says none of that. Where there is a rule to check, the type is a frozen, slotted dataclass
+  with one builder that checks it. Where the value is one piece of text with a rule, the type may
+  instead be a `str` subclass with empty `__slots__` whose constructor checks the rule and builds
+  from the text it checked, as `Sha256` is. It equals its text, and a dictionary key, a path or JSON
+  takes it as text, so the files it is written to keep their bytes. It overrides only `__new__` and
+  `__repr__`, so it changes how a value is built and printed, not what code does with it. Where
+  there is only a meaning to keep apart, such as two kinds of id, `typing.NewType` is enough. What
+  the builder does with a bad value follows section 5: a problem in the publisher's data comes back
+  as a value. Step 3 shows the cost of the loose form. Pull request 38 added a guard to
+  `parse_index` for a sha that was not 64 lowercase hex characters, and its review then found the
+  sha that was not a string at all. Standards sweep B gave the sha its type. On November 25, 2026
+  the owner was shown three forms of `Sha256` with their pytest and `ty` counts, whether the index
+  bytes change and their `repr`, and chose "Checked str subclass (Recommended)". Its text said the
+  form "needs 8.3 reworded to allow this form for a value that is one piece of text".
 - A result with more than one outcome is a union of named types. It is never a bare `str` or
   `tuple` that stands for "it failed". The caller handles each member and ends with
   `typing.assert_never`, so `ty check` fails at every caller that ignores a new member. A run

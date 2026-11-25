@@ -85,9 +85,8 @@ class Box:
 class Sha256(str):
     """The sha256 of a file's bytes, as the 64 lowercase hex characters `hexdigest()` writes.
 
-    A `Sha256` equals its text and is used as text wherever text is wanted: a key, a path or
-    JSON. The constructor is the one builder, and it checks the rule. A slice of one is plain
-    text.
+    A `Sha256` equals its text, and a dictionary key, a path or JSON takes it as text. The
+    constructor is the one builder, and it checks the rule. A slice of one is plain text.
 
     Raises
     ------
