@@ -50,10 +50,10 @@ select = [
   "PYI",
   "TID251",
 ]
-ignore = ["ANN401", "D100", "D104"]
+ignore = ["ANN401"]
 
 [tool.ruff.lint.per-file-ignores]
-"!packages/{checkedtables,phillyledger}/src/**" = ["D"]
+"!packages/*/src/**" = ["D"]
 "!packages/{checkedtables/src/checkedtables,datadesk/src/datadesk/core}/**" = ["TID251"]
 "**/tests/**" = ["ANN", "D"]
 
