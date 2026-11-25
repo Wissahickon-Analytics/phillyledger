@@ -53,14 +53,14 @@ No session reads these by default. Open one when the work needs it.
 Commands that matter and traps in the tooling. A note belongs here only when every later
 session needs it. A note for one later step goes in `docs/plan-notes.md`.
 
-- **The code standards changed, and the built code has not caught up** (November 25, 2026). The
-  owner asked for typer, docstrings and the type rules of the book Robust Python. `CLAUDE.md`
-  (Code) and section 8 of `docs/principles.md` hold them. Steps 1 to 3 were built to the older
-  rule. At head `3643f40`, `datadesk` has 82 public classes, functions and methods and none has
-  a docstring, no module in any of the three packages has one, `datadesk.shell.cli` uses
-  `argparse`, and `pyproject.toml` turns ruff's `D` rules off outside `checkedtables` and
-  `phillyledger` and ignores `D100`. New code follows the new rules. A sweep brings the built
-  code to them, and this note goes when it has landed.
+- **The type rules of the code standards are not met yet** (November 25, 2026). The owner
+  asked for typer, docstrings and the type rules of the book Robust Python. `CLAUDE.md` (Code)
+  and section 8 of `docs/principles.md` hold them. Standards sweep A brought the code of steps 1
+  to 3 to the typer and docstring rules, and ruff now checks docstrings in all three packages.
+  Sweep B owes the type rules: a type of its own for a sha256, a named refusal in place of the
+  `str` that `qcmr_period` returns, and a named result in place of the tuple of findings that
+  `gather_repo` returns, which `fetch_command` tells apart with `isinstance(repo, tuple)`. New
+  code follows the rules. This note goes when sweep B lands.
 - **`uv.lock` and `exclude-newer`** (November 22, 2026, step 1). The owner's uv config and
   `UV_EXCLUDE_NEWER` set `exclude-newer = "1 week"`, and `uv lock` records that span in
   `uv.lock`. A machine without the setting, such as a CI runner, rejects the lock: `uv lock
@@ -70,11 +70,14 @@ session needs it. A note for one later step goes in `docs/plan-notes.md`.
   `uv lock --check` fails when `UV_EXCLUDE_NEWER` is not set in the environment, and exits 0
   when it is. To test the lock without the owner's config, read the CI run's `uv sync --locked`
   step.
-- **46 empty modules** (November 22, 2026, step 1, S1-B). import-linter refuses a contract that
-  names a module that does not exist (`Module 'checkedtables.checks' does not exist.`, exit 1),
-  and a wildcard that matches nothing keeps its contract with no warning. So the modules that the
-  eight contracts name exist as empty files: 14 in `checkedtables`, 6 in `phillyledger` and 26 in
-  `datadesk.core.tables`. Later steps fill them. Deleting one breaks `uv run lint-imports`.
+- **Modules that hold only a docstring** (November 22, 2026, step 1, S1-B. Updated November
+  25, 2026, standards sweep A). import-linter refuses a contract that names a module that does
+  not exist (`Module 'checkedtables.checks' does not exist.`, exit 1), and a wildcard that
+  matches nothing keeps its contract with no warning. So the modules that the contracts name
+  exist before their code. At the head of sweep A, 36 modules hold only a docstring that gives
+  the job design section 12 lists for them: 6 in `checkedtables`, 5 in `phillyledger` and 25 in
+  `datadesk.core.tables`. Nine packages hold only a docstring in `__init__.py`. Later steps fill
+  them. Deleting one breaks `uv run lint-imports`, whose nine contracts name them.
 - **ruff skips Markdown** (November 22, 2026, step 1). ruff 0.17 includes `*.md` by default and
   formats the Python blocks in it. `uv run ruff format --check .` failed on `docs/design.md`,
   whose code blocks align their comments on purpose. The root `pyproject.toml` excludes `*.md`.
@@ -195,29 +198,15 @@ session needs it. A note for one later step goes in `docs/plan-notes.md`.
   `uv run --env-file /Users/nhand/DataProjects/phillyledger/.env ...` from the worktree's root.
   The `aws` CLI reads the bucket with the keys passed through the environment, as "Setting up
   R2" in `docs/plans/step-03.md` shows, and never through a profile (hard rule 8).
-- **Docstrings put `refs` past its estimate** (November 23, 2026, step 2, S2-B). The kit size
-  report counts every line that is not blank or a comment, docstrings included. At the S2-B head
-  it prints 592 lines. At the S2-E head after its fix round 2 it prints 1,420, and `records`
-  counts 239 lines against its estimate of 140, and 115 without docstrings. Against design
-  section 12.1: `refs` 121 (estimate 60), `kinds` 29 (40),
-  `words` 147 (90), `labels` 25 (30), `cells` 108 (90). `columns` holds 49 lines for two of its
-  ten names (330). `table` holds 113 lines (190) for two of the eight names its row lists,
-  `RowKey` and `Finding`, and for `Severity`, which the row does not list. Without docstrings
-  `refs` is 62 lines, `words` 65, `cells` 50 and `table` 58. The numpy docstrings on each public
-  class and method, magic methods included, are 308 of the 592 lines. By module their share runs
-  from 28 percent in `kinds` to 64 percent in `labels`. `refs` also writes four comparison
-  methods for `WordRef`. The five whole modules hold 430 lines against an estimate of 310. If
-  the other modules run as far past theirs, the kit passes its 3,800 line budget, an inference
-  that no run has checked. The report never fails the build, so the owner decides whether the
-  budget counts docstrings.
-- **Five more kit modules against their estimates** (November 23, 2026, step 2, S2-E fix
-  round 3). The same count as the note above, at `f82950e`, with and without
-  docstrings, against design section 12.1: `testing` 91 and 51 (estimate 90), `text` 118 and 52
-  (150), `lines` 122 and 52 (120), `lex` 269 and 181 (230), `records` 239 and 115 (140). The
-  five hold 839 lines against an estimate of 730, and 451 without docstrings. With docstrings,
-  `records` runs 99 lines past its estimate and `lex` 39. `testing`, at 91 lines against 90, and
-  `lines`, at 122 against 120, are over their estimates too, by one line and by two, and a
-  count at `73d428e2` gives the same two numbers. Without docstrings, each of the five is at or
-  under its estimate. `uv run python packages/checkedtables/tests/test_library_shape.py` prints
-  `checkedtables: 1431 lines (budget 3,800), 0 public names (budget 140)`, the sum of these
-  five and the seven modules of the note above.
+- **Kit modules against their estimates** (November 23, 2026, step 2. Updated November 25,
+  2026, standards sweep A). The kit size report counts lines that are not blank, a comment or a
+  docstring, as design section 12 counts. At the head of sweep A,
+  `uv run python packages/checkedtables/tests/test_library_shape.py` prints
+  `checkedtables: 735 lines (budget 3,800), 0 public names (budget 140)`. It printed 1431 when it
+  counted docstrings. Against design section 12.1: `refs` 62 (estimate 60), `kinds` 21 (40),
+  `words` 65 (90), `labels` 9 (30), `text` 52 (150), `lines` 52 (120), `cells` 50 (90), `lex`
+  181 (230), `records` 115 (140) and `testing` 51 (90). `columns` holds 19 lines for two of its
+  ten names (330). `table` holds 58 lines (190) for two of the eight names its row lists,
+  `RowKey` and `Finding`, and for `Severity`, which the row does not list. `refs` runs 2 lines
+  past its estimate, and it writes four comparison methods for `WordRef`. Every other module is
+  under its estimate.
