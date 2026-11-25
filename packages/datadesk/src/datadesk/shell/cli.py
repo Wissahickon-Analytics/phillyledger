@@ -136,12 +136,10 @@ def fetch(
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the `datadesk` command line on `argv`, or on `sys.argv[1:]`, and return its exit code.
 
-    The code is that of the SystemExit that typer raises. typer raises none for an exception
-    while it builds the click command, a Ctrl-C included, and that exception propagates. While
-    typer parses `argv`, it gives 0 for help and 2 for a usage error. Until `fetch` has loaded
-    the settings, typer gives 130 for a Ctrl-C and 1 for an EOFError, and a bug propagates.
-    `fetch` gives 1 for a refused input, a failed effect or any exception after the settings
-    load, and 0 for a run that ends normally.
+    The code is that of any SystemExit raised inside the typer app whose code is an integer,
+    while typer builds the command or runs it. Any other exception propagates. 0 means a run that
+    ends normally or help, 2 a usage error, 1 an exception that `fetch` catches or one of typer's
+    own ends, and 130 a Ctrl-C that `fetch` does not catch.
     """
     try:
         app(args=argv, prog_name="datadesk")

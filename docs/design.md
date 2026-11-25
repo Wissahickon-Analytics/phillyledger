@@ -2651,8 +2651,8 @@ listing body that is not UTF-8 and a listing finding each raise `FetchStopped` b
 fetched, so nothing is stored and no file is written.
 
 `main(argv)` is the `datadesk` script, `datadesk fetch <source> --saved <folder>`. It runs a
-typer app and returns the code of the `SystemExit` that typer raises. An exception that typer
-does not turn into a `SystemExit` leaves `main`, and section 9 says which. `fetch` is the app's
+typer app, returns the code of any `SystemExit` raised inside it whose code is an integer, and
+lets any other exception propagate. Section 9 says what each code means. `fetch` is the app's
 one command. An `@app.callback()` holds the tool's help line, because typer runs an app
 that has one command and no callback as that command, and then reads `fetch` as the source. At
 step 3 `--saved` is required. The City refuses a client that is not a browser (step 3 plan, facts
@@ -2664,8 +2664,9 @@ The `fetch` command reads the clock once, calls `load_settings` once for the fou
 `SavedHttp(folder)`, `s3_store(settings)` and the pdfplumber reader, calls `fetch_command`, prints
 the listing digest, each finding, the plan's title and body and each file it wrote, and exits 0.
 A missing variable, a saved folder that `SavedHttp` refuses, a `FetchStopped` or an `EffectError`
-prints one line to stderr and exits 1. A `PreconditionFailed` that reaches `fetch` means the store
-holds other bytes under a report's key, and it prints one line naming that object and exits 1.
+prints a message to stderr that starts `datadesk:` and exits 1. A `PreconditionFailed` that
+reaches `fetch` means the store holds other bytes under a report's key, and it prints such a
+message naming that object and exits 1.
 Any other exception raised after the settings load, while `fetch` builds `Deps`, runs the fetch
 or prints the plan, prints its traceback to stderr and exits 1, so a bug stays visible. A
 `KeyboardInterrupt` there is the operator's stop, not a bug (section 9), and `fetch` prints its
@@ -2676,8 +2677,8 @@ Once `Settings` is loaded, everything it prints, a traceback included, goes thro
 which replaces each non-empty key with `$` and the name of its variable, so a service message that
 echoes the access key prints `$DATADESK_R2_ACCESS_KEY_ID` in its place.
 
-typer and click handle what happens before a command's body runs, and section 9 lists each stop
-with its exit code. The app turns three typer features off. `add_completion=False` drops
+typer and click handle what happens before a command's body runs, and section 9 says what each
+exit code means. The app turns three typer features off. `add_completion=False` drops
 `--install-completion`, which writes `~/.bashrc` or `~/.zshrc`. `rich_markup_mode=None` prints
 help and usage errors as click's plain lines, not in a box drawn with rich.
 `pretty_exceptions_enable=False` keeps typer's own traceback printing, on by default in typer
@@ -4126,35 +4127,33 @@ exception into a finding. `parse_index` raises on an index file it cannot read, 
 `gather_repo` returns that as the BLOCK finding `index_unreadable`, because the file is input
 from the checkout (section 4). A `KeyboardInterrupt` is the operator's stop, wherever it is
 raised, and is not a bug. Any other exception that escapes the core is a bug and fails the
-command. `fetch` prints the message of each stop that section 4.2 names: a `MissingSettings`, a
-saved folder that `SavedHttp` refuses, a `FetchStopped`, an `EffectError` and a
-`PreconditionFailed`. A `KeyboardInterrupt` is not one of those stops. After the settings load,
-`fetch` prints its traceback, as it does for any other exception raised while it builds `Deps`,
-runs the fetch or prints the plan. It exits 1 in each case. Once `Settings` is loaded,
-everything it prints goes through `hide_keys`.
+command.
 
-typer and click handle the stops that come before a command's body runs. Runs of the real
-`datadesk` script on November 25, 2026 gave each stop this output and exit code.
+`fetch` catches every exception raised after the settings load, while it builds `Deps`, runs the
+fetch or prints the plan. Each of the exit codes 0, 1, 2 and 130 of the `datadesk` script means
+one of the things listed under it. The list quotes none of the text that typer and click print.
 
-| Stop | Prints | Exit |
-|---|---|---|
-| `--help`, `fetch --help` | help, on stdout | 0 |
-| A usage error, such as no `--saved`, `-h` or `--sav` | the usage line, a pointer to `--help` and `Error: ...`, on stderr | 2 |
-| `--saved` with no value | `Error: Option '--saved' requires an argument.` alone, on stderr | 2 |
-| A refused input, an `EffectError` or a `PreconditionFailed` | one line, on stderr | 1 |
-| A bug or a `KeyboardInterrupt` after the settings load, or a checkout file that cannot be written | the traceback through `hide_keys`, on stderr | 1 |
-| A bug before the settings load | Python's traceback, on stderr, with no key loaded yet | 1 |
-| A `KeyboardInterrupt` before typer parses the arguments | Python's traceback, on stderr | 130 |
-| A `KeyboardInterrupt` while typer parses the arguments or `fetch` loads the settings | nothing | 130 |
-| `_DATADESK_COMPLETE` set to a non-empty value | one line, such as `Shell zsh not supported.`, on stderr | 1 |
+- **0.** A run that ends normally, or help.
+- **2.** A usage error. typer and click write it on stderr.
+- **1.** One of these.
+  - A refused input (a `MissingSettings`, a saved folder that `SavedHttp` refuses or a
+    `FetchStopped`), an `EffectError` or a `PreconditionFailed`. `fetch` writes a message on
+    stderr that starts `datadesk:`.
+  - Any other exception that `fetch` catches, a `KeyboardInterrupt` included. `fetch` writes its
+    traceback on stderr through `hide_keys`. A checkout file that cannot be written ends here,
+    as it did under `argparse`.
+  - An exception other than a `KeyboardInterrupt` that `fetch` does not catch and typer does not
+    turn into an exit, such as a bug before the settings load. Python prints its traceback.
+  - One of typer's own ends. Runs showed two: `_DATADESK_COMPLETE` set to a non-empty value,
+    which runs no command because shell completion is off, and `Aborted!` after an `EOFError`.
+- **130.** A `KeyboardInterrupt` that `fetch` does not catch, such as one before the settings
+  load.
 
-Before typer parses the arguments, Python imports the command line and typer builds the click
-command, and an exception there, a `KeyboardInterrupt` included, leaves `main` or never reaches
-it. While typer parses the arguments and runs the command, `_main` in `typer/core.py` turns a
-`KeyboardInterrupt` that reaches it into exit 130 and an `EOFError` into `Aborted!` and exit 1.
-`fetch` reads no input, so only a planted `EOFError` has reached `_main`. Shell completion is
-off, so a run with `_DATADESK_COMPLETE` set to a non-empty value prints that line and runs no
-command. With the variable empty, the command runs.
+`main` returns the code of any `SystemExit` raised inside `app(...)` whose code is an integer,
+whether typer is building the command or running it. It lets any other exception propagate.
+
+From the settings load on, everything `fetch` prints passes through `hide_keys`. Before it, no
+key is loaded.
 
 Help is `--help` alone. typer adds no `-h`, and click takes no abbreviation of an option, so `-h`
 and `--sav` are usage errors. Under `argparse`, at `36807de`, `-h` printed help and `--sav` was
