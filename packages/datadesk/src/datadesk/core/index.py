@@ -1,3 +1,5 @@
+"""Read and write index.jsonl, the archive index, one JSON line for each version."""
+
 from collections.abc import Sequence
 from dataclasses import asdict, replace
 from datetime import date
@@ -22,10 +24,28 @@ SHA256 = compile(r"[0-9a-f]{64}")
 
 
 def parse_index(jsonl: str) -> ArchiveIndex:
+    """Read the text of index.jsonl into an index.
+
+    Lines end at each line feed, empty lines are skipped, and the versions are sorted.
+
+    Raises
+    ------
+    ValueError
+        For a sha256 that is not a string of 64 lowercase hex characters, the form that
+        `hexdigest()` writes, for `urls` that is not a JSON list, for a line that is not JSON or
+        holds a value no field takes, and for versions that break a rule of `index_problem`.
+    KeyError, TypeError
+        For a line that lacks a key or is not a JSON object.
+    """
     return ArchiveIndex(sort_versions(_version(loads(line)) for line in jsonl.split("\n") if line))
 
 
 def render_index(index: ArchiveIndex) -> str:
+    """Write an index as the text of index.jsonl, one JSON object for each version.
+
+    Keys are sorted at every level, dates are in ISO form, and every line ends in a newline, so
+    the empty index is "".
+    """
     return "".join(
         f"{dumps(asdict(version), ensure_ascii=False, sort_keys=True, default=date.isoformat)}\n"
         for version in index.versions
@@ -33,6 +53,13 @@ def render_index(index: ArchiveIndex) -> str:
 
 
 def add_versions(index: ArchiveIndex, new: Sequence[DocumentVersion]) -> ArchiveIndex | Finding:
+    """Add versions to an index, or return the BLOCK finding of a rule the result breaks.
+
+    A version whose sha and edition are already indexed adds each URL that its line lacks, after
+    the URLs the line holds, and the line takes the later of the two listed_at stamps. One with no
+    URL the line lacks leaves the line as it was. The result must pass `index_problem`, so a sha
+    indexed under another edition is a content_alias finding.
+    """
     lines = {(version.sha256, version.edition): version for version in index.versions}
     for version in new:
         key = (version.sha256, version.edition)

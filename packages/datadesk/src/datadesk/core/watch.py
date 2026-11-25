@@ -1,3 +1,5 @@
+"""Plan which listed reports to fetch, from the listings and the archive index."""
+
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date
@@ -10,6 +12,12 @@ from datadesk.core.listings import ListedLink, Listing
 
 @dataclass(frozen=True, slots=True)
 class FetchRequest:
+    """One report to download, with the listing facts that its index line will carry.
+
+    `reason` is "new" when the index holds no version of the edition, and "revision" when it
+    holds one.
+    """
+
     edition: EditionKey
     url: str
     title: str
@@ -19,12 +27,22 @@ class FetchRequest:
 
 @dataclass(frozen=True, slots=True)
 class WaybackLookup:
+    """A URL to look up in the Wayback Machine for an edition's file.
+
+    `plan_watch` makes none yet.
+    """
+
     url: str
     edition: EditionKey
 
 
 @dataclass(frozen=True, slots=True)
 class Gap:
+    """An edition that the catalog expects and the index lacks.
+
+    `plan_watch` makes none yet.
+    """
+
     series: str
     edition: EditionKey
     note: str
@@ -32,6 +50,11 @@ class Gap:
 
 @dataclass(frozen=True, slots=True)
 class WatchPlan:
+    """What a watch decided: the reports to fetch and the findings about the listings.
+
+    `plan_watch` leaves `wayback` and `gaps` empty.
+    """
+
     fetch: tuple[FetchRequest, ...]
     wayback: tuple[WaybackLookup, ...]
     gaps: tuple[Gap, ...]
@@ -40,6 +63,11 @@ class WatchPlan:
 
 @dataclass(frozen=True, slots=True)
 class PullRequestPlan:
+    """The pull request a run proposes: the files it writes, its branch, title and body.
+
+    `files` pairs each path in the checkout with the whole text of that file.
+    """
+
     files: tuple[tuple[str, str], ...]
     branch: str
     title: str
@@ -49,6 +77,15 @@ class PullRequestPlan:
 def plan_watch(
     catalog: SourceCatalog, listings: Sequence[Listing], index: ArchiveIndex, today: date
 ) -> WatchPlan:
+    """Choose the listed reports to fetch.
+
+    The last link for each edition wins: the greatest listed_at, and on equal stamps the latest
+    position, since the City appends a revised attachment after the original (QPOS-Q32). An
+    edition that ends before its source's `first_period_end` is dropped. A kept link is requested
+    unless an indexed version of its own edition holds its URL. A URL that another edition holds
+    is still requested, and `plan_fetch` judges the bytes by their sha. Each link skipped as
+    not_a_quarter_end is a WARN finding with that code. `today` is not read yet.
+    """
     kept = [
         (link.edition, link)
         for listing in listings
