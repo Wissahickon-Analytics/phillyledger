@@ -432,9 +432,17 @@ design leaves open" in `docs/plans/step-03.md`.
   longer says the shell catches only effect exceptions. With that traceback printed without
   `hide_keys`, or with the handler for any other exception dropped, the `no_such_key` case of
   `test_main_prints_neither_r2_key_when_a_refused_put_ends_the_run` fails, and with the
-  `PreconditionFailed` handler dropped, its `other_bytes` case fails. Design sections 4.2 and 9.
+  `PreconditionFailed` handler dropped, its `other_bytes` case fails. That round kept the sentence
+  that the shell is the only place that catches exceptions, which was false, because
+  `document_finder.parse` returns the `ValueError` of `json.loads` as `listing_unreadable` (Codex
+  read of the second fix round, finding 1). In the third fix round section 9 says a core function
+  may catch a library's exception on bad input to return a finding or a code, and names the three
+  that do: `load_catalog`, `document_finder.parse` and `qcmr_period`. `checkedtables` catches
+  none. `rg -n "except" packages/datadesk/src packages/checkedtables/src` lists those three catches
+  in the core and none in the kit, and `load_catalog("[x")` returns `catalog_not_toml`. Design
+  sections 4.2 and 9.
 - **Step 3: an index file that `parse_index` cannot read is a finding** (November 24, 2026, S3-D).
-  Section 9 lets the shell catch only effect exceptions, and `parse_index` raises `KeyError`,
+  Section 9 let the shell catch only effect exceptions, and `parse_index` raises `KeyError`,
   `TypeError` or `ValueError` on a file it cannot read. The index file is input from the checkout,
   so `gather_repo` returns that as the BLOCK finding `index_unreadable`, beside any catalog
   findings, and the command stops before any request. `RepoSnapshot` holds the loaded catalog and

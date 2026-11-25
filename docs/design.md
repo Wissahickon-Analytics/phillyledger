@@ -4083,11 +4083,16 @@ Findings are collected per line (change 19). A page-level failure stops its tabl
 nothing below it can be read. A line-level problem becomes a finding and the parse continues, so
 one run shows every problem in an edition.
 
-The shell is the only place that catches exceptions. Reading text is an effect, so the
-`UnicodeDecodeError` of a checkout file, a saved `responses.tsv` or a listing body that is not UTF-8
-is an effect exception, and the shell turns it into a finding or a stop. A `ValueError` from the
-core is a bug and fails the command. `main` prints its traceback through `hide_keys` and returns 1
-(section 4.2). `gather_repo` is the one place the shell turns a core exception into a finding.
+A core function may catch the exception a library raises on bad input, to return a finding or a
+code for that input. `load_catalog` returns the `TOMLDecodeError` of `tomllib` as the BLOCK
+finding `catalog_not_toml`, `document_finder.parse` returns the `ValueError` of `json.loads` as
+the BLOCK finding `listing_unreadable`, and `qcmr_period` returns `period_unreadable` for a printed
+date that `date` rejects. `checkedtables` catches no exception. The shell catches effect
+exceptions. Reading text is an effect, so the `UnicodeDecodeError` of a checkout file, a saved
+`responses.tsv` or a listing body that is not UTF-8 is an effect exception, and the shell turns it
+into a finding or a stop. A `ValueError` that escapes the core is a bug and fails the command.
+`main` prints its traceback, or that of any other exception raised while it builds `Deps` or runs
+the fetch, through `hide_keys` and returns 1 (section 4.2). `gather_repo` is the one place the shell turns a core exception into a finding.
 `parse_index` raises on an index file it cannot read, and `gather_repo` returns that as the BLOCK
 finding `index_unreadable`, because the file is input from the checkout (section 4).
 
