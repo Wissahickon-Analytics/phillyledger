@@ -18,6 +18,7 @@ PURE_IMPORTS: dict[str, tuple[str, ...]] = {
         "enum.StrEnum",
         "re.compile",
         "statistics.median",
+        "typing.Self",
         "typing.TYPE_CHECKING",
     ),
     "datadesk.core": (
@@ -40,6 +41,7 @@ PURE_IMPORTS: dict[str, tuple[str, ...]] = {
         "types.MappingProxyType",
         "typing.Any",
         "typing.Never",
+        "typing.assert_never",
     ),
 }
 INSIDE = {

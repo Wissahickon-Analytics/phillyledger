@@ -5,6 +5,7 @@ from contextlib import suppress
 from functools import partial
 from hashlib import sha256
 
+from checkedtables.refs import Sha256
 from datadesk.core.fetch import Fetched, FetchPlan, plan_fetch
 from datadesk.core.watch import WatchPlan
 from datadesk.shell.gather import RepoSnapshot
@@ -21,11 +22,11 @@ def retried[T](effect: Callable[[], T]) -> T:
     return effect()
 
 
-def put_immutable(store: ObjectStore, key: str, data: bytes, sha: str) -> None:
+def put_immutable(store: ObjectStore, key: str, data: bytes, sha: Sha256) -> None:
     """Put bytes under a key whose object must never change.
 
-    A key that already holds the same bytes counts as written, since a retry or a racing run may
-    have put them.
+    `sha` is the sha256 of `data`. A key that already holds bytes with that sha counts as
+    written, since a retry or a racing run may have put them.
 
     Raises
     ------
@@ -49,14 +50,14 @@ def run_fetch(deps: Deps, plan: WatchPlan, repo: RepoSnapshot) -> FetchPlan:
     Bytes stay in memory, keyed by sha256, until `plan_fetch` decides. Each GET and each put is
     tried up to `TRIES` times while it raises EffectError. It writes no file in the checkout.
     """
-    held: dict[str, bytes] = {}
+    held: dict[Sha256, bytes] = {}
     fetched: list[Fetched] = []
     for request in plan.fetch:
         response = retried(partial(deps.http.get, request.url))
         if response.status != 200:
             fetched.append(Fetched(request, response.status, None, 0, None))
             continue
-        sha = sha256(response.body).hexdigest()
+        sha = Sha256(sha256(response.body).hexdigest())
         held[sha] = response.body
         page1 = deps.pdf.page1_text(response.body)
         fetched.append(Fetched(request, 200, sha, len(response.body), page1))

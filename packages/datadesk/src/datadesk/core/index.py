@@ -4,9 +4,9 @@ from collections.abc import Sequence
 from dataclasses import asdict, replace
 from datetime import date
 from json import dumps, loads
-from re import compile
 from typing import Any
 
+from checkedtables.refs import Sha256
 from checkedtables.table import Finding
 from datadesk.core.domain import (
     ArchiveIndex,
@@ -20,23 +20,23 @@ from datadesk.core.domain import (
     sort_versions,
 )
 
-SHA256 = compile(r"[0-9a-f]{64}")
-
 
 def parse_index(jsonl: str) -> ArchiveIndex:
     """Read the text of index.jsonl into an index.
 
     Lines end at each line feed, empty lines are skipped, and the versions are sorted. The parser
-    checks that each sha256 is a string of 64 lowercase hex characters, the form that
-    `hexdigest()` writes, that `urls` is a JSON list, that the stage, via and holding name members
-    of their enums, that each period holds two ISO dates and does not end before it starts, and
-    that the versions pass `index_problem`. It does not check the series, `listed_at`, `title`
-    or the items of `urls`.
+    builds each `sha256`, and each `supersedes` that is not null, with `Sha256`, which checks for
+    a string of 64 lowercase hex characters, the form that `hexdigest()` writes. It checks the
+    sha256 before `urls`, so a line with both wrong reports the sha256. It checks that `urls` is
+    a JSON list, that the stage, via and holding name members of their enums, that each period
+    holds two ISO dates and does not end before it starts, and that the versions pass
+    `index_problem`. It does not check the series, `listed_at`, `title` or the items of `urls`.
 
     Raises
     ------
     ValueError
-        For a line that `json.loads` cannot decode, and for each check above that fails.
+        For a line that `json.loads` cannot decode, and for each check above that fails. For a
+        sha256 or a supersedes, the message is the one `Sha256` raises.
     KeyError, TypeError
         For a line, an edition or a period that lacks a key or is not a JSON object, for a
         period date that is not a string, and for unchecked values that the sort cannot compare,
@@ -81,10 +81,8 @@ def add_versions(index: ArchiveIndex, new: Sequence[DocumentVersion]) -> Archive
 def _version(line: dict[str, Any]) -> DocumentVersion:
     edition = line["edition"]
     printed = line["printed_period"]
-    sha256 = line["sha256"]
+    sha256 = Sha256(line["sha256"])
     urls = line["urls"]
-    if not (isinstance(sha256, str) and SHA256.fullmatch(sha256)):
-        raise ValueError(f"sha256 {sha256!r} is not 64 lowercase hex characters")
     if not isinstance(urls, list):
         raise ValueError(f"urls {urls!r} is not a list")
     return DocumentVersion(
@@ -94,7 +92,7 @@ def _version(line: dict[str, Any]) -> DocumentVersion:
         urls=tuple(urls),
         title=line["title"],
         printed_period=None if printed is None else _period(printed),
-        supersedes=line["supersedes"],
+        supersedes=None if line["supersedes"] is None else Sha256(line["supersedes"]),
         via=Via(line["via"]),
         holding=Holding(line["holding"]),
     )

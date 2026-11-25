@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import date
 from enum import StrEnum
 
+from checkedtables.refs import Sha256
 from checkedtables.table import Finding, Severity
 
 
@@ -78,7 +79,7 @@ class DocumentVersion:
     Attributes
     ----------
     sha256
-        The sha256 of the file's bytes, 64 lowercase hex characters.
+        The sha256 of the file's bytes.
     listed_at
         A stamp that sorts in listing order. For a document-finder listing it is the 14-digit
         upload stamp in the URL's path, the latest of the stamps at which each of `urls` joined
@@ -94,13 +95,13 @@ class DocumentVersion:
         first. Its listed_at may equal this one's, when new bytes sit behind an unchanged URL.
     """
 
-    sha256: str
+    sha256: Sha256
     edition: EditionKey
     listed_at: str
     urls: tuple[str, ...]
     title: str
     printed_period: Period | None
-    supersedes: str | None
+    supersedes: Sha256 | None
     via: Via = Via.PUBLISHER
     holding: Holding = Holding.WHOLE
 
@@ -123,7 +124,7 @@ class ArchiveIndex:
         """Return the edition's version that no other version supersedes, or None."""
         return next((head for head in _heads(self.versions) if head.edition == edition), None)
 
-    def by_sha(self, sha: str) -> DocumentVersion | None:
+    def by_sha(self, sha: Sha256) -> DocumentVersion | None:
         """Return the version whose bytes have this sha256, or None."""
         return next((version for version in self.versions if version.sha256 == sha), None)
 
@@ -145,7 +146,7 @@ def index_problem(versions: tuple[DocumentVersion, ...]) -> Finding | None:
     """
     if versions != sort_versions(versions):
         return _block("versions_out_of_order", "index", "not sorted by edition, listed_at, sha256")
-    editions: dict[str, EditionKey] = {}
+    editions: dict[Sha256, EditionKey] = {}
     for version in versions:
         if held := editions.get(version.sha256):
             message = f"{version.sha256} is indexed under {held.id()} and {version.edition.id()}"
@@ -163,7 +164,7 @@ def index_problem(versions: tuple[DocumentVersion, ...]) -> Finding | None:
     current = {head.edition: head.sha256 for head in heads}
     older = {version.sha256: version.supersedes for version in versions}
     for edition, size in Counter(version.edition for version in versions).items():
-        chain: list[str] = []
+        chain: list[Sha256] = []
         sha = current.get(edition)
         while sha is not None and sha not in chain:
             chain.append(sha)

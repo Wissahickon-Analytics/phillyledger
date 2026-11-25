@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from checkedtables.cells import Amount, Cell, Reading, Unreadable
 from checkedtables.kinds import DashMeaning, SourceKind
 from checkedtables.lex import _read_number, transliteration_ok
-from checkedtables.refs import Box
+from checkedtables.refs import Box, Sha256
 from checkedtables.table import Finding, RowKey, Severity
 from checkedtables.words import Word
 
@@ -24,7 +24,7 @@ class ReviewedReading:
     ----------
     id : str
         The id of the record. Never blank, since a reviewed `Amount` names it.
-    doc_sha256 : str
+    doc_sha256 : Sha256
         The sha256 of the publisher file.
     page : int
         The 1-based page in the publisher file.
@@ -48,7 +48,7 @@ class ReviewedReading:
     """
 
     id: str
-    doc_sha256: str
+    doc_sha256: Sha256
     page: int
     box: Box
     source: SourceKind

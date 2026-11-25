@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 
 from checkedtables.kinds import SourceKind
-from checkedtables.refs import Box, WordRef
+from checkedtables.refs import Box, Sha256, WordRef
 
 
 @dataclass(frozen=True, slots=True)
@@ -76,8 +76,8 @@ class Page:
 
     Attributes
     ----------
-    doc_sha256 : str
-        The sha256 of the publisher file. Never empty.
+    doc_sha256 : Sha256
+        The sha256 of the publisher file.
     number : int
         The 1-based page number in the publisher file.
     width, height : float
@@ -100,7 +100,7 @@ class Page:
         confidence.
     """
 
-    doc_sha256: str
+    doc_sha256: Sha256
     number: int
     width: float
     height: float
@@ -132,8 +132,8 @@ class Document:
 
     Attributes
     ----------
-    sha256 : str
-        The sha256 of the publisher file. Never empty.
+    sha256 : Sha256
+        The sha256 of the publisher file.
     pages : tuple[Page, ...]
         The extracted pages of this file, in strictly ascending order. They need not be
         contiguous.
@@ -145,7 +145,7 @@ class Document:
         ascending.
     """
 
-    sha256: str
+    sha256: Sha256
     pages: tuple[Page, ...]
 
     def __post_init__(self) -> None:

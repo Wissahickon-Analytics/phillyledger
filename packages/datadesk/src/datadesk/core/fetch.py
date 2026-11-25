@@ -3,9 +3,12 @@
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, replace
 from datetime import date
+from enum import StrEnum
 from re import compile, escape
 from types import MappingProxyType
+from typing import assert_never
 
+from checkedtables.refs import Sha256
 from checkedtables.table import Finding, Severity
 from datadesk.core.domain import ArchiveIndex, DocumentVersion, EditionKey, Period
 from datadesk.core.index import add_versions, render_index
@@ -33,16 +36,19 @@ class Fetched:
 
     request: FetchRequest
     status: int
-    sha256: str | None
+    sha256: Sha256 | None
     size: int
     page1_text: str | None
 
 
 @dataclass(frozen=True, slots=True)
 class StoreObject:
-    """A file to put in the archive bucket, under the key "pdf/<sha[:2]>/<sha>.pdf"."""
+    """A file to put in the archive bucket, under the key "pdf/<sha[:2]>/<sha>.pdf".
 
-    sha256: str
+    `dest_key` is plain text.
+    """
+
+    sha256: Sha256
     dest_key: str
 
 
@@ -72,7 +78,25 @@ class FetchPlan:
     pull_request: PullRequestPlan
 
 
-def qcmr_period(page1_text: str) -> Period | str:
+class PeriodRefusal(StrEnum):
+    """Why a period reader cannot read a period from page 1. Each value is a finding code.
+
+    Attributes
+    ----------
+    UNREADABLE
+        The page has no caption, or has one with no date a program can read.
+    AMBIGUOUS
+        Two captions give different dates.
+    NOT_A_QUARTER_END
+        The printed date ends no quarter.
+    """
+
+    UNREADABLE = "period_unreadable"
+    AMBIGUOUS = "period_ambiguous"
+    NOT_A_QUARTER_END = "period_not_a_quarter_end"
+
+
+def qcmr_period(page1_text: str) -> Period | PeriodRefusal:
     """Read the quarter that a QCMR cover prints.
 
     The cover prints "FOR THE PERIOD ENDING <Month> <D>, <YYYY>" (QCASH-Q05, QOBL-Q04). Every
@@ -80,25 +104,22 @@ def qcmr_period(page1_text: str) -> Period | str:
 
     Returns
     -------
-    Period | str
-        The three months that end on the printed date. Otherwise a refusal code:
-        "period_unreadable" when the page has no caption, or has one with no date a program
-        can read, "period_ambiguous" when two captions give different dates, and
-        "period_not_a_quarter_end" for a date that ends no quarter.
+    Period | PeriodRefusal
+        The three months that end on the printed date, or the reason no period is read.
     """
     read = [_printed_date(*phrase) for phrase in PERIOD_ENDING.findall(page1_text)]
     ends = {end for end in read if end is not None}
     if not read or None in read:
-        return "period_unreadable"
+        return PeriodRefusal.UNREADABLE
     if len(ends) > 1:
-        return "period_ambiguous"
+        return PeriodRefusal.AMBIGUOUS
     (end,) = ends
     if (end.month, end.day) not in QUARTER_ENDS:
-        return "period_not_a_quarter_end"
+        return PeriodRefusal.NOT_A_QUARTER_END
     return Period(date(end.year, end.month - 2, 1), end)
 
 
-PERIOD_READERS: MappingProxyType[str, Callable[[str], Period | str]] = MappingProxyType(
+PERIOD_READERS: MappingProxyType[str, Callable[[str], Period | PeriodRefusal]] = MappingProxyType(
     {"qcmr": qcmr_period}
 )
 
@@ -113,26 +134,30 @@ def confirm_period(
     page 1 or on no page, that quotes words page 1 prints, with each run of whitespace read as
     one space and no word character right before or after the quote. The series' reader must
     read the quote alone as that same period, and the note's value must be its end in ISO form.
-    No note clears a code the reader returns. The caller passes only the notes on the file.
+    No note clears a refusal. The caller passes only the notes on the file.
 
     Returns
     -------
     Period | Finding
         The confirmed period, or a BLOCK finding whose subject is `expected.id()`:
-        period_unsupported for a series with no reader, a code the reader returns, or
-        period_mismatch.
+        period_unsupported for a series with no reader, the value of the reader's
+        `PeriodRefusal` as plain text, or period_mismatch.
     """
     reader = PERIOD_READERS.get(series)
     if reader is None:
         return _block("period_unsupported", expected, f"no period reader for {series!r}")
-    printed = reader(page1_text)
-    if isinstance(printed, str):
-        return _block(printed, expected, f"the {series} period reader refuses page 1")
-    if printed == expected.period:
-        return expected.period
-    if any(_clears(note, page1_text, printed, reader) for note in notes):
-        return printed
-    return _block("period_mismatch", expected, f"page 1 prints the period ending {printed.end}")
+    match reader(page1_text):
+        case PeriodRefusal() as refusal:
+            return _block(refusal.value, expected, f"the {series} period reader refuses page 1")
+        case Period() as printed:
+            if printed == expected.period:
+                return expected.period
+            if any(_clears(note, page1_text, printed, reader) for note in notes):
+                return printed
+            message = f"page 1 prints the period ending {printed.end}"
+            return _block("period_mismatch", expected, message)
+        case unhandled:
+            assert_never(unhandled)
 
 
 def plan_fetch(
@@ -214,7 +239,7 @@ def _decide(
     )
 
 
-def _pdf_key(sha: str) -> str:
+def _pdf_key(sha: Sha256) -> str:
     return f"pdf/{sha[:2]}/{sha}.pdf"
 
 
@@ -239,7 +264,10 @@ def _printed_date(month: str, day: str, year: str) -> date | None:
 
 
 def _clears(
-    note: EditionNote, page1_text: str, printed: Period, reader: Callable[[str], Period | str]
+    note: EditionNote,
+    page1_text: str,
+    printed: Period,
+    reader: Callable[[str], Period | PeriodRefusal],
 ) -> bool:
     return (
         note.kind == NoteKind.PRINTED_PERIOD
