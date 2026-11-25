@@ -33,7 +33,7 @@ from `main` after this pull request lands.
 | 3 | A name builds a prompt that names `docs/plans/<name>.md`. It says that design section 15 has no entry for the plan and that the plan's own check table is the check. The `pr` prompt lists each `docs/deviations/step-NN.md` that the plan names, or says it names none. | `plan`, `pr` and `fix` runs for `standards-sweep-b` and `standards-sweep-a`, with the stub. |
 | 4 | A named plan's prompt is `.codex-review/<name>-<kind>-<sha>.prompt.md` and its report is `.codex-review/<name>-<kind>-<sha>.md`. `fix` reads the report of the `pr` or `fix` review of the head it answers, and stops with exit 6 without one. | The same runs. |
 | 5 | The old repository is `gov-budget-data` beside the folder that holds the repository's `.git`, which is the main checkout in this repository, from the main checkout and from any worktree. When no folder is there, the script stops with exit 7 and writes nothing. | Runs from the main checkout, from this worktree, and from a scratch clone. |
-| 6 | Codex runs through the named route end to end. | `codex-review pr codex-review-named-plans standards/sweep-a` reviews this pull request. |
+| 6 | Codex runs through the named route end to end. | `codex-review pr codex-review-named-plans main` reviews this pull request. Its first run, at `79e0491`, took `standards/sweep-a` at `665d3da` as the base, whose tree `main` holds at `cab37c5`. |
 | 7 | `codex-review/SKILL.md` with its `argument-hint`, `verify-step/SKILL.md` and `docs/plans/README.md` say what the script now does. The sentences of `CLAUDE.md` that name the commands speak of numbered steps and stay true. | Clause 6's review reads each changed sentence against the script. |
 | 8 | The gates pass. | `just gates` at the head. |
 
@@ -71,4 +71,9 @@ from `main` after this pull request lands.
 
 ## Owner questions
 
-None.
+1. Clause 5 first said the script finds `gov-budget-data` beside the main checkout from any
+   worktree. A run showed that a linked worktree of a repository made with
+   `git init --separate-git-dir` holds no record of the main checkout, and Codex called the
+   added words "in this repository" a reworded check under hard rule 2. Asked what clause 5
+   should say, the owner chose "Keep "in this repository" (Recommended)" on November 25, 2026.
+   Clause 5 covers this repository's layout, where `.git` is a folder in the main checkout.

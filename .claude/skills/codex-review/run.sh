@@ -42,17 +42,16 @@ case $step in
 *[!0-9]*)
     plan=docs/plans/$step.md
     case $(git -C "$root" ls-tree HEAD -- "$plan" | cut -c1-6) in
-    100644 | 100755) ;;
-    *)
+    100644 | 100755 | 120000) [ -f "$root/$plan" ] ;;
+    *) false ;;
+    esac || {
         echo "No plan file at $plan in HEAD." >&2
         usage
-        ;;
-    esac
+    }
     nn=
     label=$step
     form=named other=step
-    deviations=$(git -C "$root" show "HEAD:$plan" |
-        grep -o 'docs/deviations/step-[0-9][0-9]*\.md' | sort -u |
+    deviations=$(grep -o 'docs/deviations/step-[0-9][0-9]*\.md' "$root/$plan" | sort -u |
         awk '{ printf "%s`%s`", (NR > 1 ? ", " : ""), $0 }')
     ;;
 *)
