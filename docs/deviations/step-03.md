@@ -477,10 +477,12 @@ design leaves open" in `docs/plans/step-03.md`.
   `period_unreadable` and it waits for a later step (plan fact 14, answer D). A follow-up of pull
   request 35 found three rows of `coverage.tsv` on the wrong function. QOBL-Q04 and QPOS-Q34
   move from `periods.fiscal_period`, which is for windowed periods and does not exist before
-  step 5, to `periods.fiscal_quarter`, which maps a period end to its fiscal quarter. QOBL-Q06
-  moves from `fetch.plan_fetch` to `fetch.confirm_period`, the function section 6.3 names. So
-  section 13 counts 438 inherent quirks, and four rows of its table change: `confirm_period`
-  carries 10, `fiscal_period` 3, `fiscal_quarter` 2 and `plan_fetch` 1. A script that recomputes
+  step 5, to `fetch.qcmr_period`, which section 3.2 credits with both and which maps the cover's
+  period end to its fiscal quarter. `periods.fiscal_quarter` does the same mapping, but no code
+  under `src/` calls it. QOBL-Q06 moves from `fetch.plan_fetch` to `fetch.confirm_period`, the
+  function section 6.3 names. So section 13 counts 438 inherent quirks, and four rows of its
+  table change: `confirm_period` carries 10, `fiscal_period` 3, `qcmr_period` 2 and `plan_fetch`
+  1. A script that recomputes
   the table from the two files found no difference before the change. Run on the new files
   against the old table, it names those four rows, and against the new table, none. Design
   section 13.

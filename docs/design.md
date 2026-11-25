@@ -4652,12 +4652,13 @@ contract. Build step 1 planted `import os`, `from pathlib import Path`, `import 
 
 ## 13. Quirk coverage
 
-`/home/claude/scratch/v2/final/coverage.tsv` has one row for each of the 438 inherent quirks. New
+`/home/claude/scratch/v2/final/coverage.tsv` has one row for each of the 437 inherent quirks. New
 in this version, it also has one row for each of the 87 unsure quirks, as R2 asked.
 It starts from design C's file. Every renamed mechanism and every quirk whose handling changed
 was updated. Of the 437 inherent rows, 85 changed, 50 of them to a new mechanism, and three
-mechanism names changed module. Mechanisms over the inherent
-quirks, with the number each carries:
+mechanism names changed module. `docs/evidence/coverage.tsv` started with the same counts, 437
+inherent rows and 87 unsure rows, and step 3 added one inherent quirk, QPOS-Q38. Mechanisms over
+the 438 inherent quirks of `docs/evidence/coverage.tsv`, with the number each carries:
 
 | Mechanism | Quirks | By dossier |
 |---|---:|---|
@@ -4706,7 +4707,7 @@ quirks, with the number each carries:
 | `checkedtables.checks.acks.match_acknowledgments` | 2 | QCASH 1, VAL 1 |
 | `checkedtables.records.apply_reading` | 2 | VAL 2 |
 | `checkedtables.text.split_line_prefix` | 2 | ENT 1, QPOS 1 |
-| `datadesk.core.periods.fiscal_quarter` | 2 | QOBL 1, QPOS 1 |
+| `datadesk.core.fetch.qcmr_period` | 2 | QOBL 1, QPOS 1 |
 | `datadesk.core.tables.bib_revenue_schedule.grammar_for` | 2 | BIB 1, ENT 1 |
 | `datadesk.core.tables.collections_city.parse` | 2 | MCITY 2 |
 | `datadesk.core.tables.qcmr_obligations.parse` | 2 | QOBL 2 |
