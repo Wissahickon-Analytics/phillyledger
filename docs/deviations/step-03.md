@@ -319,7 +319,12 @@ design leaves open" in `docs/plans/step-03.md`.
   subclass of `EffectError`, `test_other_bytes_under_a_report_s_key_stop_the_command_after_one_put`
   fails, because the put is tried three times. The sketches in sections 4.3 and 4.5 no longer pass
   `public`. The 4.5 sketch publishes through `deps.public`, a store bound to a public bucket, which
-  is a proposal for the step that builds the release. Design sections 4, 4.3 and 4.5.
+  is a proposal for the step that builds the release. Sections 1.4 and 10 still said PDFs live in a
+  public object store, while the archive bucket holds every report and the plan keeps it private
+  at step 3 ("Setting up R2"; Fable read of S3-D, finding 1). In the second fix round both say PDFs
+  are in the archive bucket, private at step 3, and that the step that first needs a public read
+  decides whether they get a public copy. No publishing decision is made here. Design sections
+  1.4, 4, 4.3, 4.5 and 10.
 - **Step 3: `Settings` and the S3 client** (November 24, 2026, S3-D). The design named `Settings`
   and gave it no fields. It holds the endpoint, the two keys and the archive bucket from the four
   `DATADESK_R2_*` variables of the plan, and leaves both keys out of its `repr`. An empty variable
@@ -363,8 +368,8 @@ design leaves open" in `docs/plans/step-03.md`.
   page 2 hid the cover, and a box that is one number on page 1 escaped as `TypeError` (Codex read of
   the fix, findings 2 and 3). In the second fix round the reader hands the first page of pdfminer's
   `PDFPage.create_pages` to pdfplumber's `Page`, builds no other page and does not close the
-  document, because `close` builds every page again. It turns any exception raised while pdfplumber
-  opens the PDF and reads page 1 into `EffectError`. Page 1 of the 21 saved City reports, read with
+  document, because `close` builds every page again. It turns any `Exception` raised while
+  pdfplumber opens the PDF and reads page 1 into `EffectError`. Page 1 of the 21 saved City reports, read with
   this reader, gave the same text as with the reader it replaces, and `qcmr_period` read the 20 from
   FY2022 Q1 to FY2026 Q4 as their own quarters and FY2027 Q1 as `period_unreadable`. With
   `pages=[1]` back, the `a_crop_box_that_is_one_number` case of

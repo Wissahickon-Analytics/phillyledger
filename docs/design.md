@@ -58,7 +58,7 @@ publisher listings --watch--> WatchPlan --exec--> pull request (index lines, gap
 | Effect | Port (Protocol) | Adapter | Called from |
 |---|---|---|---|
 | HTTP to phila.gov, philasd.org and the Wayback CDX | `Http` | `datadesk.shell.adapters.http_saved`, which answers from a folder that a browser saved; `datadesk.shell.adapters.http_httpx` from step 13 | `fetch_command` and the `fetch` executor; the `watch` executor from step 13 |
-| Object store (public PDFs, private Textract JSON, releases) | `ObjectStore` | `datadesk.shell.adapters.s3` | `fetch`, `ocr`, `words` and `release` executors |
+| Object store (PDFs in the archive bucket, which is private at step 3, and the step that first needs a public read decides whether they get a public copy; private Textract JSON; releases) | `ObjectStore` | `datadesk.shell.adapters.s3` | `fetch`, `ocr`, `words` and `release` executors |
 | Textract | `OcrService` | `datadesk.shell.adapters.textract` | the `ocr` executor only, and only with `--spend` |
 | PDF words, rules and page-1 text | `PdfReader` | `datadesk.shell.adapters.pdf_pdfplumber` | `fetch` and `words` executors |
 | Local content-addressed cache | `LocalCache` | `datadesk.shell.adapters.cache_dir`, `phillyledger._shell.cache_dir` | executors, reader |
@@ -2523,7 +2523,7 @@ credentials files, so no environment variable behind a session variable, `AWS_PR
 1.44.5 client still raised `ProfileNotFound` under a missing `AWS_PROFILE`. botocore 1.44.5 still
 reads some variables that are not session variables. It reads `AWS_S3_US_EAST_1_REGIONAL_ENDPOINT`,
 `AWS_S3_USE_ARN_REGION` and `AWS_S3_DISABLE_MULTIREGION_ACCESS_POINTS` into its S3 settings, and it
-checks the first when it builds any client, so an invalid value would stop the client from being
+checks the first when it builds a client, so an invalid value would stop the client from being
 built. The client's `Config` sets those three S3 settings to the values botocore assumes when none
 is given, `legacy`, true and false, and a value in `Config` overrides the environment's. So an
 invalid `AWS_S3_US_EAST_1_REGIONAL_ENDPOINT` builds the client and sends the same put, and in a
@@ -2540,10 +2540,10 @@ page that pdfminer's `PDFPage.create_pages` yields to pdfplumber's `Page` and bu
 so a broken box on a later page does not hide the cover. In pdfplumber 0.11.10 the document's page
 list has pdfminer build every page, even when `pages=[1]` limits the pages pdfplumber builds, and
 `close` builds that list again, so the reader uses neither. Any `Exception` raised while pdfplumber
-opens the PDF and reads page 1 becomes `EffectError`, chained. Bytes it cannot open, a PDF with no
-page and a box on page 1 that pdfminer or pdfplumber cannot read each end there. The two libraries
-raise many types on a malformed PDF, such as `TypeError` for a box that is one number,
-`IndexError` for a box of two numbers and `MalformedPDFException` for a box that holds a name.
+opens the PDF and reads page 1 becomes `EffectError`, chained, as for bytes it cannot open, a PDF
+with no page or a box on page 1 that pdfminer or pdfplumber cannot read. The two libraries raise
+many types on a malformed PDF, such as `TypeError` for a box that is one number, `IndexError` for a
+box of two numbers and `MalformedPDFException` for a box that holds a name.
 
 ### 4.1 `watch`
 
@@ -4102,7 +4102,7 @@ staleness graph.
 | Words, text layer | `sha256(doc sha, page set, tool string)` | encoded `Document` | `LocalCache`; optional shared copy in the object store |
 | Words, OCR | `sha256(doc sha, page, Textract config)` | raw Textract JSON | private object store, permanent (it costs money) |
 | Parse results | `sha256(word keys, code tree sha, record slice sha, registry sha, schema sha)` | encoded `ParseResult` | `LocalCache` |
-| PDFs | doc sha | bytes | public object store; git-ignored local copy |
+| PDFs | doc sha | bytes | the archive bucket, private at step 3, where the step that first needs a public read decides whether they get a public copy; git-ignored local copy |
 | Reader downloads | file sha | bytes | `phillyledger` cache dir |
 
 The code tree sha is the SHA-256 of every source file under `checkedtables/` and
