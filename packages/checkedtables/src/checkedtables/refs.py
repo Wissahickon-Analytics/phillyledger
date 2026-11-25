@@ -1,3 +1,5 @@
+"""Boxes on a page and references to words, which cells and checks import instead of words."""
+
 from collections.abc import Iterable
 from dataclasses import dataclass
 

@@ -1,3 +1,5 @@
+"""Build pages from monospace text, for tests of code that reads words."""
+
 from re import compile
 
 from checkedtables.kinds import SourceKind
@@ -12,6 +14,7 @@ _ROW = 12.0
 
 
 def _unmark(row: str) -> tuple[str, tuple[bool, ...]]:
+    """Take the bold markers out of a row, and say which kept characters were bold."""
     unpaired: list[int] = []
     spans: list[tuple[int, int]] = []
     for found in _MARKER.finditer(row):

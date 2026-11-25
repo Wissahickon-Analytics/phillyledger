@@ -1,3 +1,5 @@
+"""Row keys, and the findings that come back beside a result."""
+
 from dataclasses import dataclass
 from enum import StrEnum
 

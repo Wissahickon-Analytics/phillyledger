@@ -1,3 +1,5 @@
+"""Read the words of one cell as a typed cell, and check a person's reading of a cell."""
+
 from collections.abc import Sequence
 from dataclasses import replace
 from decimal import Decimal
@@ -94,6 +96,7 @@ def _tokens_and_marks(words: Sequence[Word]) -> tuple[tuple[str, ...], tuple[str
 
 
 def _joined(dollar: str, tokens: Sequence[str], col: ColumnSpec, source: SourceKind) -> str | None:
+    """Join two words into the one number they print, in a form `lex_cell` lists, or None."""
     if len(tokens) != 2 or col.kind not in _JOIN_KINDS or source is not SourceKind.TEXT_LAYER:
         return None
     wrapped = not dollar and tokens[0].startswith("(") and tokens[1].endswith(")")
@@ -107,6 +110,7 @@ def _joined(dollar: str, tokens: Sequence[str], col: ColumnSpec, source: SourceK
 
 
 def _sign_trouble(token: str) -> bool:
+    """Whether a token's signs break a rule that `lex_cell` lists under "sign"."""
     start = next((index for index, glyph in enumerate(token) if glyph in _DIGITS), len(token))
     lead, rest = token[:start], token[start:]
     opens = token.count("(")
@@ -122,6 +126,7 @@ def _sign_trouble(token: str) -> bool:
 
 
 def _read_cell(tokens: Sequence[str], col: ColumnSpec, source: SourceKind) -> Decimal | str:
+    """Read a cell's tokens as a number, or return the reason the cell is `Unreadable`."""
     glyphs = "".join(tokens)
     if not any(glyph in _DIGITS for glyph in glyphs) or any(g not in _GLYPHS for g in glyphs):
         return "not_a_number"

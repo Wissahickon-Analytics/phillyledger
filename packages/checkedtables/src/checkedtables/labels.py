@@ -1,3 +1,5 @@
+"""Row labels, kept apart from words so that tables and checks never import them."""
+
 from dataclasses import dataclass
 
 
