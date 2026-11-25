@@ -547,24 +547,47 @@ design are recorded here.
   `fetch` command holds the old body of `main`. typer is capped below 0.29 because typer 0.29.0
   depends on pydantic, which section 8.7 of `docs/principles.md` leaves undecided for `datadesk`.
   The owner answered "Keep the cap" on November 25, 2026. The runs of the real script in the
-  sweep's pull request show each stop. Design sections 1.4, 4 and 4.2.
+  sweep's pull request show each stop. Section 4.2 says that an exception typer does not turn
+  into a `SystemExit` leaves `main`. Section 1.4's clock row said `cli.main` passes a `date` and
+  a `datetime` down. `fetch` passes `fetch_command` a `date`, and the design's later commands
+  pass a `date` to `run_watch` and a `datetime` to `release_command`, so the row now says each
+  command passes the one its function takes. Design sections 1.4, 4 and 4.2.
 - **Three stops changed, and one is new.** A `KeyboardInterrupt` before the settings load
-  printed Python's traceback and exited 130. typer turns it into exit 130 with nothing printed.
-  A bug or a `KeyboardInterrupt` while the plan printed escaped `main`, and Python printed its
-  traceback outside `hide_keys`. The `try` of `fetch` now holds the print, so that traceback goes
-  through `hide_keys`. A usage error made `main` raise `SystemExit(2)`, and now `main` returns 2,
-  so `test_main_requires_a_saved_folder` asserts the return. One stop is new. With
-  `_DATADESK_COMPLETE` set, typer prints one line such as `Shell zsh not supported.` and exits 1
-  without running the command. The same planted `raise` in scratch copies of `36807de` and of
-  the sweep's head showed the first two. At `36807de` the planted bug message printed the
-  placeholder access key, and at the head it printed `$DATADESK_R2_ACCESS_KEY_ID`. A run with
-  the variable set showed the last. Design sections 4.2 and 9.
+  printed Python's traceback and exited 130. While typer parses the arguments or `fetch` loads
+  the settings, typer now turns it into exit 130 with nothing printed (`_main` in
+  `typer/core.py`). Before typer parses the arguments, while Python imports the command line or
+  typer builds the click command, it still prints Python's traceback and exits 130. A bug or a
+  `KeyboardInterrupt` while the plan printed escaped `main`, and Python printed its traceback
+  outside `hide_keys`. The `try` of `fetch` now holds the print, so that traceback goes through
+  `hide_keys`. A usage error made `main` raise `SystemExit(2)`, and now `main` returns 2, so
+  `test_main_requires_a_saved_folder` asserts the return. One stop is new. With
+  `_DATADESK_COMPLETE` set to a non-empty value, typer prints one line such as `Shell zsh not
+  supported.` and exits 1 without running the command, and with it empty the command runs. The
+  same planted `raise` in scratch copies of `36807de` and of the sweep's head showed the first
+  two changes. At `36807de` the planted bug message printed the placeholder access key, and at
+  the head it printed `$DATADESK_R2_ACCESS_KEY_ID`. The installed script, run with
+  `typer.main.get_command` and then `cli.load_settings` patched to raise a `KeyboardInterrupt`,
+  and a `raise` planted where `cli.py` imports typer, showed the two windows. Runs with the
+  variable set and empty showed the last. Design sections 4.2 and 9.
+- **Section 9 lists the stops.** A table gives each stop its output and exit code. One line on
+  stderr is printed for a refused input, an `EffectError` and a `PreconditionFailed`. A checkout
+  file that cannot be written prints its traceback through `hide_keys` and exits 1, as under
+  `argparse`. In a scratch copy with a folder at the temporary file's name, that run ended in
+  `IsADirectoryError`. A usage error prints the usage line, a pointer to `--help` and
+  `Error: ...`, but `--saved` with no value prints `Error: Option '--saved' requires an
+  argument.` alone. Design section 9.
+- **`-h` and abbreviated options are usage errors.** At `36807de`, `datadesk -h` and
+  `datadesk fetch -h` printed help and exited 0, and `--sav` was read as `--saved`. typer adds
+  no `-h`, and click takes no abbreviation of an option, so at the sweep's head each prints
+  `Error: No such option: ...` and exits 2. Runs at both commits showed it. Design section 9.
 - **Who reads the environment.** Section 4.2 said `main` reads the environment once with
   `load_settings`. typer reads `TYPER_USE_RICH`, `_DATADESK_COMPLETE` and
   `TYPER_STANDARD_TRACEBACK`, and click reads `COLUMNS`, `LINES` and the locale variables, so the
-  section now says `fetch` reads the R2 settings once and names the others. A run of
-  `cli.main` with `os.environ` wrapped showed each read but `TYPER_STANDARD_TRACEBACK`, which
-  typer's `except_hook` reads (`typer/main.py`). Design section 4.2.
+  section now says `fetch` calls `load_settings` once and names the others. `load_settings`
+  reads each variable it finds set twice from the mapping, once to test it and once to take
+  it, as a counting mapping showed. A run of `cli.main` with `os.environ` wrapped showed each
+  read but `TYPER_STANDARD_TRACEBACK`, which typer's `except_hook` reads (`typer/main.py`).
+  Design section 4.2.
 - **A ninth import-linter contract.** "only the command line imports typer" forbids typer in all
   three packages and ignores `datadesk.shell.cli -> typer`. With `import typer` planted in
   `datadesk.shell.run_fetch`, `uv run lint-imports` broke that contract and exited 1. Design

@@ -63,7 +63,7 @@ publisher listings --watch--> WatchPlan --exec--> pull request (index lines, gap
 | PDF words, rules and page-1 text | `PdfReader` | `datadesk.shell.adapters.pdf_pdfplumber` | `fetch` and `words` executors |
 | Local content-addressed cache | `LocalCache` | `datadesk.shell.adapters.cache_dir`, `phillyledger._shell.cache_dir` | executors, reader |
 | Git and pull requests | `GitHost`, from step 13 | `datadesk.shell.adapters.github` | the `watch` executor. At step 3, `fetch_command` writes the index file into the checkout and the session opens the pull request |
-| Clock | none; each command in `cli.py` reads the time once and passes a `date` and a `datetime` down | `datadesk.shell.cli` | CLI entry only |
+| Clock | none; each command in `cli.py` reads the time once and passes it down, as a `date` to `fetch_command` and `run_watch` and a `datetime` to `release_command` | `datadesk.shell.cli` | CLI entry only |
 | Environment | none; `load_settings(environ)` returns a frozen `Settings` once | `datadesk.shell.settings` | CLI entry only |
 | Repository files (TOML records, index, schemas) | none; `gather_repo` reads each file's text once and passes it to a pure loader, and the values make a `RepoSnapshot` | `datadesk.shell.gather` | CLI entry only |
 | Logging and progress | none; findings are values | `datadesk.shell.report` | executors |
@@ -2651,15 +2651,16 @@ listing body that is not UTF-8 and a listing finding each raise `FetchStopped` b
 fetched, so nothing is stored and no file is written.
 
 `main(argv)` is the `datadesk` script, `datadesk fetch <source> --saved <folder>`. It runs a
-typer app and returns the code of the `SystemExit` that typer ends every run with. `fetch` is the
-app's one command. An `@app.callback()` holds the tool's help line, because typer runs an app
+typer app and returns the code of the `SystemExit` that typer raises. An exception that typer
+does not turn into a `SystemExit` leaves `main`, and section 9 says which. `fetch` is the app's
+one command. An `@app.callback()` holds the tool's help line, because typer runs an app
 that has one command and no callback as that command, and then reads `fetch` as the source. At
 step 3 `--saved` is required. The City refuses a client that is not a browser (step 3 plan, facts
 6 and 11), so no command sends the City a request. A browser saves the listing and the reports,
 and the command reads the saved folder.
 
-The `fetch` command reads the clock once, the four `DATADESK_R2_*` variables once with
-`load_settings`, and the working directory as the checkout. It builds `Deps` from
+The `fetch` command reads the clock once, calls `load_settings` once for the four
+`DATADESK_R2_*` variables, and reads the working directory as the checkout. It builds `Deps` from
 `SavedHttp(folder)`, `s3_store(settings)` and the pdfplumber reader, calls `fetch_command`, prints
 the listing digest, each finding, the plan's title and body and each file it wrote, and exits 0.
 A missing variable, a saved folder that `SavedHttp` refuses, a `FetchStopped` or an `EffectError`
@@ -4138,15 +4139,26 @@ typer and click handle the stops that come before a command's body runs. Runs of
 | Stop | Prints | Exit |
 |---|---|---|
 | `--help`, `fetch --help` | help, on stdout | 0 |
-| A usage error, such as no `--saved` | the usage line, a pointer to `--help` and `Error: ...`, on stderr | 2 |
-| A refused input or a failed effect | one line, on stderr | 1 |
-| A bug or a `KeyboardInterrupt` after the settings load | the traceback through `hide_keys`, on stderr | 1 |
+| A usage error, such as no `--saved`, `-h` or `--sav` | the usage line, a pointer to `--help` and `Error: ...`, on stderr | 2 |
+| `--saved` with no value | `Error: Option '--saved' requires an argument.` alone, on stderr | 2 |
+| A refused input, an `EffectError` or a `PreconditionFailed` | one line, on stderr | 1 |
+| A bug or a `KeyboardInterrupt` after the settings load, or a checkout file that cannot be written | the traceback through `hide_keys`, on stderr | 1 |
 | A bug before the settings load | Python's traceback, on stderr, with no key loaded yet | 1 |
-| A `KeyboardInterrupt` before the settings load | nothing | 130 |
-| `_DATADESK_COMPLETE` set to any value | one line, such as `Shell zsh not supported.`, on stderr | 1 |
+| A `KeyboardInterrupt` before typer parses the arguments | Python's traceback, on stderr | 130 |
+| A `KeyboardInterrupt` while typer parses the arguments or `fetch` loads the settings | nothing | 130 |
+| `_DATADESK_COMPLETE` set to a non-empty value | one line, such as `Shell zsh not supported.`, on stderr | 1 |
 
-typer turns a `KeyboardInterrupt` that reaches it into exit 130. Shell completion is off, so a
-run with `_DATADESK_COMPLETE` set prints that line and runs no command.
+Before typer parses the arguments, Python imports the command line and typer builds the click
+command, and an exception there, a `KeyboardInterrupt` included, leaves `main` or never reaches
+it. While typer parses the arguments and runs the command, `_main` in `typer/core.py` turns a
+`KeyboardInterrupt` that reaches it into exit 130 and an `EOFError` into `Aborted!` and exit 1.
+`fetch` reads no input, so only a planted `EOFError` has reached `_main`. Shell completion is
+off, so a run with `_DATADESK_COMPLETE` set to a non-empty value prints that line and runs no
+command. With the variable empty, the command runs.
+
+Help is `--help` alone. typer adds no `-h`, and click takes no abbreviation of an option, so `-h`
+and `--sav` are usage errors. Under `argparse`, at `36807de`, `-h` printed help and `--sav` was
+read as `--saved`.
 
 ## 10. Caching and determinism
 
