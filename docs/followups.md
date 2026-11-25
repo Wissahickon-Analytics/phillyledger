@@ -257,7 +257,8 @@ by its title is in `docs/plan-notes.md`, `docs/progress.md` or `docs/deviations/
     in memory so that a reviewed zero loses its sign, both tests fail.
 - **Follow-ups after step 3** (November 25, 2026). Step 3's five pull requests, 32, 33, 35, 36
   and 37, found these and did not fix them. Each was checked against `d3b0666`, the head of
-  stack 34, and the owner kept them when he sorted the list.
+  stack 34. The sorted list marked these 21 to keep, and the owner chose the 15 it marked to fix
+  for the cleanup pull request ("Your 15 picks").
   - `test_index_refuses_one_sha_twice` uses two editions, so a guard that refuses a repeated sha
     only across editions still passes it (pull request 32).
   - The watch tests never index a URL as a version's second URL or on a superseded version, so
