@@ -535,3 +535,46 @@ design leaves open" in `docs/plans/step-03.md`.
   source the catalog lacks, and it raised `FetchStopped`. No code changed. With `fetch_command`
   replaced by a function that raises `KeyboardInterrupt`, `main` prints the traceback and
   returns 1. Design sections 4.2 and 9.
+
+## Standards sweep A
+
+On November 25, 2026 the owner asked for typer on the command line and docstrings on the code
+(`docs/principles.md`, section 8). Sweep A changed code that step 3 built, so its changes to the
+design are recorded here.
+
+- **`datadesk` runs on typer.** `main` built an `argparse` parser and ran the fetch itself. Now
+  `main` runs a typer app and returns the code of the `SystemExit` that typer raises, and the
+  `fetch` command holds the old body of `main`. typer is capped below 0.29 because typer 0.29.0
+  depends on pydantic, which section 8.7 of `docs/principles.md` leaves undecided for `datadesk`.
+  The owner answered "Keep the cap" on November 25, 2026. The runs of the real script in the
+  sweep's pull request show each stop. Design sections 1.4, 4 and 4.2.
+- **Three stops changed, and one is new.** A `KeyboardInterrupt` before the settings load
+  printed Python's traceback and exited 130. typer turns it into exit 130 with nothing printed.
+  A bug or a `KeyboardInterrupt` while the plan printed escaped `main`, and Python printed its
+  traceback outside `hide_keys`. The `try` of `fetch` now holds the print, so that traceback goes
+  through `hide_keys`. A usage error made `main` raise `SystemExit(2)`, and now `main` returns 2,
+  so `test_main_requires_a_saved_folder` asserts the return. One stop is new. With
+  `_DATADESK_COMPLETE` set, typer prints one line such as `Shell zsh not supported.` and exits 1
+  without running the command. The same planted `raise` in scratch copies of `36807de` and of
+  the sweep's head showed the first two. At `36807de` the planted bug message printed the
+  placeholder access key, and at the head it printed `$DATADESK_R2_ACCESS_KEY_ID`. A run with
+  the variable set showed the last. Design sections 4.2 and 9.
+- **Who reads the environment.** Section 4.2 said `main` reads the environment once with
+  `load_settings`. typer reads `TYPER_USE_RICH`, `_DATADESK_COMPLETE` and
+  `TYPER_STANDARD_TRACEBACK`, and click reads `COLUMNS`, `LINES` and the locale variables, so the
+  section now says `fetch` reads the R2 settings once and names the others. A run of
+  `cli.main` with `os.environ` wrapped showed each read but `TYPER_STANDARD_TRACEBACK`, which
+  typer's `except_hook` reads (`typer/main.py`). Design section 4.2.
+- **A ninth import-linter contract.** "only the command line imports typer" forbids typer in all
+  three packages and ignores `datadesk.shell.cli -> typer`. With `import typer` planted in
+  `datadesk.shell.run_fetch`, `uv run lint-imports` broke that contract and exited 1. Design
+  section 12.5.
+- **The `cli.py` estimate.** With docstrings, blank lines and comments left out, the `argparse`
+  `cli.py` holds 95 lines and the typer one 101, so the estimate grows by the 6 lines the run
+  shows, from 240 to 246. The shell total becomes 1,696, `datadesk` 10,161, the grand total
+  14,681 and the total with the QSMR 15,971. Design sections 12.3 and 12.4.
+- **The kit size report leaves docstrings out.** It counted every line that was not blank or a
+  comment, docstrings included, where section 5 and `CLAUDE.md` (Code) leave them out. It now
+  finds each module, class and function docstring with `ast`. It printed 1431 lines at
+  `36807de` and prints 735 at the sweep's head. Section 12 now says the estimates leave
+  docstrings out. Design section 12.

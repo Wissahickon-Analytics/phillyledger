@@ -63,7 +63,7 @@ publisher listings --watch--> WatchPlan --exec--> pull request (index lines, gap
 | PDF words, rules and page-1 text | `PdfReader` | `datadesk.shell.adapters.pdf_pdfplumber` | `fetch` and `words` executors |
 | Local content-addressed cache | `LocalCache` | `datadesk.shell.adapters.cache_dir`, `phillyledger._shell.cache_dir` | executors, reader |
 | Git and pull requests | `GitHost`, from step 13 | `datadesk.shell.adapters.github` | the `watch` executor. At step 3, `fetch_command` writes the index file into the checkout and the session opens the pull request |
-| Clock | none; `cli.main` reads the time once and passes a `date` and a `datetime` down | `datadesk.shell.cli` | CLI entry only |
+| Clock | none; each command in `cli.py` reads the time once and passes a `date` and a `datetime` down | `datadesk.shell.cli` | CLI entry only |
 | Environment | none; `load_settings(environ)` returns a frozen `Settings` once | `datadesk.shell.settings` | CLI entry only |
 | Repository files (TOML records, index, schemas) | none; `gather_repo` reads each file's text once and passes it to a pure loader, and the values make a `RepoSnapshot` | `datadesk.shell.gather` | CLI entry only |
 | Logging and progress | none; findings are values | `datadesk.shell.report` | executors |
@@ -2423,7 +2423,8 @@ def predecessor_spans(registry_rows: Sequence[Mapping[str, object]], entity: str
 
 Every effect sits behind one `typing.Protocol` with a real adapter and one fake. `Http` has two
 real adapters, `http_saved` from step 3 and `http_httpx` from step 13. There are six ports. The
-`Clock` port is gone: `cli.main` reads the time once and passes values down (change 20).
+`Clock` port is gone: each command in `cli.py` reads the time once and passes values down
+(change 20).
 
 ```python
 # datadesk/shell/ports.py
@@ -2649,24 +2650,46 @@ adapter. Catalog or index findings, a source the catalog lacks, a listing status
 listing body that is not UTF-8 and a listing finding each raise `FetchStopped` before any report is
 fetched, so nothing is stored and no file is written.
 
-`main(argv)` is the `datadesk` script, `datadesk fetch <source> --saved <folder>`. At step 3
-`--saved` is required. The City refuses a client that is not a browser (step 3 plan, facts 6 and
-11), so no command sends the City a request. A browser saves the listing and the reports, and the
-command reads the saved folder. `main` reads the clock once, the environment once with
+`main(argv)` is the `datadesk` script, `datadesk fetch <source> --saved <folder>`. It runs a
+typer app and returns the code of the `SystemExit` that typer ends every run with. `fetch` is the
+app's one command. An `@app.callback()` holds the tool's help line, because typer runs an app
+that has one command and no callback as that command, and then reads `fetch` as the source. At
+step 3 `--saved` is required. The City refuses a client that is not a browser (step 3 plan, facts
+6 and 11), so no command sends the City a request. A browser saves the listing and the reports,
+and the command reads the saved folder.
+
+The `fetch` command reads the clock once, the four `DATADESK_R2_*` variables once with
 `load_settings`, and the working directory as the checkout. It builds `Deps` from
-`SavedHttp(folder)`, `s3_store(settings)` and the pdfplumber reader. It prints the listing digest,
-each finding, the plan's title and body and each file it wrote, and returns 0. A missing variable,
-a saved folder that `SavedHttp` refuses, a `FetchStopped` or an `EffectError` prints one line to
-stderr and returns 1. A `PreconditionFailed` that reaches `main` means the store holds other bytes
-under a report's key, and it prints one line naming that object and returns 1. Any other exception
-raised while `main` builds `Deps` or runs the fetch prints its traceback to stderr, and `main`
-returns 1, so a bug stays visible. A `KeyboardInterrupt` there is the operator's stop, not a bug
-(section 9), and `main` prints its traceback the same way and returns 1. Python would print an
-uncaught exception with the messages of the exceptions chained to it, such as the S3 error under
-a `PreconditionFailed`, so `main` catches each of these itself. `main` prints neither R2 key. Once
-`Settings` is loaded, everything it prints, a traceback included, goes through `hide_keys`, which
-replaces each non-empty key with `$` and the name of its variable, so a service message that echoes
-the access key prints `$DATADESK_R2_ACCESS_KEY_ID` in its place.
+`SavedHttp(folder)`, `s3_store(settings)` and the pdfplumber reader, calls `fetch_command`, prints
+the listing digest, each finding, the plan's title and body and each file it wrote, and exits 0.
+A missing variable, a saved folder that `SavedHttp` refuses, a `FetchStopped` or an `EffectError`
+prints one line to stderr and exits 1. A `PreconditionFailed` that reaches `fetch` means the store
+holds other bytes under a report's key, and it prints one line naming that object and exits 1.
+Any other exception raised after the settings load, while `fetch` builds `Deps`, runs the fetch
+or prints the plan, prints its traceback to stderr and exits 1, so a bug stays visible. A
+`KeyboardInterrupt` there is the operator's stop, not a bug (section 9), and `fetch` prints its
+traceback the same way and exits 1. Python would print an uncaught exception with the messages
+of the exceptions chained to it, such as the S3 error under a `PreconditionFailed`, so `fetch`
+catches each of these itself and raises `typer.Exit(1) from None`. `fetch` prints neither R2 key.
+Once `Settings` is loaded, everything it prints, a traceback included, goes through `hide_keys`,
+which replaces each non-empty key with `$` and the name of its variable, so a service message that
+echoes the access key prints `$DATADESK_R2_ACCESS_KEY_ID` in its place.
+
+typer and click handle what happens before a command's body runs, and section 9 lists each stop
+with its exit code. The app turns three typer features off. `add_completion=False` drops
+`--install-completion`, which writes `~/.bashrc` or `~/.zshrc`. `rich_markup_mode=None` prints
+help and usage errors as click's plain lines, not in a box drawn with rich.
+`pretty_exceptions_enable=False` keeps typer's own traceback printing, on by default in typer
+0.28.0, from printing a line that skips `hide_keys`. Libraries read variables of their own. typer
+reads `TYPER_USE_RICH` when it is imported, `_DATADESK_COMPLETE` on every run, and
+`TYPER_STANDARD_TRACEBACK` when an exception reaches Python's hook, and click reads `COLUMNS`,
+`LINES` and the locale variables to lay out help and usage errors. Only `load_settings` reads
+the R2 settings.
+
+Each later command takes the same shape. A typer command in `cli.py` reads the clock and the
+settings, builds `Deps`, calls one plain function that tests call directly, as `fetch` calls
+`fetch_command`, prints through `hide_keys`, and turns the result into an exit code. Only
+`cli.py` imports typer, and an import-linter contract holds it (section 12.5).
 
 The saved folder holds the saved files and `responses.tsv`, whose first row is the header
 `url<TAB>file` and whose other rows each pair a URL with a file name. `SavedHttp(folder)` reads it
@@ -4102,12 +4125,28 @@ exception into a finding. `parse_index` raises on an index file it cannot read, 
 `gather_repo` returns that as the BLOCK finding `index_unreadable`, because the file is input
 from the checkout (section 4). A `KeyboardInterrupt` is the operator's stop, wherever it is
 raised, and is not a bug. Any other exception that escapes the core is a bug and fails the
-command. `main` prints the message of each stop that section 4.2 names: a `MissingSettings`, a
+command. `fetch` prints the message of each stop that section 4.2 names: a `MissingSettings`, a
 saved folder that `SavedHttp` refuses, a `FetchStopped`, an `EffectError` and a
-`PreconditionFailed`. A `KeyboardInterrupt` is not one of those stops. `main` prints its
-traceback, as it does for any other exception raised while it builds `Deps` or runs the fetch.
-It returns 1 in each case. Once `Settings` is loaded, everything it prints goes through
-`hide_keys`.
+`PreconditionFailed`. A `KeyboardInterrupt` is not one of those stops. After the settings load,
+`fetch` prints its traceback, as it does for any other exception raised while it builds `Deps`,
+runs the fetch or prints the plan. It exits 1 in each case. Once `Settings` is loaded,
+everything it prints goes through `hide_keys`.
+
+typer and click handle the stops that come before a command's body runs. Runs of the real
+`datadesk` script on November 25, 2026 gave each stop this output and exit code.
+
+| Stop | Prints | Exit |
+|---|---|---|
+| `--help`, `fetch --help` | help, on stdout | 0 |
+| A usage error, such as no `--saved` | the usage line, a pointer to `--help` and `Error: ...`, on stderr | 2 |
+| A refused input or a failed effect | one line, on stderr | 1 |
+| A bug or a `KeyboardInterrupt` after the settings load | the traceback through `hide_keys`, on stderr | 1 |
+| A bug before the settings load | Python's traceback, on stderr, with no key loaded yet | 1 |
+| A `KeyboardInterrupt` before the settings load | nothing | 130 |
+| `_DATADESK_COMPLETE` set to any value | one line, such as `Shell zsh not supported.`, on stderr | 1 |
+
+typer turns a `KeyboardInterrupt` that reaches it into exit 130. Shell completion is off, so a
+run with `_DATADESK_COMPLETE` set prints that line and runs no command.
 
 ## 10. Caching and determinism
 
@@ -4382,7 +4421,8 @@ fake store and compares the manifest with a golden file.
 ## 12. Module layout
 
 Three packages in one uv workspace. Estimates are lines of Python without tests or data. They are
-estimates; nothing has been written.
+estimates; nothing has been written. Like the counts in section 5, they leave out docstrings,
+blank lines and comments, and so does the kit size report that CI prints.
 
 ### 12.1 `packages/checkedtables` (on PyPI)
 
@@ -4507,8 +4547,8 @@ estimates; nothing has been written.
 | `shell/run_parse.py` | parse executor | 90 |
 | `shell/run_release.py` | release executor | 75 |
 | `shell/report.py` | printing findings, plans and gates | 140 |
-| `shell/cli.py` | `datadesk` commands; reads the clock once | 240 |
-| **total** | 76 modules | **10,155** |
+| `shell/cli.py` | `datadesk` commands on typer; each reads the clock once | 246 |
+| **total** | 76 modules | **10,161** |
 
 `datadesk/data/` holds data, not code: `catalog.toml`, `rows/*.toml` (one per table),
 `registry/`, `acks/` and `records/`. It is not in the line counts.
@@ -4519,10 +4559,10 @@ estimates; nothing has been written.
 |---|---:|---:|
 | `checkedtables` | 24 | 3,680 |
 | `phillyledger` | 8 | 840 |
-| `datadesk` (core 8,465, shell 1,690) | 76 | 10,155 |
-| **Grand total** | **108** | **14,675** |
+| `datadesk` (core 8,465, shell 1,696) | 76 | 10,161 |
+| **Grand total** | **108** | **14,681** |
 | QSMR, added in build step 14 | 13 | 1,290 |
-| Grand total with the QSMR | 121 | 15,965 |
+| Grand total with the QSMR | 121 | 15,971 |
 
 QSMR modules, for the last build step:
 
@@ -4646,6 +4686,13 @@ forbidden_modules = ["datadesk.core.tables.catalog", "datadesk.core.tables.qcmr_
                      "datadesk.core.tables.supp_activity", "datadesk.core.tables.supp_revenues",
                      "datadesk.core.tables.supp_by_source", "datadesk.core.tables.supp_summaries",
                      "datadesk.core.tables.supp_capital"]
+
+[[tool.importlinter.contracts]]
+name = "only the command line imports typer"
+type = "forbidden"
+source_modules = ["checkedtables", "phillyledger", "datadesk"]
+forbidden_modules = ["typer"]
+ignore_imports = ["datadesk.shell.cli -> typer"]
 ```
 
 The QSMR table modules join the independence list and the forbidden list of the helper contract
