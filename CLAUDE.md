@@ -116,7 +116,8 @@ Step 1 creates these. Keep this list true as tooling changes.
 5. Public functions in `checkedtables` take no `bool` parameters, and its types have no flag
    fields. The shape test enforces this.
 6. Closed lists stay closed. Adding a member to a pinned list (check relations, note kinds, the
-   six vocabulary lists) changes the pin test and the design in the same pull request.
+   readers' refusal codes, the six vocabulary lists) changes the pin test and the design in the
+   same pull request.
 7. Following pstack, settle a question by running something when a run can settle it, make the
    reversible choice, and record it. Stop for the owner only on calls no run can settle: what a
    printed number means, what gets published, money, or anything touching `../gov-budget-data`.
@@ -138,7 +139,9 @@ Step 1 creates these. Keep this list true as tooling changes.
 ## Code
 
 - Python 3.12 or later. Frozen, slotted dataclasses for values, `StrEnum` for closed lists,
-  `Decimal` for every amount, never `float`. Type hints everywhere; `ty check` passes.
+  `Decimal` for every amount, never `float`. A value that is one piece of text with a rule, such
+  as `Sha256`, may be a `str` subclass whose constructor checks the rule
+  (`docs/principles.md`, section 8.3). Type hints everywhere; `ty check` passes.
 - Types say what a value means (`docs/principles.md`, section 8). A value with a rule of its
   own, such as a sha256, has a type of its own, and the one function that builds it checks the
   rule. A result with more than one outcome is a union of named types, never a bare `str` or
@@ -166,8 +169,9 @@ Step 1 creates these. Keep this list true as tooling changes.
   type rule asks for, change the design in the same pull request (hard rule 7). If a module
   runs well past its estimate in section 12, say so in progress.md. Docstrings do not count
   against the estimate.
-- The type rules date from November 25, 2026. Code built before then does not meet them yet.
-  `docs/progress.md` says what still has to change.
+- The type rules date from November 25, 2026. Standards sweep B brought the sha256 and the
+  readers' refusals to them. The rest of the code built before then waits for the plan of the
+  step that next changes its file, and `docs/progress.md` lists it.
 
 ## Tests
 

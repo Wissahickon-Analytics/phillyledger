@@ -107,13 +107,6 @@ file, `docs/progress.md`, `docs/followups.md` or `docs/deviations/`.
   says no OCR word has. Step 4 builds the adapters and learns what pdfplumber and Textract return
   for every word, so its plan decides whether `Page` refuses those states too, and records the
   choice in design section 2.1.
-- **The kit checks a hash for presence only, a note for the step 4 and step 5 plans** (November
-  23, 2026, step 2, S2-B). `WordRef`, `Page` and `Document` refuse an empty hash and take any
-  other text, such as `"unknown"`. The old repository checks that a hash is 64 lowercase
-  hexadecimal characters (`gov_budget_etl/models.py`, line 216). The kit does not. The adapter
-  of step 4 computes each hash from a file's bytes, and the record lint of step 5 reads the hashes
-  that records cite, so those two own the form of a hash. Their plans say where the form is
-  checked.
 - **A word that still holds a font code, a note for the step 4 plan** (November 23, 2026, step 2,
   S2-D fix round 2, found in the second Codex review of S2-D). Design section 15, step 4, says
   that a word still holding `(cid:` after repair lexes as `Unreadable`. At the S2-D head,
@@ -315,9 +308,9 @@ file, `docs/progress.md`, `docs/followups.md` or `docs/deviations/`.
   found them. Each value was built again in a scratch copy of `aec4c6c` on Python 3.12.15, and
   each constructor accepted it.
   - The adapters of step 4 meet the word facts. On an OCR page, `Page` accepts a word with
-    `bold=True` and a word with no confidence (the note "What an OCR word carries"). `WordRef`,
-    `Page` and `Document` accept the hash `"unknown"` (the note "The kit checks a hash for
-    presence only", which also names the record lint of step 5). A subclass of `WordRef` with the
+    `bold=True` and a word with no confidence (the note "What an OCR word carries"). Standards
+    sweep B made `WordRef`, `Page`, `Document` and `ReviewedReading` refuse a hash that is not a
+    `Sha256`, so they no longer accept the hash `"unknown"`. A subclass of `WordRef` with the
     same four fields as a ref on the page compares unequal to that ref, so `Page` holds both
     words.
   - The record lint of step 5 meets the record ids. `Dash` accepts an empty `rule_id`, and
@@ -451,3 +444,26 @@ file, `docs/progress.md`, `docs/followups.md` or `docs/deviations/`.
   (answer D). Step 7 adds `datadesk ocr --spend` (design section 15), and Textract calls need the
   owner's go-ahead (hard rule 8 of `CLAUDE.md`). Step 4 ports the font repair for `(cid:N)` words.
   Whether that repair reads this cover was not run.
+- **A word fixture prints each sha as `Sha256('...')`, a note for the step 4 plan** (November
+  25, 2026, standards sweep B). `datadesk fixture <sha> <pages>` writes words to
+  `tests/fixtures/words/` as Python literals (design section 11). The `repr` of a `WordRef`
+  prints its hash as `Sha256('<64 hex characters>')`, which rebuilds a `Sha256` when the fixture
+  is imported, and `eval(repr(word)) == word` holds for a `Word`. Printed with `repr`, a fixture
+  holds that text once for each word, unless the writer binds the hash to a name, such as
+  `SHA = Sha256('...')`, and prints the name. The step 4 plan picks the form.
+- **`Unreadable.reason` is still an open `str`, a note for the step 4 plan** (November 25, 2026,
+  standards sweep B). Design section 2.1 lists `Unreadable.reason` as `"grouping"`,
+  `"low_confidence"`, `"two_tokens"`, ..., an open list, and `_read_cell` in the kit's `lex.py`
+  returns `Decimal | str`, where the `str` is that reason. Section 8.3 of `docs/principles.md`
+  asks for a union of named types. Step 4 adds the rule for a word that still holds `(cid:`
+  (VAL-Q05), so its plan meets the list. The owner answered "Yes, wait per step" when asked
+  whether what sweep B leaves should wait for the step that next changes each file.
+- **A loader builds each sha with `Sha256`, a note for the plan of the step that builds the TOML
+  loaders** (November 25, 2026, standards sweep B). Standards sweep B gave a file's sha the type
+  `Sha256`, whose constructor raises `ValueError` for anything but 64 lowercase hex characters,
+  and `WordRef`, `Page`, `Document` and `ReviewedReading` refuse a sha that is not one. The
+  record files that `load_records` reads (design section 3.2) cite shas as text, so a loader
+  builds each with `Sha256` and turns its `ValueError` into a finding, as `gather_repo` turns one
+  from `parse_index` into `index_unreadable`. The adapter of step 4 builds each hash from a
+  file's bytes with `Sha256(hashlib.sha256(data).hexdigest())`. This note replaces "The kit
+  checks a hash for presence only", on which sweep B acted.

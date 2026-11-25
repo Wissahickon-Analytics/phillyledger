@@ -27,8 +27,8 @@ class ListedLink:
     position
         Its place on the page, counted from 0.
     skip_reason
-        Why the link names no edition, as the title rule returned it. A link has an edition or
-        a skip reason, never both or neither.
+        The `SkipReason` the title rule returned when the link names no edition. A link has an
+        edition or a skip reason, never both or neither.
     listed_at
         A stamp from the shape's parser. For a document-finder listing it is the 14-digit
         upload stamp in the URL's path.
@@ -58,7 +58,7 @@ class Listing:
     source
         The catalog id of the listing's source.
     html_sha256
-        The sha256 of the page's text encoded as UTF-8.
+        The `Sha256` of the page's text encoded as UTF-8.
     """
 
     source: str
@@ -70,9 +70,10 @@ class Listing:
 def parse_listing(source: SourceEntry, url: str, html: str) -> Listing | Finding:
     """Read a listing page into its links, or return a BLOCK finding.
 
-    The source's shape picks the parser, and the title rule of its series reads each link's title.
-    Each URL moves to the canonical host. The findings are listing_unsupported, for a series with
-    no title rule or a shape with no parser yet, and listing_unreadable from the shape's parser.
+    The source's shape picks the parser, and the title rule of its series reads each link's title
+    as an `EditionKey` or a `SkipReason`. Each URL moves to the canonical host. The findings are
+    listing_unsupported, for a series with no title rule or a shape with no parser yet, and
+    listing_unreadable from the shape's parser.
     """
     read_title = TITLE_RULES.get(source.series)
     if read_title is None:

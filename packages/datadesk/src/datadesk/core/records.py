@@ -37,7 +37,7 @@ class EditionNote:
     Attributes
     ----------
     doc_sha256
-        The sha256 of the file the note is about.
+        The `Sha256` of the file the note is about.
     page
         The 1-based page the note is about, or None for no one page.
     printed

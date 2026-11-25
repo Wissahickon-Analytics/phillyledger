@@ -77,7 +77,8 @@ longer shows what will happen.
 ## 5. Rules for this code, with reasons
 
 - Domain values are frozen dataclasses and enums. A value that cannot change can be cached,
-  compared and shared.
+  compared and shared. The one exception is a value that is one piece of text with a rule,
+  such as `Sha256`: a `str` subclass whose constructor checks the rule (section 8.3).
 - Every effect sits behind a `typing.Protocol` port owned by the shell: HTTP, object store,
   OCR service, local cache, git host, clock. The core imports none of them.
 - The core has no file, network, clock, environment, randomness, logging handler or
@@ -176,19 +177,30 @@ code takes only types.
 
 - A value with a rule of its own has a type of its own. A sha256 is 64 lowercase hex
   characters, and `str` says none of that. Where there is a rule to check, the type is a
-  frozen, slotted dataclass with one builder that checks it. Where there is only a meaning to
-  keep apart, such as two kinds of id, `typing.NewType` is enough. What the builder does with a
-  bad value follows section 5: a problem in the publisher's data comes back as a value. Step 3
-  shows the cost of the loose form. Pull request 38 added a guard to `parse_index` for a sha
-  that was not 64 lowercase hex characters, and its review then found the sha that was not a
-  string at all.
+  frozen, slotted dataclass with one builder that checks it. Where the value is one piece of
+  text with a rule, the type may instead be a `str` subclass with empty `__slots__` whose
+  constructor checks the rule and builds from the text it checked, as `Sha256` is. It equals
+  its text and serves as a key, a path or JSON, so the files it is written to keep their bytes.
+  It overrides only `__new__` and `__repr__`, so it changes how a value is built and printed,
+  not what code does with it. Where there is only a meaning to keep apart, such as two kinds of id, `typing.NewType` is
+  enough. What the builder does with a bad value follows section 5: a problem in the
+  publisher's data comes back as a value. Step 3 shows the cost of the loose form. Pull request
+  38 added a guard to `parse_index` for a sha that was not 64 lowercase hex characters, and its
+  review then found the sha that was not a string at all. Standards sweep B gave the sha its
+  type. On November 25, 2026 the owner was shown three forms of `Sha256` with their pytest and
+  `ty` counts, whether the index bytes change and their `repr`, and chose "Checked str
+  subclass (Recommended)". Its text said the form "needs 8.3 reworded to allow this form for a
+  value that is one piece of text".
 - A result with more than one outcome is a union of named types. It is never a bare `str` or
   `tuple` that stands for "it failed". The caller handles each member and ends with
   `typing.assert_never`, so `ty check` fails at every caller that ignores a new member. A run
   on November 25, 2026 showed that `ty` reports the missed member after a `match` and after a
-  chain of `isinstance` checks. At head `3643f40`, `qcmr_period` returns `Period | str`, where
-  the `str` is a refusal code, and `fetch_command` tells a repo from its findings with
-  `isinstance(repo, tuple)`. Both are the loose form.
+  chain of `isinstance` checks. At head `3643f40`, `qcmr_period` returned `Period | str`, where
+  the `str` was a refusal code, which is the loose form. Standards sweep B made it return
+  `Period | PeriodRefusal`, and `confirm_period` ends its `match` in `assert_never`. This
+  section also called `isinstance(repo, tuple)` in `fetch_command` the loose form. Asked on
+  November 25, 2026 "Should the sweep B build reword 8.3 so it no longer says that?", the owner
+  chose "Yes, withdraw it (Recommended)", so it no longer does.
 - A closed set of values is a `StrEnum`, pinned by a test (hard rule 6). A `str` parameter that
   takes one of four words is an enum that nobody wrote.
 - Fields that vary freely are a frozen dataclass. Fields that must agree with each other get

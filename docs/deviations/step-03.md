@@ -605,3 +605,60 @@ design are recorded here.
   finds each module, class and function docstring with `ast`. It printed 1431 lines at
   `36807de` and prints 735 at the sweep's head. Section 12 now says that the estimates and the
   report leave out docstrings, blank lines and comments. Design section 12.
+
+## Standards sweep B
+
+On November 25, 2026 the owner adopted the type rules of the book Robust Python
+(`docs/principles.md`, section 8). Sweep B changed signatures that steps 2 and 3 built, so its
+changes to the design are recorded here. The plan is `docs/plans/standards-sweep-b.md`, which
+landed in pull request 41. Its eight answers are the owner's, and the rest of it is the plan's
+proposal, marked so below.
+
+- **A sha256 has a type of its own.** `Sha256` in `checkedtables.refs` is a `str` subclass whose
+  constructor checks for 64 lowercase hex characters and builds from the characters it matched.
+  The kit's `WordRef`, `Page`, `Document`, `ReviewedReading` and `page_from_text`, and in
+  `datadesk` `DocumentVersion`, `ArchiveIndex.by_sha`, `Fetched`, `StoreObject`, `EditionNote`,
+  `Listing`, `FetchRun` and `put_immutable`, take it where they took `str`. The owner was asked
+  "Plan sweep B as its own short step before step 4's plan?", shown the scope of one `Sha256`
+  type with `index.jsonl` unchanged byte for byte, and answered "Yes, plan it". Shown three
+  forms with their pytest and `ty` counts, whether the index bytes change and their `repr`, he
+  chose "Checked str subclass (Recommended)". The Plan run found at `36807de` that a frozen
+  dataclass failed 56 tests and rendered other index bytes, since `asdict` writes it as an
+  object. With the base's tests and two names added to the import pin, `uv run pytest` gives 491
+  passed and 7 skipped both at the base `199c2bb` and with the sweep's code at `d77274a`. Design
+  sections 1.3, 2.1, 2.2, 3.1, 3.2, 4, 4.2, 4.3, 4.5, 12.1 and 18.3.
+- **Positions not built yet take `Sha256` too.** Proposal of the plan. `Table`, `FailureKey`,
+  `WordSourcePlan`, `TablePages`, `ReleaseRow`, `WordJob`, `ParseJob`, `ExpectedTables`,
+  `ArticleFigure`, `records_for`, `illegible_pages`, `textract_to_document` and
+  `PdfReader.words` name a file's sha, and so do `Alias.editions` and the `scope` of
+  `match_acknowledgments`. The cache keys and the `accepted_diff` of `release_command` stay
+  `str`. A cache key names no file, and the diff's sha is a word from the command line. Design
+  sections 2.1, 2.2, 3.1, 3.2, 4 and 18.3.
+- **The four kit constructors refuse plain text.** `WordRef`, `Page`, `Document` and
+  `ReviewedReading` raise `ValueError` for a sha that is not a `Sha256`, so a kit user with no
+  type checker cannot pass plain text. The check takes the place of the check for an empty sha,
+  which `ReviewedReading` did not have, and the message says "not a Sha256" where it said "names
+  no file". Told that a kit user who passes plain text gets a `ValueError`, the owner was asked
+  "Keep the four kit constructors refusing a sha that is plain text?" and answered "Yes, keep
+  it". The `repr` of a `WordRef` now shows `Sha256('...')`, so a message that prints a ref
+  changes, and so does the one `doc_of` raises for pages of two files. The tests of clause 3 of
+  the plan show the refusals. Design section 2.1.
+- **The readers name their refusals.** `qcmr_period` returns `Period | PeriodRefusal` and
+  `qcmr_title` returns `EditionKey | SkipReason`, where each returned a bare `str`. Each member's
+  value is the string the reader returned before. `confirm_period` and `parse_listing` match
+  every member and end in `assert_never`, and `confirm_period` puts the refusal's value in
+  `Finding.code`, so the code stays a plain `str`. With the refusal arm removed from either
+  function, `uv run ty check` fails with `type-assertion-failure` at its `assert_never`. Told
+  that section 3.2 lists `unstaged`, the owner was asked "Keep unstaged in SkipReason, though no
+  reader returns it yet?" and answered "Yes, keep it". Both enums are pinned in
+  `test_closed_lists_are_pinned`. Told that this pins them and edits a hard rule, he answered
+  "Yes, add them" to adding "the readers' refusal codes" to hard rule 6. Two enums rather than
+  one is a proposal of the plan, since one shared enum would let `qcmr_title` return
+  `period_ambiguous` with no report from `ty`. Design sections 1.3, 3.2 and 11.4.
+- **`parse_index` builds the sha.** `_version` builds `sha256` with `Sha256` where the guard of
+  pull request 38 stood, before it reads `urls`, and builds `supersedes` unless it is JSON
+  `null`. For a `supersedes` that is not a sha, the base said "supersedes ..., not of its
+  edition" for text and raised `TypeError` for a list. Both are now the builder's `ValueError`.
+  `gather_repo` catches all three, and the finding is still `index_unreadable`. The committed
+  index renders back byte for byte, and `git diff origin/main...HEAD` of `index.jsonl` prints
+  nothing. Design section 3.2.

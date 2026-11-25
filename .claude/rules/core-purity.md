@@ -16,7 +16,9 @@ These modules decide; they never act. Design sections 1.4, 3 and 11.4 are the re
   and never decides again.
 - Problems are findings with a code and a severity, returned with the result. Raise only for a
   broken invariant, which is a bug.
-- Values are frozen, slotted dataclasses. Unions are closed and matched exhaustively.
+- Values are frozen, slotted dataclasses. A value that is one piece of text with a rule, such as
+  `Sha256`, may be a `str` subclass whose constructor checks the rule (`docs/principles.md`,
+  section 8.3). Unions are closed and matched exhaustively.
 - A value with a rule of its own has a type of its own, built by one function that checks the
   rule. A result with more than one outcome is a union of named types, never a bare `str` or
   `tuple` (`docs/principles.md`, section 8).

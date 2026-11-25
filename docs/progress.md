@@ -53,14 +53,25 @@ No session reads these by default. Open one when the work needs it.
 Commands that matter and traps in the tooling. A note belongs here only when every later
 session needs it. A note for one later step goes in `docs/plan-notes.md`.
 
-- **The type rules of the code standards are not met yet** (November 25, 2026). The owner
-  asked for typer, docstrings and the type rules of the book Robust Python. `CLAUDE.md` (Code)
-  and section 8 of `docs/principles.md` hold them. Standards sweep A brought the code of steps 1
-  to 3 to the typer and docstring rules, and ruff now checks docstrings in all three packages.
-  Sweep B owes the type rules: a type of its own for a sha256, a named refusal in place of the
-  `str` that `qcmr_period` returns, and a named result in place of the tuple of findings that
-  `gather_repo` returns, which `fetch_command` tells apart with `isinstance(repo, tuple)`. New
-  code follows the rules. This note goes when sweep B lands.
+- **What the type rules leave for later steps** (November 25, 2026. Updated November 25, 2026,
+  standards sweep B). The owner asked for typer, docstrings and the type rules of the book
+  Robust Python. `CLAUDE.md` (Code) and section 8 of `docs/principles.md` hold them. Standards
+  sweep A brought the code of steps 1 to 3 to the typer and docstring rules, and ruff checks
+  docstrings in all three packages. Sweep B gave a sha256 the type `Sha256` and named the
+  readers' refusals `PeriodRefusal` and `SkipReason`. New code follows the rules. No later sweep
+  takes the rest. Asked whether each should wait for the step that next changes its file, the
+  owner answered "Yes, wait per step", so each waits for the plan of that step:
+  - `SourceCatalog | tuple[Finding, ...]` and the result of `gather_repo`, which sweep B kept;
+  - `_read_cell` in the kit's `lex.py`, which returns `Decimal | str`, where the `str` is the
+    open `Unreadable.reason` (step 4 adds VAL-Q05);
+  - `Rejection.reason`, which holds `http_<status>` and finding codes beside the period codes;
+  - a URL, a store key, a cache key, a `listed_at` stamp and an edition id;
+  - the other callers in `datadesk` that tell a union apart with an early `isinstance` return,
+    or with a `match` that has no `assert_never`, which
+    `rg 'isinstance\(|^\s*match ' packages/datadesk/src` lists;
+  - `phillyledger`, which may not import the kit, so step 13's plan decides how it types a sha.
+  `checkedtables/__init__.py` exports nothing yet, so `Sha256` is imported from
+  `checkedtables.refs`.
 - **`uv.lock` and `exclude-newer`** (November 22, 2026, step 1). The owner's uv config and
   `UV_EXCLUDE_NEWER` set `exclude-newer = "1 week"`, and `uv lock` records that span in
   `uv.lock`. A machine without the setting, such as a CI runner, rejects the lock: `uv lock
@@ -107,10 +118,13 @@ session needs it. A note for one later step goes in `docs/plan-notes.md`.
   `typing.get_type_hints`. A kit dataclass with the field `amount: "Decimal"` and that import
   fails `test_bool_fields_are_page_facts_only` with `NameError`, so import a field's type at run
   time.
-- **`test_closed_lists_are_pinned` pins `NoteKind` alone** (November 22, 2026, step 1, S1-C.
-  Updated November 24, 2026, S3-C). Each list's pin lands in the pull request that creates the
-  list, in `packages/checkedtables/tests/test_library_shape.py` (`CLAUDE.md`, hard rule 6). S3-C
-  creates `NoteKind` and writes the test with its pin. The other lists that design section 11.4
+- **`test_closed_lists_are_pinned` pins `NoteKind`, `PeriodRefusal` and `SkipReason`**
+  (November 22, 2026, step 1, S1-C. Updated November 25, 2026, standards sweep B). Each list's
+  pin lands in the pull request that creates the list, in
+  `packages/checkedtables/tests/test_library_shape.py` (`CLAUDE.md`, hard rule 6). S3-C
+  creates `NoteKind` and writes the test with its pin. Sweep B pins the readers' refusal codes,
+  `PeriodRefusal` in `datadesk.core.fetch` and `SkipReason` in `datadesk.core.listings.titles`.
+  The other lists that design section 11.4
   pins (`Check`, `RowSel`, `Kind`, `Version`, `Window`, `How`, `Dim` and `Quantity`) do not exist
   yet. The `StrEnum` classes that S2-B created, such as `Severity`, are pinned nowhere, because
   section 11.4 does not list them.
@@ -202,14 +216,14 @@ session needs it. A note for one later step goes in `docs/plan-notes.md`.
   The `aws` CLI reads the bucket with the keys passed through the environment, as "Setting up
   R2" in `docs/plans/step-03.md` shows, and never through a profile (hard rule 8).
 - **Kit modules against their estimates** (November 23, 2026, step 2. Updated November 25,
-  2026, standards sweep A). The kit size report counts lines that are not blank, a comment or a
-  docstring, as design section 12 counts. At the head of sweep A,
+  2026, standards sweep B). The kit size report counts lines that are not blank, a comment or a
+  docstring, as design section 12 counts. At the head of sweep B,
   `uv run python packages/checkedtables/tests/test_library_shape.py` prints
-  `checkedtables: 735 lines (budget 3,800), 0 public names (budget 140)`. It printed 1431 when it
-  counted docstrings. Against design section 12.1: `refs` 62 (estimate 60), `kinds` 21 (40),
-  `words` 65 (90), `labels` 9 (30), `text` 52 (150), `lines` 52 (120), `cells` 50 (90), `lex`
-  181 (230), `records` 115 (140) and `testing` 51 (90). `columns` holds 19 lines for two of its
+  `checkedtables: 753 lines (budget 3,800), 0 public names (budget 140)`. At the head of sweep A
+  it printed 735. Against design section 12.1: `refs` 74 (estimate 60), `kinds` 21 (40),
+  `words` 67 (90), `labels` 9 (30), `text` 52 (150), `lines` 52 (120), `cells` 50 (90), `lex`
+  181 (230), `records` 119 (140) and `testing` 51 (90). `columns` holds 19 lines for two of its
   ten names (330). `table` holds 58 lines (190) for two of the eight names its row lists,
-  `RowKey` and `Finding`, and for `Severity`, which the row does not list. `refs` runs 2 lines
-  past its estimate, and it writes four comparison methods for `WordRef`. Every other module is
-  under its estimate.
+  `RowKey` and `Finding`, and for `Severity`, which the row does not list. `refs` runs 14 lines
+  past its estimate. It writes four comparison methods for `WordRef`, and sweep B added `Sha256`
+  with its check. Every other module is under its estimate.

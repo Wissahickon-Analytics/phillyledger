@@ -30,8 +30,9 @@ PERIOD_ENDING = compile(r"(?i)\bPERIOD\s+ENDING\b(?:\s+(\w+)\s+(\d{1,2}),?\s+(\d
 class Fetched:
     """What the shell got for one fetch request, before any decision.
 
-    `size` is the length of the body. `page1_text` is the text the PDF reader read from page 1.
-    For a status other than 200, `sha256` and `page1_text` are None and `size` is 0.
+    `sha256` is the `Sha256` of the body and `size` its length. `page1_text` is the text the PDF
+    reader read from page 1. For a status other than 200, `sha256` and `page1_text` are None and
+    `size` is 0.
     """
 
     request: FetchRequest
@@ -43,7 +44,7 @@ class Fetched:
 
 @dataclass(frozen=True, slots=True)
 class StoreObject:
-    """A file to put in the archive bucket, under the key "pdf/<sha[:2]>/<sha>.pdf".
+    """A file to put in the archive bucket: its `Sha256`, and its key "pdf/<sha[:2]>/<sha>.pdf".
 
     `dest_key` is plain text.
     """

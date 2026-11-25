@@ -25,7 +25,7 @@ def retried[T](effect: Callable[[], T]) -> T:
 def put_immutable(store: ObjectStore, key: str, data: bytes, sha: Sha256) -> None:
     """Put bytes under a key whose object must never change.
 
-    `sha` is the sha256 of `data`. A key that already holds bytes with that sha counts as
+    `sha` is the `Sha256` of `data`. A key that already holds bytes with that sha counts as
     written, since a retry or a racing run may have put them.
 
     Raises
@@ -47,8 +47,9 @@ def put_immutable(store: ObjectStore, key: str, data: bytes, sha: Sha256) -> Non
 def run_fetch(deps: Deps, plan: WatchPlan, repo: RepoSnapshot) -> FetchPlan:
     """Download each report the watch plan requests, then store each file the fetch plan names.
 
-    Bytes stay in memory, keyed by sha256, until `plan_fetch` decides. Each GET and each put is
-    tried up to `TRIES` times while it raises EffectError. It writes no file in the checkout.
+    Bytes stay in memory, keyed by their `Sha256`, until `plan_fetch` decides. Each GET and each
+    put is tried up to `TRIES` times while it raises EffectError. It writes no file in the
+    checkout.
     """
     held: dict[Sha256, bytes] = {}
     fetched: list[Fetched] = []

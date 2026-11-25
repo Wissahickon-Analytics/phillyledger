@@ -79,7 +79,7 @@ class DocumentVersion:
     Attributes
     ----------
     sha256
-        The sha256 of the file's bytes.
+        The `Sha256` of the file's bytes.
     listed_at
         A stamp that sorts in listing order. For a document-finder listing it is the 14-digit
         upload stamp in the URL's path, the latest of the stamps at which each of `urls` joined
@@ -91,7 +91,7 @@ class DocumentVersion:
     printed_period
         The period that page 1 prints, as `confirm_period` confirmed it at fetch.
     supersedes
-        The sha256 of the version of the same edition that this one replaces, or None for the
+        The `Sha256` of the version of the same edition that this one replaces, or None for the
         first. Its listed_at may equal this one's, when new bytes sit behind an unchanged URL.
     """
 
@@ -125,7 +125,7 @@ class ArchiveIndex:
         return next((head for head in _heads(self.versions) if head.edition == edition), None)
 
     def by_sha(self, sha: Sha256) -> DocumentVersion | None:
-        """Return the version whose bytes have this sha256, or None."""
+        """Return the version whose bytes have the `Sha256` `sha`, or None."""
         return next((version for version in self.versions if version.sha256 == sha), None)
 
 

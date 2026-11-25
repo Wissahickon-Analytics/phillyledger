@@ -49,8 +49,8 @@ publisher listings --watch--> WatchPlan --exec--> pull request (index lines, gap
 
 | Package | Core types |
 |---|---|
-| `checkedtables` | `Box`, `WordRef`, `Word`, `WordSource`, `Page`, `Document`, `Line`, `PageLines`, `PageRun`, `BodyRule`, `ColumnSpec`, `Era`, `Lane`, `Binding`, `Layout`, `CutPage`, `CutPages`, `Cell` (`Amount`, `Dash`, `NotApplicable`, `Blank`, `Unreadable`, `Text`), `Label`, `RawRow`, `RowKey`, `RowDef`, `RowSchema`, `RowRule`, `RowGrammar`, `KeyedRow`, `RowMatch`, `Table`, `Finding`, `ReviewedReading`, `DashRule`, `CellRecords`, the `Check` union, `CheckSet`, `Tolerance`, `RowSel`, `Result`, `CheckReport`, `FailureKey`, `ExpectedFailure`, `Acknowledgment`, `Gate` |
-| `datadesk.core` | `EditionKey`, `Period`, `DocumentVersion`, `ArchiveIndex`, `Listing`, `WatchPlan`, `FetchPlan`, `WordSourcePlan`, `EditionNote`, `Kind`, `Version`, `Window`, `How`, `Dim`, `Quantity`, `Stated`, `Derived`, `NotPublished`, `MeasureSpec`, `RowMeasure`, `MeasureSet`, `Scope`, `Subject`, `ParseContext`, `Parsed`, `Failed`, `TableEntry`, `Registry`, `Entity`, `Alias`, `Resolution`, `VintagePolicy`, `ParsePlan`, `OcrPlan`, `ReleaseRow`, `ReleasePlan` |
+| `checkedtables` | `Box`, `Sha256`, `WordRef`, `Word`, `WordSource`, `Page`, `Document`, `Line`, `PageLines`, `PageRun`, `BodyRule`, `ColumnSpec`, `Era`, `Lane`, `Binding`, `Layout`, `CutPage`, `CutPages`, `Cell` (`Amount`, `Dash`, `NotApplicable`, `Blank`, `Unreadable`, `Text`), `Label`, `RawRow`, `RowKey`, `RowDef`, `RowSchema`, `RowRule`, `RowGrammar`, `KeyedRow`, `RowMatch`, `Table`, `Finding`, `ReviewedReading`, `DashRule`, `CellRecords`, the `Check` union, `CheckSet`, `Tolerance`, `RowSel`, `Result`, `CheckReport`, `FailureKey`, `ExpectedFailure`, `Acknowledgment`, `Gate` |
+| `datadesk.core` | `EditionKey`, `Period`, `DocumentVersion`, `ArchiveIndex`, `Listing`, `SkipReason`, `WatchPlan`, `FetchPlan`, `PeriodRefusal`, `WordSourcePlan`, `EditionNote`, `Kind`, `Version`, `Window`, `How`, `Dim`, `Quantity`, `Stated`, `Derived`, `NotPublished`, `MeasureSpec`, `RowMeasure`, `MeasureSet`, `Scope`, `Subject`, `ParseContext`, `Parsed`, `Failed`, `TableEntry`, `Registry`, `Entity`, `Alias`, `Resolution`, `VintagePolicy`, `ParsePlan`, `OcrPlan`, `ReleaseRow`, `ReleasePlan` |
 | `phillyledger` | `Manifest`, `DatasetEntry`, `FileEntry`, `LoadRequest`, `LoadPlan` |
 
 ### 1.4 Where every effect lives
@@ -89,7 +89,7 @@ keeps `Label.norm`, `Label.squash` and `Label.text`, and `lex_cell` and `apply_r
 check shows it in the block.
 
 ```python
-# checkedtables/refs.py: Box and WordRef. Cells and checks import this module, never words.
+# checkedtables/refs.py: Box, Sha256 and WordRef. Cells and checks import this module, never words.
 @dataclass(frozen=True, slots=True)
 class Box:
     x0: float
@@ -107,15 +107,24 @@ class Box:
     def contains(self, other: "Box", slack: float) -> bool: ...
 
 
+class Sha256(str):             # not a dataclass: a str subclass that equals its text
+    __slots__ = ()
+
+    def __new__(cls, text: str) -> Self: ...    # ValueError for anything but a str of 64
+                                                # lowercase hex characters; builds from the 64
+                                                # characters it matched, never from str(text)
+    def __repr__(self) -> str: ...              # Sha256('7c4a...'), which rebuilds the value
+
+
 @dataclass(frozen=True, slots=True)
 class WordRef:
-    doc_sha256: str
+    doc_sha256: Sha256
     page: int                  # 1-based page in the publisher file, never a cut file
     index: int                 # extraction order on that page; evidence only, never a record key
     child: int | None = None   # set when split_numeric_runs made this word; its box is approximate
 
-    def __post_init__(self) -> None: ...    # ValueError: an empty doc_sha256, a page below 1,
-                                            # or an index or a child below 0
+    def __post_init__(self) -> None: ...    # ValueError: a doc_sha256 that is not a Sha256, a
+                                            # page below 1, or an index or a child below 0
 
     # __lt__, __le__, __gt__, __ge__: by the four fields, a None child before every int child.
     # order=True would raise TypeError comparing a word with its child (None against int).
@@ -179,7 +188,7 @@ class Rule:
 
 @dataclass(frozen=True, slots=True)
 class Page:
-    doc_sha256: str
+    doc_sha256: Sha256
     number: int
     width: float
     height: float
@@ -189,8 +198,8 @@ class Page:
     rules: tuple[Rule, ...] = ()
 
     def __post_init__(self) -> None:
-        if not self.doc_sha256:
-            raise ValueError(f"page {self.number} names no file")
+        if not isinstance(self.doc_sha256, Sha256):
+            raise ValueError(f"page {self.number} names its file by {self.doc_sha256!r}, not a Sha256")
         if self.number < 1:
             raise ValueError(f"a page has a number below 1: {self.number}")
         seen: set[WordRef] = set()
@@ -206,12 +215,12 @@ class Page:
 
 @dataclass(frozen=True, slots=True)
 class Document:
-    sha256: str
+    sha256: Sha256
     pages: tuple[Page, ...]    # pages extracted, ascending; need not be contiguous
 
-    def __post_init__(self) -> None: ...    # ValueError: an empty sha256, a page whose
-                                            # doc_sha256 is not sha256, or page numbers that are
-                                            # not strictly ascending
+    def __post_init__(self) -> None: ...    # ValueError: a sha256 that is not a Sha256, a page
+                                            # whose doc_sha256 is not sha256, or page numbers
+                                            # that are not strictly ascending
 
     def page(self, number: int) -> Page: ...
 ```
@@ -219,9 +228,26 @@ class Document:
 What these make impossible:
 
 - a word without its file hash and page;
+- a file hash that is not 64 lowercase hex characters, or plain text that no builder checked;
 - a page with two word sources;
 - a page number that refers to a cut file, because no type stands for a cut file;
 - "not bold" and "style unknown" as one state.
+
+`Sha256` is the one type in this section that is not a dataclass. It is the sha256 of a file's
+bytes: a publisher file, a listing's HTML or a release manifest. It is a `str` subclass, so it
+equals its text and serves as a key, a path or JSON wherever text is wanted, and `render_index`
+writes the same bytes as before. A slice of one, such as `sha[:8]`, is plain text. A dataclass
+would change the index, since `asdict` writes it as an object. Its constructor is its one
+builder and checks the rule. It builds from the characters it matched, so a `str` subclass whose
+`__str__` gives other text cannot give a `Sha256` of another length. It raises `ValueError` and
+returns no finding, because a sha is never the publisher's data. Code computes it from bytes or
+reads it from one of the repo's own files, and the shell turns the error into a finding there,
+as `gather_repo` gives index_unreadable for the index. Because `Sha256(x) == x` holds, a type
+checker does not report a comparison of a sha with text that no builder checked, so each parser
+builds the `Sha256` where the text enters. `WordRef`, `Page`, `Document` and `ReviewedReading`
+refuse a sha that is not a `Sha256`, so a caller with no type checker gets a `ValueError` at the
+constructor. A cache key is also a sha256, of a tuple of inputs. It names no file, so it stays a
+`str` (section 10).
 
 ```python
 # checkedtables/lines.py
@@ -531,7 +557,7 @@ class Row:
 @dataclass(frozen=True, slots=True)
 class Table:
     id: TableId
-    doc_sha256: str
+    doc_sha256: Sha256
     era: str
     pages: tuple[int, ...]
     columns: tuple[Column, ...]
@@ -699,7 +725,7 @@ What these make impossible:
 @dataclass(frozen=True, slots=True)
 class ReviewedReading:
     id: str                    # never blank: a reviewed Amount names it
-    doc_sha256: str
+    doc_sha256: Sha256
     page: int
     box: Box                   # where the reviewer looked
     source: SourceKind         # the word layer being read
@@ -707,7 +733,8 @@ class ReviewedReading:
     reading: str | None        # what a person reads on the rendered page; None accepts null
     reason: str                # never blank: a human reading is a record with a page and a reason
 
-    def __post_init__(self) -> None: ...   # ValueError: an id or a reason empty after strip()
+    def __post_init__(self) -> None: ...   # ValueError: an id or a reason empty after strip(),
+                                           # or a doc_sha256 that is not a Sha256
 
 
 @dataclass(frozen=True, slots=True)
@@ -958,7 +985,7 @@ class Evidence(StrEnum):
 
 @dataclass(frozen=True, slots=True, order=True)
 class FailureKey:
-    doc_sha256: str
+    doc_sha256: Sha256
     check_id: str
     table: TableId                    # with its instance part (from A)
     row: RowKey | None                # the total's row
@@ -1098,7 +1125,7 @@ class Holding(StrEnum):
 
 @dataclass(frozen=True, slots=True)
 class DocumentVersion:
-    sha256: str
+    sha256: Sha256
     edition: EditionKey
     listed_at: str             # sortable: upload stamp or "<listing date>#<position>";
                                # document-finder: the 14-digit upload stamp in the URL path;
@@ -1108,7 +1135,7 @@ class DocumentVersion:
     urls: tuple[str, ...]      # every URL that served these bytes, canonical host
     title: str                 # listing title, verbatim
     printed_period: Period | None
-    supersedes: str | None     # sha of the earlier version of the same edition; its listed_at
+    supersedes: Sha256 | None  # sha of the earlier version of the same edition; its listed_at
                                # may equal this one's (new bytes behind an unchanged URL)
     via: Via = Via.PUBLISHER
     holding: Holding = Holding.WHOLE
@@ -1124,7 +1151,7 @@ class ArchiveIndex:
 
     def current(self, edition: EditionKey) -> DocumentVersion | None: ...
         # the edition's version that no other version supersedes
-    def by_sha(self, sha: str) -> DocumentVersion | None: ...
+    def by_sha(self, sha: Sha256) -> DocumentVersion | None: ...
 
 
 def sort_versions(versions: Iterable[DocumentVersion]) -> tuple[DocumentVersion, ...]: ...
@@ -1149,7 +1176,7 @@ What this makes impossible:
 @dataclass(frozen=True, slots=True)
 class WordSourcePlan:
     id: str
-    doc_sha256: str
+    doc_sha256: Sha256
     pages: tuple[int, ...]           # empty means every page
     source: SourceKind
     compare: SourceKind | None       # also extract this source for these pages and compare digits
@@ -1168,7 +1195,7 @@ class NoteKind(StrEnum):
 class EditionNote:
     id: str
     kind: NoteKind
-    doc_sha256: str
+    doc_sha256: Sha256
     page: int | None
     printed: str        # the exact printed text the note is about; must be found or the note fails
     value: str          # "2014-03-31", "2009-04", "Oct-Dec 2023"
@@ -1178,7 +1205,7 @@ class EditionNote:
 @dataclass(frozen=True, slots=True)
 class TablePages:
     id: str
-    doc_sha256: str
+    doc_sha256: Sha256
     table: str
     first: int                       # 1-based page numbers in the whole report
     last: int
@@ -1558,7 +1585,7 @@ class Alias:
     tables: tuple[str, ...]           # never empty: an alias always has a table scope
     first_fy: int | None
     last_fy: int | None
-    editions: tuple[str, ...] = ()    # doc shas; required for OCR damage and one-edition misprints
+    editions: tuple[Sha256, ...] = ()   # doc shas; required for OCR damage and one-edition misprints
 
 
 @dataclass(frozen=True, slots=True)
@@ -1623,7 +1650,7 @@ class BoundBy(StrEnum):
 class ReleaseRow:
     dataset: str
     edition_id: str
-    doc_sha256: str
+    doc_sha256: Sha256
     table: str
     table_instance: str            # "fund=phl_fund_general"
     row_key: str
@@ -1912,7 +1939,7 @@ def check_coverage(tables: Sequence[Table], checks: Sequence[CheckSet],
 
 # checkedtables/checks/acks.py
 def match_acknowledgments(report: CheckReport, acks: Sequence[Acknowledgment],
-                          scope: frozenset[str]) -> Gate: ...
+                          scope: frozenset[Sha256]) -> Gate: ...
     # scope: doc shas this gate decides; expectations for other docs are out of scope
 
 
@@ -1936,7 +1963,7 @@ def render_chain(suggestions: Sequence[Suggestion]) -> str: ...
 
 
 # checkedtables/testing.py (shipped in the wheel, from B)
-def page_from_text(text: str, sha: str, page: int) -> Page: ...
+def page_from_text(text: str, sha: Sha256, page: int) -> Page: ...
     # lays out a monospace block as Words: one character is 6 pt wide, one line is 12 pt;
     # "**text**" marks bold words; returns style None when the block starts with "#ocr".
     # A word is a run of characters with no ASCII space, so a tab or a non-breaking space
@@ -2031,22 +2058,24 @@ class ListedLink:
     title: str             # titled anchor wins over the icon anchor (WAGE-Q03)
     position: int          # from 0, in page order
     edition: EditionKey | None
-    skip_reason: str | None   # "infographic", "unrelated", "not_a_quarter_end", "unstaged";
-                              # a link has an edition or a skip reason, never both or neither
+    skip_reason: SkipReason | None   # what the title rule returned; a link has an edition or a
+                                     # skip reason, never both or neither
     listed_at: str         # from the shape's parser; document-finder: the upload stamp
 @dataclass(frozen=True, slots=True)
 class Listing:
     source: str
     url: str
-    html_sha256: str       # sha256 of html encoded as UTF-8
+    html_sha256: Sha256    # sha256 of html encoded as UTF-8
     links: tuple[ListedLink, ...]
 def parse_listing(source: SourceEntry, url: str, html: str) -> Listing | Finding: ...
     # dispatches on SourceEntry.shape, a closed enum, to document_finder.parse,
     # phila_documents.parse or manual.parse (QSMR: URLs typed into the catalog, QSMR-Q01).
     # A shape parser returns the page's links as PageLink(title, url, listed_at), or a finding.
     # parse_listing reads each title with TITLE_RULES[source.series] and puts each URL on the
-    # canonical host. BLOCK findings: listing_unsupported for a shape with no parser yet or a
-    # series with no title rule, listing_unreadable from the shape parser.
+    # canonical host. It matches the rule's result with one arm for EditionKey, one for
+    # SkipReason and a last arm that calls assert_never. BLOCK findings: listing_unsupported for
+    # a shape with no parser yet or a series with no title rule, listing_unreadable from the
+    # shape parser.
 
 # datadesk/core/listings/document_finder.py
 def parse(source: SourceEntry, text: str) -> tuple[PageLink, ...] | Finding: ...
@@ -2056,14 +2085,19 @@ def parse(source: SourceEntry, text: str) -> tuple[PageLink, ...] | Finding: ...
     # category, a document with no title or URL, and a URL with no stamp are listing_unreadable.
 
 # datadesk/core/listings/titles.py
-TITLE_RULES: MappingProxyType[str, Callable[[str], EditionKey | str]]   # series -> its rule
-def qcmr_title(title: str) -> EditionKey | str: ...
-    # "infographic" anywhere in the title: "infographic". "Quarterly City Managers Report" or
+class SkipReason(StrEnum):           # why a link names no edition; pinned (section 11.4)
+    INFOGRAPHIC = "infographic"
+    UNRELATED = "unrelated"
+    NOT_A_QUARTER_END = "not_a_quarter_end"
+    UNSTAGED = "unstaged"            # a title that names no budget stage (BIB-Q04); no rule yet
+TITLE_RULES: MappingProxyType[str, Callable[[str], EditionKey | SkipReason]]   # series -> its rule
+def qcmr_title(title: str) -> EditionKey | SkipReason: ...
+    # "infographic" anywhere in the title: INFOGRAPHIC. "Quarterly City Managers Report" or
     # "Quarterly City Manager's Report", a hyphen or an en dash, then "<Word> <D>, <YYYY>" and
     # nothing more, where <Word> is any run of letters, is a report title. A report title whose
     # date is a quarter end gives the edition Period(first day of the fiscal quarter, that date).
-    # Any other report title is "not_a_quarter_end", one whose word names no month included, so
-    # it raises a WARN instead of vanishing. Any other title: "unrelated". The edition comes from
+    # Any other report title is NOT_A_QUARTER_END, one whose word names no month included, so
+    # it raises a WARN instead of vanishing. Any other title: UNRELATED. The edition comes from
     # the title alone, never from the URL.
 
 
@@ -2111,13 +2145,13 @@ def plan_watch(catalog: SourceCatalog, listings: Sequence[Listing], index: Archi
     # since the City appends a revised attachment after the original (QPOS-Q32). An edition that
     # ends before its entry's first_period_end is dropped. A kept link is requested unless an
     # indexed version of its own edition holds its URL, with reason "new" when the edition has no
-    # version and "revision" when it has one. A URL that another edition holds is still
-    # requested. plan_fetch rejects the bytes as content_alias when their sha is indexed under an
-    # edition other than the request's, whatever URL served them. Each link skipped as
-    # not_a_quarter_end is a WARN finding with that code. An earlier sha stays as a superseded
-    # version (plan_fetch). Step 3 builds the rules above, and step 13 the rules below. A URL
-    # whose sha changed under an older listing becomes url_reused plus a WaybackLookup
-    # (WAGE-Q10, Q11).
+    # version and "revision" when it has one. A URL that another edition holds is still requested.
+    # plan_fetch rejects the bytes as content_alias when their sha is indexed under an edition other
+    # than the request's, whatever URL served them. Each link skipped as
+    # SkipReason.NOT_A_QUARTER_END is a WARN finding with the code not_a_quarter_end. An earlier sha
+    # stays as a superseded version (plan_fetch). Step 3 builds the rules above, and step 13 the
+    # rules below. A URL whose sha changed under an older listing becomes url_reused plus a
+    # WaybackLookup (WAGE-Q10, Q11).
     # Expected editions from the catalog minus indexed ones become gaps, after the declared lag.
     # Indexed URLs not fetched within the catalog's recheck interval become `recheck` requests:
     # the executor downloads and hashes them, and a new sha behind an unchanged listing goes
@@ -2132,13 +2166,13 @@ def plan_pull_request(plan: WatchPlan, today: date) -> PullRequestPlan: ...
 class Fetched:
     request: FetchRequest
     status: int
-    sha256: str | None
+    sha256: Sha256 | None
     size: int
     page1_text: str | None          # from PdfReader, before any decision
 @dataclass(frozen=True, slots=True)
 class StoreObject:
-    sha256: str
-    dest_key: str                   # "pdf/<sha[:2]>/<sha>.pdf"
+    sha256: Sha256
+    dest_key: str                   # "pdf/<sha[:2]>/<sha>.pdf", plain text
 @dataclass(frozen=True, slots=True)
 class Rejection:
     request: FetchRequest
@@ -2155,34 +2189,39 @@ class FetchPlan:
                                     # added line (edition id, sha, URLs) and each rejection
                                     # (edition id, URL, reason).
 INDEX_PATH = "packages/datadesk/src/datadesk/data/index.jsonl"
-PERIOD_READERS: MappingProxyType[str, Callable[[str], Period | str]]   # series -> its reader
-def qcmr_period(page1_text: str) -> Period | str: ...
+class PeriodRefusal(StrEnum):        # why a reader reads no period; pinned (section 11.4)
+    UNREADABLE = "period_unreadable"
+    AMBIGUOUS = "period_ambiguous"
+    NOT_A_QUARTER_END = "period_not_a_quarter_end"
+PERIOD_READERS: MappingProxyType[str, Callable[[str], Period | PeriodRefusal]]   # series -> its reader
+def qcmr_period(page1_text: str) -> Period | PeriodRefusal: ...
     # finds every "PERIOD ENDING" caption on page 1 (QCASH-Q05, QOBL-Q04), in any case, with a
     # word boundary before PERIOD and after ENDING, and any run of whitespace between words,
     # line breaks and U+00A0 included (QOBL-Q02). Each caption must be followed by a readable
     # "<Month> <D>, <YYYY>". Its month word is any run of word characters that is a key of
     # MONTHS after casefold, its day makes a real date, the comma is optional and the year is
     # not followed by another digit. The bare date that the cover also prints is not read. No
-    # caption, or any caption without a readable date after it, is "period_unreadable", so an
+    # caption, or any caption without a readable date after it, is UNREADABLE, so an
     # unreadable phrase beside a readable one is unreadable. Captions that name two dates are
-    # "period_ambiguous". A date that is not a quarter end is "period_not_a_quarter_end". Any
-    # other date gives Period(first day of its fiscal quarter, the date), so a September 30,
-    # 2021 cover is FY2022 Q1 (QPOS-Q34).
+    # AMBIGUOUS. A date that is not a quarter end is NOT_A_QUARTER_END. Any other date gives
+    # Period(first day of its fiscal quarter, the date), so a September 30, 2021 cover is
+    # FY2022 Q1 (QPOS-Q34).
 def confirm_period(series: str, page1_text: str, expected: EditionKey,
                    notes: Sequence[EditionNote]) -> Period | Finding: ...
-    # reads page 1 with PERIOD_READERS[series]. Each finding is BLOCK, with expected.id() as
-    # its subject: period_unsupported for a series with no reader, and each code the reader
-    # returns. A printed period equal to expected.period is confirmed. Another one is confirmed
-    # only by a PRINTED_PERIOD note on page 1 or on no page that quotes the words that print the
-    # period. Page 1 holds the note's printed text, both compared with each run of whitespace
-    # made one space, with no word character right before it and none right after it, so a
-    # quote cut from inside a longer word such as SUBPERIOD clears nothing. The series reader
-    # reads that text alone as the very period page 1 prints, so a blank note, or one that
-    # quotes other words, clears nothing. The note's value is the printed end in ISO form. Then
-    # the printed period is returned. Otherwise it is period_mismatch (QOBL-Q06). No note clears
-    # a code the reader returns. The caller passes only the notes of the sha at hand. Readers
-    # for later steps: "MONTH OF <month>" plus one "FY YYYY" (MCITY-Q04 to Q07), "Fiscal Year
-    # YYYY Collections" (BSALES-Q11), wage months and FY (WAGE-Q14), "Quarterly School Manager
+    # reads page 1 with PERIOD_READERS[series] and matches the result with one arm for
+    # PeriodRefusal, one for Period and a last arm that calls assert_never. Each finding is BLOCK,
+    # with expected.id() as its subject: period_unsupported for a series with no reader, and for a
+    # refusal its value, so Finding.code stays a plain str. A printed period equal to
+    # expected.period is confirmed. Another one is confirmed only by a PRINTED_PERIOD note on page 1
+    # or on no page that quotes the words that print the period. Page 1 holds the note's printed
+    # text, both compared with each run of whitespace made one space, with no word character right
+    # before it and none right after it, so a quote cut from inside a longer word such as SUBPERIOD
+    # clears nothing. The series reader reads that text alone as the very period page 1 prints, so a
+    # blank note, or one that quotes other words, clears nothing. The note's value is the printed
+    # end in ISO form. Then the printed period is returned. Otherwise it is period_mismatch
+    # (QOBL-Q06). No note clears a refusal. The caller passes only the notes of the sha at hand.
+    # Readers for later steps: "MONTH OF <month>" plus one "FY YYYY" (MCITY-Q04 to Q07), "Fiscal
+    # Year YYYY Collections" (BSALES-Q11), wage months and FY (WAGE-Q14), "Quarterly School Manager
     # Report" and its period ending date (QSMR).
 def plan_fetch(fetched: Sequence[Fetched], index: ArchiveIndex,
                notes: Sequence[EditionNote]) -> FetchPlan: ...
@@ -2213,11 +2252,14 @@ def plan_fetch(fetched: Sequence[Fetched], index: ArchiveIndex,
 # in ISO form, printed_period an object or null, and a newline after every line. The empty
 # index is "".
 def parse_index(jsonl: str) -> ArchiveIndex: ...         # splits on "\n" alone, then sorts
-    # raises ValueError on a line whose sha256 is not a string of 64 lowercase hex characters,
-    # the form hexdigest() writes, or whose urls is not a JSON list. A fetch run writes neither
-    # line, since the shell passes plan_fetch the hexdigest() of the bytes and render_index
-    # writes urls as a list. So in the checkout only a hand edit makes one, and parse_index
-    # refuses it rather than fold the case or split a string into characters
+    # builds each sha256, and each supersedes that is not null, with Sha256, so it raises
+    # Sha256's ValueError on a line whose sha256 or supersedes is not a string of 64 lowercase
+    # hex characters, the form hexdigest() writes. It builds the sha256 before it reads urls, so
+    # a line with both wrong reports the sha. It raises ValueError on a line whose urls is not a
+    # JSON list. A fetch run writes neither line, since the shell passes plan_fetch the
+    # hexdigest() of the bytes and render_index writes urls as a list. So in the checkout only a
+    # hand edit makes one, and parse_index refuses it rather than fold the case or split a
+    # string into characters
 def render_index(index: ArchiveIndex) -> str: ...        # sorted, one JSON object per line
 def add_versions(index: ArchiveIndex, new: Sequence[DocumentVersion]) -> ArchiveIndex | Finding: ...
     # a new version whose sha and edition are indexed adds each URL that line lacks, after the
@@ -2231,12 +2273,12 @@ def add_versions(index: ArchiveIndex, new: Sequence[DocumentVersion]) -> Archive
 def load_records(texts: Sequence[tuple[str, str]]) -> RepoRecords | tuple[Finding, ...]: ...
     # TOML text in. Refuses an acknowledgment whose expectation names an occurrence-numbered
     # row key (change 6) and a reading whose digits fail transliteration_ok.
-def records_for(records: RepoRecords, sha: str, period: Period) -> EditionRecords: ...
+def records_for(records: RepoRecords, sha: Sha256, period: Period) -> EditionRecords: ...
 def unused_records(records: EditionRecords, used: frozenset[str]) -> tuple[Finding, ...]: ...
 def drop_noted_lines(lines: Sequence[Line], notes: Sequence[EditionNote],
                      page: int) -> tuple[tuple[Line, ...], frozenset[str]]: ...
     # removes a line whose text equals a DROP_LINE note's printed text on that page
-def illegible_pages(notes: Sequence[EditionNote], sha: str) -> tuple[frozenset[int], frozenset[str]]: ...
+def illegible_pages(notes: Sequence[EditionNote], sha: Sha256) -> tuple[frozenset[int], frozenset[str]]: ...
 def declared_run(records: Sequence[TablePages], table: str) -> tuple[PageRun | None, frozenset[str]]: ...
     # the run a TablePages record names for this table, and its id for the used set
 
@@ -2286,14 +2328,14 @@ def compare_sources(primary: Page, other: Page, tolerance_pt: float) -> tuple[Fi
 # datadesk/core/parse_plan.py
 @dataclass(frozen=True, slots=True)
 class WordJob:
-    doc_sha256: str
+    doc_sha256: Sha256
     pages: tuple[int, ...]               # empty means every page
     source: SourceKind
     compare: SourceKind | None           # change 3: also extract this source for these pages
     cache_key: str
 @dataclass(frozen=True, slots=True)
 class ParseJob:
-    doc_sha256: str
+    doc_sha256: Sha256
     table: str                           # a TABLES entry name, looked up in a static tuple
     word_keys: tuple[str, ...]
     compare_keys: tuple[str, ...]
@@ -2316,7 +2358,7 @@ def run_parse_job(job: ParseJob, doc: Document, compare: Document | None,
 
 
 # datadesk/core/ocr.py
-def textract_to_document(responses: Sequence[tuple[int, bytes]], sha: str, tool: str) -> Document: ...
+def textract_to_document(responses: Sequence[tuple[int, bytes]], sha: Sha256, tool: str) -> Document: ...
 
 
 # datadesk/core/codec.py
@@ -2473,7 +2515,7 @@ class OcrService(Protocol):
 
 class PdfReader(Protocol):
     def page1_text(self, pdf: bytes) -> str: ...                     # "" for a page with no text
-    def words(self, pdf: bytes, sha256: str, pages: Sequence[int]) -> Document: ...
+    def words(self, pdf: bytes, sha256: Sha256, pages: Sequence[int]) -> Document: ...
     def render(self, pdf: bytes, page: int, dpi: int) -> bytes: ...  # for OCR and review images
 
 
@@ -2592,14 +2634,14 @@ def retried[T](effect: Callable[[], T]) -> T: ...   # runs effect up to TRIES ti
 
 
 def run_fetch(deps: Deps, plan: WatchPlan, repo: RepoSnapshot) -> FetchPlan:
-    held: dict[str, bytes] = {}                                   # bytes by sha, in memory
+    held: dict[Sha256, bytes] = {}                                # bytes by sha, in memory
     fetched: list[Fetched] = []
     for req in plan.fetch:
         r = retried(partial(deps.http.get, req.url))
         if r.status != 200:
             fetched.append(Fetched(req, r.status, None, 0, None))
             continue
-        sha = sha256(r.body).hexdigest()
+        sha = Sha256(sha256(r.body).hexdigest())
         held[sha] = r.body
         fetched.append(Fetched(req, 200, sha, len(r.body), deps.pdf.page1_text(r.body)))
     result = plan_fetch(fetched, repo.index, ())                  # pure: every decision
@@ -2611,7 +2653,7 @@ def run_fetch(deps: Deps, plan: WatchPlan, repo: RepoSnapshot) -> FetchPlan:
 # datadesk/shell/cli.py (excerpt)
 @dataclass(frozen=True, slots=True)
 class FetchRun:
-    listing_sha256: str
+    listing_sha256: Sha256
     findings: tuple[Finding, ...]                  # plan_watch's findings
     plan: FetchPlan
 
@@ -2711,7 +2753,7 @@ def run_ocr(deps: Deps, plan: OcrPlan) -> tuple[str, ...]:
         pdf = deps.store.get(item.pdf_key)
         image = deps.pdf.render(pdf, item.page, item.dpi)
         response = deps.ocr.analyze(image, item.config)
-        put_immutable(deps.store, item.archive_key, response, sha256(response).hexdigest())
+        put_immutable(deps.store, item.archive_key, response, Sha256(sha256(response).hexdigest()))
         written.append(item.archive_key)
     return tuple(written)
 
@@ -2777,7 +2819,7 @@ def run_release(deps: Deps, planned: ReleasePlanned) -> Released:
 
 
 # datadesk/shell/run_fetch.py (excerpt)
-def put_immutable(store: ObjectStore, key: str, data: bytes, sha: str) -> None:
+def put_immutable(store: ObjectStore, key: str, data: bytes, sha: Sha256) -> None:
     try:
         store.put(key, data, CreateOnly())
     except PreconditionFailed:                                # a retry or a racing run wrote it
@@ -4374,6 +4416,10 @@ def test_closed_lists_are_pinned() -> None:
                                                       "Has", "Except"]
     assert [k.value for k in NoteKind] == ["printed_period", "cutoff", "header_misprint",
                                            "drop_line", "header_illegible"]
+    assert [k.value for k in PeriodRefusal] == ["period_unreadable", "period_ambiguous",
+                                                "period_not_a_quarter_end"]
+    assert [k.value for k in SkipReason] == ["infographic", "unrelated", "not_a_quarter_end",
+                                             "unstaged"]
     assert [k.value for k in Kind] == ["actual", "budget", "projection"]
     assert [v.value for v in Version] == ["none", "adopted", "revised", "proposed", "target"]
     assert [w.value for w in Window] == ["month", "quarter", "fiscal_ytd", "calendar_ytd",
@@ -4438,7 +4484,7 @@ kit size report that CI prints does.
 | Module | Job | Lines |
 |---|---|---:|
 | `__init__.py` | public re-exports, nothing else | 30 |
-| `refs.py` | `Box`, `WordRef` | 60 |
+| `refs.py` | `Box`, `Sha256`, `WordRef` | 60 |
 | `kinds.py` | `SourceKind`, `ValueKind`, `DashMeaning`, `Presence`, `PercentSign` | 40 |
 | `words.py` | `WordSource`, `Word`, `Rule`, `Page`, `Document` | 90 |
 | `labels.py` | `Label`, kept apart so tables and checks never import words | 30 |
@@ -5467,7 +5513,7 @@ citations at the old repo's head (two cash line numbers had drifted; the facts h
 @dataclass(frozen=True, slots=True)
 class ExpectedTables:
     id: str
-    doc_sha256: str
+    doc_sha256: Sha256
     table: str
     instances: tuple[str, ...]       # TableId instance strings the contents page lists
     absent: tuple[tuple[str, str], ...] = ()   # (instance, reason) for listed tables not printed
@@ -5489,7 +5535,7 @@ class Withdrawal:
 class ArticleFigure:
     id: str                          # "vacancy-rate-fy2026"
     article: str                     # slug
-    manifest_sha256: str             # the pinned release
+    manifest_sha256: Sha256          # the pinned release
     formula: str                     # "1 - actual_total / adopted_total"
     cells: tuple[tuple[str, str, str, str], ...]   # (dataset, edition_id, row key, column)
     printed: str                     # the figure as the article prints it
