@@ -4064,7 +4064,8 @@ records, since no format inserts a decimal point (QCASH-Q21).
 
 ## 9. Errors
 
-A problem in the documents is a returned value. An exception means a bug or a failed effect.
+A problem in the documents is a returned value. An exception means a bug, a failed effect or the
+operator's stop, a `KeyboardInterrupt`.
 
 | Situation | Kind | Who handles it |
 |---|---|---|
@@ -4101,9 +4102,12 @@ exception into a finding. `parse_index` raises on an index file it cannot read, 
 `gather_repo` returns that as the BLOCK finding `index_unreadable`, because the file is input
 from the checkout (section 4). A `KeyboardInterrupt` is the operator's stop, wherever it is
 raised, and is not a bug. Any other exception that escapes the core is a bug and fails the
-command. `main` prints the message of each stop that section 4.2 names, and the traceback of any
-other exception raised while it builds `Deps` or runs the fetch, a `KeyboardInterrupt` included,
-and returns 1. Once `Settings` is loaded, everything it prints goes through `hide_keys`.
+command. `main` prints one line for each stop that section 4.2 names: a `MissingSettings`, a
+saved folder that `SavedHttp` refuses, a `FetchStopped`, an `EffectError` and a
+`PreconditionFailed`. A `KeyboardInterrupt` is not one of those stops. `main` prints its
+traceback, as it does for any other exception raised while it builds `Deps` or runs the fetch.
+It returns 1 in each case. Once `Settings` is loaded, everything it prints goes through
+`hide_keys`.
 
 ## 10. Caching and determinism
 
