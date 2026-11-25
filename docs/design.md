@@ -4086,15 +4086,17 @@ one run shows every problem in an edition.
 A core function may catch the exception a library raises on bad input, to return a finding or a
 code for that input. `load_catalog` returns the `TOMLDecodeError` of `tomllib` as the BLOCK
 finding `catalog_not_toml`, `document_finder.parse` returns the `ValueError` of `json.loads` as
-the BLOCK finding `listing_unreadable`, and `qcmr_period` returns `period_unreadable` for a printed
-date that `date` rejects. `checkedtables` catches no exception. The shell catches effect
-exceptions. Reading text is an effect, so the `UnicodeDecodeError` of a checkout file, a saved
-`responses.tsv` or a listing body that is not UTF-8 is an effect exception, and the shell turns it
-into a finding or a stop. A `ValueError` that escapes the core is a bug and fails the command.
-`main` prints its traceback, or that of any other exception raised while it builds `Deps` or runs
-the fetch, through `hide_keys` and returns 1 (section 4.2). `gather_repo` is the one place the shell turns a core exception into a finding.
-`parse_index` raises on an index file it cannot read, and `gather_repo` returns that as the BLOCK
-finding `index_unreadable`, because the file is input from the checkout (section 4).
+the BLOCK finding `listing_unreadable`, and `_printed_date` catches the `ValueError` of `date`,
+so `qcmr_period` returns `period_unreadable`. `checkedtables` catches no exception. The shell
+catches effect exceptions. Reading text is an effect, so the `UnicodeDecodeError` of a checkout
+file, a saved `responses.tsv` or a listing body that is not UTF-8 is an effect exception, and the
+shell turns it into a finding or a stop. `gather_repo` is the one place the shell turns a core
+exception into a finding. `parse_index` raises on an index file it cannot read, and
+`gather_repo` returns that as the BLOCK finding `index_unreadable`, because the file is input
+from the checkout (section 4). Any other exception that escapes the core is a bug and fails the
+command. `main` prints the message of each stop that section 4.2 names, and the traceback of any
+other exception raised while it builds `Deps` or runs the fetch, and returns 1. Once `Settings`
+is loaded, everything it prints goes through `hide_keys`.
 
 ## 10. Caching and determinism
 

@@ -437,10 +437,17 @@ design leaves open" in `docs/plans/step-03.md`.
   `document_finder.parse` returns the `ValueError` of `json.loads` as `listing_unreadable` (Codex
   read of the second fix round, finding 1). In the third fix round section 9 says a core function
   may catch a library's exception on bad input to return a finding or a code, and names the three
-  that do: `load_catalog`, `document_finder.parse` and `qcmr_period`. `checkedtables` catches
-  none. `rg -n "except" packages/datadesk/src packages/checkedtables/src` lists those three catches
-  in the core and none in the kit, and `load_catalog("[x")` returns `catalog_not_toml`. Design
-  sections 4.2 and 9.
+  catches in the core: `load_catalog`, `document_finder.parse` and `_printed_date`, which lets
+  `qcmr_period` return `period_unreadable`. `checkedtables` catches none. `rg -n "except"
+  packages/datadesk/src packages/checkedtables/src` lists those three catches in the core and none
+  in the kit, and `load_catalog("[x")` returns `catalog_not_toml`. That round's paragraph also said
+  that `main` prints the traceback of any exception raised while it builds `Deps` or runs the fetch,
+  though it prints one message for each stop that section 4.2 names, and that a `ValueError` that
+  escapes the core is a bug, though `gather_repo` turns the one from `parse_index` into
+  `index_unreadable` (Codex read of the third fix round, findings 1 and 2). In the fourth fix round
+  the paragraph names the `parse_index` case before it calls any other escaping exception a bug, and
+  says that `main` prints the message of each stop that section 4.2 names and the traceback of any
+  other exception. Design sections 4.2 and 9.
 - **Step 3: an index file that `parse_index` cannot read is a finding** (November 24, 2026, S3-D).
   Section 9 let the shell catch only effect exceptions, and `parse_index` raises `KeyError`,
   `TypeError` or `ValueError` on a file it cannot read. The index file is input from the checkout,
