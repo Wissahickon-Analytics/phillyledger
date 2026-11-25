@@ -71,6 +71,7 @@ def test_s3_client_ignores_the_ambient_aws_settings(monkeypatch: pytest.MonkeyPa
     settings = {
         "AWS_REQUEST_CHECKSUM_CALCULATION": "when_required",
         "AWS_SDK_UA_APP_ID": "an-app-PLANTED",
+        "AWS_S3_US_EAST_1_REGIONAL_ENDPOINT": "invalid",
     }
     for name in settings:
         monkeypatch.delenv(name, raising=False)

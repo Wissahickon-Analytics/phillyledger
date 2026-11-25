@@ -21,7 +21,12 @@ QUIET_SESSION_VARIABLES = {
 }
 CLIENT_CONFIG = Config(
     region_name="auto",
-    s3={"addressing_style": "path"},
+    s3={
+        "addressing_style": "path",
+        "us_east_1_regional_endpoint": "legacy",
+        "use_arn_region": True,
+        "s3_disable_multiregion_access_points": False,
+    },
     retries={"mode": "standard", "total_max_attempts": 1},
 )
 

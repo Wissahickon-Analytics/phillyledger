@@ -2521,8 +2521,14 @@ of its session variables to an environment variable and reads `os.devnull` as it
 credentials files, so no environment variable behind a session variable, `AWS_PROFILE` and
 `AWS_REQUEST_CHECKSUM_CALCULATION` among them, changes the client. Given only explicit keys, a boto3
 1.44.5 client still raised `ProfileNotFound` under a missing `AWS_PROFILE`. botocore 1.44.5 still
-reads some variables that are not session variables. Three `AWS_S3_*` variables apply only to ARN
-buckets and the us-east-1 region, and `AWS_BEARER_TOKEN_S3` changed no put or get in a probe.
+reads some variables that are not session variables. It reads `AWS_S3_US_EAST_1_REGIONAL_ENDPOINT`,
+`AWS_S3_USE_ARN_REGION` and `AWS_S3_DISABLE_MULTIREGION_ACCESS_POINTS` into its S3 settings, and it
+checks the first when it builds any client, so an invalid value would stop the client from being
+built. The client's `Config` sets those three S3 settings to the values botocore assumes when none
+is given, `legacy`, true and false, and a value in `Config` overrides the environment's. So an
+invalid `AWS_S3_US_EAST_1_REGIONAL_ENDPOINT` builds the client and sends the same put, and in a
+probe no value tried for the other two changed a put. `AWS_BEARER_TOKEN_S3` changed no put or get
+in a probe.
 `AWS_EXECUTION_ENV` joins the user agent, and `AWS_LAMBDA_FUNCTION_NAME` with `_X_AMZN_TRACE_ID`
 adds a trace header. urllib reads the proxy variables, `REQUESTS_CA_BUNDLE` and `SSLKEYLOGFILE`
 change TLS, and botocore reads its own `BOTO_*` and `BOTOCORE_*` switches. botocore may also follow

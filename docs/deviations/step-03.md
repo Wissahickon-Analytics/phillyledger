@@ -334,7 +334,14 @@ design leaves open" in `docs/plans/step-03.md`.
   With a default session, `test_s3_client_ignores_the_ambient_aws_profile` fails with
   `ProfileNotFound`, and with only the profile and the two files shut out,
   `test_s3_client_ignores_the_ambient_aws_settings` fails. With the keys in the `repr`,
-  `test_settings_keep_both_keys_out_of_their_repr` fails. Design sections 4 and 4.2.
+  `test_settings_keep_both_keys_out_of_their_repr` fails. botocore also reads three `AWS_S3_*`
+  variables into its S3 settings outside the session variables, and an invalid
+  `AWS_S3_US_EAST_1_REGIONAL_ENDPOINT` stopped the client from being built (Codex read of the fix,
+  finding 5). In the second fix round the client's `Config` sets those three settings to the values
+  botocore assumes when none is set, and a value in `Config` overrides the environment's. With the
+  us-east-1 setting left to the environment, `test_s3_client_ignores_the_ambient_aws_settings` fails
+  on the invalid value. No test fails with either of the other two left out, because no value tried
+  for them changed a put in a probe. Design sections 4 and 4.2.
 - **Step 3: contract suites that run on every commit** (November 24, 2026, S3-D). Section 11.1
   ran the real adapters' contracts nightly and before release, against the network or MinIO. The
   saved-folder `Http` adapter and the pdfplumber reader need neither, so their contracts run in CI
