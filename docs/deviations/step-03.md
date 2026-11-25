@@ -399,7 +399,15 @@ design leaves open" in `docs/plans/step-03.md`.
   `Settings` is loaded, every line `main` prints now goes through `hide_keys`, which replaces each
   non-empty key with the name of its variable. With `hide_keys` dropped from the error line, or
   with either key left out of it, `test_main_prints_neither_r2_key_when_the_store_echoes_both`
-  fails. Design section 4.2.
+  fails. A `PreconditionFailed` for other bytes under a report's key, and the `KeyError` of a
+  read-back whose object had gone, still escaped `main`, and Python printed the chained S3 message
+  unfiltered (Codex read of the fix, finding 1). In the second fix round `main` prints a
+  `PreconditionFailed` as one line naming the object, and any other exception raised while it builds
+  `Deps` or runs the fetch as its traceback through `hide_keys`, and returns 1. So section 9 no
+  longer says the shell catches only effect exceptions. With that traceback printed without
+  `hide_keys`, or with the handler for any other exception dropped, the `no_such_key` case of
+  `test_main_prints_neither_r2_key_when_a_refused_put_ends_the_run` fails, and with the
+  `PreconditionFailed` handler dropped, its `other_bytes` case fails. Design sections 4.2 and 9.
 - **Step 3: an index file that `parse_index` cannot read is a finding** (November 24, 2026, S3-D).
   Section 9 lets the shell catch only effect exceptions, and `parse_index` raises `KeyError`,
   `TypeError` or `ValueError` on a file it cannot read. The index file is input from the checkout,

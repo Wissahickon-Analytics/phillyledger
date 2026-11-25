@@ -109,11 +109,17 @@ class Body(BytesIO):
 
 
 def answer(
-    store: S3Store, status: int, headers: dict[str, str], body: bytes = b""
+    store: S3Store,
+    status: int,
+    headers: dict[str, str],
+    body: bytes = b"",
+    method: str | None = None,
 ) -> list[AWSPreparedRequest]:
     sent: list[AWSPreparedRequest] = []
 
-    def send(request: AWSPreparedRequest, **_: Any) -> AWSResponse:
+    def send(request: AWSPreparedRequest, **_: Any) -> AWSResponse | None:
+        if method not in (None, request.method):
+            return None
         sent.append(request)
         return AWSResponse(request.url, status, headers, Body(body))
 

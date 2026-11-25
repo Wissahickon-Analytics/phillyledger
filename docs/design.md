@@ -2642,9 +2642,15 @@ command reads the saved folder. `main` reads the clock once, the environment onc
 `SavedHttp(folder)`, `s3_store(settings)` and the pdfplumber reader. It prints the listing digest,
 each finding, the plan's title and body and each file it wrote, and returns 0. A missing variable,
 a saved folder that `SavedHttp` refuses, a `FetchStopped` or an `EffectError` prints one line to
-stderr and returns 1. `main` prints neither R2 key. Once `Settings` is loaded, every line it prints
-goes through `hide_keys`, which replaces each non-empty key with `$` and the name of its variable,
-so a service message that echoes the access key prints `$DATADESK_R2_ACCESS_KEY_ID` in its place.
+stderr and returns 1. A `PreconditionFailed` that reaches `main` means the store holds other bytes
+under a report's key, and it prints one line naming that object and returns 1. Any other exception
+raised while `main` builds `Deps` or runs the fetch, `KeyboardInterrupt` included, prints its
+traceback to stderr, and `main` returns 1, so a bug stays visible. Python would print an uncaught
+exception with the messages of the exceptions chained to it, such as the S3 error under a
+`PreconditionFailed`, so `main` catches each of these itself. `main` prints neither R2 key. Once
+`Settings` is loaded, everything it prints, a traceback included, goes through `hide_keys`, which
+replaces each non-empty key with `$` and the name of its variable, so a service message that echoes
+the access key prints `$DATADESK_R2_ACCESS_KEY_ID` in its place.
 
 The saved folder holds the saved files and `responses.tsv`, whose first row is the header
 `url<TAB>file` and whose other rows each pair a URL with a file name. `SavedHttp(folder)` reads it
@@ -4067,13 +4073,13 @@ Findings are collected per line (change 19). A page-level failure stops its tabl
 nothing below it can be read. A line-level problem becomes a finding and the parse continues, so
 one run shows every problem in an edition.
 
-The shell is the only place that catches exceptions, and only effect exceptions. Reading text is
-such an effect, so the `UnicodeDecodeError` of a checkout file, a saved `responses.tsv` or a listing
-body that is not UTF-8 is one, and the shell turns it into a finding or a stop. A `ValueError` from
-the core propagates and fails the command, because it is a bug. `gather_repo` is the one place the
-shell catches a core exception. `parse_index` raises on an index file it cannot read, and
-`gather_repo` returns that as the BLOCK finding `index_unreadable`, because the file is input from
-the checkout (section 4).
+The shell is the only place that catches exceptions. Reading text is an effect, so the
+`UnicodeDecodeError` of a checkout file, a saved `responses.tsv` or a listing body that is not UTF-8
+is an effect exception, and the shell turns it into a finding or a stop. A `ValueError` from the
+core is a bug and fails the command. `main` prints its traceback through `hide_keys` and returns 1
+(section 4.2). `gather_repo` is the one place the shell turns a core exception into a finding.
+`parse_index` raises on an index file it cannot read, and `gather_repo` returns that as the BLOCK
+finding `index_unreadable`, because the file is input from the checkout (section 4).
 
 ## 10. Caching and determinism
 

@@ -6,6 +6,7 @@ from datetime import date
 from functools import partial
 from os import environ
 from pathlib import Path
+from traceback import format_exc
 
 from checkedtables.table import Finding
 from datadesk.core.fetch import FetchPlan
@@ -15,7 +16,7 @@ from datadesk.shell.adapters.http_saved import SavedFolderError, SavedHttp
 from datadesk.shell.adapters.pdf_pdfplumber import PdfPlumberReader
 from datadesk.shell.adapters.s3 import s3_store
 from datadesk.shell.gather import gather_repo
-from datadesk.shell.ports import Deps, EffectError
+from datadesk.shell.ports import Deps, EffectError, PreconditionFailed
 from datadesk.shell.run_fetch import retried, run_fetch
 from datadesk.shell.settings import MissingSettings, hide_keys, load_settings
 
@@ -78,6 +79,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         run = fetch_command(deps, Path.cwd(), args.source, today)
     except (SavedFolderError, FetchStopped, EffectError) as error:
         print(hide_keys(f"datadesk: {error}", settings), file=sys.stderr)
+        return 1
+    except PreconditionFailed as error:
+        print(
+            hide_keys(f"datadesk: the store holds other bytes under {error}", settings),
+            file=sys.stderr,
+        )
+        return 1
+    except BaseException:  # noqa: BLE001
+        print(hide_keys(format_exc(), settings), end="", file=sys.stderr)
         return 1
     lines = [
         f"listing sha256 {run.listing_sha256}",

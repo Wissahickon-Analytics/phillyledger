@@ -521,6 +521,45 @@ def test_main_prints_neither_r2_key_when_the_store_echoes_both(
     assert not [key for key in keys if key in out + err]
 
 
+@pytest.mark.parametrize("read_back", ["other_bytes", "no_such_key"])
+def test_main_prints_neither_r2_key_when_a_refused_put_ends_the_run(
+    read_back: str,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    root = checkout(tmp_path / "checkout")
+    feed = only(FEED, reports(FEED)[0].title)
+    pdfs = [replace(report, body=text_pdf(report.cover)) for report in reports(feed)]
+    folder = saved_folder(tmp_path / "saved", feed, pdfs)
+    keys = (ENVIRON["DATADESK_R2_ACCESS_KEY_ID"], ENVIRON["DATADESK_R2_SECRET_ACCESS_KEY"])
+    echo = "<Error><Code>{}</Code><Message>key {} with secret {}</Message></Error>"
+
+    def refusing_store(settings: Settings) -> S3Store:
+        store = s3_store(settings)
+        answer(store, 412, {}, echo.format("PreconditionFailed", *keys).encode(), method="PUT")
+        if read_back == "other_bytes":
+            answer(store, 200, {"ETag": '"etag-0"'}, b"other bytes", method="GET")
+        else:
+            answer(store, 404, {}, echo.format("NoSuchKey", *keys).encode(), method="GET")
+        return store
+
+    monkeypatch.setattr(cli, "s3_store", refusing_store)
+    for name, value in ENVIRON.items():
+        monkeypatch.setenv(name, value)
+    monkeypatch.chdir(root)
+    assert main(["fetch", "qcmr", "--saved", str(folder)]) == 1
+    out, err = capsys.readouterr()
+    assert not [key for key in keys if key in out + err]
+    assert pdfs[0].key in err
+    if read_back == "other_bytes":
+        assert len(err.splitlines()) == 1
+    else:
+        assert "Traceback" in err
+        assert "$DATADESK_R2_ACCESS_KEY_ID with secret $DATADESK_R2_SECRET_ACCESS_KEY" in err
+    assert (root / INDEX_FILE).read_text() == ""
+
+
 def test_main_with_a_saved_row_that_names_a_missing_file_stops_before_any_put(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
