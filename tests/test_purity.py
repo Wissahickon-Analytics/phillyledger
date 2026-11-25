@@ -22,6 +22,7 @@ PURE_IMPORTS: dict[str, tuple[str, ...]] = {
     ),
     "datadesk.core": (
         "collections.Counter",
+        "collections.abc.Callable",
         "collections.abc.Iterable",
         "collections.abc.Sequence",
         "dataclasses.asdict",
@@ -29,9 +30,15 @@ PURE_IMPORTS: dict[str, tuple[str, ...]] = {
         "dataclasses.replace",
         "datetime.date",
         "enum.StrEnum",
+        "hashlib.sha256",
         "json.dumps",
         "json.loads",
+        "re.compile",
+        "tomllib.TOMLDecodeError",
+        "tomllib.loads",
+        "types.MappingProxyType",
         "typing.Any",
+        "typing.Never",
     ),
 }
 INSIDE = {

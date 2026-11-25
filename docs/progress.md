@@ -8,7 +8,7 @@ Every session reads this file first, so it stays short.
 |---|---|---|---|---|
 | 1 | Workspace, tooling, purity and shape tests | check passed | `step-01/a-workspace`, `step-01/b-import-contracts`, `step-01/c-kit-shape`, `step-01/d-test-isolation` | November 22, 2026, runs 45093444380, 45094817250, 45094829990 and 45092206629 |
 | 2 | Kit, words to cells | check passed | `step-02/a-import-pin`, `step-02/b-value-types`, `step-02/c-words-to-lines`, `step-02/d-lexer`, `step-02/e-records` | November 23, 2026, head `73d428e2`, run 45130645501 |
-| 3 | Archive for the QCMR from FY2022 | in progress | `step-03/a-index` | |
+| 3 | Archive for the QCMR from FY2022 | in progress | `step-03/a-index`, `step-03/b-listing` | |
 | 4 | Words: PDF adapter with font repair, word cache, codec | not started | | |
 | 5 | QCMR positions parser, registry, row schemas, column vocabulary | not started | | |
 | 6 | Checks, gate and release for positions (first release-quality dataset) | not started | | |
@@ -167,6 +167,14 @@ session needs it. A note for one later step goes in `docs/plan-notes.md`.
   not be made, teardown has nothing to remove and leaves the first error to show.
   `test_hypothesis_writes_nothing_in_the_workspace` in `tests/test_gates.py` runs a property test
   in a workspace copy and fails when a `.hypothesis` folder appears there.
+- **A test imports a fixture module by its path from the checkout root** (November 24, 2026,
+  step 3, S3-B). Under `--import-mode=importlib`, pytest names a test module by its path, as
+  `packages.datadesk.tests.core.test_watch`, and makes each folder above it a namespace module.
+  So a test imports a fixture beside it as
+  `from packages.datadesk.tests.core.fixtures.qcmr_feed import FEED`, with no `__init__.py`.
+  ty resolves that name because `[tool.ty.environment] root` in the root `pyproject.toml` ends
+  with `"."`. Without it, `uv run ty check` fails with `import-not-found`. A relative import
+  passes pytest and fails ty the same way. ruff sorts the import with the outside packages.
 - **Docstrings put `refs` past its estimate** (November 23, 2026, step 2, S2-B). The kit size
   report counts every line that is not blank or a comment, docstrings included. At the S2-B head
   it prints 592 lines. At the S2-E head after its fix round 2 it prints 1,420, and `records`

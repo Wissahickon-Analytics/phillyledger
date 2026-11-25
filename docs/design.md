@@ -1984,9 +1984,10 @@ the slot (R1).
 
 ```python
 # datadesk/core/periods.py
-MONTHS: MappingProxyType[str, int]
+MONTHS: MappingProxyType[str, int]                            # "january" -> 1
 def fiscal_year_of(d: date) -> int: ...                       # July starts the next FY
-def fiscal_quarter(period_end: date) -> tuple[int, int]: ...  # Sep 30 -> (FY+1, 1)
+def fiscal_quarter(period_end: date) -> tuple[int, int]: ...  # Sep 30 -> (FY+1, 1); any other
+                                                              # date gives the quarter it is in
 def fiscal_period(kind: Window, label_year: int, months: tuple[int, int]) -> Period: ...
     # one place for "FY2026 July to December is calendar 2025" (WAGE-Q07) and for the year
     # basis of each window: month, quarter and calendar year use calendar years; FYTD and
@@ -1994,23 +1995,73 @@ def fiscal_period(kind: Window, label_year: int, months: tuple[int, int]) -> Per
 def match_month(token: str) -> int | None: ...                # one-edit match, unique only
 
 
+# datadesk/core/catalog.py
+# datadesk/data/catalog.toml holds one [[source]] table for each listing, with the six fields of
+# SourceEntry. Later steps add the lag, the recheck interval, missing_ok, slug exceptions and
+# DatasetSpec.
+class ListingShape(StrEnum):
+    DOCUMENT_FINDER = "document_finder"
+    PHILA_DOCUMENTS = "phila_documents"
+    MANUAL = "manual"
+@dataclass(frozen=True, slots=True)
+class SourceEntry:
+    id: str                  # "qcmr"
+    series: str              # the series of its editions, and the key of its title rule
+    shape: ListingShape
+    listing_url: str
+    category: str            # document-finder: the category whose documents are read
+    first_period_end: date   # an edition that ends earlier is never fetched
+@dataclass(frozen=True, slots=True)
+class SourceCatalog:
+    entries: tuple[SourceEntry, ...]           # an id repeated raises ValueError
+    def entry(self, id: str) -> SourceEntry: ...   # KeyError for an id it lacks
+def load_catalog(text: str) -> SourceCatalog | tuple[Finding, ...]: ...
+    # pure; every problem is a BLOCK finding: catalog_not_toml, catalog_unknown_field,
+    # catalog_missing_field, catalog_wrong_type (a date and time is not a date),
+    # catalog_unknown_shape, catalog_duplicate_id
+
+
 # datadesk/core/listings/*.py   (one module per publisher page shape)
 @dataclass(frozen=True, slots=True)
 class ListedLink:
     url: str               # canonical host (admin and www are one asset, QCASH-Q04)
     title: str             # titled anchor wins over the icon anchor (WAGE-Q03)
-    position: int
+    position: int          # from 0, in page order
     edition: EditionKey | None
-    skip_reason: str | None   # "infographic", "unrelated", "unstaged"
+    skip_reason: str | None   # "infographic", "unrelated", "not_a_quarter_end", "unstaged";
+                              # a link has an edition or a skip reason, never both or neither
+    listed_at: str         # from the shape's parser; document-finder: the upload stamp
 @dataclass(frozen=True, slots=True)
 class Listing:
     source: str
     url: str
-    html_sha256: str
+    html_sha256: str       # sha256 of html encoded as UTF-8
     links: tuple[ListedLink, ...]
-def parse_listing(source: SourceEntry, url: str, html: str) -> Listing: ...
+def parse_listing(source: SourceEntry, url: str, html: str) -> Listing | Finding: ...
     # dispatches on SourceEntry.shape, a closed enum, to document_finder.parse,
-    # phila_documents.parse or manual.parse (QSMR: URLs typed into the catalog, QSMR-Q01)
+    # phila_documents.parse or manual.parse (QSMR: URLs typed into the catalog, QSMR-Q01).
+    # A shape parser returns the page's links as PageLink(title, url, listed_at), or a finding.
+    # parse_listing reads each title with TITLE_RULES[source.series] and puts each URL on the
+    # canonical host. BLOCK findings: listing_unsupported for a shape with no parser yet or a
+    # series with no title rule, listing_unreadable from the shape parser.
+
+# datadesk/core/listings/document_finder.py
+def parse(source: SourceEntry, text: str) -> tuple[PageLink, ...] | Finding: ...
+    # the feed is a JSON list of categories, each with a title and its documents. It reads the
+    # documents of the categories titled source.category, in feed order, and nothing else.
+    # listed_at is the 14-digit upload stamp in the URL path. Text that is not JSON, no such
+    # category, a document with no title or URL, and a URL with no stamp are listing_unreadable.
+
+# datadesk/core/listings/titles.py
+TITLE_RULES: MappingProxyType[str, Callable[[str], EditionKey | str]]   # series -> its rule
+def qcmr_title(title: str) -> EditionKey | str: ...
+    # "infographic" anywhere in the title: "infographic". "Quarterly City Managers Report" or
+    # "Quarterly City Manager's Report", a hyphen or an en dash, then "<Word> <D>, <YYYY>" and
+    # nothing more, where <Word> is any run of letters, is a report title. A report title whose
+    # date is a quarter end gives the edition Period(first day of the fiscal quarter, that date).
+    # Any other report title is "not_a_quarter_end", one whose word names no month included, so
+    # it raises a WARN instead of vanishing. Any other title: "unrelated". The edition comes from
+    # the title alone, never from the URL.
 
 
 # datadesk/core/watch.py
@@ -2041,14 +2092,29 @@ class WatchPlan:
     wayback: tuple[WaybackLookup, ...]
     gaps: tuple[Gap, ...]
     findings: tuple[Finding, ...]
+@dataclass(frozen=True, slots=True)
+class PullRequestPlan:
+    files: tuple[tuple[str, str], ...]   # (path in the checkout, the file's whole text)
+    branch: str
+    title: str
+    body: str
 def plan_listing_fetches(catalog: SourceCatalog, today: date) -> tuple[ListingFetch, ...]: ...
 def judge_listing_responses(fetches: Sequence[ListingFetch],
                             statuses: Sequence[int]) -> tuple[Finding, ...]: ...
     # a 404 on a page the catalog marks missing_ok is no finding; any other non-200 is BLOCK
 def plan_watch(catalog: SourceCatalog, listings: Sequence[Listing], index: ArchiveIndex,
                today: date) -> WatchPlan: ...
-    # Last link per edition wins; an earlier sha stays as a superseded version. A URL whose sha
-    # changed under an older listing becomes url_reused plus a WaybackLookup (WAGE-Q10, Q11).
+    # Last link per edition wins: the greatest listed_at, and on equal ones the latest position,
+    # since the City appends a revised attachment after the original (QPOS-Q32). An edition that
+    # ends before its entry's first_period_end is dropped. A kept link is requested unless an
+    # indexed version of its own edition holds its URL, with reason "new" when the edition has no
+    # version and "revision" when it has one. A URL that another edition holds is still
+    # requested. plan_fetch rejects the bytes as content_alias when their sha is indexed under an
+    # edition other than the request's, whatever URL served them. Each link skipped as
+    # not_a_quarter_end is a WARN finding with that code. An earlier sha stays as a superseded
+    # version (plan_fetch). Step 3 builds the rules above, and step 13 the rules below. A URL
+    # whose sha changed under an older listing becomes url_reused plus a WaybackLookup
+    # (WAGE-Q10, Q11).
     # Expected editions from the catalog minus indexed ones become gaps, after the declared lag.
     # Indexed URLs not fetched within the catalog's recheck interval become `recheck` requests:
     # the executor downloads and hashes them, and a new sha behind an unchanged listing goes
@@ -2369,8 +2435,10 @@ def run_watch(deps: Deps, repo: RepoSnapshot, today: date) -> str | None:
     fetches = plan_listing_fetches(catalog, today)                          # pure
     responses = [deps.http.get(f.url) for f in fetches]                     # effect
     problems = judge_listing_responses(fetches, [r.status for r in responses])   # pure
-    listings = [parse_listing(catalog.entry(f.source), f.url, r.text)      # pure per response
-                for f, r in zip(fetches, responses) if r.status == 200]
+    parsed = [parse_listing(catalog.entry(f.source), f.url, r.text)        # pure per response
+              for f, r in zip(fetches, responses) if r.status == 200]
+    listings = [p for p in parsed if isinstance(p, Listing)]
+    problems = (*problems, *(p for p in parsed if isinstance(p, Finding)))
     plan = plan_watch(catalog, listings, index, today)                      # pure
     picks = [pick_capture(parse_cdx(deps.http.get(cdx_url(w.url)).text), w)  # effect, then pure
              for w in plan.wayback]
@@ -2380,9 +2448,12 @@ def run_watch(deps: Deps, repo: RepoSnapshot, today: date) -> str | None:
 ```
 
 The pull request carries `watch/plan-<date>.json` (the plan itself) and a readable summary.
-`watch` downloads no PDF and parses nothing. The executor branches only on HTTP status, which is
-the effect's outcome. Whether a 404 matters is decided by `judge_listing_responses` from the
-catalog's `missing_ok` fact (R2: the port has no `accept_404` flag).
+`watch` downloads no PDF and parses nothing. A finding from `parse_listing` joins the problems,
+and only a `Listing` reaches `plan_watch`. The executor opens no pull request for a
+`PullRequestPlan` with no files. Apart from those two branches, the executor branches only on
+HTTP status, which is the effect's outcome. Whether a 404 matters is decided by
+`judge_listing_responses` from the catalog's `missing_ok` fact (R2: the port has no `accept_404`
+flag).
 
 ### 4.2 `fetch`
 
@@ -3511,7 +3582,7 @@ editions never overlap and FY2026 Q4 is `qcmr:2026-06-30:none`.
 
 | Case | Rule | Where |
 |---|---|---|
-| Revised attachment listed after the original (QPOS-Q32, RTT-Q06, MCITY-Q02) | Later `listed_at` wins; the earlier version stays in the index with `supersedes` pointing at it | `plan_watch` |
+| Revised attachment listed after the original (QPOS-Q32, RTT-Q06, MCITY-Q02) | Later `listed_at` wins, and on equal ones the link listed later; the earlier version stays in the index with `supersedes` pointing at it | `plan_watch` |
 | Same bytes under two periods (MSCH-Q01, MCITY-Q08) | Rejected as `content_alias`; the missing period is reported as a gap | `plan_fetch`, `plan_watch`, `add_versions` |
 | Same bytes of the same edition at a new URL | The URL joins that version's `urls`, after the ones it holds; nothing else changes | `add_versions` |
 | A URL whose bytes changed, old pages pointing at new bytes (WAGE-Q10) | The index keys by sha, so the change is visible; `url_reused` plus a Wayback lookup for the old period | `plan_watch`, `pick_capture` |
@@ -3902,7 +3973,7 @@ outside the list changes the list and the pin together.
 | Package | Outside modules it imports from |
 |---|---|
 | `checkedtables` | `collections.abc`, `dataclasses`, `decimal`, `enum`, `re`, `statistics`, `typing` |
-| `datadesk.core` | `collections`, `collections.abc`, `dataclasses`, `datetime`, `enum`, `json`, `typing` |
+| `datadesk.core` | `collections`, `collections.abc`, `dataclasses`, `datetime`, `enum`, `hashlib`, `json`, `re`, `tomllib`, `types`, `typing` |
 
 ### 11.2 Property tests
 
