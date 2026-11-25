@@ -430,7 +430,7 @@ file, `docs/progress.md`, `docs/followups.md` or `docs/deviations/`.
   (November 24, 2026, step 3, S3-E). On November 23, 2026, `curl` asked for the feed as
   `datadesk/0.1` and as `datadesk/0.1 (+https://github.com/Wissahickon-Analytics/phillyledger)`,
   and both got HTTP 403 from `awselb/2.0` behind CloudFront. A browser got the feed (step 3 plan,
-  fact 11). The owner's answer for a run that is his is the string the old repo sends (answer A,
+  facts 6 and 11). The owner's answer for a run that is his is the string the old repo sends (answer A,
   `publisher_http.py:199`). The step 3 plan also records that the agents that build this repo do
   not send that string themselves, and that the City's permission is the owner's statement, which
   no session has checked. At step 3 the City's files came through a real browser and the saved
@@ -440,8 +440,9 @@ file, `docs/progress.md`, `docs/followups.md` or `docs/deviations/`.
   S3-E). The City's report for September 30, 2026 is saved as `qcmr-2026-09-30.pdf` in
   `/Users/nhand/DataProjects/phillyledger-held/qcmr-city`, with sha
   `640068cb7a8a5d6c621f0ac6a0b2e16df6c290fc1036ea95f2260057be58f365`, 1,072,165 bytes and 92
-  pages. It has no text a program can read (QPOS-Q38), so `confirm_period` rejects it as
-  `period_unreadable` and `plan_fetch` neither stores nor indexes it (step 3 plan, fact 14). The
+  pages. It has no text a program can read (QPOS-Q38), so `confirm_period` returns
+  `period_unreadable`, and `plan_fetch` rejects it and neither stores nor indexes it (step 3 plan,
+  fact 14). The
   owner chose to let it wait until a later step can read its cover (answer D). Step 7 adds
   `datadesk ocr --spend` (design section 15), and Textract calls need the owner's go-ahead (hard
   rule 8 of `CLAUDE.md`). Step 4 ports the font repair for `(cid:N)` words. Whether that repair
