@@ -80,7 +80,7 @@ def test_box_contains_with_slack() -> None:
 def test_word_ref_cites_a_file_and_a_page() -> None:
     nameless: Any = ""
     for doc_sha256, page, index, child, message in (
-        (nameless, 1, 0, None, "names no file"),
+        (nameless, 1, 0, None, "not a Sha256"),
         (SHA, 0, 0, None, "page below 1"),
         (SHA, 1, -1, None, "index below 0"),
         (SHA, 1, 0, -1, "child below 0"),

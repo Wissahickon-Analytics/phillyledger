@@ -137,7 +137,7 @@ class WordRef:
     Raises
     ------
     ValueError
-        When `doc_sha256` is empty, `page` is below 1, or `index` or `child` is below 0.
+        When `doc_sha256` is not a `Sha256`, `page` is below 1, or `index` or `child` is below 0.
     """
 
     doc_sha256: Sha256
@@ -146,9 +146,9 @@ class WordRef:
     child: int | None = None
 
     def __post_init__(self) -> None:
-        """Refuse a ref that names no file, a page below 1, or an index or child below 0."""
-        if not self.doc_sha256:
-            raise ValueError(f"a word ref names no file: {self}")
+        """Refuse a hash that is not a `Sha256`, a page below 1, or an index or child below 0."""
+        if not isinstance(self.doc_sha256, Sha256):
+            raise ValueError(f"a word ref names its file by {self.doc_sha256!r}, not a Sha256")
         if self.page < 1:
             raise ValueError(f"a word ref has a page below 1: {self}")
         if self.index < 0:

@@ -63,7 +63,7 @@ def test_word_refuses_a_confidence_outside_0_to_100() -> None:
 
 def test_page_cites_a_file_and_a_page() -> None:
     nameless: Any = ""
-    for sha, number, message in ((nameless, 1, "names no file"), (SHA, 0, "number below 1")):
+    for sha, number, message in ((nameless, 1, "not a Sha256"), (SHA, 0, "number below 1")):
         with pytest.raises(ValueError, match=message):
             Page(sha, number, 612.0, 792.0, 0, OCR, ())
     assert Page(SHA, 1, 612.0, 792.0, 0, OCR, ()).number == 1
@@ -71,7 +71,7 @@ def test_page_cites_a_file_and_a_page() -> None:
 
 def test_document_cites_a_file() -> None:
     nameless: Any = ""
-    with pytest.raises(ValueError, match="names no file"):
+    with pytest.raises(ValueError, match="not a Sha256"):
         Document(nameless, ())
     assert Document(SHA, ()).sha256 == SHA
 
