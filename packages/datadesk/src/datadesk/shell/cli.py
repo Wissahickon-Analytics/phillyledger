@@ -136,10 +136,8 @@ def fetch(
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the `datadesk` command line on `argv`, or on `sys.argv[1:]`, and return its exit code.
 
-    The code is that of any SystemExit raised inside the typer app whose code is an integer,
-    while typer builds the command or runs it. Any other exception propagates. 0 means a run that
-    ends normally or help, 2 a usage error, 1 an exception that `fetch` catches or one of typer's
-    own ends, and 130 a Ctrl-C that `fetch` does not catch.
+    The code is the integer code of a SystemExit that reaches `main`. Any other exception
+    propagates.
     """
     try:
         app(args=argv, prog_name="datadesk")

@@ -543,8 +543,8 @@ On November 25, 2026 the owner asked for typer on the command line and docstring
 design are recorded here.
 
 - **`datadesk` runs on typer.** `main` built an `argparse` parser and ran the fetch itself. Now
-  `main` runs a typer app and returns the code of any `SystemExit` raised inside it whose code
-  is an integer, and the `fetch` command holds the old body of `main`. typer is capped below
+  `main` runs a typer app and returns the integer code of a `SystemExit` that reaches it, and
+  the `fetch` command holds the old body of `main`. typer is capped below
   0.29 because typer 0.29.0 depends on pydantic, which section 8.7 of `docs/principles.md`
   leaves undecided for `datadesk`. The owner answered "Keep the cap" on November 25, 2026. The
   runs of the real script in the sweep's pull request show each stop. Section 4.2 says that
@@ -569,14 +569,13 @@ design are recorded here.
   `typer.main.get_command` and then `cli.load_settings` patched to raise a `KeyboardInterrupt`,
   and a `raise` planted where `cli.py` imports typer, showed the two windows. Runs with the
   variable set and empty showed the last. Design sections 4.2 and 9.
-- **Section 9 says what each exit code means.** A table that gave each stop its output missed
+- **Section 9 lists the exit codes.** A table that gave each stop its output missed
   forms that runs show. `datadesk fetch qcmr --saved` and `datadesk --help=1` each print an
   `Error:` line without the usage line. The message of an `EffectError` holds the service's
   text, which can hold a line feed. With `typer.main.get_command` patched to raise
   `SystemExit(7)`, `main(["--help"])` returns 7. None is a bug. So section 9 now gives the four
-  exit codes, what each means and how far `hide_keys` reaches, and quotes none of the text that
-  typer and click print. A refused input, an `EffectError` and a `PreconditionFailed` print a
-  message on stderr that starts `datadesk:`. A checkout file that cannot be written prints its
+  exit codes and how far `hide_keys` reaches. A refused input, an `EffectError` and a
+  `PreconditionFailed` print a message on stderr. A checkout file that cannot be written prints its
   traceback through `hide_keys` and exits 1, as under `argparse`. In a scratch copy with a
   folder at the temporary file's name, that run ended in `IsADirectoryError`. Runs of each code
   at the sweep's head show the rest. Design sections 4.2 and 9.
@@ -605,5 +604,4 @@ design are recorded here.
   comment, docstrings included, where section 5 and `CLAUDE.md` (Code) leave them out. It now
   finds each module, class and function docstring with `ast`. It printed 1431 lines at
   `36807de` and prints 735 at the sweep's head. Section 12 now says that the estimates and the
-  report leave out docstrings, blank lines and comments, and that section 5's counts leave out
-  only docstrings and blank lines. Design section 12.
+  report leave out docstrings, blank lines and comments. Design section 12.

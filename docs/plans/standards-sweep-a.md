@@ -13,8 +13,8 @@ changes no value, label, period or release step. The kit's public shape is its n
 and fields, and a docstring changes none of them. The command line keeps its one command, its
 source argument and its `--saved` option. It loses `-h` and the abbreviations of `--saved` that
 `argparse` took, such as `--sav`, which are now usage errors. Some stops print or exit
-differently. Design section 9 says what each exit code means, and the "Standards sweep A"
-section of `docs/deviations/step-03.md` says what changed.
+differently. Design section 9 lists the exit codes, and the "Standards sweep A" section of
+`docs/deviations/step-03.md` says what changed.
 
 ## The pull request
 
@@ -65,7 +65,7 @@ All runs are from November 25, 2026, in a scratch script that imitates `cli.py`.
 
 ## The stops
 
-Design section 9 says what each exit code means, and the "Standards sweep A" section of
+Design section 9 lists the exit codes, and the "Standards sweep A" section of
 `docs/deviations/step-03.md` says which stops changed and the runs that show it. The build runs
 the real `datadesk` script for each stop and records the command, the output and the exit code
 in the pull request. No run may call R2.
