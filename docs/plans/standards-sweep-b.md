@@ -20,7 +20,7 @@ follows, on Opus, after the owner's go.
 
 ## The owner's answers
 
-All three are from November 25, 2026.
+All four are from November 25, 2026.
 
 1. The planning session asked "Plan sweep B as its own short step before step 4's plan?" He
    answered "Yes, plan it". He was shown this scope. One `Sha256` type, defined in the kit and
@@ -36,8 +36,11 @@ All three are from November 25, 2026.
 3. This Plan run asked "Should the sweep B build reword 8.3 so it no longer says that?", where
    "that" is the sentence that calls `isinstance(repo, tuple)` in `fetch_command` "the loose
    form". He chose the option "Yes, withdraw it (Recommended)".
+4. After Codex's review, this Plan run asked whether to add "the readers' refusal codes" to
+   the list in hard rule 6. It had told him that proposal 4 pins the two enums and that the
+   change edits a hard rule. He answered "Yes, add them".
 
-Everything else in this plan was worked out after those answers. Each item under "Proposals" is
+Everything else in this plan was worked out after the first three answers. Each item under "Proposals" is
 a proposal until he lands this plan.
 
 ## Proposals
@@ -51,9 +54,8 @@ a proposal until he lands this plan.
 3. The refusals are two enums, one for each family of readers. `PERIOD_READERS` and
    `TITLE_RULES` each need one return type for every reader they hold. One shared enum would
    let `qcmr_title` return `period_ambiguous` with no report from `ty`.
-4. Both enums are pinned in `test_closed_lists_are_pinned` and in design section 11.4. The list
-   in hard rule 6 of `CLAUDE.md` gains "the readers' refusal codes". That edits a hard rule, so
-   it needs his yes in so many words.
+4. Both enums are pinned in `test_closed_lists_are_pinned` and in design section 11.4. Answer
+   4 lets the list in hard rule 6 of `CLAUDE.md` name them.
 5. `SkipReason` has the four values that design section 3.2 gives `ListedLink.skip_reason`.
    The fourth, `unstaged`, has no reader that returns it yet.
 6. `ListedLink.skip_reason` takes the type `SkipReason | None`. It holds what a title rule
@@ -275,7 +277,7 @@ The build makes these in the same pull request (hard rule 7). The counts are fro
   `qcmr_period` moves to the past tense.
 - **The three places that say values are frozen dataclasses.** `CLAUDE.md` (Code), section 5
   of `docs/principles.md` and `.claude/rules/core-purity.md` each name the allowed exception.
-- **`CLAUDE.md`, hard rule 6.** Its list gains "the readers' refusal codes", by proposal 4.
+- **`CLAUDE.md`, hard rule 6.** Its list gains "the readers' refusal codes", by answer 4.
 - **`docs/progress.md` and `CLAUDE.md`.** The note "The type rules of the code standards are not
   met yet" and the dated bullet in the Code section shrink to "What sweep B leaves" below. The
   note's claim that `gather_repo` owes a named result goes, by answer 3. The note that says
