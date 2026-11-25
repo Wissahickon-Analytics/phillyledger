@@ -3,11 +3,12 @@ from hashlib import sha256
 import pytest
 from packages.datadesk.tests.shell.fakes import DictStore
 
+from checkedtables.refs import Sha256
 from datadesk.shell.ports import PreconditionFailed
 from datadesk.shell.run_fetch import put_immutable
 
 REPORT = b"%PDF-1.4 the report\n"
-SHA = sha256(REPORT).hexdigest()
+SHA = Sha256(sha256(REPORT).hexdigest())
 KEY = f"pdf/{SHA[:2]}/{SHA}.pdf"
 
 

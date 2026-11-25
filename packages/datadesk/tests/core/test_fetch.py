@@ -3,11 +3,13 @@ from datetime import date
 
 import pytest
 
+from checkedtables.refs import Sha256
 from checkedtables.table import Finding, Severity
 from datadesk.core.domain import ArchiveIndex, DocumentVersion, EditionKey, Period
 from datadesk.core.fetch import (
     Fetched,
     FetchPlan,
+    PeriodRefusal,
     Rejection,
     StoreObject,
     confirm_period,
@@ -24,9 +26,9 @@ FY2022_Q1 = EditionKey("qcmr", Q1_PERIOD)
 FY2022_Q2 = EditionKey("qcmr", Q2_PERIOD)
 FY2022_Q3 = EditionKey("qcmr", Period(date(2022, 1, 1), date(2022, 3, 31)))
 FY2022_Q4 = EditionKey("qcmr", Period(date(2022, 4, 1), date(2022, 6, 30)))
-Q1_SHA = "7c4a2e5abb00a5084cdb24fb35325cd1f2cdee42cfd9b30cf7c62c46c2f22918"
-Q2_SHA = "401136b9ca279d46ab11e25a6d3da0980b30cbf147fc23976cc467519aa7aed7"
-NEW_Q1_SHA = "f040b053395e239682f951df810d15eab029d43d92006312b23181d36ae0a1f1"
+Q1_SHA = Sha256("7c4a2e5abb00a5084cdb24fb35325cd1f2cdee42cfd9b30cf7c62c46c2f22918")
+Q2_SHA = Sha256("401136b9ca279d46ab11e25a6d3da0980b30cbf147fc23976cc467519aa7aed7")
+NEW_Q1_SHA = Sha256("f040b053395e239682f951df810d15eab029d43d92006312b23181d36ae0a1f1")
 INDEX_FILE = "packages/datadesk/src/datadesk/data/index.jsonl"
 EMPTY = ArchiveIndex(())
 MEDIA = "https://www.phila.gov/media"
@@ -290,8 +292,6 @@ REFUSED_COVERS = [
 
 @pytest.mark.parametrize(("page1", "code"), REFUSED_COVERS)
 def test_qcmr_period_refuses_with_a_member_of_period_refusal(page1: str, code: str) -> None:
-    from datadesk.core.fetch import PeriodRefusal
-
     assert qcmr_period(page1) is PeriodRefusal(code)
 
 
@@ -310,7 +310,7 @@ def test_a_series_with_no_period_reader_is_unsupported() -> None:
     assert finding_code(result, collections) == "period_unsupported"
 
 
-def ok(request: FetchRequest, sha: str, page1: str | None = Q1_COVER) -> Fetched:
+def ok(request: FetchRequest, sha: Sha256, page1: str | None = Q1_COVER) -> Fetched:
     return Fetched(request, 200, sha, 1_781_180, page1)
 
 

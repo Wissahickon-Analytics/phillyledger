@@ -8,12 +8,12 @@ from hypothesis import strategies as st
 
 from checkedtables.kinds import SourceKind
 from checkedtables.lines import Line, PageLines, group_lines, has_values, lines_text, page_lines
-from checkedtables.refs import Box, WordRef
+from checkedtables.refs import Box, Sha256, WordRef
 from checkedtables.testing import page_from_text
 from checkedtables.words import Page, Rule, Word, WordSource
 
-SHA = "a" * 64
-OTHER_SHA = "b" * 64
+SHA = Sha256("a" * 64)
+OTHER_SHA = Sha256("b" * 64)
 TEXT_LAYER = WordSource(SourceKind.TEXT_LAYER, "pdfplumber==0.11.4;dedupe_chars")
 OCR = WordSource(SourceKind.OCR, "textract:AnalyzeDocument;dpi=300")
 SOURCES = (

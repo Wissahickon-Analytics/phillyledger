@@ -5,16 +5,16 @@ from typing import Any
 import pytest
 
 from checkedtables.kinds import SourceKind
-from checkedtables.refs import Box, WordRef
+from checkedtables.refs import Box, Sha256, WordRef
 from checkedtables.words import Document, Page, Word, WordSource
 
-SHA = "a" * 64
-OTHER_SHA = "b" * 64
+SHA = Sha256("a" * 64)
+OTHER_SHA = Sha256("b" * 64)
 TEXT_LAYER = WordSource(SourceKind.TEXT_LAYER, "pdfplumber==0.11.4;dedupe_chars")
 OCR = WordSource(SourceKind.OCR, "textract:AnalyzeDocument;dpi=300")
 
 
-def word(sha: str, page: int, index: int) -> Word:
+def word(sha: Sha256, page: int, index: int) -> Word:
     return Word(WordRef(sha, page, index), "1,234", Box(0.0, 0.0, 10.0, 10.0), None, None, None)
 
 
@@ -62,15 +62,17 @@ def test_word_refuses_a_confidence_outside_0_to_100() -> None:
 
 
 def test_page_cites_a_file_and_a_page() -> None:
-    for sha, number, message in (("", 1, "names no file"), (SHA, 0, "number below 1")):
+    nameless: Any = ""
+    for sha, number, message in ((nameless, 1, "names no file"), (SHA, 0, "number below 1")):
         with pytest.raises(ValueError, match=message):
             Page(sha, number, 612.0, 792.0, 0, OCR, ())
     assert Page(SHA, 1, 612.0, 792.0, 0, OCR, ()).number == 1
 
 
 def test_document_cites_a_file() -> None:
+    nameless: Any = ""
     with pytest.raises(ValueError, match="names no file"):
-        Document("", ())
+        Document(nameless, ())
     assert Document(SHA, ()).sha256 == SHA
 
 
@@ -82,20 +84,16 @@ NOT_A_SHA256 = [
 
 @pytest.mark.parametrize("sha", NOT_A_SHA256)
 def test_page_refuses_a_sha_that_is_not_a_sha256(sha: Any) -> None:
-    from checkedtables.refs import Sha256
-
     with pytest.raises(ValueError, match="not a Sha256"):
         Page(sha, 1, 612.0, 792.0, 0, OCR, ())
-    assert Page(Sha256(SHA), 1, 612.0, 792.0, 0, OCR, ()).doc_sha256 == SHA
+    assert Page(SHA, 1, 612.0, 792.0, 0, OCR, ()).doc_sha256 == SHA
 
 
 @pytest.mark.parametrize("sha", NOT_A_SHA256)
 def test_document_refuses_a_sha_that_is_not_a_sha256(sha: Any) -> None:
-    from checkedtables.refs import Sha256
-
     with pytest.raises(ValueError, match="not a Sha256"):
         Document(sha, ())
-    assert Document(Sha256(SHA), ()).sha256 == SHA
+    assert Document(SHA, ()).sha256 == SHA
 
 
 def test_document_page_returns_the_page() -> None:

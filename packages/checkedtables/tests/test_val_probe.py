@@ -2,9 +2,10 @@ from checkedtables.cells import Amount, Blank, Cell, Dash, NotApplicable, Text, 
 from checkedtables.columns import ColumnSpec, NumberFormat
 from checkedtables.kinds import PercentSign, ValueKind
 from checkedtables.lex import lex_cell, split_numeric_runs
+from checkedtables.refs import Sha256
 from checkedtables.testing import page_from_text
 
-SHA = "a" * 64
+SHA = Sha256("a" * 64)
 COLUMNS = {
     "M": ColumnSpec("money", "Money", ValueKind.MONEY, NumberFormat(decimals=None)),
     "M1": ColumnSpec("cash", "Cash", ValueKind.MONEY, NumberFormat(decimals=1)),

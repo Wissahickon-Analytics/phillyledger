@@ -5,6 +5,7 @@ from hypothesis import strategies as st
 
 from checkedtables.labels import Label
 from checkedtables.lines import Line, group_lines, has_values
+from checkedtables.refs import Sha256
 from checkedtables.testing import page_from_text
 from checkedtables.text import (
     normalize_label,
@@ -14,7 +15,7 @@ from checkedtables.text import (
     squash,
 )
 
-SHA = "a" * 64
+SHA = Sha256("a" * 64)
 LINE_NUMBER = r"I|\d{1,2}"
 PREFIX_PATTERNS = (LINE_NUMBER, r"\d+", r"[A-Z][a-z]+", r".*", r"x")
 word_texts = st.sampled_from(("23", "I", "5", "Civilian", "Human", "(1)", "1,234", "-")) | st.text(

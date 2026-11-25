@@ -5,7 +5,7 @@ from hypothesis import assume, given
 from hypothesis import strategies as st
 
 from datadesk.core.domain import EditionKey, Period
-from datadesk.core.listings.titles import TITLE_RULES, qcmr_title
+from datadesk.core.listings.titles import TITLE_RULES, SkipReason, qcmr_title
 from datadesk.core.periods import MONTHS, fiscal_quarter
 
 NAMES = {number: name.capitalize() for name, number in MONTHS.items()}
@@ -108,8 +108,6 @@ def test_qcmr_title_reads_an_edition_or_a_skip_reason(
     ],
 )
 def test_qcmr_title_skips_with_a_member_of_skip_reason(title: str, reason: str) -> None:
-    from datadesk.core.listings.titles import SkipReason
-
     assert qcmr_title(title) is SkipReason(reason)
 
 

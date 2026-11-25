@@ -21,13 +21,13 @@ from checkedtables.records import (
     apply_reading,
     reading_for,
 )
-from checkedtables.refs import Box, WordRef
+from checkedtables.refs import Box, Sha256, WordRef
 from checkedtables.table import Finding, Severity
 from checkedtables.testing import page_from_text
 from checkedtables.words import Page, Word
 
-SHA = "0123456789abcdef" * 4
-OTHER_SHA = "f" * 64
+SHA = Sha256("0123456789abcdef" * 4)
+OTHER_SHA = Sha256("f" * 64)
 PAGE = 4
 OCR = SourceKind.OCR
 TEXT_LAYER = SourceKind.TEXT_LAYER
@@ -162,7 +162,7 @@ def test_a_reading_on_another_page_or_source_is_no_candidate() -> None:
     label_box = Box.around(word.box for word in page.words[:1])
     for other in (
         replace(reading, page=PAGE + 1),
-        replace(reading, doc_sha256="f" * 64),
+        replace(reading, doc_sha256=OTHER_SHA),
         replace(reading, source=SourceKind.TEXT_LAYER),
         replace(reading, box=label_box),
     ):
@@ -440,12 +440,10 @@ def test_a_reading_needs_an_id() -> None:
     ],
 )
 def test_reviewed_reading_refuses_a_sha_that_is_not_a_sha256(sha: Any) -> None:
-    from checkedtables.refs import Sha256
-
     box = Box(0.0, 0.0, 10.0, 10.0)
     with pytest.raises(ValueError, match="not a Sha256"):
         ReviewedReading("r1", sha, PAGE, box, OCR, "1", "1", "read on the rendered page")
-    reading = ReviewedReading("r1", Sha256(SHA), PAGE, box, OCR, "1", "1", "read on the page")
+    reading = ReviewedReading("r1", SHA, PAGE, box, OCR, "1", "1", "read on the rendered page")
     assert reading.doc_sha256 == SHA
 
 

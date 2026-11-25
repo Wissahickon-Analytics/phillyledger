@@ -8,10 +8,11 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from checkedtables.refs import Box, WordRef
+from checkedtables.refs import Box, Sha256, WordRef
 
 COMPARISONS = (operator.lt, operator.le, operator.gt, operator.ge)
 HEX = "7c4a2e5abb00a5084cdb24fb35325cd1f2cdee42cfd9b30cf7c62c46c2f22918"
+SHA = Sha256("a" * 64)
 coordinates = st.floats(min_value=-1e6, max_value=1e6, allow_nan=False)
 
 
@@ -24,7 +25,7 @@ def boxes(draw: st.DrawFn) -> Box:
 
 word_refs = st.builds(
     WordRef,
-    doc_sha256=st.sampled_from(("a" * 64, "b" * 64)),
+    doc_sha256=st.sampled_from(("a" * 64, "b" * 64)).map(Sha256),
     page=st.integers(1, 3),
     index=st.integers(0, 3),
     child=st.none() | st.integers(0, 3),
@@ -77,15 +78,16 @@ def test_box_contains_with_slack() -> None:
 
 
 def test_word_ref_cites_a_file_and_a_page() -> None:
+    nameless: Any = ""
     for doc_sha256, page, index, child, message in (
-        ("", 1, 0, None, "names no file"),
-        ("a" * 64, 0, 0, None, "page below 1"),
-        ("a" * 64, 1, -1, None, "index below 0"),
-        ("a" * 64, 1, 0, -1, "child below 0"),
+        (nameless, 1, 0, None, "names no file"),
+        (SHA, 0, 0, None, "page below 1"),
+        (SHA, 1, -1, None, "index below 0"),
+        (SHA, 1, 0, -1, "child below 0"),
     ):
         with pytest.raises(ValueError, match=message):
             WordRef(doc_sha256, page, index, child)
-    assert WordRef("a" * 64, 1, 0, 0).child == 0
+    assert WordRef(SHA, 1, 0, 0).child == 0
 
 
 @given(st.lists(word_refs))
@@ -99,7 +101,7 @@ def test_word_refs_sort_with_and_without_child(refs: list[WordRef]) -> None:
 def test_word_refs_compare_only_with_word_refs() -> None:
     for compare in COMPARISONS:
         with pytest.raises(TypeError):
-            compare(WordRef("a" * 64, 1, 0), 1)
+            compare(WordRef(SHA, 1, 0), 1)
 
 
 class OtherText(str):
@@ -113,8 +115,6 @@ class Digest(str, Enum):  # noqa: UP042
 
 @given(st.text("0123456789abcdef", min_size=64, max_size=64))
 def test_sha256_holds_64_lowercase_hex_characters_and_equals_its_text(text: str) -> None:
-    from checkedtables.refs import Sha256
-
     sha = Sha256(text)
     assert type(sha) is Sha256
     assert sha == text
@@ -138,8 +138,6 @@ def test_sha256_holds_64_lowercase_hex_characters_and_equals_its_text(text: str)
     ],
 )
 def test_sha256_refuses_any_other_value(value: Any) -> None:
-    from checkedtables.refs import Sha256
-
     with pytest.raises(ValueError, match="is not 64 lowercase hex characters"):
         Sha256(value)
 
@@ -152,16 +150,12 @@ def test_sha256_refuses_any_other_value(value: Any) -> None:
     ],
 )
 def test_sha256_of_a_str_subclass_holds_the_text_it_checked(text: str) -> None:
-    from checkedtables.refs import Sha256
-
     assert str(text) != HEX
     sha = Sha256(text)
     assert (type(sha), str(sha), len(sha)) == (Sha256, HEX, 64)
 
 
 def test_the_repr_of_a_word_ref_rebuilds_its_sha256() -> None:
-    from checkedtables.refs import Sha256
-
     ref = WordRef(Sha256(HEX), 2, 5, 1)
     names = {"Sha256": Sha256, "WordRef": WordRef}
     assert repr(Sha256(HEX)) == f"Sha256({HEX!r})"
@@ -175,8 +169,6 @@ def test_the_repr_of_a_word_ref_rebuilds_its_sha256() -> None:
     [pytest.param(HEX, id="64_hex_characters_of_plain_text"), pytest.param("", id="empty")],
 )
 def test_word_ref_refuses_a_sha_that_is_not_a_sha256(sha: Any) -> None:
-    from checkedtables.refs import Sha256
-
     with pytest.raises(ValueError, match="not a Sha256"):
         WordRef(sha, 1, 0)
     assert WordRef(Sha256(HEX), 1, 0).doc_sha256 == HEX

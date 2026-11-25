@@ -20,6 +20,7 @@ from packages.datadesk.tests.shell.fakes import (
 )
 from packages.datadesk.tests.shell.pdfs import text_pdf
 
+from checkedtables.refs import Sha256
 from datadesk.core.domain import ArchiveIndex, DocumentVersion, EditionKey, Period
 from datadesk.core.fetch import Rejection
 from datadesk.core.index import render_index
@@ -60,8 +61,8 @@ class Report:
     cover: str
 
     @property
-    def sha(self) -> str:
-        return sha256(self.body).hexdigest()
+    def sha(self) -> Sha256:
+        return Sha256(sha256(self.body).hexdigest())
 
     @property
     def key(self) -> str:
