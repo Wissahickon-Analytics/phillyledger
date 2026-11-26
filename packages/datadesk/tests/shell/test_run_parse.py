@@ -17,7 +17,11 @@ from datadesk.shell.adapters.pdf_pdfplumber import PdfPlumberReader
 from datadesk.shell.ports import LocalCache, PdfReader
 from datadesk.shell.run_parse import extract_words, merged_document
 
-STYLED_PDF = drawn_pdf(f"{STYLED} {RULES}", f"{STYLED} {RULES}")
+STYLED_PDF = drawn_pdf(
+    f"{STYLED} {RULES}",
+    "BT /F1 12 Tf 72 680 Td (Revenue) Tj ET BT /F2 9 Tf 300 680 Td (5,678) Tj ET "
+    "72 650 300 0.72 re f",
+)
 STYLED_SHA = Sha256(sha256(STYLED_PDF).hexdigest())
 TWO_PAGES = text_pdf("ONE", "TWO")
 TWO_PAGES_SHA = Sha256(sha256(TWO_PAGES).hexdigest())
@@ -91,6 +95,7 @@ def test_a_cache_hit_returns_an_equal_document(caches: Caches, tmp_path: Path) -
     assert {word.bold for word in words} == {True, False}
     assert {word.size for word in words} == {12.0, 9.0}
     assert all(page.rules for page in kept.pages)
+    assert kept.pages[0].rules != kept.pages[1].rules
     assert first == kept
     assert second == kept
 
