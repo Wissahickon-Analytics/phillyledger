@@ -178,7 +178,9 @@ class UnreadableReason(StrEnum):   # why a cell's words give no value of its col
 @dataclass(frozen=True, slots=True)
 class WordSource:
     kind: SourceKind
-    tool: str                  # "pdfplumber==0.11.4;dedupe_chars" or "textract:AnalyzeDocument;dpi=300"
+    tool: str                  # "textract:AnalyzeDocument;dpi=300", or for the pdfplumber reader
+                               # "pdfplumber==0.11.10;pdfminer.six==20260107;words=1;x_tolerance=2;
+                               # y_tolerance=2;use_text_flow=true;extra_attrs=["fontname"]"
 
 
 @dataclass(frozen=True, slots=True)
@@ -2264,6 +2266,7 @@ def plan_fetch(fetched: Sequence[Fetched], index: ArchiveIndex,
     #    the sha gets one StoreObject and a DocumentVersion with the confirmed printed_period
     #    that supersedes the current version. An equal listed_at supersedes too. A finding from
     #    add_versions is a rejection with its code.
+def pdf_key(sha: Sha256) -> str: ...      # "pdf/<sha[:2]>/<sha>.pdf", the archive's key for a PDF
 
 
 # datadesk/core/index.py
@@ -2555,7 +2558,9 @@ class OcrService(Protocol):
 class PdfReader(Protocol):
     def page1_text(self, pdf: bytes) -> str: ...                     # "" for a page with no text
     def words(self, pdf: bytes, sha256: Sha256, pages: Sequence[int]) -> Document: ...
+                                                                     # empty pages: every page
     def render(self, pdf: bytes, page: int, dpi: int) -> bytes: ...  # for OCR and review images
+    def tool(self) -> str: ...                                       # the tool string words gives
 
 
 class LocalCache(Protocol):               # a failed effect raises EffectError
@@ -2577,8 +2582,8 @@ class Deps:
 
 Step 3 builds `HttpResponse`, `Http`, the conditions, both exceptions, `ObjectStore` with `put`,
 `head` and `get`, `PdfReader` with `page1_text`, and `Deps` with those three ports. `exists` and
-`list` join `ObjectStore` at the step that first calls them, `words` and `render` join `PdfReader`
-at step 4, and each later port joins `Deps` at the step that builds it. The exception is
+`list` join `ObjectStore` at the step that first calls them, `words`, `render` and `tool` join
+`PdfReader` at step 4, and each later port joins `Deps` at the step that builds it. The exception is
 `LocalCache`: step 4 builds it and `cache_dir`, which keeps one file for each key, written under
 another name and then renamed, and the step 5 plan decides when it joins `Deps`. Each adapter turns
 its library's failures into `EffectError`, chained with `from`, and `PreconditionFailed` is not an
@@ -2633,6 +2638,26 @@ opens the PDF and reads page 1 becomes `EffectError`, chained, as for bytes it c
 with no page or a box on page 1 that pdfminer or pdfplumber cannot read. The two libraries raise
 many types on a malformed PDF, such as `TypeError` for a box that is one number, `IndexError` for a
 box of two numbers and `MalformedPDFException` for a box that holds a name.
+
+`words` and `render` walk the pages the same way and build none after the last page asked for.
+pdfminer builds the pages in turn, so a broken box after that page does not stop the read, and one
+at or before it does (step 4 plan, fact 10). A page the file lacks, and any `Exception` the
+libraries raise on a page at or before the last page asked for, becomes `EffectError`, chained,
+whose message names the page. pdfplumber's `extract_words` runs with `x_tolerance=2`,
+`y_tolerance=2`, `use_text_flow=True` and `extra_attrs=["fontname"]`, the old backend's options,
+held in one table that the tool string also reads. A word's text is what pdfplumber returns, a font
+code included. Its size is the median size of its glyphs, and it is bold when its font's name holds
+bold, semibold, demibold, demi, black or heavy in any case. A line object or a rect at most 3 points
+thick and at least 8 long gives a `Rule` on its centerline, a box of no width when it is upright and
+of no height when it is level, so an upright stroke 1.44 points wide reads as vertical. A thicker or
+shorter shape gives none, and so does a slanted line whose box is wider and taller than 3 points.
+Lines come before rects, each in pdfplumber's order. Every coordinate, width and height is a
+`float`. pdfplumber gives a page's `/Rotate` as written, while pdfminer lays the page out at
+rotation 0 when `/Rotate` is not an integer, so a rotation that is not an `int` is an `EffectError`.
+The tool string is `pdfplumber==<version>;pdfminer.six==<version>;words=<n>` and then each option
+with its value in JSON. `<n>` is `WORDS` in the adapter, and a pull request raises it when it
+changes what the adapter gives for a page: the size, the style, the rules or the order. `render`
+gives the whole page as PNG bytes from `to_image`, saved with every color pdfium draws.
 
 ### 4.1 `watch`
 
@@ -2817,13 +2842,19 @@ No executor branches on data to decide it.
 
 ```python
 # datadesk/shell/run_parse.py
+def extract_words(store: ObjectStore, pdf: PdfReader, cache: LocalCache,
+                  jobs: Sequence[WordJob]) -> None: ...
+    # for each job, pdf.words of store.get(pdf_key(job.doc_sha256)), encoded and put under
+    # job.cache_key; reads no cache entry; ValueError before any read when a job's source is
+    # not TEXT_LAYER, since the reader reads the text layer alone
+def merged_document(cache: LocalCache, keys: Sequence[WordKey]) -> Document: ...
+    # decodes each key's entry and joins the pages ascending; KeyError for a key the cache
+    # lacks; ValueError for no key, entries of two files, or a page in two entries
 def run_parse(deps: Deps, repo: RepoSnapshot) -> ParseOutcome | OcrNeeded:
     plan = plan_parse(parse_snapshot(deps, repo))                       # pure
     if plan.ocr_missing:
         return OcrNeeded(plan.ocr_missing)
-    for job in plan.extract:                                            # only what the plan lists
-        pdf = deps.store.get(pdf_key(job.doc_sha256))
-        deps.cache.put(job.cache_key, encode_document(deps.pdf.words(pdf, job.doc_sha256, job.pages)))
+    extract_words(deps.store, deps.pdf, deps.cache, plan.extract)       # only what the plan lists
     results: dict[str, ParseResult] = {}
     for job in plan.parse:
         doc = merged_document(deps.cache, job.word_keys)                # decode and join pages
@@ -2835,7 +2866,8 @@ def run_parse(deps: Deps, repo: RepoSnapshot) -> ParseOutcome | OcrNeeded:
 
 `plan_parse` decides which words to extract and which OCR responses exist. The executor does not
 re-read the cache to decide again (R1, R2). `merged_document` builds one `Document` whose pages
-each come from the declared source. A page never appears twice.
+each come from the declared source. A page never appears twice: two entries that hold one page are
+a `ValueError`. Each word function takes the ports it reads.
 
 ### 4.5 `release`
 
@@ -4502,7 +4534,7 @@ One suite per port, run against the fake and the real adapter:
 |---|---|---|
 | `ObjectStore` | dict store | S3 API via MinIO. The real half reads its target from `DATADESK_CONTRACT_S3_ENDPOINT_URL`, `DATADESK_CONTRACT_S3_ACCESS_KEY_ID`, `DATADESK_CONTRACT_S3_SECRET_ACCESS_KEY` and `DATADESK_CONTRACT_S3_BUCKET`, and skips with a message naming them when one is unset, as in CI |
 | `Http` | replays recorded responses | `http_saved` on a folder the test writes, every commit; from step 13, one phila.gov listing, nightly |
-| `PdfReader` | none needed | `page1_text` on PDFs the test builds: a text page, an image page, and pages with a box pdfplumber cannot read; step 4 adds a text layer with a drawn grid and bold words |
+| `PdfReader` | none needed | `page1_text`, `words` and `render` on PDFs the test builds: a text page, an image page, pages with a box the libraries cannot read or a rotation that is not an integer, a text layer with bold words in two sizes, drawn lines with thin and thick rects, and a page turned by `/Rotate 90` |
 | `OcrService` | returns archived responses | one page against Textract, by hand, with `--spend` |
 | `GitHost` | records the plan | a sandbox repository, before release |
 | `LocalCache` | dict | temp directory |
