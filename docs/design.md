@@ -2397,14 +2397,13 @@ def textract_to_document(responses: Sequence[tuple[int, bytes]], sha: Sha256, to
 FORMAT = 1                               # numbers the byte layout; every word key holds it
 def encode_document(doc: Document) -> bytes: ...
     # one JSON object: asdict(doc) and "format": FORMAT, keys sorted, separators (",", ":"),
-    # ensure_ascii, so any str encodes; ValueError for a NaN or an infinity. One document always
-    # gives the same bytes; equal documents may not, since 0.0 == -0.0
+    # UTF-8 with surrogatepass, so any str encodes; ValueError for a NaN or an infinity. One
+    # document always gives the same bytes; equal documents may not, since 0.0 == -0.0
 def decode_document(data: bytes) -> Document: ...
     # each sha through Sha256, each value through its kit constructor, tuples, SourceKind
-    # members; ValueError for bytes that are not UTF-8 JSON, a NaN or an infinity, a format that
-    # is not the int FORMAT, a missing key, a value of the wrong JSON kind, or a value a
-    # constructor refuses. A high surrogate then a low one reads back as the one character
-    # they stand for
+    # members; ValueError for bytes that are not such UTF-8 JSON, a NaN or an infinity, a format
+    # that is not the int FORMAT, a missing key, a value of the wrong JSON kind, or a value a
+    # constructor refuses
 def encode_parse_result(result: ParseResult) -> bytes: ...
 def decode_parse_result(data: bytes) -> ParseResult: ...
 

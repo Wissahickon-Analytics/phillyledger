@@ -30,12 +30,10 @@ def encode_document(doc: Document) -> bytes:
 
     The bytes are one JSON object: the document as `dataclasses.asdict` gives it, keyed by the
     dataclasses' own field names, with the key ``"format"`` set to `FORMAT`. Keys are sorted at
-    every level, no space separates them, and every character past ASCII is escaped, so any
-    `str` encodes, a lone surrogate included. JSON reads the escapes of a high surrogate
-    followed by a low one as the one character the pair stands for, so only such text reads
-    back changed. JSON writes a float by its `repr`, so it reads back as the same float. One
-    document always gives the same bytes. Two equal documents may not, since ``0.0 == -0.0``
-    and the two are written apart.
+    every level, no space separates them, and the text is UTF-8 with ``surrogatepass``, so any
+    `str` encodes, a lone surrogate included. JSON writes a float by its `repr`, so it reads
+    back as the same float. One document always gives the same bytes. Two equal documents may
+    not, since ``0.0 == -0.0`` and the two are written apart.
 
     Raises
     ------
@@ -43,7 +41,8 @@ def encode_document(doc: Document) -> bytes:
         When a float is NaN or infinite, which JSON cannot hold.
     """
     fields = asdict(doc) | {"format": FORMAT}
-    return dumps(fields, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+    text = dumps(fields, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False)
+    return text.encode("utf-8", "surrogatepass")
 
 
 def decode_document(data: bytes) -> Document:
@@ -57,11 +56,12 @@ def decode_document(data: bytes) -> Document:
     Raises
     ------
     ValueError
-        For bytes that are not UTF-8 JSON, a NaN or an infinity, a format that is not the
-        integer `FORMAT` (``true`` and ``1.0`` are refused), a missing key, a value of the wrong
-        JSON kind, and a value that a kit constructor refuses.
+        For bytes that are not JSON in UTF-8 with ``surrogatepass``, a NaN or an infinity, a
+        format that is not the integer `FORMAT` (``true`` and ``1.0`` are refused), a missing
+        key, a value of the wrong JSON kind, and a value that a kit constructor refuses.
     """
-    fields = _checked(loads(data.decode("utf-8"), parse_constant=_refuse), _OBJECT, "the bytes")
+    text = data.decode("utf-8", "surrogatepass")
+    fields = _checked(loads(text, parse_constant=_refuse), _OBJECT, "the bytes")
     if (number := _field(fields, "format", _INT)) != FORMAT:
         raise ValueError(f"the bytes are of format {number}, not {FORMAT}")
     pages = tuple(_page(page) for page in _items(fields, "pages"))

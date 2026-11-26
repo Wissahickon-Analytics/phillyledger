@@ -39,5 +39,7 @@ why, the run that shows it, and the design section updated. Fact and shape numbe
   a page below 1 and pages that are not strictly ascending (shape 9). `LocalCache` takes
   `WordKey`, and `cache_dir` writes each entry under another name and renames it onto the key
   (shape 11). `test_a_document_decodes_to_an_equal_document` failed with a codec that drops
-  `size`, and it found that JSON reads a high surrogate then a low one back as one character,
-  which the design now states. Design sections 2.1, 3.2, 4, 10 and 12.3.
+  `size`. The codec writes UTF-8 with `surrogatepass`, so every `str` reads back equal. With
+  `ensure_ascii`, that property and
+  `test_a_high_surrogate_then_a_low_one_read_back_as_two_code_points` failed, because JSON read a
+  high surrogate then a low one back as one character. Design sections 2.1, 3.2, 4, 10 and 12.3.

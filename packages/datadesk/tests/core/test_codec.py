@@ -41,10 +41,13 @@ DROP = object()
 WORD = ("pages", 0, "words", 0)
 
 finite_floats = st.floats(allow_nan=False, allow_infinity=False)
+high_surrogates = st.characters(categories=["Cs"], max_codepoint=0xDBFF)
+low_surrogates = st.characters(categories=["Cs"], min_codepoint=0xDC00)
 any_text = (
     st.text()
-    | st.text(st.characters(categories=["Cs"], max_codepoint=0xDBFF), min_size=1)
-    | st.text(st.characters(categories=["Cs"], min_codepoint=0xDC00), min_size=1)
+    | st.text(high_surrogates, min_size=1)
+    | st.text(low_surrogates, min_size=1)
+    | st.tuples(high_surrogates, low_surrogates).map("".join)
 )
 sha256s = st.text("0123456789abcdef", min_size=64, max_size=64).map(Sha256)
 
@@ -126,10 +129,12 @@ def test_the_encoding_is_json_with_sorted_keys_no_spaces_and_the_format_number()
     )
 
 
-def test_a_high_surrogate_then_a_low_one_reads_back_as_the_character_they_stand_for() -> None:
-    word = replace(OCR_PAGE.words[0], text="𝐀")
+def test_a_high_surrogate_then_a_low_one_read_back_as_two_code_points() -> None:
+    word = replace(OCR_PAGE.words[0], text=chr(0xD835) + chr(0xDC00))
     doc = replace(DOC, pages=(TEXT_PAGE, replace(OCR_PAGE, words=(word,))))
-    assert decode_document(encode_document(doc)).pages[1].words[0].text == "\U0001d400"
+    decoded = decode_document(encode_document(doc))
+    assert decoded.pages[1].words[0].text == chr(0xD835) + chr(0xDC00)
+    assert decoded == doc
 
 
 def test_a_decoded_page_names_its_source_by_the_enum_member() -> None:
