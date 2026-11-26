@@ -485,6 +485,15 @@ file, `docs/progress.md`, `docs/followups.md` or `docs/deviations/`.
   `TABLE P-1` and goes on "ABOUT THIS SECTION:". The other four files have a 19-word divider page
   there that does not print `TABLE P-1` (`docs/plans/step-04.md`, fact 8). The Codex review
   counted six such pages in the old repo's cut copies, and design section 15 now says 16.
+- **Rules and margin page numbers on the P-1 grid pages, a note for the step 5 plan** (November
+  25, 2026, the step 4 plan). The 20 grid pages of FY2023 Q1 to FY2025 Q2 draw no line object and
+  410 thin rects, 220 of them upright, 0.72 or 1.44 points wide (`docs/plans/step-04.md`, fact
+  4). The step 4 adapter gives each as a `Rule` on its centerline, so these pages have vertical
+  rules, and `cut_pages` in design section 3.1 takes `lanes_from_rules` when a page has them and
+  `lanes_from_values` when it has none. The step 5 plan decides which the P-1 pages use. Six of
+  the 20 pages, in the three editions `qcmr:2022-09-30:none` to `qcmr:2023-03-31:none`, also
+  print a sideways page number in the left margin, at `x0` 5.63, which the adapter gives as two
+  words of one digit (fact 5). They are page furniture, and no row's words.
 - **The archive prints no font code in the cash pages, a note for the step 8 plan** (November
   25, 2026, the step 4 plan). QCASH-Q14 and VAL-Q05 describe `E(cid:121)PENSES` in the cash pages
   of FY2023 Q1 and Q2, and design section 3.2 has `split_grids` match `(cid:N)` in that caption.
