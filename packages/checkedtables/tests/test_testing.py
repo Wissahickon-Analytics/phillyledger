@@ -1,12 +1,12 @@
 import pytest
 
 from checkedtables.kinds import SourceKind
-from checkedtables.refs import Box, WordRef
+from checkedtables.refs import Box, Sha256, WordRef
 from checkedtables.testing import doc_of, page_from_text
 from checkedtables.words import Document
 
-SHA = "a" * 64
-OTHER_SHA = "b" * 64
+SHA = Sha256("a" * 64)
+OTHER_SHA = Sha256("b" * 64)
 
 
 def test_page_from_text_lays_out_six_by_twelve() -> None:

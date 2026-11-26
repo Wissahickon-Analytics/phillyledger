@@ -4,9 +4,9 @@ import pytest
 
 from checkedtables.cells import Amount, Dash, Reading
 from checkedtables.kinds import DashMeaning, SourceKind
-from checkedtables.refs import WordRef
+from checkedtables.refs import Sha256, WordRef
 
-REF = WordRef("a" * 64, 1, 0)
+REF = WordRef(Sha256("a" * 64), 1, 0)
 REVIEW = "qcash-fy07-q4-1"
 
 

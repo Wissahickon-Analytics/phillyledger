@@ -12,6 +12,7 @@ from typing import Annotated
 
 import typer
 
+from checkedtables.refs import Sha256
 from checkedtables.table import Finding
 from datadesk.core.fetch import FetchPlan
 from datadesk.core.listings import parse_listing
@@ -31,11 +32,11 @@ app = typer.Typer(add_completion=False, pretty_exceptions_enable=False, rich_mar
 class FetchRun:
     """What one fetch did: the listing's digest, the watch findings and the fetch plan.
 
-    `listing_sha256` is the sha256 of the listing's text, and `findings` are the findings that
+    `listing_sha256` is the `Sha256` of the listing's text, and `findings` are the findings that
     `plan_watch` returned.
     """
 
-    listing_sha256: str
+    listing_sha256: Sha256
     findings: tuple[Finding, ...]
     plan: FetchPlan
 

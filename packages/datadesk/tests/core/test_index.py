@@ -6,6 +6,7 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
+from checkedtables.refs import Sha256
 from checkedtables.table import Finding, Severity
 from datadesk.core.domain import (
     ArchiveIndex,
@@ -20,10 +21,10 @@ from datadesk.core.index import add_versions, parse_index, render_index
 
 FY2026_Q3 = EditionKey("qcmr", Period(date(2026, 1, 1), date(2026, 3, 31)))
 FY2026_Q4 = EditionKey("qcmr", Period(date(2026, 4, 1), date(2026, 6, 30)))
-Q3_SHA = "032c5cfddfb77c50b270d5f0954d73674b5ec1c92c5d3fdee4b60e53efd82827"
-Q4_SHA = "48fd9aa936df05a28bb7f37083720afac85d1ee2a2c9a70be832382f0dc55020"
-REVISED_Q4_SHA = "1c0d5e7f9a2b4c6d8e0f1a3b5c7d9e1f2a4b6c8d0e2f4a6b8c0d2e4f6a8b0c2d"
-LATER_Q4_SHA = "9e8d7c6b5a4f3e2d1c0b9a8f7e6d5c4b3a2f1e0d9c8b7a6f5e4d3c2b1a0f9e8d"
+Q3_SHA = Sha256("032c5cfddfb77c50b270d5f0954d73674b5ec1c92c5d3fdee4b60e53efd82827")
+Q4_SHA = Sha256("48fd9aa936df05a28bb7f37083720afac85d1ee2a2c9a70be832382f0dc55020")
+REVISED_Q4_SHA = Sha256("1c0d5e7f9a2b4c6d8e0f1a3b5c7d9e1f2a4b6c8d0e2f4a6b8c0d2e4f6a8b0c2d")
+LATER_Q4_SHA = Sha256("9e8d7c6b5a4f3e2d1c0b9a8f7e6d5c4b3a2f1e0d9c8b7a6f5e4d3c2b1a0f9e8d")
 MEDIA = "https://www.phila.gov/media"
 Q3_URL = f"{MEDIA}/20260515154446/Quarterly-City-Managers-Report-March-30-2026R.pdf"
 Q4_URL = f"{MEDIA}/20260817162758/Quarterly-City-Managers-Report-June-30-2026.pdf"
@@ -68,7 +69,7 @@ TEXT = (
     'Quarterly-City-Managers-Report-June-30-2026.pdf"], "via": "publisher"}\n'
 )
 
-sha256s = st.text("0123456789abcdef", min_size=64, max_size=64)
+sha256s = st.text("0123456789abcdef", min_size=64, max_size=64).map(Sha256)
 periods = st.tuples(st.dates(), st.dates()).map(lambda days: Period(*sorted(days)))
 editions = st.builds(EditionKey, st.text(), periods, st.sampled_from(Stage))
 
@@ -136,9 +137,16 @@ def test_parse_index_refuses_a_line_whose_urls_is_not_a_list(urls: str) -> None:
         parse_index(unlisted)
 
 
+def builder_message(json_value: object) -> str:
+    with pytest.raises(ValueError) as refused:
+        Sha256(loads(dumps(json_value)))
+    return str(refused.value)
+
+
 @pytest.mark.parametrize(
     "sha",
     [
+        pytest.param("", id="empty"),
         pytest.param(Q3_SHA.upper(), id="the_sha_of_another_line_in_upper_case"),
         pytest.param(Q3_SHA[:63], id="63_characters"),
         pytest.param(f"{Q3_SHA}0", id="65_characters"),
@@ -152,7 +160,47 @@ def test_parse_index_refuses_a_line_whose_urls_is_not_a_list(urls: str) -> None:
 def test_parse_index_refuses_a_sha_that_is_not_64_lowercase_hex_characters(sha: object) -> None:
     copy = render_index(ArchiveIndex((replace(Q3, edition=FY2026_Q4, printed_period=None),)))
     text = render_index(ArchiveIndex((Q3,))) + dumps(loads(copy) | {"sha256": sha}) + "\n"
-    with pytest.raises(ValueError, match="sha256"):
+    with pytest.raises(ValueError) as refused:
+        parse_index(text)
+    assert str(refused.value) == builder_message(sha)
+
+
+def test_parse_index_builds_a_sha256_for_each_digest_and_none_for_null() -> None:
+    revised, older = parse_index(render_index(ArchiveIndex((REVISED_Q4, Q4)))).versions
+    assert (revised.sha256, revised.supersedes) == (REVISED_Q4_SHA, Q4_SHA)
+    assert (older.sha256, older.supersedes) == (Q4_SHA, None)
+    assert type(revised.sha256) is Sha256
+    assert type(revised.supersedes) is Sha256
+    assert type(older.sha256) is Sha256
+
+
+@pytest.mark.parametrize(
+    "supersedes",
+    [
+        pytest.param("", id="empty"),
+        pytest.param(Q4_SHA.upper(), id="the_sha_of_another_line_in_upper_case"),
+        pytest.param(Q4_SHA[:63], id="63_characters"),
+        pytest.param(f"{Q4_SHA}0", id="65_characters"),
+        pytest.param(f"{Q4_SHA[:63]}g", id="a_letter_that_is_not_hex"),
+        pytest.param(5, id="a_number"),
+        pytest.param({}, id="an_object"),
+        pytest.param([Q4_SHA], id="a_list"),
+    ],
+)
+def test_parse_index_refuses_a_supersedes_that_is_not_64_lowercase_hex_characters(
+    supersedes: object,
+) -> None:
+    revised, older = render_index(ArchiveIndex((REVISED_Q4, Q4))).splitlines(keepends=True)
+    text = dumps(loads(revised) | {"supersedes": supersedes}) + "\n" + older
+    with pytest.raises(ValueError) as refused:
+        parse_index(text)
+    assert str(refused.value) == builder_message(supersedes)
+
+
+def test_parse_index_reports_a_bad_sha_before_a_bad_urls() -> None:
+    line = loads(render_index(ArchiveIndex((Q3,))))
+    text = dumps(line | {"sha256": Q3_SHA.upper(), "urls": Q3_URL}) + "\n"
+    with pytest.raises(ValueError, match="is not 64 lowercase hex characters"):
         parse_index(text)
 
 

@@ -2,9 +2,10 @@ from collections import Counter
 from datetime import date
 from pathlib import Path
 
+from checkedtables.refs import Sha256
 from datadesk.core.domain import DocumentVersion, EditionKey, Period
 from datadesk.core.fetch import INDEX_PATH
-from datadesk.core.index import parse_index
+from datadesk.core.index import parse_index, render_index
 
 REPO = Path(__file__).parents[1]
 INVENTORY = REPO / "docs" / "evidence" / "inventory" / "qcmr.tsv"
@@ -58,7 +59,7 @@ def test_each_expected_edition_has_a_row_and_an_indexed_version() -> None:
 
 
 def test_each_inventory_pair_is_indexed_once() -> None:
-    pairs = [(EDITIONS[row["edition"]], row["sha256"]) for row in inventory()]
+    pairs = [(EDITIONS[row["edition"]], Sha256(row["sha256"])) for row in inventory()]
     lines = Counter((version.edition, version.sha256) for version in indexed())
     assert len(pairs) == len(EDITIONS)
     assert {pair: lines[pair] for pair in pairs} == dict.fromkeys(pairs, 1)
@@ -77,3 +78,8 @@ def test_every_inventory_row_is_checked() -> None:
     rows = inventory()
     assert len(rows) == len(EDITIONS)
     assert [row["edition"] for row in rows if not is_iso_date(row["checked"])] == []
+
+
+def test_render_index_gives_back_the_committed_index_byte_for_byte() -> None:
+    committed = INDEX.read_bytes()
+    assert render_index(parse_index(committed.decode("utf-8"))).encode("utf-8") == committed

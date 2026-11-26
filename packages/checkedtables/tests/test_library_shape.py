@@ -20,6 +20,8 @@ from typing import (
 )
 
 import checkedtables
+from datadesk.core.fetch import PeriodRefusal
+from datadesk.core.listings.titles import SkipReason
 from datadesk.core.records import NoteKind
 from datadesk.core.tables import bib_common, collections_common, qcmr_common, supp_common
 
@@ -357,6 +359,17 @@ def test_closed_lists_are_pinned() -> None:
         "header_misprint",
         "drop_line",
         "header_illegible",
+    ]
+    assert [k.value for k in PeriodRefusal] == [
+        "period_unreadable",
+        "period_ambiguous",
+        "period_not_a_quarter_end",
+    ]
+    assert [k.value for k in SkipReason] == [
+        "infographic",
+        "unrelated",
+        "not_a_quarter_end",
+        "unstaged",
     ]
 
 

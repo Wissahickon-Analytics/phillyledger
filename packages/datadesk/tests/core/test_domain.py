@@ -3,6 +3,7 @@ from datetime import date
 
 import pytest
 
+from checkedtables.refs import Sha256
 from checkedtables.table import Severity
 from datadesk.core.domain import (
     ArchiveIndex,
@@ -15,14 +16,14 @@ from datadesk.core.domain import (
 
 FY2026_Q3 = EditionKey("qcmr", Period(date(2026, 1, 1), date(2026, 3, 31)))
 FY2026_Q4 = EditionKey("qcmr", Period(date(2026, 4, 1), date(2026, 6, 30)))
-Q3_SHA = "032c5cfddfb77c50b270d5f0954d73674b5ec1c92c5d3fdee4b60e53efd82827"
-Q4_SHA = "48fd9aa936df05a28bb7f37083720afac85d1ee2a2c9a70be832382f0dc55020"
-REVISED_Q4_SHA = "1c0d5e7f9a2b4c6d8e0f1a3b5c7d9e1f2a4b6c8d0e2f4a6b8c0d2e4f6a8b0c2d"
-LATER_Q4_SHA = "9e8d7c6b5a4f3e2d1c0b9a8f7e6d5c4b3a2f1e0d9c8b7a6f5e4d3c2b1a0f9e8d"
+Q3_SHA = Sha256("032c5cfddfb77c50b270d5f0954d73674b5ec1c92c5d3fdee4b60e53efd82827")
+Q4_SHA = Sha256("48fd9aa936df05a28bb7f37083720afac85d1ee2a2c9a70be832382f0dc55020")
+REVISED_Q4_SHA = Sha256("1c0d5e7f9a2b4c6d8e0f1a3b5c7d9e1f2a4b6c8d0e2f4a6b8c0d2e4f6a8b0c2d")
+LATER_Q4_SHA = Sha256("9e8d7c6b5a4f3e2d1c0b9a8f7e6d5c4b3a2f1e0d9c8b7a6f5e4d3c2b1a0f9e8d")
 
 
 def version(
-    sha: str, edition: EditionKey, listed_at: str, supersedes: str | None = None
+    sha: Sha256, edition: EditionKey, listed_at: str, supersedes: Sha256 | None = None
 ) -> DocumentVersion:
     end = edition.period.end
     return DocumentVersion(

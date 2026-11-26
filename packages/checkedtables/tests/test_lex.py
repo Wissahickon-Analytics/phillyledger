@@ -12,11 +12,11 @@ from checkedtables.columns import ColumnSpec, NumberFormat
 from checkedtables.kinds import DashMeaning, PercentSign, SourceKind, ValueKind
 from checkedtables.lex import lex_cell, split_numeric_runs, transliteration_ok
 from checkedtables.lines import group_lines, has_values
-from checkedtables.refs import Box, WordRef
+from checkedtables.refs import Box, Sha256, WordRef
 from checkedtables.testing import page_from_text
 from checkedtables.words import Word
 
-SHA = "a" * 64
+SHA = Sha256("a" * 64)
 MONEY = ColumnSpec("money", "Money", ValueKind.MONEY, NumberFormat(decimals=None))
 CASH = ColumnSpec("cash", "Cash", ValueKind.MONEY, NumberFormat(decimals=1))
 CENTS = ColumnSpec("cents", "Cents", ValueKind.MONEY, NumberFormat(decimals=2))

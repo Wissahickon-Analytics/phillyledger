@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from checkedtables.cells import Amount, Cell, Reading, Unreadable
 from checkedtables.kinds import DashMeaning, SourceKind
 from checkedtables.lex import _read_number, transliteration_ok
-from checkedtables.refs import Box
+from checkedtables.refs import Box, Sha256
 from checkedtables.table import Finding, RowKey, Severity
 from checkedtables.words import Word
 
@@ -24,7 +24,7 @@ class ReviewedReading:
     ----------
     id : str
         The id of the record. Never blank, since a reviewed `Amount` names it.
-    doc_sha256 : str
+    doc_sha256 : Sha256
         The sha256 of the publisher file.
     page : int
         The 1-based page in the publisher file.
@@ -44,11 +44,11 @@ class ReviewedReading:
     Raises
     ------
     ValueError
-        When `id` or `reason` is empty or only whitespace.
+        When `id` or `reason` is empty or only whitespace, or `doc_sha256` is not a `Sha256`.
     """
 
     id: str
-    doc_sha256: str
+    doc_sha256: Sha256
     page: int
     box: Box
     source: SourceKind
@@ -57,9 +57,13 @@ class ReviewedReading:
     reason: str
 
     def __post_init__(self) -> None:
-        """Refuse a blank id or a blank reason."""
+        """Refuse a blank id, a hash that is not a `Sha256`, or a blank reason."""
         if not self.id.strip():
             raise ValueError("a reviewed reading needs an id")
+        if not isinstance(self.doc_sha256, Sha256):
+            raise ValueError(
+                f"reviewed reading {self.id} names its file by {self.doc_sha256!r}, not a Sha256"
+            )
         if not self.reason.strip():
             raise ValueError(f"reviewed reading {self.id} needs a reason")
 

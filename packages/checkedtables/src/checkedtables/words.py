@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 
 from checkedtables.kinds import SourceKind
-from checkedtables.refs import Box, WordRef
+from checkedtables.refs import Box, Sha256, WordRef
 
 
 @dataclass(frozen=True, slots=True)
@@ -76,8 +76,8 @@ class Page:
 
     Attributes
     ----------
-    doc_sha256 : str
-        The sha256 of the publisher file. Never empty.
+    doc_sha256 : Sha256
+        The sha256 of the publisher file.
     number : int
         The 1-based page number in the publisher file.
     width, height : float
@@ -95,12 +95,12 @@ class Page:
     Raises
     ------
     ValueError
-        When `doc_sha256` is empty, `number` is below 1, a word's ref names another file or
-        another page, two words share a ref, or a word on a text layer page carries an OCR
+        When `doc_sha256` is not a `Sha256`, `number` is below 1, a word's ref names another file
+        or another page, two words share a ref, or a word on a text layer page carries an OCR
         confidence.
     """
 
-    doc_sha256: str
+    doc_sha256: Sha256
     number: int
     width: float
     height: float
@@ -110,9 +110,11 @@ class Page:
     rules: tuple[Rule, ...] = ()
 
     def __post_init__(self) -> None:
-        """Refuse an empty hash, a page below 1, and a word this page cannot hold."""
-        if not self.doc_sha256:
-            raise ValueError(f"page {self.number} names no file")
+        """Refuse a hash that is not a `Sha256`, a page below 1, and a word it cannot hold."""
+        if not isinstance(self.doc_sha256, Sha256):
+            raise ValueError(
+                f"page {self.number} names its file by {self.doc_sha256!r}, not a Sha256"
+            )
         if self.number < 1:
             raise ValueError(f"a page has a number below 1: {self.number}")
         seen: set[WordRef] = set()
@@ -132,8 +134,8 @@ class Document:
 
     Attributes
     ----------
-    sha256 : str
-        The sha256 of the publisher file. Never empty.
+    sha256 : Sha256
+        The sha256 of the publisher file.
     pages : tuple[Page, ...]
         The extracted pages of this file, in strictly ascending order. They need not be
         contiguous.
@@ -141,17 +143,17 @@ class Document:
     Raises
     ------
     ValueError
-        When `sha256` is empty, a page is of another file, or the page numbers are not strictly
-        ascending.
+        When `sha256` is not a `Sha256`, a page is of another file, or the page numbers are not
+        strictly ascending.
     """
 
-    sha256: str
+    sha256: Sha256
     pages: tuple[Page, ...]
 
     def __post_init__(self) -> None:
-        """Refuse an empty hash, a page of another file, and pages out of ascending order."""
-        if not self.sha256:
-            raise ValueError("a document names no file")
+        """Refuse a hash that is not a `Sha256`, a page of another file, and pages out of order."""
+        if not isinstance(self.sha256, Sha256):
+            raise ValueError(f"a document names its file by {self.sha256!r}, not a Sha256")
         for page in self.pages:
             if page.doc_sha256 != self.sha256:
                 raise ValueError(f"page {page.number} does not belong to document {self.sha256}")

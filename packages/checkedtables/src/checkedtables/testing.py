@@ -3,7 +3,7 @@
 from re import compile
 
 from checkedtables.kinds import SourceKind
-from checkedtables.refs import Box, WordRef
+from checkedtables.refs import Box, Sha256, WordRef
 from checkedtables.words import Document, Page, Word, WordSource
 
 _MARKER = compile(r"(?P<open>(?<![^ ])\*\*(?=[^ *]))|(?<=[^ *])\*\*(?![^ ])")
@@ -28,7 +28,7 @@ def _unmark(row: str) -> tuple[str, tuple[bool, ...]]:
     return "".join(row[index] for index in kept), bold
 
 
-def page_from_text(text: str, sha: str, page: int) -> Page:
+def page_from_text(text: str, sha: Sha256, page: int) -> Page:
     """Lay out a monospace block of text as the words of one page.
 
     A word is a run of characters with no ASCII space, so a tab or a non-breaking space stays
@@ -45,7 +45,7 @@ def page_from_text(text: str, sha: str, page: int) -> Page:
     text : str
         The block, one page line per text line. When its first line is ``#ocr``, that line is
         dropped and the page reads as OCR.
-    sha : str
+    sha : Sha256
         The sha256 of the file the page belongs to.
     page : int
         The 1-based page number.

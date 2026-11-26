@@ -3,6 +3,8 @@
 from dataclasses import dataclass
 from enum import StrEnum
 
+from checkedtables.refs import Sha256
+
 
 class NoteKind(StrEnum):
     """What an edition note says about its file.
@@ -34,6 +36,8 @@ class EditionNote:
 
     Attributes
     ----------
+    doc_sha256
+        The `Sha256` of the file the note is about.
     page
         The 1-based page the note is about, or None for no one page.
     printed
@@ -45,7 +49,7 @@ class EditionNote:
 
     id: str
     kind: NoteKind
-    doc_sha256: str
+    doc_sha256: Sha256
     page: int | None
     printed: str
     value: str

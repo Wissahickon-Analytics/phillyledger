@@ -2,6 +2,7 @@ from collections.abc import Sequence
 from dataclasses import replace
 from decimal import Decimal
 from string import digits
+from typing import Any
 
 import pytest
 from hypothesis import example, given
@@ -20,13 +21,13 @@ from checkedtables.records import (
     apply_reading,
     reading_for,
 )
-from checkedtables.refs import Box, WordRef
+from checkedtables.refs import Box, Sha256, WordRef
 from checkedtables.table import Finding, Severity
 from checkedtables.testing import page_from_text
 from checkedtables.words import Page, Word
 
-SHA = "0123456789abcdef" * 4
-OTHER_SHA = "f" * 64
+SHA = Sha256("0123456789abcdef" * 4)
+OTHER_SHA = Sha256("f" * 64)
 PAGE = 4
 OCR = SourceKind.OCR
 TEXT_LAYER = SourceKind.TEXT_LAYER
@@ -161,7 +162,7 @@ def test_a_reading_on_another_page_or_source_is_no_candidate() -> None:
     label_box = Box.around(word.box for word in page.words[:1])
     for other in (
         replace(reading, page=PAGE + 1),
-        replace(reading, doc_sha256="f" * 64),
+        replace(reading, doc_sha256=OTHER_SHA),
         replace(reading, source=SourceKind.TEXT_LAYER),
         replace(reading, box=label_box),
     ):
@@ -429,6 +430,22 @@ def test_a_reading_needs_an_id() -> None:
     for blank in BLANKS:
         with pytest.raises(ValueError, match="id"):
             record("2918", "291.8", cell_words, blank)
+
+
+@pytest.mark.parametrize(
+    "sha",
+    [
+        pytest.param("0123456789abcdef" * 4, id="64_hex_characters_of_plain_text"),
+        pytest.param("", id="empty"),
+        pytest.param(None, id="none"),
+    ],
+)
+def test_reviewed_reading_refuses_a_sha_that_is_not_a_sha256(sha: Any) -> None:
+    box = Box(0.0, 0.0, 10.0, 10.0)
+    with pytest.raises(ValueError, match="not a Sha256"):
+        ReviewedReading("r1", sha, PAGE, box, OCR, "1", "1", "read on the rendered page")
+    reading = ReviewedReading("r1", SHA, PAGE, box, OCR, "1", "1", "read on the rendered page")
+    assert reading.doc_sha256 == SHA
 
 
 def test_a_reading_needs_a_reason() -> None:

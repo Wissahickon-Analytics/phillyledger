@@ -9,6 +9,7 @@ from hypothesis import given
 from hypothesis import strategies as st
 from packages.datadesk.tests.core.fixtures.qcmr_feed import FEED
 
+from checkedtables.refs import Sha256
 from checkedtables.table import Severity
 from datadesk.core.catalog import ListingShape, SourceCatalog, SourceEntry
 from datadesk.core.domain import ArchiveIndex, DocumentVersion, EditionKey, Period
@@ -58,7 +59,7 @@ def indexed(*requests: FetchRequest, edition: EditionKey | None = None) -> Archi
     return ArchiveIndex(
         tuple(
             DocumentVersion(
-                sha256=sha256(request.url.encode()).hexdigest(),
+                sha256=Sha256(sha256(request.url.encode()).hexdigest()),
                 edition=edition or request.edition,
                 listed_at=request.listed_at,
                 urls=(request.url,),

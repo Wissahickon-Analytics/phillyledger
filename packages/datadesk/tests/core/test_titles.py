@@ -5,7 +5,7 @@ from hypothesis import assume, given
 from hypothesis import strategies as st
 
 from datadesk.core.domain import EditionKey, Period
-from datadesk.core.listings.titles import TITLE_RULES, qcmr_title
+from datadesk.core.listings.titles import TITLE_RULES, SkipReason, qcmr_title
 from datadesk.core.periods import MONTHS, fiscal_quarter
 
 NAMES = {number: name.capitalize() for name, number in MONTHS.items()}
@@ -85,6 +85,30 @@ def test_qcmr_title_reads_an_edition_or_a_skip_reason(
     title: str, reading: EditionKey | str
 ) -> None:
     assert qcmr_title(title) == reading
+
+
+@pytest.mark.parametrize(
+    ("title", "reason"),
+    [
+        pytest.param(
+            "Quarterly City Managers Report Infographic - September 30, 2024",
+            "infographic",
+            id="an_infographic",
+        ),
+        pytest.param(
+            "Executive Summary – FY18 Q1 Quarterly City Managers Report",
+            "unrelated",
+            id="an_executive_summary",
+        ),
+        pytest.param(
+            "Quarterly City Managers Report - March 30, 2026",
+            "not_a_quarter_end",
+            id="a_date_that_is_not_a_quarter_end",
+        ),
+    ],
+)
+def test_qcmr_title_skips_with_a_member_of_skip_reason(title: str, reason: str) -> None:
+    assert qcmr_title(title) is SkipReason(reason)
 
 
 def test_title_rules_hold_the_qcmr_rule() -> None:

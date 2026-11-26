@@ -8,6 +8,7 @@ from checkedtables.table import Finding, Severity
 from datadesk.core.catalog import SourceCatalog
 from datadesk.core.domain import ArchiveIndex, EditionKey
 from datadesk.core.listings import ListedLink, Listing
+from datadesk.core.listings.titles import SkipReason
 
 
 @dataclass(frozen=True, slots=True)
@@ -84,7 +85,8 @@ def plan_watch(
     edition that ends before its source's `first_period_end` is dropped. A kept link is requested
     unless an indexed version of its own edition holds its URL. A URL that another edition holds
     is still requested, and `plan_fetch` judges the bytes by their sha. Each link skipped as
-    not_a_quarter_end is a WARN finding with that code. `today` is not read yet.
+    `SkipReason.NOT_A_QUARTER_END` is a WARN finding with the code not_a_quarter_end. `today` is
+    not read yet.
     """
     kept = [
         (link.edition, link)
@@ -109,7 +111,7 @@ def plan_watch(
         )
         for listing in listings
         for link in listing.links
-        if link.skip_reason == "not_a_quarter_end"
+        if link.skip_reason is SkipReason.NOT_A_QUARTER_END
     )
     return WatchPlan(fetch, (), (), findings)
 

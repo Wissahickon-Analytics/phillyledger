@@ -3,15 +3,18 @@ from datetime import date
 
 import pytest
 
+from checkedtables.refs import Sha256
 from checkedtables.table import Finding, Severity
 from datadesk.core.domain import ArchiveIndex, DocumentVersion, EditionKey, Period
 from datadesk.core.fetch import (
     Fetched,
     FetchPlan,
+    PeriodRefusal,
     Rejection,
     StoreObject,
     confirm_period,
     plan_fetch,
+    qcmr_period,
 )
 from datadesk.core.index import render_index
 from datadesk.core.records import EditionNote, NoteKind
@@ -23,9 +26,9 @@ FY2022_Q1 = EditionKey("qcmr", Q1_PERIOD)
 FY2022_Q2 = EditionKey("qcmr", Q2_PERIOD)
 FY2022_Q3 = EditionKey("qcmr", Period(date(2022, 1, 1), date(2022, 3, 31)))
 FY2022_Q4 = EditionKey("qcmr", Period(date(2022, 4, 1), date(2022, 6, 30)))
-Q1_SHA = "7c4a2e5abb00a5084cdb24fb35325cd1f2cdee42cfd9b30cf7c62c46c2f22918"
-Q2_SHA = "401136b9ca279d46ab11e25a6d3da0980b30cbf147fc23976cc467519aa7aed7"
-NEW_Q1_SHA = "f040b053395e239682f951df810d15eab029d43d92006312b23181d36ae0a1f1"
+Q1_SHA = Sha256("7c4a2e5abb00a5084cdb24fb35325cd1f2cdee42cfd9b30cf7c62c46c2f22918")
+Q2_SHA = Sha256("401136b9ca279d46ab11e25a6d3da0980b30cbf147fc23976cc467519aa7aed7")
+NEW_Q1_SHA = Sha256("f040b053395e239682f951df810d15eab029d43d92006312b23181d36ae0a1f1")
 INDEX_FILE = "packages/datadesk/src/datadesk/data/index.jsonl"
 EMPTY = ArchiveIndex(())
 MEDIA = "https://www.phila.gov/media"
@@ -272,13 +275,42 @@ def test_a_note_does_not_clear_a_date_that_is_not_a_quarter_end() -> None:
     assert finding_code(result) == "period_not_a_quarter_end"
 
 
+REFUSED_COVERS = [
+    pytest.param("", "period_unreadable", id="an_empty_page"),
+    pytest.param(
+        "FOR THE PERIOD ENDING SEPTEMBER 30, 2021\nFOR THE PERIOD ENDING DECEMBER 31, 2021",
+        "period_ambiguous",
+        id="two_phrases_with_two_dates",
+    ),
+    pytest.param(
+        "FOR THE PERIOD ENDING SEPTEMBER 29, 2021",
+        "period_not_a_quarter_end",
+        id="a_date_that_is_not_a_quarter_end",
+    ),
+]
+
+
+@pytest.mark.parametrize(("page1", "code"), REFUSED_COVERS)
+def test_qcmr_period_refuses_with_a_member_of_period_refusal(page1: str, code: str) -> None:
+    assert qcmr_period(page1) is PeriodRefusal(code)
+
+
+@pytest.mark.parametrize(("page1", "code"), REFUSED_COVERS)
+def test_confirm_period_puts_the_refusal_in_the_finding_code_as_plain_text(
+    page1: str, code: str
+) -> None:
+    finding = confirm_period("qcmr", page1, FY2022_Q1, ())
+    assert isinstance(finding, Finding)
+    assert (type(finding.code), finding.code) == (str, code)
+
+
 def test_a_series_with_no_period_reader_is_unsupported() -> None:
     collections = EditionKey("collections_city", Period(date(2021, 9, 1), date(2021, 9, 30)))
     result = confirm_period("collections_city", "MONTH OF SEPTEMBER\nFY 2022", collections, ())
     assert finding_code(result, collections) == "period_unsupported"
 
 
-def ok(request: FetchRequest, sha: str, page1: str | None = Q1_COVER) -> Fetched:
+def ok(request: FetchRequest, sha: Sha256, page1: str | None = Q1_COVER) -> Fetched:
     return Fetched(request, 200, sha, 1_781_180, page1)
 
 
@@ -422,3 +454,37 @@ def test_plan_fetch_clears_a_mismatch_only_with_a_note_for_the_fetched_sha() -> 
     )
     assert other.rejections == (Rejection(Q1_REQUEST, "period_mismatch"),)
     assert written(other) == ((), (), ())
+
+
+def test_the_body_of_the_fetch_pull_request_is_exact() -> None:
+    added = plan_fetch([ok(Q1_REQUEST, Q1_SHA)], EMPTY, ())
+    refused = plan_fetch([ok(Q1_REQUEST, Q1_SHA, "")], EMPTY, ())
+    unchanged = plan_fetch([ok(Q1_REQUEST, Q1_SHA)], ArchiveIndex((Q1,)), ())
+    assert added.pull_request.body == (
+        "Index lines added:\n"
+        "- qcmr:2021-09-30:none "
+        "7c4a2e5abb00a5084cdb24fb35325cd1f2cdee42cfd9b30cf7c62c46c2f22918 "
+        "https://www.phila.gov/media/20211116102946/"
+        "Quarterly-City-Managers-Report-September-30-2021.pdf\n"
+        "\n"
+        "Rejected:\n"
+        "- none\n"
+    )
+    assert [(type(item.dest_key), item.dest_key) for item in added.store] == [
+        (
+            str,
+            "pdf/7c/7c4a2e5abb00a5084cdb24fb35325cd1f2cdee42cfd9b30cf7c62c46c2f22918.pdf",
+        )
+    ]
+    assert refused.pull_request.body == (
+        "Index lines added:\n"
+        "- none\n"
+        "\n"
+        "Rejected:\n"
+        "- qcmr:2021-09-30:none "
+        "https://www.phila.gov/media/20211116102946/"
+        "Quarterly-City-Managers-Report-September-30-2021.pdf period_unreadable\n"
+    )
+    assert unchanged.pull_request.body == "Index lines added:\n- none\n\nRejected:\n- none\n"
+    bodies = (added, refused, unchanged)
+    assert [type(plan.pull_request.body) for plan in bodies] == [str, str, str]

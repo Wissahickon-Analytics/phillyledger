@@ -8,10 +8,12 @@ from typing import Any
 import pytest
 from packages.datadesk.tests.core.fixtures.qcmr_feed import FEED
 
+from checkedtables.refs import Sha256
 from checkedtables.table import Finding, Severity
 from datadesk.core.catalog import ListingShape, SourceEntry
 from datadesk.core.domain import EditionKey, Period
 from datadesk.core.listings import ListedLink, Listing, parse_listing
+from datadesk.core.listings.titles import SkipReason
 
 QCMR = SourceEntry(
     id="qcmr",
@@ -62,6 +64,19 @@ def test_report_links_get_editions_and_infographics_are_skipped() -> None:
     assert all("Infographic" in link.title for link in infographics)
     assert infographics[-1].title == "Quarterly City Managers Report Infographic - June 30, 2021"
     assert {link.skip_reason for link in links} == {None, "infographic"}
+
+
+def test_a_skipped_link_carries_a_member_of_skip_reason() -> None:
+    changed = feed()
+    documents = qcmr_documents(changed)
+    documents[0]["title"] = "Executive Summary – FY26 Q3 Quarterly City Managers Report"
+    documents[1]["title"] = "Quarterly City Managers Report - December 30, 2025"
+    links = listing(changed).links
+    assert links[0].skip_reason is SkipReason.UNRELATED
+    assert links[1].skip_reason is SkipReason.NOT_A_QUARTER_END
+    infographics = [link.skip_reason for link in links if "Infographic" in link.title]
+    assert len(infographics) == 14
+    assert all(reason is SkipReason.INFOGRAPHIC for reason in infographics)
 
 
 def test_a_link_of_another_category_is_never_listed() -> None:
@@ -115,7 +130,7 @@ def test_each_link_is_listed_at_its_upload_stamp_in_feed_order() -> None:
 def test_the_listing_names_its_source_its_url_and_the_digest_of_its_text() -> None:
     text = dumps(FEED)
     assert listing() == Listing(
-        "qcmr", QCMR.listing_url, sha256(text.encode()).hexdigest(), listing().links
+        "qcmr", QCMR.listing_url, Sha256(sha256(text.encode()).hexdigest()), listing().links
     )
 
 
