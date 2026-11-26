@@ -8,19 +8,19 @@ from functools import partial
 from os import environ
 from pathlib import Path
 from traceback import format_exc
-from typing import Annotated
+from typing import Annotated, assert_never
 
 import typer
 
 from checkedtables.refs import Sha256
 from checkedtables.table import Finding
 from datadesk.core.fetch import FetchPlan
-from datadesk.core.listings import parse_listing
+from datadesk.core.listings import Listing, parse_listing
 from datadesk.core.watch import plan_watch
 from datadesk.shell.adapters.http_saved import SavedFolderError, SavedHttp
 from datadesk.shell.adapters.pdf_pdfplumber import PdfPlumberReader
 from datadesk.shell.adapters.s3 import s3_store
-from datadesk.shell.gather import gather_repo
+from datadesk.shell.gather import RepoSnapshot, gather_repo
 from datadesk.shell.ports import Deps, EffectError, PreconditionFailed
 from datadesk.shell.run_fetch import retried, run_fetch
 from datadesk.shell.settings import MissingSettings, hide_keys, load_settings
@@ -65,8 +65,13 @@ def fetch_command(deps: Deps, root: Path, source: str, today: date) -> FetchRun:
         When the store holds other bytes under a report's key.
     """
     repo = gather_repo(root)
-    if isinstance(repo, tuple):
-        raise FetchStopped(_findings("the checkout cannot be read", repo))
+    match repo:
+        case RepoSnapshot():
+            pass
+        case tuple():
+            raise FetchStopped(_findings("the checkout cannot be read", repo))
+        case _:
+            assert_never(repo)
     if source not in (listed.id for listed in repo.catalog.entries):
         raise FetchStopped(f"the catalog has no source {source!r}")
     entry = repo.catalog.entry(source)
@@ -78,8 +83,13 @@ def fetch_command(deps: Deps, root: Path, source: str, today: date) -> FetchRun:
     except UnicodeDecodeError as error:
         raise FetchStopped(f"the listing {entry.listing_url} is not UTF-8: {error}") from None
     listing = parse_listing(entry, entry.listing_url, text)
-    if isinstance(listing, Finding):
-        raise FetchStopped(_findings("the listing cannot be read", (listing,)))
+    match listing:
+        case Listing():
+            pass
+        case Finding():
+            raise FetchStopped(_findings("the listing cannot be read", (listing,)))
+        case _:
+            assert_never(listing)
     watch = plan_watch(repo.catalog, [listing], repo.index, today)
     plan = run_fetch(deps, watch, repo)
     for path, text in plan.pull_request.files:
