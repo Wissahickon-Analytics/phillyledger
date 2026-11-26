@@ -9,7 +9,7 @@ from hypothesis import strategies as st
 from checkedtables.kinds import SourceKind
 from checkedtables.refs import Box, Sha256, WordRef
 from checkedtables.words import Document, Page, Rule, Word, WordSource
-from datadesk.core.codec import FORMAT, decode_document, encode_document
+from datadesk.core.codec import FORMAT, decode_document, encode_document, render_fixture
 
 SHA = Sha256("5f238d579d4c1d7e2b3a4f5e6d7c8b9a0f1e2d3c4b5a69788796a5b4c3d2e1f0")
 TOOL = "pdfplumber==0.11.10;pdfminer.six==20260107;words=1"
@@ -41,6 +41,7 @@ DROP = object()
 WORD = ("pages", 0, "words", 0)
 
 finite_floats = st.floats(allow_nan=False, allow_infinity=False)
+page_sizes = finite_floats | st.integers()
 high_surrogates = st.characters(categories=["Cs"], max_codepoint=0xDBFF)
 low_surrogates = st.characters(categories=["Cs"], min_codepoint=0xDC00)
 any_text = (
@@ -79,8 +80,8 @@ def pages(draw: st.DrawFn, sha: Sha256, number: int) -> Page:
     return Page(
         sha,
         number,
-        draw(finite_floats),
-        draw(finite_floats),
+        draw(page_sizes),
+        draw(page_sizes),
         draw(st.integers()),
         WordSource(kind, draw(any_text)),
         words,
@@ -200,3 +201,41 @@ def test_decode_refuses_json_this_codec_did_not_write(
 ) -> None:
     with pytest.raises(ValueError):
         decode_document(edited(path, value))
+
+
+@given(st.tuples(sha256s, st.integers(1, 2_000)).flatmap(lambda drawn: pages(*drawn)))
+def test_a_rendered_fixture_runs_to_an_equal_page_and_renders_the_same_text(page: Page) -> None:
+    text = render_fixture(page)
+    namespace: dict[str, Any] = {}
+    exec(text, namespace)
+    assert namespace["PAGE"] == page
+    assert repr(namespace["PAGE"]) == repr(page)
+    assert render_fixture(namespace["PAGE"]) == text
+
+
+def test_a_rendered_fixture_binds_the_sha_once_and_prints_one_word_or_rule_on_a_line() -> None:
+    page = replace(TEXT_PAGE, width=792)
+    text = render_fixture(page)
+    assert text.count(SHA) == 1
+    assert f"SHA = Sha256({str(SHA)!r})\n" in text
+    assert "    width=792,\n" in text
+    assert (
+        "        Word(WordRef(SHA, 35, 0, None), 'Mural', Box(40.5, 100.25, 70.0, 108.0), "
+        "True, 8.88, None),\n"
+    ) in text
+    assert "        Rule(Box(250.36, 90.0, 250.36, 500.0)),\n" in text
+    assert "SourceKind.TEXT_LAYER" in text
+
+
+def test_a_word_whose_text_holds_the_sha_is_printed_as_its_text() -> None:
+    word = replace(TEXT_PAGE.words[0], text=f"see {SHA}")
+    namespace: dict[str, Any] = {}
+    exec(render_fixture(replace(TEXT_PAGE, words=(word,))), namespace)
+    assert namespace["PAGE"].words[0].text == f"see {SHA}"
+
+
+@pytest.mark.parametrize("bad", [float("nan"), float("inf"), float("-inf")])
+def test_render_fixture_refuses_a_float_a_module_cannot_hold(bad: float) -> None:
+    word = replace(TEXT_PAGE.words[0], size=bad)
+    with pytest.raises(ValueError, match="literal"):
+        render_fixture(replace(TEXT_PAGE, words=(word,)))
