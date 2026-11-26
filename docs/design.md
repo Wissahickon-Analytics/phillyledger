@@ -248,11 +248,11 @@ reads it from one of the repo's own files, and the shell turns the error into a 
 does not report a comparison of a sha with text that no builder checked, so each parser builds the
 `Sha256` where the text enters. `WordRef`, `Page`, `Document` and `ReviewedReading` refuse a sha
 that is not a `Sha256`, so a caller with no type checker gets a `ValueError` at the constructor. A
-key computed from several inputs is also a sha256, but of no one file's bytes. `cache_key`,
-`word_keys`, `compare_keys` and the code tree sha are such keys, so they stay `str`. Two caches in
-section 10 are keyed by the sha of a file itself: the PDFs by the doc sha and the reader's downloads
-by the file sha. The desk's sha of a PDF is a `Sha256`. Step 13 decides how the reader types the sha
-of a download, since `phillyledger` does not import the kit.
+key computed from several inputs is also a sha256, but of no one file's bytes. `cache_key`, the
+code tree sha and each key in `word_keys` and `compare_keys` are such keys, so each is a `str`. Two
+caches in section 10 are keyed by the sha of a file itself: the PDFs by the doc sha and the
+reader's downloads by the file sha. The desk's sha of a PDF is a `Sha256`. Step 13 decides how the
+reader types the sha of a download, since `phillyledger` does not import the kit.
 
 ```python
 # checkedtables/lines.py

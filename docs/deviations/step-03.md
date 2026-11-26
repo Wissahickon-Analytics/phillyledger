@@ -630,14 +630,13 @@ proposal, marked so below.
   Design sections 1.3, 2.1, 2.2, 3.1, 3.2, 4, 4.2, 4.3, 4.5, 12.1 and 18.3.
 - **Positions not built yet take `Sha256` too.** Proposal of the plan. `Table`, `FailureKey`,
   `WordSourcePlan`, `TablePages`, `ReleaseRow`, `WordJob`, `ParseJob`, `ExpectedTables`,
-  `ArticleFigure`, `records_for`, `illegible_pages`, `textract_to_document` and
-  `PdfReader.words` name a file's sha, and so do `Alias.editions` and the `scope` of
-  `match_acknowledgments`. The keys computed from several inputs (`cache_key`, `word_keys`,
-  `compare_keys` and the code tree sha) and the `accepted_diff` of `release_command` stay `str`.
-  Such a key is the sha256 of no one file, and the diff's sha is a word from the command line.
-  The reader's download cache is keyed by a file's sha, and step 13 decides how the reader types
-  it, since `phillyledger` does not import the kit. Design sections 2.1, 2.2, 3.1, 3.2, 4 and
-  18.3.
+  `ArticleFigure`, `records_for`, `illegible_pages`, `textract_to_document` and `PdfReader.words`
+  name a file's sha, and so do `Alias.editions` and the `scope` of `match_acknowledgments`.
+  `cache_key`, the code tree sha and each key in `word_keys` and `compare_keys` are computed from
+  several inputs, so each stays a `str`, as does the `accepted_diff` of `release_command`. Such a
+  key is the sha256 of no one file, and the diff's sha is a word from the command line. The reader's
+  download cache is keyed by a file's sha, and step 13 decides how the reader types it, since
+  `phillyledger` does not import the kit. Design sections 2.1, 2.2, 3.1, 3.2, 4 and 18.3.
 - **The four kit constructors refuse plain text.** `WordRef`, `Page`, `Document` and
   `ReviewedReading` raise `ValueError` for a sha that is not a `Sha256`, so a kit user with no
   type checker cannot pass plain text. The check takes the place of the check for an empty sha,
@@ -659,11 +658,12 @@ proposal, marked so below.
   Told that this pins them and edits a hard rule, he answered "Yes, add them" to adding "the
   readers' refusal codes" to hard rule 6. Two enums rather than one is a proposal of the plan,
   since one shared enum would let `qcmr_title` return `period_ambiguous` with no report from
-  `ty`. Design sections 1.3, 3.2 and 11.4.
-- **`parse_index` builds the sha.** `_version` builds `sha256` with `Sha256` where the guard of
-  pull request 38 stood, before it reads `urls`, and builds `supersedes` unless it is JSON
-  `null`. For a `supersedes` that is not a sha, the base said "supersedes ..., not of its
-  edition" for text and raised `TypeError` for a list. Both are now the builder's `ValueError`.
-  `gather_repo` catches all three, and the finding is still `index_unreadable`. The committed
-  index renders back byte for byte, and `git diff origin/main...HEAD` of `index.jsonl` prints
-  nothing. Design section 3.2.
+  `ty`. `ListedLink.skip_reason` holds what a title rule returned, so it takes
+  `SkipReason | None`. This is a proposal of the plan. Design sections 1.3, 3.2 and 11.4.
+- **`parse_index` builds the sha.** `_version` builds `sha256` with `Sha256` where the guard of pull
+  request 38 stood, before it reads `urls`, and builds `supersedes` unless it is JSON `null`.
+  Building `supersedes` with `Sha256` too is a proposal of the plan. For a `supersedes` that is not
+  a sha, the base said "supersedes ..., not of its edition" for text and raised `TypeError` for a
+  list. Both are now the builder's `ValueError`. `gather_repo` catches all three, and the finding is
+  still `index_unreadable`. The committed index renders back byte for byte, and
+  `git diff origin/main...HEAD` of `index.jsonl` prints nothing. Design section 3.2.

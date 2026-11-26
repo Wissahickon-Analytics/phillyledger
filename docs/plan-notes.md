@@ -464,6 +464,9 @@ file, `docs/progress.md`, `docs/followups.md` or `docs/deviations/`.
   and `WordRef`, `Page`, `Document` and `ReviewedReading` refuse a sha that is not one. The
   record files that `load_records` reads (design section 3.2) cite shas as text, so a loader
   builds each with `Sha256` and turns its `ValueError` into a finding, as `gather_repo` turns one
-  from `parse_index` into `index_unreadable`. The adapter of step 4 builds each hash from a
-  file's bytes with `Sha256(hashlib.sha256(data).hexdigest())`. This note replaces "The kit
-  checks a hash for presence only", on which sweep B acted.
+  from `parse_index` into `index_unreadable`. The `PdfReader` adapter of step 4 does not build
+  a hash. `parse` hands it the job's doc sha, already a `Sha256` (design sections 4 and 4.4).
+  Step 4 turns text into a sha in two places, the `<sha>` word of `datadesk fixture <sha>
+  <pages>` and `decode_document` in `core/codec.py`. Each builds it with `Sha256`, since the
+  kit's constructors refuse plain text. This note replaces "The kit checks a hash for presence
+  only", on which sweep B acted.
