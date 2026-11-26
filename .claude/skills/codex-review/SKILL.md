@@ -49,11 +49,14 @@ Every other one is a follow-up. Codex labels each finding, and its label is a le
   findings with the revised plan before the build starts.
 - **Pull request review.** Give the findings that block to one fresh `pstack:poteto-agent` on
   the feature model, with each finding, its evidence, and the original brief. That is the pull
-  request's one fix round. The message of its last commit lists each finding of the review by
-  its title as fixed, follow-up or dropped, with the reason for a drop, so the fix review can
-  account for each. Then run `just gates` and `fix N <reviewed-head>` on the new head.
-- **Fix review.** A finding that blocks in the fix diff goes to the owner. So does any second
-  round. Do not start one without his go.
+  request's one fix round. Tell it that a fix for a false sentence cuts the sentence, or
+  shortens it to what a signature or a test holds, and adds no claim. The message of its last
+  commit lists each finding of the review by its title as fixed, follow-up or dropped, with the
+  reason for a drop, so the fix review can account for each. Then run `just gates` on the new
+  head and, on the full track, `fix N <reviewed-head>`. The light track has no fix review.
+- **Fix review.** Rules 1 to 4 alone block in a fix diff, and a false sentence there is a
+  follow-up. A finding that blocks goes to the owner. So does any second round. Do not start
+  one without his go.
 - List the follow-ups under `## Follow-ups` in the pull request's text.
 - Add a short summary to the pull request's `## Verification` section: each Codex report's path
   and commit, the findings fixed, and the findings dropped with the reason for each.

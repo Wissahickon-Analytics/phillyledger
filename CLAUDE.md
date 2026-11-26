@@ -33,7 +33,8 @@ step is finished when its check passes.
      once. The owner decides each landing (hard rule 9).
 - **The loop stops.** A pull request gets one Codex review and one fix round, and a second
   round needs the owner's go. `docs/plans/README.md` says which confirmed findings block. Every
-  other one is a follow-up, listed in the pull request's text.
+  other one is a follow-up, listed in the pull request's text. A false sentence can open the
+  fix round and never a second one, and its fix cuts the sentence where it can.
 - **Codex verifies, and no Claude agent does.** No Claude agent verifies a pull request, reviews
   its comments or reviews a decision trail, and no swarm runs. The Opus owner applies
   `no-comments` and `deslop` to its own diff, and both keep the docstrings that the Code section
@@ -48,7 +49,8 @@ step is finished when its check passes.
   published value, the label or period a value is published under, the kit's public shape, or
   the release protocol. `docs/plans/README.md` says which steps qualify. It skips the Plan run.
   The Build session writes the short plan as the first commit of the pull request, and Codex
-  does not review the plan. The rest of the Build run and every hard rule below still hold.
+  does not review the plan or read the fix diff. The rest of the Build run and every hard rule
+  below still hold.
 - After steps 6, 13 and 14, Codex also reviews the whole design against the code, the way it
   reviewed the design on November 22, 2026 (`docs/reviews/`).
 - Start every session by reading `docs/progress.md`, then the part of `docs/design.md` the work

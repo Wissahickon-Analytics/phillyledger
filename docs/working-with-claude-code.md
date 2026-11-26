@@ -91,14 +91,16 @@ A step that qualifies for the light track (`docs/plans/README.md`) skips the Pla
 ```text
 /pstack:poteto-mode Build step N from docs/design.md section 15 on the light track with the
 Feature playbook, as CLAUDE.md says. Write the short plan as the first commit. Then build,
-verify and review the pull request as on the full track. Do not merge.
+verify and review the pull request as on the full track, but with no Codex read of the fix
+diff. Do not merge.
 ```
 
 To rerun a Codex review by hand, commit and run `/codex-review plan N`,
 `/codex-review pr N <base-branch>` or `/codex-review fix N <reviewed-head>`. Reports land in
 `.codex-review/`, which git ignores.
 
-A second fix round, or a finding that blocks after the first one, waits for your go. For a
+A second fix round, or a finding that blocks after the first one, waits for your go. Only a
+failed gate, an unproven clause, a broken hard rule or a wrong number can ask for one. For a
 design question the plan leaves open, or a pull request that feels wrong:
 
 ```text

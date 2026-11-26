@@ -26,8 +26,9 @@ Check these, and nothing else:
 1. Each finding listed as fixed. For a finding that a run showed, rerun its command. The
    failure must be gone, and a test must fail when the fix is taken out. For a finding that
    quoted lines showed, read the corrected lines against the lines they conflicted with.
-2. The fix diff itself. Look in the changed lines for anything that blocks by the rule in
-   `docs/plans/README.md`.
+2. The fix diff itself. Look in the changed lines for anything that blocks by rules 1 to 4 of
+   `docs/plans/README.md`. Rule 5 does not hold in a fix diff: a false sentence in the changed
+   lines is a `follow-up`, whatever it states.
 3. Scope. The fix round changes nothing that its findings do not need.
 
 Raise no finding about code the fix diff does not touch. The pull request was reviewed at
@@ -39,6 +40,6 @@ with a command and its output, or with two quoted lines and their paths and line
 Report first each finding listed as fixed, as closed or not closed, with the run or the quoted
 lines that show it. Name any finding of the review that the commit message does not list. Then
 report each finding in the fix diff with: a title; `blocks` with the number of the rule it
-meets, or `follow-up`; the file and line; the command and its output, or the two quoted lines;
-and the result the design or the data requires. No findings is a valid result. End with a list
-of what you checked and of any file you changed and put back.
+meets, 1 to 4, or `follow-up`; the file and line; the command and its output, or the two quoted
+lines; and the result the design or the data requires. No findings is a valid result. End with
+a list of what you checked and of any file you changed and put back.
