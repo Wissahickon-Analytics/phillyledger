@@ -442,13 +442,6 @@ file, `docs/progress.md`, `docs/followups.md` or `docs/deviations/`.
   Calibri, gives no words at that offset (fact 7). So the cover may need a font map and no OCR,
   and one offset for each page is not the rule. The plan of the step that takes this report
   designs the repair, and hard rule 4 applies to it.
-- **A word fixture prints each sha as `Sha256('...')`, a note for the step 4 plan** (November
-  25, 2026, standards sweep B). `datadesk fixture <sha> <pages>` writes words to
-  `tests/fixtures/words/` as Python literals (design section 11). The `repr` of a `WordRef`
-  prints its hash as `Sha256('<64 hex characters>')`, which rebuilds a `Sha256` when the fixture
-  is imported, and `eval(repr(word)) == word` holds for a `Word`. Printed with `repr`, a fixture
-  holds that text once for each word, unless the writer binds the hash to a name, such as
-  `SHA = Sha256('...')`, and prints the name. The step 4 plan picks the form.
 - **A loader builds each sha with `Sha256`, a note for the plan of the step that builds the TOML
   loaders** (November 25, 2026, standards sweep B). Standards sweep B gave a file's sha the type
   `Sha256`, whose constructor raises `ValueError` for anything but 64 lowercase hex characters,

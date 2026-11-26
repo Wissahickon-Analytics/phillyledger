@@ -2406,6 +2406,11 @@ def decode_document(data: bytes) -> Document: ...
     # members; ValueError for bytes that are not such UTF-8 JSON, a NaN or an infinity, a format
     # that is not the int FORMAT, a missing key, a value of the wrong JSON kind, or a value a
     # constructor refuses
+def render_fixture(page: Page) -> str: ...
+    # a word fixture: a module that imports the kit's types, binds SHA = Sha256('...') and
+    # PAGE = Page(...), each field written out, one Word or Rule on a line, words' refs naming
+    # SHA, every number and text as its repr, so an int width stays an int; run, it gives a
+    # PAGE equal to the page, which renders to the same text; ValueError for a NaN or infinity
 def encode_parse_result(result: ParseResult) -> bytes: ...
 def decode_parse_result(data: bytes) -> ParseResult: ...
 
@@ -4244,28 +4249,29 @@ raised, and is not a bug. Any other exception that escapes the core is a bug and
 command.
 
 `fetch` catches every exception raised after the settings load, while it builds `Deps`, runs the
-fetch or prints the plan. The `datadesk` script exits with these codes for these reasons.
+fetch or prints the plan. `fixture` does the same while it builds its ports, writes the fixtures
+or prints their paths. The `datadesk` script exits with these codes for these reasons.
 
 - **0.** A run that ends normally, or help.
 - **2.** A usage error. typer and click write it on stderr.
 - **1.**
-  - A refused input (a `MissingSettings`, a saved folder that `SavedHttp` refuses or a
-    `FetchStopped`), an `EffectError` or a `PreconditionFailed`. `fetch` writes a message on
-    stderr.
-  - Any other exception that `fetch` catches, a `KeyboardInterrupt` included. `fetch` writes its
-    traceback on stderr through `hide_keys`. A checkout file that cannot be written ends here,
-    as it did under `argparse`.
+  - A refused input (a `MissingSettings`, a saved folder that `SavedHttp` refuses, a
+    `FetchStopped` or a `FixtureStopped`), an `EffectError` or, from `fetch`, a
+    `PreconditionFailed`. The command writes a message on stderr.
+  - Any other exception that the command catches, a `KeyboardInterrupt` included. The command
+    writes its traceback on stderr through `hide_keys`. A checkout file that cannot be written
+    ends here, as it did under `argparse`.
   - A bug before the settings load. Python prints its traceback.
   - One of typer's own ends. Runs showed two: `_DATADESK_COMPLETE` set to a non-empty value,
     which runs no command because shell completion is off, and `Aborted!` after an `EOFError`.
-- **130.** A `KeyboardInterrupt` that `fetch` does not catch, such as one before the settings
-  load.
+- **130.** A `KeyboardInterrupt` that the command does not catch, such as one before the
+  settings load.
 
 `main` returns the integer code of a `SystemExit` that reaches it. It lets any other exception
 propagate.
 
-From the settings load on, everything `fetch` prints passes through `hide_keys`. Before it, no
-key is loaded.
+From the settings load on, everything `fetch` and `fixture` print passes through `hide_keys`.
+Before it, no key is loaded.
 
 Help is `--help` alone. typer adds no `-h`, and click takes no abbreviation of an option, so `-h`
 and `--sav` are usage errors. Under `argparse`, at `36807de`, `-h` printed help and `--sav` was
@@ -4321,8 +4327,19 @@ Determinism rules:
 
 The core suites run under `pytest-socket` with sockets disabled and an empty temporary directory
 as the working directory (from A). Word fixtures of real pages are generated once by
-`datadesk fixture <sha> <pages>` into `tests/fixtures/words/<series>_<edition>_p<n>.py` as Python
-literals, so importing them is not I/O.
+`datadesk fixture <sha> <pages>` into
+`packages/datadesk/tests/fixtures/words/<series>_<YYYY_MM_DD>_p<n>.py`, with `_<stage>` before
+`_p` when the stage is not `none`, so page 35 of `qcmr:2022-09-30:none` is
+`qcmr_2022_09_30_p35.py`. Each is the Python module that `render_fixture` writes (section
+3.2), so importing one is not I/O. The command takes pages as `35,36`, sorted and each read
+once, names the files by the indexed edition of the sha, and reads the words through the word
+cache under the key of those pages. It stops before it reads the PDF for a sha that is not 64
+lowercase hex characters, pages that are not such a list, a checkout it cannot read, a sha the
+index lacks, and a file of that name that names no sha or another sha in its `SHA` line, since
+two versions of one edition share a name. It leaves that file as it was. ruff and prek leave the
+folder alone. `test_each_word_fixture_regenerates_byte_identical` writes every fixture again
+from the PDFs in the folder that `DATADESK_HELD_PDFS` names and compares the bytes. It skips
+when the variable is unset, as in CI.
 
 pytest-socket replaces only the names `socket.socket`, `socket.getaddrinfo` and
 `socket.gethostbyname` and lifts its block before fixture finalizers run, so an audit hook in the

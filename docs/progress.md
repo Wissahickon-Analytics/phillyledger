@@ -67,7 +67,8 @@ session needs it. A note for one later step goes in `docs/plan-notes.md`.
     cache key has its type, `WordKey` (S4-B);
   - the other callers in `datadesk` that tell a union apart with an early `isinstance` return,
     or with a `match` that has no `assert_never`, which
-    `rg 'isinstance\(|^\s*match ' packages/datadesk/src` lists;
+    `rg 'isinstance\(|^\s*match ' packages/datadesk/src` lists. S4-D turned the two in
+    `fetch_command` into `match` statements that end in `assert_never`;
   - `phillyledger`, which may not import the kit, so step 13's plan decides how it types a sha.
   `checkedtables/__init__.py` exports nothing yet, so `Sha256` is imported from
   `checkedtables.refs`.
@@ -91,9 +92,14 @@ session needs it. A note for one later step goes in `docs/plan-notes.md`.
   `__init__.py` of `checkedtables.checks`, `datadesk.core`, `datadesk.core.tables`,
   `datadesk.shell` or `phillyledger._shell`. Deleting the `__init__.py` of `checkedtables`,
   `datadesk`, `datadesk.shell.adapters` or `phillyledger` leaves all nine contracts kept.
-- **ruff skips Markdown** (November 22, 2026, step 1). ruff 0.17 includes `*.md` by default and
-  formats the Python blocks in it. `uv run ruff format --check .` failed on `docs/design.md`,
-  whose code blocks align their comments on purpose. The root `pyproject.toml` excludes `*.md`.
+- **ruff skips Markdown and the word fixtures** (November 22, 2026, step 1. Updated November 26,
+  2026, S4-D). ruff 0.17 includes `*.md` by default and formats the Python blocks in it.
+  `uv run ruff format --check .` failed on `docs/design.md`, whose code blocks align their
+  comments on purpose. The root `pyproject.toml` excludes `*.md`. It also excludes
+  `packages/datadesk/tests/fixtures/words`, where ruff found 9,219 errors and 20 files to
+  reformat, so no gate rewrites a word fixture. prek's ruff hooks pass `--force-exclude`, so they
+  skip the folder too. ty still checks the fixtures: at S4-D, `uv run ty check` took a median of
+  0.13 s with the 20 files and 0.11 s without them, over seven runs each.
 - **`ci.yml` is pinned** (November 22, 2026, step 1). `test_ci_runs_every_gate` in
   `tests/test_gates.py` fails unless `.github/workflows/ci.yml` equals, byte for byte, a header
   constant plus one step per member of `GATES`. A workflow change edits both files in the same
@@ -207,7 +213,11 @@ session needs it. A note for one later step goes in `docs/plan-notes.md`.
   `from packages.datadesk.tests.core.fixtures.qcmr_feed import FEED`, with no `__init__.py`.
   ty resolves that name because `[tool.ty.environment] root` in the root `pyproject.toml` ends
   with `"."`. Without it, `uv run ty check` fails with `import-not-found`. A relative import
-  passes pytest and fails ty the same way. ruff sorts the import with the outside packages.
+  passes pytest and fails ty the same way. ruff sorts the import with the outside packages. A
+  test under the root `tests/` imports the same way, because `pythonpath = ["."]` in
+  `[tool.pytest.ini_options]` puts the checkout on `sys.path` (S4-D). Without that line, the
+  whole suite collected `tests/test_word_fixtures.py`, and `uv run pytest tests/` failed on it
+  with `ModuleNotFoundError: No module named 'packages'`.
 - **The archive bucket from a worktree** (November 24, 2026, step 3, S3-E). The archive bucket
   on R2 holds the 20 QCMR reports from FY2022 Q1 to FY2026 Q4, each under
   `pdf/<sha[:2]>/<sha>.pdf`, and `index.jsonl` lists them. git ignores `.env`, so a worktree has
