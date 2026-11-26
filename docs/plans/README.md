@@ -62,8 +62,9 @@ Each pull request gets one Build session on Opus (`CLAUDE.md`, "How work runs he
    the audits of the `verify-step` skill and then the review, in a throwaway worktree where it
    can run tests and break code.
 4. The session confirms each finding with a run or a quote, and sorts it by the rule below.
-5. The findings that block go to one fix round by a fresh Opus owner. Codex then reads only the
-   fix diff (`codex-review fix N <reviewed-head>`), and the gates run at the new head.
+5. The findings that block go to one fix round by a fresh Opus owner, and the gates run at the
+   new head. On the full track Codex then reads only the fix diff
+   (`codex-review fix N <reviewed-head>`). On the light track no fix read runs.
 6. A fresh Fable delegate reads the whole diff once, against the plan and the design.
 7. The session hands the pull request to the owner with its verdict and its follow-ups.
 
@@ -90,12 +91,20 @@ confirmed finding blocks when it shows one of these at the reviewed head:
 4. The code gives a number, a label or a period that the words do not print, for an input that
    a dossier, a word fixture or the design shows.
 5. A sentence the diff adds to the design, the rules or a skill is false, or contradicts
-   another one.
+   another one, and it states one of these: a signature, a value, a label or a period that is
+   published, a clause of a step's check, or a hard rule.
+
+Rule 5 can open the one fix round and no round after it. Once the fix round is spent, a false
+sentence is a follow-up, in the fix diff or anywhere else, whatever it states.
+
+A fix for a false sentence cuts the sentence, or shortens it to what a signature or a test
+holds. It adds no claim and no list of cases.
 
 Every other confirmed finding is a follow-up. Steps 1 and 2 give the usual kinds: a stricter
 check in a constructor, a scan that a contrived input gets past, a mutant that survives behind a
 clause whose test stands, a wrong reading of an input that no page is known to print, and a
-reworded message.
+reworded message. Step 3 adds one: a false sentence that rule 5 does not name, such as one about
+what a command prints or which exception it raises.
 
 The session lists follow-ups under `## Follow-ups` in the pull request's text, which no other
 branch of a stack edits. When the step's last pull request is verified, the session shows the
@@ -103,12 +112,13 @@ owner the step's follow-ups. The ones he keeps go into `docs/followups.md`, and 
 request fixes the ones he picks.
 
 A pull request gets one Codex review and one fix round. A second round needs the owner's go,
-whatever asks for it: a blocking finding in the fix diff, or one from the Fable read after the
-fix round is spent.
+and only a finding under rules 1 to 4 can ask for it: one in the fix diff, or one from the
+Fable read after the fix round is spent.
 
-pstack draws the same line for a verified queue: only a bug a user would hit, a failed gate or
-a wrong shipped doc blocks, and everything else goes in a follow-up (the Autopilot-full
-playbook, step 4).
+pstack draws nearly the same line for a verified queue: only a bug a user would hit, a failed
+gate or a wrong shipped doc blocks, and everything else goes in a follow-up (the Autopilot-full
+playbook, step 4). Rule 5 blocks fewer wrong sentences than that. This differs from pstack, and
+the project rule wins. The counts from step 3, below, say why.
 
 ## Why verification is this size
 
@@ -146,7 +156,7 @@ What it found:
 - Codex ran four reviews in step 1 and raised eighteen findings, and all eighteen were
   confirmed. Each review took under ten minutes. The review of the whole stack raised ten of
   the eighteen and ran before the last fix round, so Codex did not review those fixes. That is
-  why Codex reads every fix diff.
+  why Codex reads the fix diff on the full track.
 - In step 2, `docs/deviations/step-02.md` credits a Codex review in 11 of its 17 entries, across
   all five pull requests. It credits verifiers in 6: 5 entries of the build, and the entry on
   decisions 13 to 17. The entries count 18 mutants that survived the tests. A surviving mutant
@@ -160,11 +170,53 @@ workspace-write`, in a throwaway worktree with a synced environment, ran the 217
 The sandbox refused a write to the main checkout (`Operation not permitted`) and a call to the
 network.
 
+What step 3 and the two standards sweeps showed. The counts were taken on November 25, 2026
+from the text and the comments of the nine pull requests that Codex reviewed, 32 to 43. Codex's
+reports were not read again.
+
+| Pull request | Lines added | First review | Fix rounds |
+| --- | --- | --- | --- |
+| 32, the index | 641 | 6 findings, 2 blocked | 1 |
+| 33, the listing | 2,020 | 8 blocked | 2 |
+| 35, the fetch plan | 910 | 3 blocked | 3 |
+| 36, the shell | 2,666 | 12 findings, 9 blocked | 4 |
+| 37, the archive | 185 | 4 findings, 2 blocked | 1 |
+| 38, the cleanup | 311 | 8 findings, 3 blocked | 2 |
+| 40, sweep A | 1,084 | 14 findings, 6 blocked | 3 |
+| 42, the review script | 215 | 9 findings | 5 |
+| 43, sweep B | 1,064 | 8 findings, 6 blocked | 2 |
+
+- The rule gave each pull request one fix round, and the nine took 23. The owner was asked for
+  a further round 15 times and said yes 14 times.
+- The first reviews found defects. The texts record every finding that blocked in one as
+  confirmed by a run or a quote. Among them: a cycle in `supersedes` passed validation (32), a
+  repost kept the first stamp so that older bytes became current (35), a blank note cleared a
+  period mismatch (35), and `main` printed an echoed key (36).
+- Of the 14 rounds after the first, 9 were opened by false sentences alone, found by Codex's
+  read of the round before or by the Fable read: the second round of 33, 38 and 43, the second
+  and third of 35 and of 40, and the third and fourth of 36. Two of the nine changed code to
+  make a sentence true, the second round of 33 and of 35. The other seven changed words,
+  docstrings or tests alone. The texts of the other five rounds, the second of 36 and the last
+  four of 42, do not say what opened them.
+- The count of rounds did not follow the size of the diff. The smallest code change, 42, took
+  the most.
+- A round that rewrote a sentence to be more exact gave Codex a claim that one case could
+  break: `datadesk --help=1`, a line feed in an error message, a Ctrl-C while core code runs.
+  Pull request 38's text says of one such list that it "invites one more such case each round".
+- Pull request 40's third round only cut. Codex's read of it found nothing new.
+
+That is why rule 5 names four kinds of sentence, why it cannot open a second round, why a fix
+cuts, and why the light track has no fix read. What the rules give up: a false sentence of
+another kind waits for the step's cleanup pull request, and on the light track Codex does not
+see the code of a fix round. The gates and the Fable read still do.
+
 ## Which track a step runs on
 
-Every step is built as above. A step on the light track skips the Plan run: the Build session
-writes the plan as the first commit of its pull request, and Codex does not review the plan.
-The owner may start a step on the light track when its diff can change none of these:
+Every step is built as above, with two cuts on the light track. It skips the Plan run: the
+Build session writes the plan as the first commit of its pull request, and Codex does not review
+the plan. And Codex does not read its fix diff: the gates run at the new head, and the Fable
+read covers the fix. The owner may start a step on the light track when its diff can change
+none of these:
 
 - a published value,
 - the label or the period a value is published under,
@@ -175,3 +227,6 @@ By that rule steps 2 and 4 to 14 take a Plan run. Step 1 qualified for the light
 before this rule existed. Step 3 is the owner's call. Its storage and index code qualify, but
 `confirm_period` decides the period a report is filed under. A step that is mixed or unclear
 takes a Plan run.
+
+Work outside the numbered steps takes its track by the same test. A change to a skill or a
+review script can change none of the four, so it runs on the light track.
