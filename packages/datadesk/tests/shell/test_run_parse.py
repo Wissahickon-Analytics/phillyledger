@@ -17,7 +17,7 @@ from datadesk.shell.adapters.pdf_pdfplumber import PdfPlumberReader
 from datadesk.shell.ports import LocalCache, PdfReader
 from datadesk.shell.run_parse import extract_words, merged_document
 
-STYLED_PDF = drawn_pdf(f"{STYLED} {RULES}")
+STYLED_PDF = drawn_pdf(f"{STYLED} {RULES}", f"{STYLED} {RULES}")
 STYLED_SHA = Sha256(sha256(STYLED_PDF).hexdigest())
 TWO_PAGES = text_pdf("ONE", "TWO")
 TWO_PAGES_SHA = Sha256(sha256(TWO_PAGES).hexdigest())
@@ -69,7 +69,7 @@ def two_dir_caches(folder: Path) -> tuple[LocalCache, LocalCache]:
 )
 def test_a_cache_hit_returns_an_equal_document(caches: Caches, tmp_path: Path) -> None:
     reader = KeepingReader(PdfPlumberReader())
-    pages = (1,)
+    pages = (1, 2)
     wanted = WordJob(
         STYLED_SHA, pages, SourceKind.TEXT_LAYER, None, word_key(STYLED_SHA, pages, reader.tool())
     )
@@ -86,6 +86,7 @@ def test_a_cache_hit_returns_an_equal_document(caches: Caches, tmp_path: Path) -
     second = run(second_cache)
     assert len(reader.kept) == 1
     (kept,) = reader.kept
+    assert [page.number for page in kept.pages] == [1, 2]
     words = [word for page in kept.pages for word in page.words]
     assert {word.bold for word in words} == {True, False}
     assert {word.size for word in words} == {12.0, 9.0}
