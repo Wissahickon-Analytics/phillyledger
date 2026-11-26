@@ -101,12 +101,13 @@ file, `docs/progress.md`, `docs/followups.md` or `docs/deviations/`.
     global that source changes at run time, the family that Appendix B of the step 2 plan leaves
     to a separate decision for the owner. A rule against assigning `__path__` would also miss
     `__path__.append(...)`. Review reads for it, as design section 11.1 says.
-- **What an OCR word carries, a note for the step 4 plan** (November 23, 2026, step 2, S2-B).
-  `Page` refuses a word with an OCR confidence on a text layer page. It does not refuse the
-  converse states: a word on an OCR page with no confidence, or with a style, which the design
-  says no OCR word has. Step 4 builds the adapters and learns what pdfplumber and Textract return
-  for every word, so its plan decides whether `Page` refuses those states too, and records the
-  choice in design section 2.1.
+- **What an OCR word carries, a note for the step 7 plan** (November 23, 2026, step 2, S2-B.
+  Updated November 25, 2026, the step 4 plan). `Page` refuses a word with an OCR confidence on a
+  text layer page. It does not refuse the converse states: a word on an OCR page with no
+  confidence, or with a style, which the design says no OCR word has. Step 4 builds the pdfplumber
+  adapter alone, so it does not learn what Textract returns. Step 7 builds the OCR path, so its
+  plan decides whether `Page` refuses those states too, and records the choice in design section
+  2.1.
 - **A word that still holds a font code, a note for the step 4 plan** (November 23, 2026, step 2,
   S2-D fix round 2, found in the second Codex review of S2-D). Design section 15, step 4, says
   that a word still holding `(cid:` after repair lexes as `Unreadable`. At the S2-D head,
@@ -442,8 +443,16 @@ file, `docs/progress.md`, `docs/followups.md` or `docs/deviations/`.
   pages 1, 2, 6, 10 and 50 with `pdftotext`. No run has sorted the other 87 pages, so no run says
   which pages need OCR. The owner chose to let it wait until a later step can read its cover
   (answer D). Step 7 adds `datadesk ocr --spend` (design section 15), and Textract calls need the
-  owner's go-ahead (hard rule 8 of `CLAUDE.md`). Step 4 ports the font repair for `(cid:N)` words.
-  Whether that repair reads this cover was not run.
+  owner's go-ahead (hard rule 8 of `CLAUDE.md`). Step 4 ports no font repair, because none of the
+  20 archived files prints a font code (`docs/plans/step-04.md`, facts 1 and 2, answer 1). This
+  file does: pdfplumber 0.11.10 gives a `(cid:N)` code on 86 of its 92 pages. The old repo's
+  `repair_cid_words`, run page by page on November 25, 2026, picks offset 29 on 56 of them and
+  leaves no code, the P-1 grid pages 35 and 36 among them. It refuses the other 30, the cover
+  among them, which has 5 words and one vocabulary hit where the rule wants three. With 29 added
+  to every code the cover reads "FOR THE PERIOD ENDING SEPTEMBER 30, 2026". Page 86, set in
+  Calibri, gives no words at that offset (fact 7). So the cover may need a font map and no OCR,
+  and one offset for each page is not the rule. The plan of the step that takes this report
+  designs the repair, and hard rule 4 applies to it.
 - **A word fixture prints each sha as `Sha256('...')`, a note for the step 4 plan** (November
   25, 2026, standards sweep B). `datadesk fixture <sha> <pages>` writes words to
   `tests/fixtures/words/` as Python literals (design section 11). The `repr` of a `WordRef`
@@ -470,3 +479,22 @@ file, `docs/progress.md`, `docs/followups.md` or `docs/deviations/`.
   <pages>` and `decode_document` in `core/codec.py`. Each builds it with `Sha256`, since the
   kit's constructors refuse plain text. This note replaces "The kit checks a hash for presence
   only", on which sweep B acted.
+- **Sixteen archived reports have a commentary page before the P-1 grid, a note for the step 5
+  plan** (November 25, 2026, the step 4 plan). In every archived file from `qcmr:2022-06-30:none`
+  on except `qcmr:2023-12-31:none`, the page before the two grid pages has rotation 0, begins
+  `TABLE P-1` and goes on "ABOUT THIS SECTION:". The other four files have a 19-word divider page
+  there that does not print `TABLE P-1` (`docs/plans/step-04.md`, fact 8). The Codex review
+  counted six such pages in the old repo's cut copies, and design section 15 now says 16.
+- **The archive prints no font code in the cash pages, a note for the step 8 plan** (November
+  25, 2026, the step 4 plan). QCASH-Q14 and VAL-Q05 describe `E(cid:121)PENSES` in the cash pages
+  of FY2023 Q1 and Q2, and design section 3.2 has `split_grids` match `(cid:N)` in that caption.
+  They were read from the old repo's cut copies. No page of the 20 archived files, FY2022 Q1 to
+  FY2026 Q4, gives a word that holds `(cid:` (`docs/plans/step-04.md`, facts 1 and 2). Step 8
+  reads the archived cash pages before it keeps that branch. The OCR reading `ANO` in the same
+  quirk is another matter.
+- **The adapter does not turn sideways text, a note for the step that first meets it** (November
+  25, 2026, the step 4 plan). The old backend finds a page whose glyphs mostly run sideways and
+  turns its words and boxes upright (`dominant_sideways_turn` in old `pdfplumber_backend.py`,
+  line 40). Step 4 does not port it, because the 20 P-1 grid pages have rotation 90 and read
+  upright through pdfplumber (`docs/plans/step-04.md`, fact 3 and shape 4). The plan of the first
+  step whose pages need the turn ports it and adds it to the tool string.
