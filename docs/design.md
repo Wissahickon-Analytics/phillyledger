@@ -4970,8 +4970,10 @@ before the first release (Codex review).
 
 The first release-quality table from the new code is QCMR positions for FY2022 Q1 to FY2026 Q4, at
 step 6. Those 20 editions are whole publisher PDFs with a text layer, so they need no declared
-pages and no OCR. Ten of them, FY2023 Q1 to FY2025 Q2, extract their grid fonts as `(cid:N)`
-codes, and six open with a commentary page that also prints the `TABLE P-1` band.
+pages and no OCR. None of the archived files prints a `(cid:N)` font code on any page. The codes
+that the Codex review found on the grid pages of FY2023 Q1 to FY2025 Q2 are in the old repo's cut
+copies, which have other shas. Sixteen of the 20 have a commentary page before the grid that also
+prints the `TABLE P-1` band (`docs/plans/step-04.md`, facts 1, 2 and 8).
 
 1. **Workspace.** Three packages, uv, `uv_build`, ruff, ty, import-linter, prek, pytest-socket,
    the purity test and the library shape test on empty modules.
@@ -4987,12 +4989,10 @@ codes, and six open with a commentary page that also prints the `TABLE P-1` band
    adapter, the QCMR catalog entry, and a one-time import of held FY2022 to FY2026 reports by sha.
    *Check:* each of the 20 reports is indexed once, by the sha in an inventory checked by hand.
    Fetching the same listing again adds nothing.
-4. **Words.** PDF adapter with the font repair ported from `text_cleaning.repair_cid_words`
-   (old repo, line 138), word cache, `codec`. A word still holding `(cid:` after repair lexes as
-   `Unreadable`.
+4. **Words.** PDF adapter, word cache, `codec`. A word that holds `(cid:` lexes as `Unreadable`.
    *Check:* word fixtures regenerate byte-identical. A cache hit returns an equal `Document`. On
-   all 20 grid pages with font codes, no `(cid:` remains, and a rendered crop of each page's
-   first and last department rows matches the repaired digits.
+   the 20 P-1 grid pages of FY2023 Q1 to FY2025 Q2, no word holds `(cid:`, and a rendered crop of
+   each page's first and last department rows matches the extracted digits.
 5. **QCMR positions parser.** Kit `pages`, `columns`, `pipeline`, `table`, `rows`, `assemble`; the
    department part of the registry; `rowschemas`; `vocab`, `measures` and the catalog test;
    `qcmr_positions`.
@@ -5466,7 +5466,7 @@ citations at the old repo's head (two cash line numbers had drifted; the facts h
 | Swapping General and Other Funds across the FY2026 Q4 P-1 grid, or the rows of two departments, still passes all 291 arithmetic comparisons, so a wrong name can publish as `proven` | `proven` becomes `arithmetic`, which claims only that sums tie. A `bound_by` field says how each column was bound. Labeled fixtures per layout and a cell-by-cell comparison with the pinned gov-budget-data release are the evidence for names. | 2.2, 8.3, 15 step 6 |
 | The FY2022 to FY2026 set is 20 editions, not 19; FY2026 Q4 was published August 17, 2026 | Steps 3 to 6 name 20, from a hand-checked inventory of shas | 15 |
 | Six P-1 runs open with a commentary page that also prints `TABLE P-1`, and the era is chosen from the first page | The run starts at the first page that carries the era's captions; a band-only page is reported as commentary | 15 step 5 |
-| Grid pages in FY2023 Q1 to FY2025 Q2 extract as `(cid:N)` font codes on 20 pages | The PDF adapter ports `repair_cid_words`; a leftover code lexes as `Unreadable`; step 4 checks rendered crops | 15 step 4 |
+| Grid pages in FY2023 Q1 to FY2025 Q2 extract as `(cid:N)` font codes on 20 pages | The review read the old repo's cut copies, and the archived files print no font code. So step 4 ports no repair, a font code lexes as `Unreadable`, and step 4 checks rendered crops of the same 20 pages (`docs/deviations/step-04.md`) | 15 step 4 |
 | Legacy cash "Under (Over) Revenues" is Budget minus Total minus Accrued, and a difference could name only two columns | `Derived(DIFFERENCE)` takes two or more operands: the first minus each later one | 2.2, `vocab/` |
 | O-3 Full-Time Positions rows inherited dollars and flow | Row overrides now match on key parts; every column of a `metric=positions` row is a count at a point | 2.2, `vocab/` |
 | Monthly opening and closing cash balances inherited flow | Both rows are levels in every column. A month's opening balance is dated at the end of the month before, so it matches that month's close | 2.2, `vocab/` |
@@ -5578,7 +5578,7 @@ planner (about 100 to 180 lines), so they stay an upper bound.
 
 ### 18.5 Size
 
-The changes add about 405 lines: conditional writes and the pointer race (55), font repair (60),
+The changes add about 405 lines: conditional writes and the pointer race (55), font repair (60, which step 4 does not build),
 watch re-hash (55), the new records and article figures (140), withdrawals and `bound_by` in the
 release (30), the acknowledgment fingerprint (20), the source comparison (20), per-edition OCR
 withholding (15) and the reader's cache check (10).
