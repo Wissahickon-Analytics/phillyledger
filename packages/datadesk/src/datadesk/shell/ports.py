@@ -1,8 +1,11 @@
 """The ports through which the shell reaches the outside, and the errors they raise."""
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Protocol
 
+from checkedtables.refs import Sha256
+from checkedtables.words import Document
 from datadesk.core.parse_plan import WordKey
 
 
@@ -101,7 +104,7 @@ class ObjectStore(Protocol):
 
 
 class PdfReader(Protocol):
-    """Read the text a PDF prints."""
+    """Read the text, words and drawn rules a PDF prints, and draw its pages."""
 
     def page1_text(self, pdf: bytes) -> str:
         """Return the text of the PDF's first page.
@@ -111,6 +114,33 @@ class PdfReader(Protocol):
         EffectError
             When the reader cannot read the file.
         """
+        ...
+
+    def words(self, pdf: bytes, sha256: Sha256, pages: Sequence[int]) -> Document:
+        """Return the words and rules of the 1-based `pages`, ascending, or of every page.
+
+        Empty `pages` means every page. `sha256` is the sha of `pdf`, which each page and word
+        names. Each page's source is the text layer, with `tool` as its tool string.
+
+        Raises
+        ------
+        EffectError
+            When the file lacks a page in `pages`, or the reader cannot read one.
+        """
+        ...
+
+    def render(self, pdf: bytes, page: int, dpi: int) -> bytes:
+        """Return the whole 1-based `page` as a PNG at `dpi`, for OCR and review images.
+
+        Raises
+        ------
+        EffectError
+            When the file lacks the page, or the reader cannot draw it.
+        """
+        ...
+
+    def tool(self) -> str:
+        """Return the tool string of the pages `words` reads, so a caller can key them first."""
         ...
 
 
@@ -150,7 +180,7 @@ class LocalCache(Protocol):
 
 @dataclass(frozen=True, slots=True)
 class Deps:
-    """The adapters a command runs with, one for each port."""
+    """The adapters a command runs with."""
 
     http: Http
     store: ObjectStore
