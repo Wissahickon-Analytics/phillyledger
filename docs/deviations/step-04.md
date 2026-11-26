@@ -42,4 +42,7 @@ why, the run that shows it, and the design section updated. Fact and shape numbe
   `size`. The codec writes UTF-8 with `surrogatepass`, so every `str` reads back equal. With
   `ensure_ascii`, that property and
   `test_a_high_surrogate_then_a_low_one_read_back_as_two_code_points` failed, because JSON read a
-  high surrogate then a low one back as one character. Design sections 2.1, 3.2, 4, 10 and 12.3.
+  high surrogate then a low one back as one character. `LocalCache` holds word keys alone, so
+  sections 3.2, 4.4 and 10 no longer cache parse results in it, as section 18.4 already dropped
+  that cache. Section 1.4 no longer names the reader's cache, keyed by a download sha, as a
+  `LocalCache`. Design sections 1.4, 2.1, 3.2, 4, 10 and 12.3.

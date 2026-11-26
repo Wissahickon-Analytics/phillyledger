@@ -61,7 +61,7 @@ publisher listings --watch--> WatchPlan --exec--> pull request (index lines, gap
 | Object store (PDFs in the archive bucket, which is private at step 3, and the step that first needs a public read decides whether they get a public copy; private Textract JSON; releases) | `ObjectStore` | `datadesk.shell.adapters.s3` | `fetch`, `ocr`, `words` and `release` executors |
 | Textract | `OcrService` | `datadesk.shell.adapters.textract` | the `ocr` executor only, and only with `--spend` |
 | PDF words, rules and page-1 text | `PdfReader` | `datadesk.shell.adapters.pdf_pdfplumber` | `fetch` and `words` executors |
-| Local content-addressed cache | `LocalCache` | `datadesk.shell.adapters.cache_dir`, `phillyledger._shell.cache_dir` | executors, reader |
+| Local content-addressed cache | `LocalCache` | `datadesk.shell.adapters.cache_dir` | executors |
 | Git and pull requests | `GitHost`, from step 13 | `datadesk.shell.adapters.github` | the `watch` executor. At step 3, `fetch_command` writes the index file into the checkout and the session opens the pull request |
 | Clock | none; each command in `cli.py` reads the time once and passes it down, as a `date` to `fetch_command` and `run_watch` and a `datetime` to `release_command` | `datadesk.shell.cli` | CLI entry only |
 | Environment | none; `load_settings(environ)` returns a frozen `Settings` once | `datadesk.shell.settings` | CLI entry only |
@@ -2376,8 +2376,7 @@ class ParseJob:
 class ParsePlan:
     extract: tuple[WordJob, ...]         # word jobs not in the cache, text layer only
     ocr_missing: tuple[WordJob, ...]     # OCR pages with no archived Textract response
-    parse: tuple[ParseJob, ...]          # parse jobs not in the parse cache
-    reuse: tuple[ParseJob, ...]          # parse results served from the cache
+    parse: tuple[ParseJob, ...]
 def plan_parse(snapshot: ParseSnapshot) -> ParsePlan: ...
 def plan_ocr(missing: Sequence[WordJob], config: str) -> OcrPlan: ...
     # pages, Textract config and the archive key for each response; printed with a page count
@@ -2826,20 +2825,17 @@ def run_parse(deps: Deps, repo: RepoSnapshot) -> ParseOutcome | OcrNeeded:
         pdf = deps.store.get(pdf_key(job.doc_sha256))
         deps.cache.put(job.cache_key, encode_document(deps.pdf.words(pdf, job.doc_sha256, job.pages)))
     results: dict[str, ParseResult] = {}
-    for job in plan.reuse:
-        results[job.cache_key] = decode_parse_result(need_bytes(deps.cache.get(job.cache_key)))
     for job in plan.parse:
         doc = merged_document(deps.cache, job.word_keys)                # decode and join pages
         other = merged_document(deps.cache, job.compare_keys) if job.compare_keys else None
         result = run_parse_job(job, doc, other, parse_context(job, repo))   # pure
-        deps.cache.put(job.cache_key, encode_parse_result(result))
         results[job.cache_key] = result
     return ParseOutcome(plan, results)
 ```
 
-`plan_parse` decides which words to extract, which OCR responses exist and which parse results are
-cached. The executor does not re-read the cache to decide again (R1, R2). `merged_document` builds
-one `Document` whose pages each come from the declared source. A page never appears twice.
+`plan_parse` decides which words to extract and which OCR responses exist. The executor does not
+re-read the cache to decide again (R1, R2). `merged_document` builds one `Document` whose pages
+each come from the declared source. A page never appears twice.
 
 ### 4.5 `release`
 
@@ -4243,15 +4239,12 @@ read as `--saved`.
 
 ## 10. Caching and determinism
 
-Words are cached because extraction is slow and OCR costs money. Parse results are cached under
-a key that covers every input, so a stale parse cannot be served (change 14). There is no
-staleness graph.
+Words are cached because extraction is slow and OCR costs money. There is no staleness graph.
 
 | Cache | Key | Value | Where |
 |---|---|---|---|
 | Words, text layer | `sha256(codec format number, doc sha, page set, tool string)`, a `WordKey` | encoded `Document` | `LocalCache`; optional shared copy in the object store |
 | Words, OCR | `sha256(doc sha, page, Textract config)` | raw Textract JSON | private object store, permanent (it costs money) |
-| Parse results | `sha256(word keys, code tree sha, record slice sha, registry sha, schema sha)` | encoded `ParseResult` | `LocalCache` |
 | PDFs | doc sha | bytes | the archive bucket, private at step 3, where the step that first needs a public read decides whether they get a public copy; git-ignored local copy |
 | Reader downloads | file sha | bytes | `phillyledger` cache dir |
 
