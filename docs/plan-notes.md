@@ -108,17 +108,6 @@ file, `docs/progress.md`, `docs/followups.md` or `docs/deviations/`.
   adapter alone, so it does not learn what Textract returns. Step 7 builds the OCR path, so its
   plan decides whether `Page` refuses those states too, and records the choice in design section
   2.1.
-- **A word that still holds a font code, a note for the step 4 plan** (November 23, 2026, step 2,
-  S2-D fix round 2, found in the second Codex review of S2-D). Design section 15, step 4, says
-  that a word still holding `(cid:` after repair lexes as `Unreadable`. At the S2-D head,
-  `lex_cell` returns `Unreadable not_a_number` for `10(cid:28)` in a money, count or percent
-  column, since `c`, `i`, `d` and `:` are no number's glyphs. It returns `Text` for the same word
-  in a `YEAR`, `CODE` or `TEXT` column, because those columns give `Text` before any glyph is
-  read. The sentence is part of step 4's own list, so the step 4 plan decides the rule for those
-  three columns. `transliteration_ok` now fails against every reading of a `seen` that holds
-  `(cid:`, so a reviewed reading cannot supply a digit that a font code hides, and such a cell can
-  only be accepted as null. The step 4 plan also decides how a reviewed reading can supply a
-  glyph that a font code hides, if the font repair leaves one.
 - **What the step 2 rules do on real pages, for the plans of steps 5, 8, 10, 11
   and 12** (November 23, 2026, step 2, S2-C, found in the Codex reviews). Decisions 14 to 17 of
   design section 16 settle four of the results below, to be built at step 5. Codex read three PDFs of
@@ -460,13 +449,6 @@ file, `docs/progress.md`, `docs/followups.md` or `docs/deviations/`.
   is imported, and `eval(repr(word)) == word` holds for a `Word`. Printed with `repr`, a fixture
   holds that text once for each word, unless the writer binds the hash to a name, such as
   `SHA = Sha256('...')`, and prints the name. The step 4 plan picks the form.
-- **`Unreadable.reason` is still an open `str`, a note for the step 4 plan** (November 25, 2026,
-  standards sweep B). Design section 2.1 lists `Unreadable.reason` as `"grouping"`,
-  `"low_confidence"`, `"two_tokens"`, ..., an open list, and `_read_cell` in the kit's `lex.py`
-  returns `Decimal | str`, where the `str` is that reason. Section 8.3 of `docs/principles.md`
-  asks for a union of named types. Step 4 adds the rule for a word that still holds `(cid:`
-  (VAL-Q05), so its plan meets the list. The owner answered "Yes, wait per step" when asked
-  whether what sweep B leaves should wait for the step that next changes each file.
 - **A loader builds each sha with `Sha256`, a note for the plan of the step that builds the TOML
   loaders** (November 25, 2026, standards sweep B). Standards sweep B gave a file's sha the type
   `Sha256`, whose constructor raises `ValueError` for anything but 64 lowercase hex characters,

@@ -20,6 +20,7 @@ PURE_IMPORTS: dict[str, tuple[str, ...]] = {
         "statistics.median",
         "typing.Self",
         "typing.TYPE_CHECKING",
+        "typing.assert_never",
     ),
     "datadesk.core": (
         "collections.Counter",

@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 
 from checkedtables.cells import Amount, Cell, Reading, Unreadable
-from checkedtables.kinds import DashMeaning, SourceKind
+from checkedtables.kinds import DashMeaning, SourceKind, UnreadableReason
 from checkedtables.lex import _read_number, transliteration_ok
 from checkedtables.refs import Box, Sha256
 from checkedtables.table import Finding, RowKey, Severity
@@ -271,7 +271,7 @@ def apply_reading(cell: Cell, reading: ReviewedReading) -> Cell | Finding:
         message = f"the cell prints {cell.text!r} where the reading saw {reading.seen!r}"
         return _finding("stale_reading", reading, message)
     if reading.reading is None:
-        reason = cell.reason if isinstance(cell, Unreadable) else "reviewed_null"
+        reason = cell.reason if isinstance(cell, Unreadable) else UnreadableReason.REVIEWED_NULL
         return Unreadable(cell.text, cell.words, reason, reading.id)
     marks = cell.marks if isinstance(cell, Amount) else ()
     kept = _without_mark_words(cell.text, marks)

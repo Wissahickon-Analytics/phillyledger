@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 from enum import StrEnum
 
-from checkedtables.kinds import DashMeaning, SourceKind
+from checkedtables.kinds import DashMeaning, SourceKind, UnreadableReason
 from checkedtables.refs import WordRef
 
 
@@ -117,15 +117,15 @@ class Unreadable:
         The word text joined verbatim.
     words : tuple[WordRef, ...]
         The words of the cell.
-    reason : str
-        Why the words did not read, such as "grouping", "low_confidence" or "two_tokens".
+    reason : UnreadableReason
+        Why the words did not read.
     accepted_by : str or None
         The review id that accepts publishing the cell as null.
     """
 
     text: str
     words: tuple[WordRef, ...]
-    reason: str
+    reason: UnreadableReason
     accepted_by: str | None = None
 
 

@@ -9,7 +9,7 @@ from hypothesis import strategies as st
 
 from checkedtables.cells import Amount, Blank, Cell, Dash, NotApplicable, Text, Unreadable
 from checkedtables.columns import ColumnSpec, NumberFormat
-from checkedtables.kinds import DashMeaning, PercentSign, SourceKind, ValueKind
+from checkedtables.kinds import DashMeaning, PercentSign, SourceKind, UnreadableReason, ValueKind
 from checkedtables.lex import lex_cell, split_numeric_runs, transliteration_ok
 from checkedtables.lines import group_lines, has_values
 from checkedtables.refs import Box, Sha256, WordRef
@@ -23,6 +23,20 @@ CENTS = ColumnSpec("cents", "Cents", ValueKind.MONEY, NumberFormat(decimals=2))
 COUNT_COLUMN = ColumnSpec("count", "Count", ValueKind.COUNT)
 PERCENT = ColumnSpec(
     "percent", "Percent", ValueKind.PERCENT, NumberFormat(None, PercentSign.OPTIONAL)
+)
+YEAR = ColumnSpec("year", "Year", ValueKind.YEAR)
+CODE = ColumnSpec("code", "Code", ValueKind.CODE)
+LABEL = ColumnSpec("label", "Label", ValueKind.TEXT)
+FONT_CODE_CELLS = (
+    ("10(cid:28)",),
+    ("(cid:21)",),
+    ("(cid:21)", "1,234"),
+    ("(cid:7)", "Taxes"),
+    ("$", "(cid:21)", "1,234"),
+    ("Wage", "(cid:7)", "Tax"),
+    ("$", "10(cid:28)"),
+    ("1,234", "(cid:21)"),
+    ("Taxes", "12(cid:3)"),
 )
 MINUS_GLYPHS = ("-", "\u2212", "\u2013", "\u2014")
 DASHES = ("-", "--", "\u2013", "\u2014")
@@ -539,7 +553,9 @@ def test_a_full_size_digit_with_a_mark_joins_no_number() -> None:
             WordRef(SHA, 1, 1), "1*", Box(18.0, bottom - size, 30.0, bottom), False, size, None
         )
         cell = lex_cell((number, footnote), MONEY, SourceKind.TEXT_LAYER)
-        assert cell == Unreadable("2.8 1*", (number.ref, footnote.ref), "two_tokens"), (
+        assert cell == Unreadable(
+            "2.8 1*", (number.ref, footnote.ref), UnreadableReason.TWO_TOKENS
+        ), (
             size,
             bottom,
         )
@@ -737,7 +753,7 @@ def test_a_dash_and_n_a_are_read_from_whole_words() -> None:
     (word,) = words("x")
     for text in (*(f"$ {dash}" for dash in DASHES), "N/A N/A", "NA NA", "$ N/A"):
         cell = lex_cell((replace(word, text=text),), MONEY, SourceKind.TEXT_LAYER)
-        assert cell == Unreadable(text, (word.ref,), "not_a_number"), text
+        assert cell == Unreadable(text, (word.ref,), UnreadableReason.NOT_A_NUMBER), text
     for text in ("N/A", "NA", *DASHES):
         cell = lex_cell((replace(word, text=text),), MONEY, SourceKind.TEXT_LAYER)
         assert isinstance(cell, NotApplicable | Dash), text
@@ -835,6 +851,20 @@ def test_an_amount_fused_to_a_label_splits_on_either_side() -> None:
         assert [child.text for child in split_numeric_runs(word)] == children, text
 
 
+def test_a_cell_with_a_font_code_is_unreadable_in_every_column() -> None:
+    # VAL-Q05
+    columns = (MONEY, COUNT_COLUMN, PERCENT, YEAR, CODE, LABEL)
+    assert {column.kind for column in columns} == set(ValueKind)
+    for texts, column, source in product(FONT_CODE_CELLS, columns, SourceKind):
+        cell_words = words(*texts)
+        expected = Unreadable(
+            " ".join(texts),
+            tuple(word.ref for word in cell_words),
+            UnreadableReason.FONT_CODE,
+        )
+        assert lex_cell(cell_words, column, source) == expected, (texts, column.kind, source)
+
+
 def test_a_word_with_a_font_code_never_splits() -> None:
     # VAL-Q05
     for text in ("(cid:21)5", "12(cid:3)45,678", "TAX(cid:7)434,605"):
@@ -844,7 +874,10 @@ def test_a_word_with_a_font_code_never_splits() -> None:
         for child in children:
             for column in (MONEY, COUNT_COLUMN, PERCENT):
                 cell = lex_cell((child,), column, SourceKind.TEXT_LAYER)
-                assert cell == Unreadable(text, (word.ref,), "not_a_number"), (text, column)
+                assert cell == Unreadable(text, (word.ref,), UnreadableReason.FONT_CODE), (
+                    text,
+                    column,
+                )
 
 
 def test_a_word_with_one_run_comes_back_unchanged() -> None:

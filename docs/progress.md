@@ -62,8 +62,6 @@ session needs it. A note for one later step goes in `docs/plan-notes.md`.
   takes the rest. Asked whether each should wait for the step that next changes its file, the
   owner answered "Yes, wait per step", so each waits for the plan of that step:
   - `SourceCatalog | tuple[Finding, ...]` and the result of `gather_repo`, which sweep B kept;
-  - `_read_cell` in the kit's `lex.py`, which returns `Decimal | str`, where the `str` is the
-    open `Unreadable.reason` (step 4 adds VAL-Q05);
   - `Rejection.reason`, which holds `http_<status>` and finding codes beside the period codes;
   - a URL, a store key, a cache key, a `listed_at` stamp and an edition id;
   - the other callers in `datadesk` that tell a union apart with an early `isinstance` return,
@@ -118,12 +116,13 @@ session needs it. A note for one later step goes in `docs/plan-notes.md`.
   `typing.get_type_hints`. A kit dataclass with the field `amount: "Decimal"` and that import
   fails `test_bool_fields_are_page_facts_only` with `NameError`, so import a field's type at run
   time.
-- **`test_closed_lists_are_pinned` pins `NoteKind`, `PeriodRefusal` and `SkipReason`**
-  (November 22, 2026, step 1, S1-C. Updated November 25, 2026, standards sweep B). Each list's
-  pin lands in the pull request that creates the list, in
+- **`test_closed_lists_are_pinned` pins `NoteKind`, `PeriodRefusal`, `SkipReason` and
+  `UnreadableReason`** (November 22, 2026, step 1, S1-C. Updated November 26, 2026, S4-A). Each
+  list's pin lands in the pull request that creates the list, in
   `packages/checkedtables/tests/test_library_shape.py` (`CLAUDE.md`, hard rule 6). S3-C
   creates `NoteKind` and writes the test with its pin. Sweep B pins the readers' refusal codes,
   `PeriodRefusal` in `datadesk.core.fetch` and `SkipReason` in `datadesk.core.listings.titles`.
+  S4-A pins `UnreadableReason`, the reasons a cell is `Unreadable`, in `checkedtables.kinds`.
   The other lists that design section 11.4
   pins (`Check`, `RowSel`, `Kind`, `Version`, `Window`, `How`, `Dim` and `Quantity`) do not exist
   yet. The `StrEnum` classes that S2-B created, such as `Severity`, are pinned nowhere, because

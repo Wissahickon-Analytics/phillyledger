@@ -1,4 +1,4 @@
-"""Closed lists that say where words came from and how a column's cells print."""
+"""Closed lists of where words came from, how a column's cells print, and why one is unreadable."""
 
 from enum import StrEnum
 
@@ -45,3 +45,39 @@ class PercentSign(StrEnum):
     REQUIRED = "required"
     OPTIONAL = "optional"
     ABSENT = "absent"
+
+
+class UnreadableReason(StrEnum):
+    """Why the words of a cell give no value of its column.
+
+    Attributes
+    ----------
+    NOT_A_NUMBER
+        A glyph that no number, sign, mark or separator uses, or no digit.
+    TWO_TOKENS
+        Two or more words in no form that reads as one number.
+    SIGN
+        A plus sign, a minus after a digit, an unpaired or misplaced parenthesis, or two signs.
+    PERCENT_SIGN
+        A ``%`` that the column's format forbids, or none where it requires one.
+    GROUPING
+        What is left is not one strictly grouped number, a misplaced ``$``, ``%`` or mark
+        included.
+    DECIMALS
+        A count of printed decimals other than the one the column declares.
+    FONT_CODE
+        A word holds ``(cid:``, a font code that extraction could not decode, which is no
+        evidence of any glyph (VAL-Q05).
+    REVIEWED_NULL
+        A person read an `Amount` cell on the rendered page and accepted it as null. Only
+        `apply_reading` gives it.
+    """
+
+    NOT_A_NUMBER = "not_a_number"
+    TWO_TOKENS = "two_tokens"
+    SIGN = "sign"
+    PERCENT_SIGN = "percent_sign"
+    GROUPING = "grouping"
+    DECIMALS = "decimals"
+    FONT_CODE = "font_code"
+    REVIEWED_NULL = "reviewed_null"
