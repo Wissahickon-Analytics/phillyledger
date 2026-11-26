@@ -170,6 +170,14 @@ def test_a_broken_box_after_the_last_page_asked_for_does_not_stop_the_read() -> 
     assert [w.text for w in document.page(1).words] == ["WANTED"]
 
 
+@pytest.mark.parametrize("box", ["/ArtBox [0 0]", "/ArtBox [0 0 612 /Wide]", "/ArtBox 42"])
+def test_a_box_only_pdfplumber_reads_on_a_page_not_asked_for_does_not_stop_the_read(
+    box: str,
+) -> None:
+    document = READER.words(text_pdf("ONE", "SKIPPED", "THREE", entries={2: box}), SHA, (1, 3))
+    assert [p.number for p in document.pages] == [1, 3]
+
+
 @pytest.mark.parametrize(
     ("pdf", "pages", "named"),
     [

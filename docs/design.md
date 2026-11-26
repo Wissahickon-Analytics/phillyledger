@@ -2640,9 +2640,11 @@ many types on a malformed PDF, such as `TypeError` for a box that is one number,
 box of two numbers and `MalformedPDFException` for a box that holds a name.
 
 `words` and `render` walk the pages the same way and build none after the last page asked for.
-pdfminer builds the pages in turn, so a broken box after that page does not stop the read, and one
-at or before it does (step 4 plan, fact 10). A page the file lacks, and any `Exception` the
-libraries raise on a page at or before the last page asked for, becomes `EffectError`, chained,
+pdfminer builds the pages in turn and reads each one's media box and crop box, so a broken one of
+those after that page does not stop the read, and one at or before it does (step 4 plan, fact 10).
+The reader builds pdfplumber's page only for a page asked for, so a box that pdfplumber alone reads,
+such as an art box, stops the read only on such a page. A page the file lacks, and any `Exception`
+the libraries raise on a page at or before the last page asked for, becomes `EffectError`, chained,
 whose message names the page. pdfplumber's `extract_words` runs with `x_tolerance=2`,
 `y_tolerance=2`, `use_text_flow=True` and `extra_attrs=["fontname"]`, the old backend's options,
 held in one table that the tool string also reads. A word's text is what pdfplumber returns, a font

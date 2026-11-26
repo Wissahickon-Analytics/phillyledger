@@ -118,7 +118,8 @@ def _pages(pdf: bytes, wanted: frozenset[int]) -> Iterator[PlumberPage]:
     """Yield pdfplumber's page for each page in `wanted`, or for every page when it is empty.
 
     It stops after the last page in `wanted` and passes over a page the file lacks, which the
-    caller reports.
+    caller reports. It builds pdfplumber's page only for a page in `wanted`, so a box that
+    pdfplumber alone reads, such as an art box, can stop the walk only on such a page.
     """
     document = _guarded("the file", partial(pdfplumber.open, BytesIO(pdf)))
     objects = PDFPage.create_pages(document.doc)
