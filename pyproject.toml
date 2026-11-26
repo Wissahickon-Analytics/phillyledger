@@ -68,6 +68,7 @@ convention = "numpy"
 [tool.pytest.ini_options]
 testpaths = ["tests", "packages/checkedtables/tests", "packages/datadesk/tests"]
 addopts = "--import-mode=importlib --disable-socket"
+pythonpath = ["."]
 
 [tool.ty.environment]
 python-version = "3.12"
