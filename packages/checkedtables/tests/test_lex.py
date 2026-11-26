@@ -37,6 +37,7 @@ FONT_CODE_CELLS = (
     ("$", "10(cid:28)"),
     ("1,234", "(cid:21)"),
     ("Taxes", "12(cid:3)"),
+    ("E(cid:121)PENSES",),
 )
 MINUS_GLYPHS = ("-", "\u2212", "\u2013", "\u2014")
 DASHES = ("-", "--", "\u2013", "\u2014")
@@ -856,13 +857,14 @@ def test_a_cell_with_a_font_code_is_unreadable_in_every_column() -> None:
     columns = (MONEY, COUNT_COLUMN, PERCENT, YEAR, CODE, LABEL)
     assert {column.kind for column in columns} == set(ValueKind)
     for texts, column, source in product(FONT_CODE_CELLS, columns, SourceKind):
-        cell_words = words(*texts)
+        page = page_from_text(f"{FIRST_LINE[source]}{' '.join(texts)}", SHA, 1)
         expected = Unreadable(
             " ".join(texts),
-            tuple(word.ref for word in cell_words),
+            tuple(word.ref for word in page.words),
             UnreadableReason.FONT_CODE,
         )
-        assert lex_cell(cell_words, column, source) == expected, (texts, column.kind, source)
+        cell = lex_cell(page.words, column, page.source.kind)
+        assert cell == expected, (texts, column.kind, source)
 
 
 def test_a_word_with_a_font_code_never_splits() -> None:
