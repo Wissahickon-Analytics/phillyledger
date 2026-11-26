@@ -54,16 +54,17 @@ Commands that matter and traps in the tooling. A note belongs here only when eve
 session needs it. A note for one later step goes in `docs/plan-notes.md`.
 
 - **What the type rules leave for later steps** (November 25, 2026. Updated November 25, 2026,
-  standards sweep B). The owner asked for typer, docstrings and the type rules of the book
-  Robust Python. `CLAUDE.md` (Code) and section 8 of `docs/principles.md` hold them. Standards
-  sweep A brought the code of steps 1 to 3 to the typer and docstring rules, and ruff checks
-  docstrings in all three packages. Sweep B gave a sha256 the type `Sha256` and named the
-  readers' refusals `PeriodRefusal` and `SkipReason`. New code follows the rules. No later sweep
-  takes the rest. Asked whether each should wait for the step that next changes its file, the
+  standards sweep B, and November 26, 2026, S4-B). The owner asked for typer, docstrings and the
+  type rules of the book Robust Python. `CLAUDE.md` (Code) and section 8 of `docs/principles.md`
+  hold them. Standards sweep A brought the code of steps 1 to 3 to the typer and docstring rules,
+  and ruff checks docstrings in all three packages. Sweep B gave a sha256 the type `Sha256` and
+  named the readers' refusals `PeriodRefusal` and `SkipReason`. New code follows the rules. No later
+  sweep takes the rest. Asked whether each should wait for the step that next changes its file, the
   owner answered "Yes, wait per step", so each waits for the plan of that step:
   - `SourceCatalog | tuple[Finding, ...]` and the result of `gather_repo`, which sweep B kept;
   - `Rejection.reason`, which holds `http_<status>` and finding codes beside the period codes;
-  - a URL, a store key, a cache key, a `listed_at` stamp and an edition id;
+  - a URL, a store key, the parse cache key, a `listed_at` stamp and an edition id. The word
+    cache key has its type, `WordKey` (S4-B);
   - the other callers in `datadesk` that tell a union apart with an early `isinstance` return,
     or with a `match` that has no `assert_never`, which
     `rg 'isinstance\(|^\s*match ' packages/datadesk/src` lists;

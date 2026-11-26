@@ -29,3 +29,15 @@ why, the run that shows it, and the design section updated. Fact and shape numbe
   `test_a_cell_with_a_font_code_is_unreadable_in_every_column` failed before the rule, and failed
   in the year column with the rule placed after the text-column test. Design sections 2.1, 3.1,
   11.4 and 12.1.
+- **S4-B: the codec, a typed word key and the word cache** (November 26, 2026, S4-B). The design
+  gave the codec signatures and no format, typed a word key as a `str`, and keyed the word cache
+  by the doc sha, the page set and the tool string. `encode_document` now writes one JSON object,
+  `asdict(doc)` with a `"format"` of `FORMAT`, sorted keys and no spaces, and refuses NaN and
+  infinity, and `decode_document` raises `ValueError` for bytes it did not write (shape 12). A
+  word key is a `WordKey`, held to the rule of `Sha256` but kept apart from it, and `word_key`
+  hashes `FORMAT` with the other three inputs, so a new format number gives new keys. `WordJob` refuses
+  a page below 1 and pages that are not strictly ascending (shape 9). `LocalCache` takes
+  `WordKey`, and `cache_dir` writes each entry under another name and renames it onto the key
+  (shape 11). `test_a_document_decodes_to_an_equal_document` failed with a codec that drops
+  `size`, and it found that JSON reads a high surrogate then a low one back as one character,
+  which the design now states. Design sections 2.1, 3.2, 4, 10 and 12.3.
