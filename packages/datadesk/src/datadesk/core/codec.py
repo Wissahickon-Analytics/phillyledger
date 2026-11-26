@@ -1,7 +1,7 @@
 """Encode a `Document` as the bytes the word cache keeps, and read those bytes back.
 
-`FORMAT` numbers the layout of the bytes. A change to the layout raises it, and every word key
-holds it, so the cache never serves bytes of another layout.
+`FORMAT` numbers the layout of the bytes, and every word key holds it. Raising it with each
+change to the layout keeps the cache from serving bytes of an older layout.
 """
 
 from dataclasses import asdict

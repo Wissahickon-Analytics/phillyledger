@@ -14,7 +14,8 @@ class DirCache:
     put writes the bytes to a file of another name in the folder and then renames that file
     onto the key's name, so a reader never sees half an entry, and a crash leaves only a file
     whose name is not a key. `keys` passes over every name that is not a `WordKey`, such as
-    that file or ``.DS_Store``. Every `OSError` becomes `EffectError`, chained.
+    that file or ``.DS_Store``. Past a missing entry or folder, which reads as absent, every
+    `OSError` becomes `EffectError`, chained.
     """
 
     def __init__(self, folder: Path) -> None:

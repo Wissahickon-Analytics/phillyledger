@@ -59,9 +59,7 @@ def boxes(draw: st.DrawFn) -> Box:
 @st.composite
 def pages(draw: st.DrawFn, sha: Sha256, number: int) -> Page:
     kind = draw(st.sampled_from(SourceKind))
-    confidences = st.none()
-    if kind is SourceKind.OCR:
-        confidences = st.none() | st.floats(0, 100)
+    confidences = st.none() | st.floats(0, 100) if kind is SourceKind.OCR else st.none()
     places = st.tuples(st.integers(0, 40), st.none() | st.integers(0, 4))
     words = tuple(
         Word(
