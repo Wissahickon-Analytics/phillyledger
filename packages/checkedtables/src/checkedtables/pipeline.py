@@ -154,16 +154,17 @@ def cut_pages(
                 Finding(Severity.WARN, "commentary_page", subject, message, page.number)
             )
     sliced = [(page, *slice_body(page.lines, layout.body)) for page in grid]
-    first = next((each for each in sliced if each[0].number not in positional), None)
-    if first is None:
+    legible = [(page, header) for page, header, _, _ in sliced if page.number not in positional]
+    if not legible:
         message = "no page of the run that the caller did not name prints an era's caption"
         return Finding(Severity.BLOCK, "no_grid_page", subject, message)
-    era = choose_era(layout.eras, lines_text(first[1]), on)
+    first, first_header = legible[0]
+    era = choose_era(layout.eras, lines_text(first_header), on)
     match era:
         case Era():
             pass
         case Finding():
-            return replace(era, subject=subject, page=first[0].number)
+            return replace(era, subject=subject, page=first.number)
         case _:
             assert_never(era)
     cut: list[CutPage] = []
