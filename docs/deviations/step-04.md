@@ -19,3 +19,13 @@ why, the run that shows it, and the design section updated. Fact and shape numbe
   rows matches the extracted digits." The paragraph above the list says that the archive prints
   no font code, and counts 16 commentary pages where it said six (fact 8). Design sections 15,
   18.1 and 18.5.
+- **S4-A: a font code is unreadable in every column, and the reasons are a closed list**
+  (November 26, 2026, S4-A). `lex_cell` gave a word that holds `(cid:` `Text` in a year, code
+  or text column and `Unreadable` "not_a_number" in the others, and `Unreadable.reason` was an
+  open `str`. A font code is no evidence of any glyph (VAL-Q05), so right after the `Blank` test
+  such a cell is now `Unreadable` with `font_code` in all six column kinds (shape 2). The
+  reasons are `UnreadableReason` in `kinds.py`, eight members with `reviewed_null`, and
+  `low_confidence` joins at the step that builds the OCR confidence floor (shape 3).
+  `test_a_cell_with_a_font_code_is_unreadable_in_every_column` failed before the rule, and failed
+  in the year column with the rule placed after the text-column test. Design sections 2.1, 3.1,
+  11.4 and 12.1.

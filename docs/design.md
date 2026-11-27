@@ -159,6 +159,18 @@ class PercentSign(StrEnum):
     REQUIRED = "required"
     OPTIONAL = "optional"
     ABSENT = "absent"
+
+
+class UnreadableReason(StrEnum):   # why a cell's words give no value of its column
+    NOT_A_NUMBER = "not_a_number"
+    TWO_TOKENS = "two_tokens"
+    SIGN = "sign"
+    PERCENT_SIGN = "percent_sign"
+    GROUPING = "grouping"
+    DECIMALS = "decimals"
+    FONT_CODE = "font_code"        # a word holds "(cid:", no evidence of any glyph (VAL-Q05)
+    REVIEWED_NULL = "reviewed_null"  # only from apply_reading, an Amount read as null
+    # low_confidence joins at the step that builds the OCR confidence floor of assemble
 ```
 
 ```python
@@ -447,7 +459,7 @@ class Blank:
 class Unreadable:
     text: str
     words: tuple[WordRef, ...]
-    reason: str                    # "grouping", "low_confidence", "two_tokens", ...
+    reason: UnreadableReason
     accepted_by: str | None = None # review id that accepts publishing null
 
 
@@ -1810,13 +1822,15 @@ def split_numeric_runs(word: Word) -> tuple[Word, ...]: ...
     # children get WordRef.child and a box cut in proportion to characters. A cut falls between
     # a letter and a comma-grouped number on either side, so "FY2016" stays whole, and after a
     # "%" or ")" that a digit, "(" or "$" follows. A word with one run comes back unchanged, and
-    # so does a word that still holds "(cid:", whose ")" ends a font code (VAL-Q05).
+    # so does a word that holds "(cid:", whose ")" ends a font code (VAL-Q05).
 def lex_cell(words: Sequence[Word], col: ColumnSpec, source: SourceKind) -> Cell: ...
     # Decisions 15 and 16 (section 16) change at step 5 which forms are not applicable, a dash
     # or a minus glyph, and when a leading digit joins a grouped number. As built:
-    # In order: no words -> Blank; YEAR, CODE and TEXT columns -> Text; one word "N/A" or "NA"
-    # -> NotApplicable; one word "-", "--", en or em dash, alone or after one "$" word ("$ -",
-    # RTT-Q39) -> Dash(col.dash), so one word that holds a space, such as "$ -", is neither.
+    # In order: no words -> Blank; a word that holds "(cid:", a font code that extraction could
+    # not decode, -> Unreadable font_code in every column (VAL-Q05); YEAR, CODE and TEXT
+    # columns -> Text; one word "N/A" or "NA" -> NotApplicable; one word "-", "--", en or em
+    # dash, alone or after one "$" word ("$ -", RTT-Q39) -> Dash(col.dash), so one word that
+    # holds a space, such as "$ -", is neither.
     # Marks then leave the end of the cell into Amount.marks: *, †, ‡, §, #, a backtick,
     # Unicode superscript digits, and a last word of one digit, alone or with those glyphs after
     # it ("1*"), under 0.7 of the size of the number word just before it whose bottom sits above
@@ -1841,11 +1855,11 @@ def lex_cell(words: Sequence[Word], col: ColumnSpec, source: SourceKind) -> Cell
     # old reader joins them. No shape joins a cell that both old readers refuse, compared on the
     # cell without its marks.
     # A "%" follows col.fmt.percent, and printed decimals equal col.fmt.decimals unless None.
-    # Anything else -> Unreadable with the first reason that applies: not_a_number (a glyph no
-    # number, sign, mark or separator uses, or no digit), two_tokens (tokens that fit no join
-    # shape), sign (a plus, a minus after a digit, an unpaired or misplaced parenthesis such as
-    # the ")" of "(1).23", two signs), percent_sign, grouping (what is left is not one strictly
-    # grouped number, a misplaced "$", "%" or mark included), decimals.
+    # Anything else -> Unreadable with the first UnreadableReason that applies: not_a_number
+    # (a glyph no number, sign, mark or separator uses, or no digit), two_tokens (tokens that
+    # fit no join shape), sign (a plus, a minus after a digit, an unpaired or misplaced
+    # parenthesis such as the ")" of "(1).23", two signs), percent_sign, grouping (what is left
+    # is not one strictly grouped number, a misplaced "$", "%" or mark included), decimals.
     # Amount and Unreadable keep the word texts joined by one space and the ref of every word.
 def transliteration_ok(seen: str, reading: str) -> bool: ...
     # Decision 13 (section 16.2) tightens this rule at step 5. As built:
@@ -4425,6 +4439,9 @@ def test_closed_lists_are_pinned() -> None:
                                                 "period_not_a_quarter_end"]
     assert [k.value for k in SkipReason] == ["infographic", "unrelated", "not_a_quarter_end",
                                              "unstaged"]
+    assert [r.value for r in UnreadableReason] == ["not_a_number", "two_tokens", "sign",
+                                                   "percent_sign", "grouping", "decimals",
+                                                   "font_code", "reviewed_null"]
     assert [k.value for k in Kind] == ["actual", "budget", "projection"]
     assert [v.value for v in Version] == ["none", "adopted", "revised", "proposed", "target"]
     assert [w.value for w in Window] == ["month", "quarter", "fiscal_ytd", "calendar_ytd",
@@ -4490,7 +4507,7 @@ kit size report that CI prints does.
 |---|---|---:|
 | `__init__.py` | public re-exports, nothing else | 30 |
 | `refs.py` | `Box`, `Sha256`, `WordRef` | 60 |
-| `kinds.py` | `SourceKind`, `ValueKind`, `DashMeaning`, `Presence`, `PercentSign` | 40 |
+| `kinds.py` | `SourceKind`, `ValueKind`, `DashMeaning`, `Presence`, `PercentSign`, `UnreadableReason` | 40 |
 | `words.py` | `WordSource`, `Word`, `Rule`, `Page`, `Document` | 90 |
 | `labels.py` | `Label`, kept apart so tables and checks never import words | 30 |
 | `text.py` | `normalize_space`, `normalize_label`, `squash`, `parse_label`, `split_line_prefix` | 150 |

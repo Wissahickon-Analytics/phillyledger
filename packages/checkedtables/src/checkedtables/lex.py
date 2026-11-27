@@ -4,10 +4,11 @@ from collections.abc import Sequence
 from dataclasses import replace
 from decimal import Decimal
 from re import compile
+from typing import assert_never
 
 from checkedtables.cells import Amount, Blank, Cell, Dash, NotApplicable, Text, Unreadable
 from checkedtables.columns import ColumnSpec
-from checkedtables.kinds import PercentSign, SourceKind, ValueKind
+from checkedtables.kinds import PercentSign, SourceKind, UnreadableReason, ValueKind
 from checkedtables.words import Word
 
 _DIGITS = "0123456789"
@@ -125,11 +126,13 @@ def _sign_trouble(token: str) -> bool:
     )
 
 
-def _read_cell(tokens: Sequence[str], col: ColumnSpec, source: SourceKind) -> Decimal | str:
+def _read_cell(
+    tokens: Sequence[str], col: ColumnSpec, source: SourceKind
+) -> Decimal | UnreadableReason:
     """Read a cell's tokens as a number, or return the reason the cell is `Unreadable`."""
     glyphs = "".join(tokens)
     if not any(glyph in _DIGITS for glyph in glyphs) or any(g not in _GLYPHS for g in glyphs):
-        return "not_a_number"
+        return UnreadableReason.NOT_A_NUMBER
     # VAL-Q09: a "$" set as its own word before the number.
     dollar = "$" if tokens[0] == "$" else ""
     number_tokens = tokens[len(dollar) :]
@@ -137,17 +140,17 @@ def _read_cell(tokens: Sequence[str], col: ColumnSpec, source: SourceKind) -> De
         number_tokens[0] if len(number_tokens) == 1 else _joined(dollar, number_tokens, col, source)
     )
     if joined is None:
-        return "two_tokens"
+        return UnreadableReason.TWO_TOKENS
     token = dollar + joined
     if _sign_trouble(token):
-        return "sign"
+        return UnreadableReason.SIGN
     if (col.fmt.percent, "%" in token) not in _PERCENT_ALLOWED:
-        return "percent_sign"
+        return UnreadableReason.PERCENT_SIGN
     number = _read_number(token)
     if number is None:
-        return "grouping"
+        return UnreadableReason.GROUPING
     if col.fmt.decimals is not None and len(f"{number:f}".partition(".")[2]) != col.fmt.decimals:
-        return "decimals"
+        return UnreadableReason.DECIMALS
     return number
 
 
@@ -158,8 +161,7 @@ def split_numeric_runs(word: Word) -> tuple[Word, ...]:
     stays one word. Before the number a ``(`` or ``$`` may follow the letter, as in
     "TAX$434,605", and after it a decimal part and a ``)`` may come before the letter, as in
     "(408,491.2)NET". A cut also falls after a ``%`` or a ``)`` that a digit, a ``(`` or a
-    ``$`` follows. A word that holds ``(cid:``, the start of a font code that repair left, is
-    never cut.
+    ``$`` follows. A word that holds ``(cid:``, the start of a font code, is never cut.
 
     Parameters
     ----------
@@ -175,7 +177,7 @@ def split_numeric_runs(word: Word) -> tuple[Word, ...]:
         characters take, in proportion to the character count, so its box is approximate.
     """
     text = word.text
-    # VAL-Q05: a font code that repair left in the word holds a ")" that no number printed.
+    # VAL-Q05: a font code in the word holds a ")" that no number printed.
     if "(cid:" in text:
         return (word,)
     cuts = sorted(
@@ -204,17 +206,19 @@ def split_numeric_runs(word: Word) -> tuple[Word, ...]:
 def lex_cell(words: Sequence[Word], col: ColumnSpec, source: SourceKind) -> Cell:
     """Read the words of one cell as a typed cell, only from what the words print.
 
-    The rules apply in order. No words give `Blank`, and a year, code or text column gives
-    `Text`. One word "N/A" or "NA" gives `NotApplicable`, and one word "-", "--", an en dash or
-    an em dash, alone or after one ``$`` word, gives a `Dash` with the column's meaning, so one
-    word that holds a space, such as "$ -", is neither. A number may end in marks, which the
-    `Amount` keeps apart from its value: the glyphs ``*``, ``†``, ``‡``, ``§``, ``#``, a
-    backtick and superscript digits, and a last word of one digit, alone or with those glyphs
-    after it as in "1*", under 0.7 of the size of the number word just before it whose bottom is
-    above that word's bottom. That word is one mark as it prints. Such a word that is not small
-    and raised reads only alone or after one ``$`` word, so "1*" is 1 with the mark ``*`` and
-    "2.8 1*" is `Unreadable` with "two_tokens". A ``$`` word may stand first in the cell. It is
-    the one ``$`` that the number may print, so "$ $1,234" prints two.
+    The rules apply in order. No words give `Blank`. A word that holds ``(cid:``, a font code
+    that extraction could not decode, makes the cell `Unreadable` with "font_code" in every
+    column (VAL-Q05). A year, code or text column gives `Text`. One word "N/A" or "NA" gives
+    `NotApplicable`, and one word "-", "--", an en dash or an em dash, alone or after one ``$``
+    word, gives a `Dash` with the column's meaning, so one word that holds a space, such as
+    "$ -", is neither. A number may end in marks, which the `Amount` keeps apart from its value:
+    the glyphs ``*``, ``†``, ``‡``, ``§``, ``#``, a backtick and superscript digits, and a last
+    word of one digit, alone or with those glyphs after it as in "1*", under 0.7 of the size of
+    the number word just before it whose bottom is above that word's bottom. That word is one
+    mark as it prints. Such a word that is not small and raised reads only alone or after one
+    ``$`` word, so "1*" is 1 with the mark ``*`` and "2.8 1*" is `Unreadable` with
+    "two_tokens". A ``$`` word may stand first in the cell. It is the one ``$`` that the number
+    may print, so "$ $1,234" prints two.
 
     A word reads as a number when paired parentheses around it or one leading minus glyph
     (``-``, U+2212, an en dash or an em dash) give its sign, a ``$`` stands at most once before
@@ -243,21 +247,23 @@ def lex_cell(words: Sequence[Word], col: ColumnSpec, source: SourceKind) -> Cell
     -------
     Cell
         An `Amount` whose `printed` is a Decimal built from the printed digits, sign and point,
-        with its marks. A cell of a number column that is not blank, N/A or a dash and does not
-        read as a number is `Unreadable`, with the first reason that applies of
-        "not_a_number" (a character that no number, sign, mark or separator uses, or no
-        digit), "two_tokens" (two or more words in no form that reads as one number), "sign" (a
-        plus sign, a minus after a digit, an unpaired or misplaced parenthesis, or two signs),
-        "percent_sign", "grouping" (what is left is not one strictly grouped number, a
-        misplaced ``$``, ``%`` or mark included) and "decimals". An `Amount` and an
-        `Unreadable` keep the word texts joined by one space and the ref of every word, the
-        ``$`` and mark words included.
+        with its marks. A cell with a font code is `Unreadable` with "font_code". A cell of a
+        number column that is not blank, N/A or a dash and does not read as a number is
+        `Unreadable`, with the first reason that applies of "not_a_number" (a character that no
+        number, sign, mark or separator uses, or no digit), "two_tokens" (two or more words in
+        no form that reads as one number), "sign" (a plus sign, a minus after a digit, an
+        unpaired or misplaced parenthesis, or two signs), "percent_sign", "grouping" (what is
+        left is not one strictly grouped number, a misplaced ``$``, ``%`` or mark included) and
+        "decimals". An `Amount` and an `Unreadable` keep the word texts joined by one space and
+        the ref of every word, the ``$`` and mark words included.
     """
     if not words:
         return Blank()
     texts = tuple(word.text for word in words)
     text = " ".join(texts)
     refs = tuple(word.ref for word in words)
+    if any("(cid:" in word_text for word_text in texts):
+        return Unreadable(text, refs, UnreadableReason.FONT_CODE)
     if col.kind in _TEXT_KINDS:
         return Text(text, refs)
     if len(texts) == 1 and text in _NOT_APPLICABLE:
@@ -265,10 +271,13 @@ def lex_cell(words: Sequence[Word], col: ColumnSpec, source: SourceKind) -> Cell
     if texts[-1] in _DASHES and texts[:-1] in ((), ("$",)):
         return Dash(text, refs, col.dash)
     tokens, marks = _tokens_and_marks(words)
-    number = _read_cell(tokens, col, source)
-    if isinstance(number, str):
-        return Unreadable(text, refs, number)
-    return Amount(number, text, refs, source, marks=marks)
+    match _read_cell(tokens, col, source):
+        case UnreadableReason() as reason:
+            return Unreadable(text, refs, reason)
+        case Decimal() as number:
+            return Amount(number, text, refs, source, marks=marks)
+        case unhandled:
+            assert_never(unhandled)
 
 
 def transliteration_ok(seen: str, reading: str) -> bool:

@@ -20,6 +20,7 @@ from typing import (
 )
 
 import checkedtables
+from checkedtables.kinds import UnreadableReason
 from datadesk.core.fetch import PeriodRefusal
 from datadesk.core.listings.titles import SkipReason
 from datadesk.core.records import NoteKind
@@ -370,6 +371,16 @@ def test_closed_lists_are_pinned() -> None:
         "unrelated",
         "not_a_quarter_end",
         "unstaged",
+    ]
+    assert [r.value for r in UnreadableReason] == [
+        "not_a_number",
+        "two_tokens",
+        "sign",
+        "percent_sign",
+        "grouping",
+        "decimals",
+        "font_code",
+        "reviewed_null",
     ]
 
 

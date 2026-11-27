@@ -10,7 +10,7 @@ from hypothesis import strategies as st
 
 from checkedtables.cells import Amount, Blank, Dash, NotApplicable, Reading, Text, Unreadable
 from checkedtables.columns import ColumnSpec, NumberFormat
-from checkedtables.kinds import DashMeaning, SourceKind, ValueKind
+from checkedtables.kinds import DashMeaning, SourceKind, UnreadableReason, ValueKind
 from checkedtables.lex import lex_cell, transliteration_ok
 from checkedtables.lines import group_lines
 from checkedtables.records import (
@@ -34,6 +34,7 @@ TEXT_LAYER = SourceKind.TEXT_LAYER
 CASH = ColumnSpec("cash", "Cash", ValueKind.MONEY, NumberFormat(decimals=1))
 MONEY = ColumnSpec("money", "Money", ValueKind.MONEY, NumberFormat(decimals=None))
 COUNT = ColumnSpec("general", "General", ValueKind.COUNT)
+LABEL = ColumnSpec("label", "Label", ValueKind.TEXT)
 BLANKS = ("", " ", "\t", "\n")
 CONFUSABLE_GLYPHS = (
     ("B", "8"),
@@ -267,7 +268,9 @@ def test_a_reviewed_amount_names_the_record_that_was_applied() -> None:
     assert read == Amount(
         Decimal("291.8"), "291.8", cell.words, OCR, Reading.REVIEWED, "second-record"
     )
-    assert accepted == Unreadable("291.8", cell.words, "reviewed_null", "second-record")
+    assert accepted == Unreadable(
+        "291.8", cell.words, UnreadableReason.REVIEWED_NULL, "second-record"
+    )
 
 
 def test_a_cell_takes_the_record_boxed_on_it_and_not_the_first_record() -> None:
@@ -299,7 +302,7 @@ def test_a_null_reading_on_an_amount_gives_reviewed_null() -> None:
     _, cell_words = cash_row("65.8")
     cell = lex_cell(cell_words, CASH, OCR)
     assert isinstance(cell, Amount)
-    expected = Unreadable("65.8", cell.words, "reviewed_null", "r1")
+    expected = Unreadable("65.8", cell.words, UnreadableReason.REVIEWED_NULL, "r1")
     assert apply_reading(cell, record("65.8", None, cell_words)) == expected
 
 
@@ -483,16 +486,19 @@ def test_a_reading_and_a_dash_rule_never_share_an_id() -> None:
 def test_a_font_code_never_becomes_a_reviewed_number() -> None:
     # VAL-Q05
     page = page_from_text("10(cid:28)", SHA, PAGE)
-    cell = lex_cell(page.words, COUNT, TEXT_LAYER)
-    assert isinstance(cell, Unreadable)
-    for value in ("109", "10028", None):
-        reading = replace(record("10(cid:28)", value, page.words), source=TEXT_LAYER)
-        assert reading_for(page.words, page.words, TEXT_LAYER, (reading,)) == reading
-        result = apply_reading(cell, reading)
-        if value is None:
-            assert result == replace(cell, accepted_by="r1")
-        else:
-            assert_finding(result, "reading_refused")
+    refs = tuple(word.ref for word in page.words)
+    for column in (COUNT, LABEL):
+        cell = lex_cell(page.words, column, TEXT_LAYER)
+        assert cell == Unreadable("10(cid:28)", refs, UnreadableReason.FONT_CODE), column.kind
+        for value in ("109", "10028", None):
+            reading = replace(record("10(cid:28)", value, page.words), source=TEXT_LAYER)
+            assert reading_for(page.words, page.words, TEXT_LAYER, (reading,)) == reading
+            result = apply_reading(cell, reading)
+            if value is None:
+                expected = Unreadable("10(cid:28)", refs, UnreadableReason.FONT_CODE, "r1")
+                assert result == expected, column.kind
+            else:
+                assert_finding(result, "reading_refused")
 
 
 def test_a_reviewed_amount_keeps_a_raised_digit_and_a_mark_after_it() -> None:
