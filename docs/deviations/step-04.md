@@ -61,3 +61,16 @@ why, the run that shows it, and the design section updated. Fact and shape numbe
   read (shape 10), and `core/fetch.py` makes its PDF key public as `pdf_key`.
   `test_a_cache_hit_returns_an_equal_document` failed on both caches, at `assert first == kept`,
   with a codec that drops `size`. Design sections 2.1, 3.2, 4, 4.4 and 11.5.
+- **S4-D: the fixture command and the form of a word fixture** (November 26, 2026, S4-D). The
+  design named `datadesk fixture <sha> <pages>` and
+  `tests/fixtures/words/<series>_<edition>_p<n>.py`, and gave the file no form.
+  `render_fixture(page)` in the codec now writes a module that binds
+  `SHA = Sha256('...')` and `PAGE`, writes each field, puts one `Word` or `Rule` on a line, and
+  writes every number and text as its `repr`, so a whole-number width stays an `int` (shape 12).
+  The folder is `packages/datadesk/tests/fixtures/words/`, which the gate tests copy (plan risk
+  4), and a file is `<series>_<YYYY_MM_DD>_p<n>.py`. `fixture_command` takes the store, the reader
+  and the cache, and before it reads the PDF it refuses a sha the index lacks and a file of that
+  name that names another sha (plan review, finding 9). `fetch_command` tells its two unions apart
+  with `match` and `assert_never` (shape 14). The property test failed with a renderer that writes
+  the width as a float, and the overwrite test failed with the sha check removed. Design sections
+  3.2, 9 and 11.1.

@@ -7,23 +7,43 @@ from datetime import date
 from functools import partial
 from os import environ
 from pathlib import Path
+from re import MULTILINE, compile
 from traceback import format_exc
-from typing import Annotated
+from typing import Annotated, assert_never
 
 import typer
 
+from checkedtables.kinds import SourceKind
 from checkedtables.refs import Sha256
 from checkedtables.table import Finding
+from datadesk.core.codec import render_fixture
+from datadesk.core.domain import EditionKey, Stage
 from datadesk.core.fetch import FetchPlan
-from datadesk.core.listings import parse_listing
+from datadesk.core.listings import Listing, parse_listing
+from datadesk.core.parse_plan import WordJob, word_key
 from datadesk.core.watch import plan_watch
+from datadesk.shell.adapters.cache_dir import DirCache
 from datadesk.shell.adapters.http_saved import SavedFolderError, SavedHttp
 from datadesk.shell.adapters.pdf_pdfplumber import PdfPlumberReader
 from datadesk.shell.adapters.s3 import s3_store
-from datadesk.shell.gather import gather_repo
-from datadesk.shell.ports import Deps, EffectError, PreconditionFailed
+from datadesk.shell.gather import RepoSnapshot, gather_repo
+from datadesk.shell.ports import (
+    Deps,
+    EffectError,
+    LocalCache,
+    ObjectStore,
+    PdfReader,
+    PreconditionFailed,
+)
 from datadesk.shell.run_fetch import retried, run_fetch
+from datadesk.shell.run_parse import extract_words, merged_document
 from datadesk.shell.settings import MissingSettings, hide_keys, load_settings
+
+FIXTURE_FOLDER = "packages/datadesk/tests/fixtures/words"
+_WORD_CACHE = ".cache/words"
+
+_PAGES = compile(r"[1-9][0-9]*(,[1-9][0-9]*)*")
+_FIXTURE_SHA = compile(r"^SHA = Sha256\('([0-9a-f]{64})'\)$", MULTILINE)
 
 app = typer.Typer(add_completion=False, pretty_exceptions_enable=False, rich_markup_mode=None)
 
@@ -43,6 +63,10 @@ class FetchRun:
 
 class FetchStopped(Exception):
     """A fetch stopped before it fetched any report. The message says why."""
+
+
+class FixtureStopped(Exception):
+    """A fixture run stopped before it read the PDF or wrote any file. The message says why."""
 
 
 def fetch_command(deps: Deps, root: Path, source: str, today: date) -> FetchRun:
@@ -65,8 +89,13 @@ def fetch_command(deps: Deps, root: Path, source: str, today: date) -> FetchRun:
         When the store holds other bytes under a report's key.
     """
     repo = gather_repo(root)
-    if isinstance(repo, tuple):
-        raise FetchStopped(_findings("the checkout cannot be read", repo))
+    match repo:
+        case RepoSnapshot():
+            pass
+        case tuple():
+            raise FetchStopped(_findings("the checkout cannot be read", repo))
+        case _:
+            assert_never(repo)
     if source not in (listed.id for listed in repo.catalog.entries):
         raise FetchStopped(f"the catalog has no source {source!r}")
     entry = repo.catalog.entry(source)
@@ -78,8 +107,13 @@ def fetch_command(deps: Deps, root: Path, source: str, today: date) -> FetchRun:
     except UnicodeDecodeError as error:
         raise FetchStopped(f"the listing {entry.listing_url} is not UTF-8: {error}") from None
     listing = parse_listing(entry, entry.listing_url, text)
-    if isinstance(listing, Finding):
-        raise FetchStopped(_findings("the listing cannot be read", (listing,)))
+    match listing:
+        case Listing():
+            pass
+        case Finding():
+            raise FetchStopped(_findings("the listing cannot be read", (listing,)))
+        case _:
+            assert_never(listing)
     watch = plan_watch(repo.catalog, [listing], repo.index, today)
     plan = run_fetch(deps, watch, repo)
     for path, text in plan.pull_request.files:
@@ -88,6 +122,75 @@ def fetch_command(deps: Deps, root: Path, source: str, today: date) -> FetchRun:
         written.write_text(text, encoding="utf-8", newline="")
         written.replace(target)
     return FetchRun(listing.html_sha256, watch.findings, plan)
+
+
+def fixture_command(
+    store: ObjectStore, pdf: PdfReader, cache: LocalCache, root: Path, *, sha: str, pages: str
+) -> tuple[Path, ...]:
+    """Write a word fixture of each page asked for, from an archived PDF, into the checkout.
+
+    `root` is the checkout. `sha` and `pages` are the words the user typed: a sha that the
+    index holds, and page numbers joined by commas, such as ``35,36``, which are sorted and
+    read once each. Each page's fixture is ``<series>_<YYYY_MM_DD>_p<n>.py`` in
+    `FIXTURE_FOLDER`, named by the indexed edition of the sha, with ``_<stage>`` before ``_p``
+    when the stage is not none. The words come from the cache when it holds the key of these
+    pages, and otherwise from one read of the PDF, cached under that key. Each file is written
+    to a temporary file with a fixed name in the same folder and then renamed.
+
+    Returns
+    -------
+    tuple[Path, ...]
+        The files written, in page order.
+
+    Raises
+    ------
+    FixtureStopped
+        Before the PDF is read and before any file is written, for a sha that is not 64
+        lowercase hex characters, pages that are not such a list, a checkout that cannot be
+        read, a sha the index lacks, and a fixture of that name that holds no sha or another
+        sha, as a fixture of another version of the same edition does. That file is left as
+        it was.
+    KeyError
+        When the store holds no PDF of the sha.
+    EffectError
+        When the store, the reader or the cache fails, or the PDF lacks a page asked for.
+    """
+    try:
+        doc_sha256 = Sha256(sha)
+    except ValueError:
+        raise FixtureStopped(f"{sha!r} is not a sha256 of 64 lowercase hex characters") from None
+    if _PAGES.fullmatch(pages) is None:
+        raise FixtureStopped(f"{pages!r} are not page numbers joined by commas, such as 35,36")
+    numbers = tuple(sorted({int(number) for number in pages.split(",")}))
+    repo = gather_repo(root)
+    match repo:
+        case RepoSnapshot():
+            pass
+        case tuple():
+            raise FixtureStopped(_findings("the checkout cannot be read", repo))
+        case _:
+            assert_never(repo)
+    version = repo.index.by_sha(doc_sha256)
+    if version is None:
+        raise FixtureStopped(f"the index holds no file with sha256 {doc_sha256}")
+    folder = root / FIXTURE_FOLDER
+    targets = [folder / f"{_fixture_stem(version.edition)}_p{number}.py" for number in numbers]
+    for target in targets:
+        if target.exists() and (held := _fixture_sha(target)) != doc_sha256:
+            named = "no sha" if held is None else f"the sha {held}"
+            raise FixtureStopped(f"{target} names {named}, not {doc_sha256}, and stays as it was")
+    key = word_key(doc_sha256, numbers, pdf.tool())
+    cached = cache.keys()
+    if key not in cached:
+        job = WordJob(doc_sha256, numbers, SourceKind.TEXT_LAYER, None, key)
+        extract_words(store, pdf, cache, [job])
+    document = merged_document(cache, [key])
+    folder.mkdir(parents=True, exist_ok=True)
+    for target, page in zip(targets, document.pages, strict=True):
+        written = target.with_name(f".{target.name}.tmp")
+        written.write_text(render_fixture(page), encoding="utf-8", newline="")
+        written.replace(target)
+    return tuple(targets)
 
 
 @app.callback()
@@ -134,6 +237,30 @@ def fetch(
         raise typer.Exit(1) from None
 
 
+@app.command()
+def fixture(
+    sha: Annotated[str, typer.Argument(help="the sha256 of a file the index holds")],
+    pages: Annotated[str, typer.Argument(help="page numbers joined by commas, such as 35,36")],
+) -> None:
+    """Write word fixtures of pages of an archived PDF."""
+    try:
+        settings = load_settings(environ)
+    except MissingSettings as error:
+        print(f"datadesk: {error}", file=sys.stderr)
+        raise typer.Exit(1) from None
+    root = Path.cwd()
+    try:
+        store, cache = s3_store(settings), DirCache(root / _WORD_CACHE)
+        written = fixture_command(store, PdfPlumberReader(), cache, root, sha=sha, pages=pages)
+        print(hide_keys("\n".join(f"wrote {path.relative_to(root)}" for path in written), settings))
+    except (FixtureStopped, EffectError) as error:
+        print(hide_keys(f"datadesk: {error}", settings), file=sys.stderr)
+        raise typer.Exit(1) from None
+    except BaseException:  # noqa: BLE001
+        print(hide_keys(format_exc(), settings), end="", file=sys.stderr)
+        raise typer.Exit(1) from None
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the `datadesk` command line on `argv`, or on `sys.argv[1:]`, and return its exit code.
 
@@ -151,3 +278,15 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 def _findings(heading: str, findings: Sequence[Finding]) -> str:
     return "; ".join([heading, *(f"{f.code} {f.subject}: {f.message}" for f in findings)])
+
+
+def _fixture_stem(edition: EditionKey) -> str:
+    """Name an edition's fixtures, as ``qcmr_2022_09_30`` for ``qcmr:2022-09-30:none``."""
+    stage = "" if edition.stage is Stage.NONE else f"_{edition.stage}"
+    return f"{edition.series}_{edition.period.end:%Y_%m_%d}{stage}"
+
+
+def _fixture_sha(path: Path) -> str | None:
+    """Return the sha that the ``SHA`` line of a fixture `render_fixture` wrote names, or None."""
+    found = _FIXTURE_SHA.search(path.read_text(encoding="utf-8"))
+    return None if found is None else found.group(1)

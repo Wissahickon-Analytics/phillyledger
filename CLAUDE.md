@@ -102,6 +102,10 @@ Step 1 creates these. Keep this list true as tooling changes.
 - `uv run --env-file .env datadesk fetch qcmr --saved <folder>` archives the reports that a folder
   of saved City responses lists, then writes the index file. `.env` holds the four
   `DATADESK_R2_*` variables. The command sends the City no request.
+- `uv run --env-file .env datadesk fixture <sha> <pages>` reads the archived PDF of an indexed
+  sha from the bucket and writes a word fixture of each page, as `35,36`, to
+  `packages/datadesk/tests/fixtures/words/<series>_<YYYY_MM_DD>_p<n>.py`, with the stage before
+  `_p` when it is not `none`. It caches the words in `.cache/words` and only reads the bucket.
 
 ## Hard rules
 
@@ -181,8 +185,8 @@ Step 1 creates these. Keep this list true as tooling changes.
 - Core tests run with sockets disabled (pytest-socket) in an empty temporary directory.
 - Property tests use Hypothesis.
 - Real pages enter tests only as word fixtures that `datadesk fixture <sha> <pages>` writes to
-  `tests/fixtures/words/` as Python literals. Regenerate a fixture only on purpose, and say so
-  in the commit.
+  `packages/datadesk/tests/fixtures/words/` as Python literals. Regenerate a fixture only on
+  purpose, and say so in the commit.
 - The `verify-step` skill is this repo's verification beside the gates: the check clause by
   clause, and the audits pstack's Prove It Works asks for. Codex runs it for every pull request,
   through the `codex-review` skill.

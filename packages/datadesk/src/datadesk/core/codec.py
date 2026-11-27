@@ -1,7 +1,8 @@
-"""Encode a `Document` as the bytes the word cache keeps, and read those bytes back.
+"""Encode a `Document` as the bytes the word cache keeps, read them back, and write a fixture.
 
 `FORMAT` numbers the layout of the bytes, and every word key holds it. Raising it with each
-change to the layout keeps the cache from serving bytes of an older layout.
+change to the layout keeps the cache from serving bytes of an older layout. `render_fixture`
+writes one page as the text of a Python module, the form a word fixture takes in the tests.
 """
 
 from dataclasses import asdict
@@ -23,6 +24,7 @@ _LIST = (list,)
 _INT_OR_NULL = (int, _NULL)
 _BOOL_OR_NULL = (bool, _NULL)
 _NUMBER_OR_NULL = (int, float, _NULL)
+_NOT_LITERALS = ("nan", "inf", "-inf")
 
 
 def encode_document(doc: Document) -> bytes:
@@ -66,6 +68,73 @@ def decode_document(data: bytes) -> Document:
         raise ValueError(f"the bytes are of format {number}, not {FORMAT}")
     pages = tuple(_page(page) for page in _items(fields, "pages"))
     return Document(Sha256(_field(fields, "sha256", _STR)), pages)
+
+
+def render_fixture(page: Page) -> str:
+    """Write a page as the text of a Python module that rebuilds it, which is a word fixture.
+
+    The module imports the kit's types, binds the page's sha to ``SHA`` and the page to
+    ``PAGE``, and names the sha by ``SHA`` wherever the page and each word's ref hold it. It
+    writes each class's fields in order, with one `Word` and one `Rule` on a line, so a diff of
+    two fixtures shows each word that changed. Each number and each text is written as its
+    `repr`, so a float reads back as the same float, a whole-number width such as ``792``
+    stays an `int`, and a lone surrogate in a word's text reads back. Run as a module, the text
+    gives a ``PAGE`` equal to `page`, and that ``PAGE`` renders to the same text.
+
+    Raises
+    ------
+    ValueError
+        When a number is NaN or infinite, which Python source holds as no literal.
+    """
+    lines = (
+        f'"""Page {page.number} of an archived PDF, as `datadesk fixture` wrote it."""',
+        "",
+        "from checkedtables.kinds import SourceKind",
+        "from checkedtables.refs import Box, Sha256, WordRef",
+        "from checkedtables.words import Page, Rule, Word, WordSource",
+        "",
+        f"SHA = {page.doc_sha256!r}",
+        "PAGE = Page(",
+        "    doc_sha256=SHA,",
+        f"    number={page.number!r},",
+        f"    width={_number(page.width)},",
+        f"    height={_number(page.height)},",
+        f"    rotation={page.rotation!r},",
+        f"    source=WordSource(SourceKind.{page.source.kind.name}, {page.source.tool!r}),",
+        "    words=(",
+        *(f"        {_word_text(word)}," for word in page.words),
+        "    ),",
+        "    rules=(",
+        *(f"        Rule({_box_text(rule.box)})," for rule in page.rules),
+        "    ),",
+        ")",
+    )
+    return "".join(f"{line}\n" for line in lines)
+
+
+def _word_text(word: Word) -> str:
+    ref = word.ref
+    return (
+        f"Word(WordRef(SHA, {ref.page!r}, {ref.index!r}, {ref.child!r}), {word.text!r}, "
+        f"{_box_text(word.box)}, {word.bold!r}, {_optional(word.size)}, "
+        f"{_optional(word.confidence)})"
+    )
+
+
+def _box_text(box: Box) -> str:
+    return f"Box({', '.join(_number(edge) for edge in (box.x0, box.top, box.x1, box.bottom))})"
+
+
+def _optional(value: float | None) -> str:
+    return "None" if value is None else _number(value)
+
+
+def _number(value: float) -> str:
+    """Return a number's `repr`, refusing the NaN and infinities that Python reads as names."""
+    text = repr(value)
+    if text in _NOT_LITERALS:
+        raise ValueError(f"{text} has no literal a fixture can hold")
+    return text
 
 
 def _page(fields: dict[str, Any]) -> Page:

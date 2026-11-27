@@ -27,7 +27,7 @@ dev = [
 line-length = 100
 target-version = "py312"
 src = ["packages/checkedtables/src", "packages/phillyledger/src", "packages/datadesk/src"]
-extend-exclude = ["docs/prototype", ".claude", "*.md"]
+extend-exclude = ["docs/prototype", ".claude", "*.md", "packages/datadesk/tests/fixtures/words"]
 
 [tool.ruff.lint]
 select = [
@@ -68,6 +68,7 @@ convention = "numpy"
 [tool.pytest.ini_options]
 testpaths = ["tests", "packages/checkedtables/tests", "packages/datadesk/tests"]
 addopts = "--import-mode=importlib --disable-socket"
+pythonpath = ["."]
 
 [tool.ty.environment]
 python-version = "3.12"
