@@ -24,16 +24,19 @@ file, `docs/progress.md`, `docs/followups.md` or `docs/deviations/`.
   `pipeline.py`, `rows.py`, `columns.py` and `grammar.py` of the kit, and step 2 builds none of
   them, so steps 1 to 4 are unaffected. This note first named step 2 by mistake. The owner
   decides, before the step 5 plan, whether `RawRow.bold` joins the pinned set or `RawRow` stays
-  out of `kit_dataclasses`.
+  out of `kit_dataclasses`. On November 27, 2026 he chose to pin it (design section 16, decision
+  20). S5-B removes this note when it builds `RawRow`.
 - **`assemble` passes the words of the cut page to `reading_for`, a note for the step 5 plan**
   (November 23, 2026, step 2, S2-E). `reading_for` compares the page words its box holds with
   the cell's words as values. So `assemble` passes the words the cells were cut from, after any
   `split_numeric_runs`, and not the page's raw words. Probed at S2-E: for "TAX434,605,553" on an
   OCR page, a reading around the child "434,605,553" gives `stale_reading` with the raw word as
   `page_words`, and the reading itself with the two children.
-- **The loader's digit check and a footnoted reading disagree, a note for the step 5 plan**
-  (November 23, 2026, step 2, S2-E fix round 2, finding 3 of the second Codex review of S2-E).
-  Design section 3.2 says that `load_records`, which step 5 builds in `datadesk`, refuses "a
+- **The loader's digit check and a footnoted reading disagree, a note for the plan of the step
+  that builds decision 13**
+  (November 23, 2026, step 2, S2-E fix round 2, finding 3 of the second Codex review of S2-E.
+  Re-addressed November 27, 2026, by decision 18 of design section 16).
+  Design section 3.2 says that `load_records`, which a later step builds in `datadesk`, refuses "a
   reading whose digits fail transliteration_ok" (`docs/design.md`, lines 2069 and 2070 at the
   S2-E head). The loader has only the record's text, so it cannot tell that the last `1` of the
   footnoted cell `$ 2.8 1` is a small raised mark. Run in a scratch copy of `64560f3`:
@@ -41,7 +44,7 @@ file, `docs/progress.md`, `docs/followups.md` or `docs/deviations/`.
   `Amount` with the mark `1`, a reviewed `Amount` of 2.8 that keeps the mark. The reverse also
   holds: `transliteration_ok("$ 2.8 1", "2.81")` is true, and `apply_reading` gives
   `reading_refused`. So the loader as the design words it would refuse a record that the
-  cell-level check accepts, and pass one that it refuses. The step 5 plan decides: either the
+  cell-level check accepts, and pass one that it refuses. That plan decides: either the
   loader leaves the digit check to `apply_reading`, or the record carries what the loader needs.
 - **The pure packages can still reach effects the gates do not name** (November 22, 2026, step 1,
   S1-D, found in the Codex review of the stack and the build. Rewritten November 23, 2026, S2-A).
@@ -110,7 +113,8 @@ file, `docs/progress.md`, `docs/followups.md` or `docs/deviations/`.
   2.1.
 - **What the step 2 rules do on real pages, for the plans of steps 5, 8, 10, 11
   and 12** (November 23, 2026, step 2, S2-C, found in the Codex reviews). Decisions 14 to 17 of
-  design section 16 settle four of the results below, to be built at step 5. Codex read three PDFs of
+  design section 16 settle four of the results below. Step 5 builds decision 14, and decision 18
+  moves the other three to the first step whose pages print the case. Codex read three PDFs of
   `../gov-budget-data/data/phila/` with `pdftotext -bbox` and ran `group_lines`, `has_values` and
   `parse_label` on their word boxes at `8846f05`. The S2-C fix round reran the command (the
   block "PDF reproduction for findings 1-4" of `.codex-review/step-02-pr-8846f05c.md`) and
@@ -213,7 +217,8 @@ file, `docs/progress.md`, `docs/followups.md` or `docs/deviations/`.
     furniture or a line prefix, is for the step 5 plan. QPOS-Q10 left the origin of the leading
     numbers open, and `test_split_line_prefix_takes_leading_numbers` reads the same `24` and `25`
     before `Recreation`.
-  - Join shape 1 joins two printed amounts, for the owner and the plans of steps 5 and 11
+  - Join shape 1 joins two printed amounts, for the owner and the plan of the step that builds
+    decision 16
     (finding 2 of `.codex-review/step-02-pr-0603fce3.md`). On page 1 of the adopted FY2006 Budget
     in Brief (`budget-in-brief/adopted/FY06.pdf`), the row "Purchase of Services" of the Board of
     L.&I. Review prints `6` under Increase/(Decrease) and `30,223` under FY2005 Estimated
@@ -228,7 +233,7 @@ file, `docs/progress.md`, `docs/followups.md` or `docs/deviations/`.
     it now has a real page. The join shapes are part of the owner's decision of November 23, 2026,
     so S2-D does not change them. An idea for the owner, not a plan: `lex_cell` receives each
     word's box, so a join could also require the two words to sit close together. The size of
-    that limit needs the real fixtures of step 5.
+    that limit needs real fixtures, which the step that builds decision 16 holds.
   - Two percents in one row are two words on a real page, for the step 10 plan (finding 4 of
     `.codex-review/step-02-pr-0603fce3.md`). `test_two_percents_in_one_cell_split_apart`
     (RTT-Q22) splits one fused word, `12.3%4.5%`. On page 2 of the August 2020 realty transfer
@@ -268,8 +273,9 @@ file, `docs/progress.md`, `docs/followups.md` or `docs/deviations/`.
     last word holds a digit and a closing parenthesis, so `has_values` is true for it. The
     risks "The design's rule gives a sentence that ends in a number values" and "A value word is
     defined twice" of Appendix C of `docs/plans/step-02.md` accepted this kind of result. The
-    predicate in `lines.py` is loose by design, and step 5 decides whether `lanes_from_values`
-    needs a stricter one. Step 10 parses this report, and the RTT dossier finds a zone's columns
+    predicate in `lines.py` is loose by design. Step 5 adds one condition to `lanes_from_values`,
+    for a number beside a label word (`docs/plans/step-05.md`, shape 7). Whether that is enough
+    for this heading is for the step 10 plan. Step 10 parses this report, and the RTT dossier finds a zone's columns
     "from amount-bearing lines only" (section 4, rule 3).
   - A spreadsheet error hides two valued rows, for the owner and the step 9 plan (design section
     15, "Monthly City and School"). On page 1 of the July 2020 School report
@@ -303,7 +309,8 @@ file, `docs/progress.md`, `docs/followups.md` or `docs/deviations/`.
     `Sha256`, so they no longer accept the hash `"unknown"`. A subclass of `WordRef` with the
     same four fields as a ref on the page compares unequal to that ref, so `Page` holds both
     words.
-  - The record lint of step 5 meets the record ids. `Dash` accepts an empty `rule_id`, and
+  - The record lint meets the record ids, at the step that builds the first record loader
+    (`docs/plans/step-05.md`, shape 17). `Dash` accepts an empty `rule_id`, and
     `Unreadable` accepts an empty `accepted_by`.
   - The catalog test of step 5 meets the column declarations. `NumberFormat` accepts
     `decimals=-1`. `ColumnSpec` accepts the caption `"Adopted ("`, which `re.compile` refuses
@@ -329,8 +336,10 @@ file, `docs/progress.md`, `docs/followups.md` or `docs/deviations/`.
   words, always". The check would make that clause a fact of the type, and not only of the
   lexer's tests. A reviewed `Amount` could not make the same check, because its text may hold a
   confusable letter, such as the `o` of `1o4.o`.
-- **What a reviewed reading can still do, for the owner and the step 5 plan** (November 23,
-  2026, step 2, S2-E fix round, found in the Codex review of `ce55ea9a`). Each case below was
+- **What a reviewed reading can still do, for the owner and the plan of the step that builds
+  decision 13** (November 23,
+  2026, step 2, S2-E fix round, found in the Codex review of `ce55ea9a`. Re-addressed November
+  27, 2026, by decision 18 of design section 16). Each case below was
   run in a scratch copy of `f479ede`, and the fix round changed none of them. The owner decided
   the direction of the rule on November 23, 2026 (design section 16, decision 13), and
   confirmed the exact rule of section 16.2 the same day (section 16.3).
@@ -357,7 +366,7 @@ file, `docs/progress.md`, `docs/followups.md` or `docs/deviations/`.
     text, so a reading must carry it. On a text layer, `2918` then a raised `1` in a one-decimal
     column gives `Unreadable` `2918 1` with the reason `decimals`. The readings `291.8` and
     `2918` give `reading_refused`, and `2918.1` and `291.81` give reviewed amounts, so the cell
-    reads only as a number that ends in 1. `Unreadable` has no marks field. The step 5 plan
+    reads only as a number that ends in 1. `Unreadable` has no marks field. That plan
     decides whether the cut stage keeps a raised mark out of an unreadable cell.
   - A glyph of `seen` that is not an ASCII digit and not one of the nine pinned confusables
     counts as nothing, so a reading can skip it (found in the verification lanes of fix round
@@ -388,8 +397,8 @@ file, `docs/progress.md`, `docs/followups.md` or `docs/deviations/`.
     first amount to its right is `4,160,607,459`. That is Codex's statement, not checked here.
     The owner decides the rule. Ideas, not a plan: a confusable letter could count only inside a
     word that also holds a digit, or only on an OCR page, or a reading could be refused when
-    `seen` holds a letter that is not a pinned confusable. When the step 5 plan writes
-    `load_records`, it should run a tighter rule against the old repository's reviewed readings
+    `seen` holds a letter that is not a pinned confusable. When that plan writes the loader
+    for readings, it should run a tighter rule against the old repository's reviewed readings
     before the owner adopts it. The Codex review of S2-E at `73d428e2` (finding 1) found the same
     rule at work on a cell that is cut correctly and sits on a text layer. Page 1 of the July
     2020 School report (`collections/monthly-school/2020_07.pdf`) prints `#DIV/0!` in the
@@ -472,8 +481,11 @@ file, `docs/progress.md`, `docs/followups.md` or `docs/deviations/`.
   words of one digit (fact 5). They are page furniture, and no row's words. On those six pages
   `group_lines` joins the two digits to table lines. Line 27 holds the digit `2` alone, and line
   28 begins with `5` or `6` before `First` or `Records`, so `row_line` finds no line for those
-  rows. They sit mid-table, and no row of the step 4 crops is one of them. The step 5 plan drops
-  the digits before it groups lines.
+  rows. They sit mid-table, and no row of the step 4 crops is one of them. This note proposed
+  dropping the digits before lines are grouped. The step 5 plan takes lanes from values and lets
+  the design's prefix rule take each digit off its row (`docs/plans/step-05.md`, shapes 3 and 9).
+  Its probe found the margin number in seven editions, on 14 pages (fact 9). S5-E removes this
+  note.
 - **The archive prints no font code in the cash pages, a note for the step 8 plan** (November
   25, 2026, the step 4 plan). QCASH-Q14 and VAL-Q05 describe `E(cid:121)PENSES` in the cash pages
   of FY2023 Q1 and Q2, and design section 3.2 has `split_grids` match `(cid:N)` in that caption.
@@ -496,6 +508,47 @@ file, `docs/progress.md`, `docs/followups.md` or `docs/deviations/`.
   page reads as 612 by 792 and renders as 512 by 692. On page 39 of `qcmr-2021-09-30.pdf`, bbox
   `(-8.39, -8.39, 783.6, 603.6)`, `crops` cuts the band of another row. The 20 grid pages have
   both boxes at the origin.
-- **`extract_words` never hashes the bytes it reads, a note for the step 5 plan** (November 27,
+- **`extract_words` never hashes the bytes it reads, a note for the step 6 plan** (November 27,
   2026, the step 4 cleanup, from pull request 49). `extract_words` labels the bytes it reads from
-  the store with `job.doc_sha256` and never hashes them. A check would be a design change.
+  the store with `job.doc_sha256` and never hashes them. A check would be a design change. Step
+  5 adds no command (`docs/plans/step-05.md`, shape 20), so this waits for the step that builds
+  `run_parse`.
+- **What step 5 leaves for the step 6 plan** (November 27, 2026, the step 5 plan). Fact, shape
+  and answer numbers are those of `docs/plans/step-05.md`.
+  - Which label a release prints. On 14 rows of seven editions the two digits of the margin
+    page number end up on the row's line, before a label such as `First Judicial District`
+    (fact 9). The prefix rule takes them off, so `Label.text` is right and `Label.printed` keeps
+    the digits (shape 9).
+  - The prior-year columns of `Commerce` in the four FY2024 editions. They hold the FY2023 number
+    for Commerce with Aviation, 690, under the key of the Commerce department, and Aviation's
+    read 0 (fact 13, answer 4). The publisher restated the prior-year columns for `Streets` in
+    FY2026 and did not for `Commerce`.
+  - Rows that some editions do not print. `City Representative` is absent from nine editions
+    and `Office of Arts and Culture` from five, and no page says where their positions are
+    counted then (fact 12). The all-funds check will show whether the totals still tie.
+  - Two ids that the old release lacks. A department keeps its id from the old
+    `config/entities.yml`, so step 6 can compare by entity. The old file files `Streets` through
+    FY2025 under `phl_rollup_streets_and_sanitation`, where step 5 has
+    `phl_group_streets_sanitation`. It files `Commerce` through FY2023 under `phl_dept_commerce`,
+    where step 5 has `phl_group_commerce_aviation` (shapes 14 and 15).
+  - The check DSL. `checks/dsl.py`, `checks_for` and the `checks_for` field of `TableEntry` are
+    step 6's (shape 18). So is the catalog rule that compares a check's operands with the
+    operands of a derived column (shape 19).
+  - A total with no parts. Design section 11.2 says that every total or subtotal row of an
+    assembled table has children or holds no `Amount`, but for a row that a declared
+    `ColumnSum` or `CellsEqual` names. The exception needs the check DSL, so the rule is for the
+    coverage of step 6 and not for `assemble`.
+- **What step 5 leaves for the step 7 plan** (November 27, 2026, the step 5 plan).
+  - A group caption binds by the band between two drawn rules (shape 4). A scanned page has no
+    rule, so a column with a `group` cannot bind there. Step 7 reads the scans and decides what
+    bounds a group on them.
+  - In seven text-layer editions, a digit that leads a row, as in `5 First Judicial District`,
+    is half of a sideways page number in the left margin (fact 9). QPOS-Q10 lists leading
+    numbers in older editions, such as `24 First Judicial District`, and leaves their origin
+    open. Step 7 checks whether they are the same thing.
+  - The P-1 captions of step 5 are written as FY2022 to FY2026 print them, in capitals (shape
+    5). Older editions may print other forms.
+- **The catalog rule on `Quantity`, a note for the plan of the step that builds the last
+  table** (November 27, 2026, the step 5 plan). Design section 11.2 has the catalog test require
+  that every `Quantity` member is used by at least one table. With one table it cannot hold, so
+  step 5 leaves it out (`docs/plans/step-05.md`, shape 19).
