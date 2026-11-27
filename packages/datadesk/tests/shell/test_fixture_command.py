@@ -20,7 +20,7 @@ from datadesk.shell.adapters.cache_dir import DirCache
 from datadesk.shell.adapters.pdf_pdfplumber import PdfPlumberReader
 from datadesk.shell.cli import FIXTURE_FOLDER, FixtureStopped, fixture_command, main
 from datadesk.shell.gather import CATALOG_PATH
-from datadesk.shell.ports import LocalCache, PdfReader
+from datadesk.shell.ports import EffectError, LocalCache, PdfReader
 
 REPO = Path(__file__).parents[4]
 EDITION = EditionKey("qcmr", Period(date(2022, 7, 1), date(2022, 9, 30)))
@@ -212,3 +212,46 @@ def test_main_prints_one_line_when_the_command_stops(
     assert UNINDEXED_SHA in err
     assert len(err.splitlines()) == 1
     assert fixtures(root) == {}
+
+
+def test_main_prints_neither_r2_key_in_the_lines_that_name_the_files_written(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = checkout(tmp_path / "checkout", version(SHA, "20221116102946"))
+    keys = ("qcmr_2022_09_30_p35", "qcmr_2022_09_30_p36")
+    monkeypatch.setattr(cli, "s3_store", lambda settings: store())
+    for name, value in ENVIRON.items():
+        monkeypatch.setenv(name, value)
+    monkeypatch.setenv("DATADESK_R2_ACCESS_KEY_ID", keys[0])
+    monkeypatch.setenv("DATADESK_R2_SECRET_ACCESS_KEY", keys[1])
+    monkeypatch.chdir(root)
+    assert main(["fixture", SHA, "35,36"]) == 0
+    out, err = capsys.readouterr()
+    assert out == (
+        "wrote packages/datadesk/tests/fixtures/words/$DATADESK_R2_ACCESS_KEY_ID.py\n"
+        "wrote packages/datadesk/tests/fixtures/words/$DATADESK_R2_SECRET_ACCESS_KEY.py\n"
+    )
+    assert not [key for key in keys if key in out + err]
+
+
+def test_main_prints_neither_r2_key_on_the_line_an_effect_error_prints(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = checkout(tmp_path / "checkout", version(SHA, "20221116102946"))
+    keys = (ENVIRON["DATADESK_R2_ACCESS_KEY_ID"], ENVIRON["DATADESK_R2_SECRET_ACCESS_KEY"])
+
+    class EchoingStore(DictStore):
+        def get(self, key: str) -> bytes:
+            raise EffectError(f"no key {keys[0]} with secret {keys[1]}")
+
+    monkeypatch.setattr(cli, "s3_store", lambda settings: EchoingStore())
+    for name, value in ENVIRON.items():
+        monkeypatch.setenv(name, value)
+    monkeypatch.chdir(root)
+    assert main(["fixture", SHA, "35"]) == 1
+    out, err = capsys.readouterr()
+    assert out == ""
+    assert err == (
+        "datadesk: no key $DATADESK_R2_ACCESS_KEY_ID with secret $DATADESK_R2_SECRET_ACCESS_KEY\n"
+    )
+    assert not [key for key in keys if key in out + err]
