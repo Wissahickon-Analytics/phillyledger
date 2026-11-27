@@ -61,7 +61,7 @@ publisher listings --watch--> WatchPlan --exec--> pull request (index lines, gap
 | Object store (PDFs in the archive bucket, which is private at step 3, and the step that first needs a public read decides whether they get a public copy; private Textract JSON; releases) | `ObjectStore` | `datadesk.shell.adapters.s3` | `fetch`, `ocr`, `words` and `release` executors |
 | Textract | `OcrService` | `datadesk.shell.adapters.textract` | the `ocr` executor only, and only with `--spend` |
 | PDF words, rules and page-1 text | `PdfReader` | `datadesk.shell.adapters.pdf_pdfplumber` | `fetch` and `words` executors |
-| Local content-addressed cache | `LocalCache` | `datadesk.shell.adapters.cache_dir`, `phillyledger._shell.cache_dir` | executors, reader |
+| Local content-addressed cache | `LocalCache` | `datadesk.shell.adapters.cache_dir` | executors |
 | Git and pull requests | `GitHost`, from step 13 | `datadesk.shell.adapters.github` | the `watch` executor. At step 3, `fetch_command` writes the index file into the checkout and the session opens the pull request |
 | Clock | none; each command in `cli.py` reads the time once and passes it down, as a `date` to `fetch_command` and `run_watch` and a `datetime` to `release_command` | `datadesk.shell.cli` | CLI entry only |
 | Environment | none; `load_settings(environ)` returns a frozen `Settings` once | `datadesk.shell.settings` | CLI entry only |
@@ -260,8 +260,10 @@ reads it from one of the repo's own files, and the shell turns the error into a 
 does not report a comparison of a sha with text that no builder checked, so each parser builds the
 `Sha256` where the text enters. `WordRef`, `Page`, `Document` and `ReviewedReading` refuse a sha
 that is not a `Sha256`, so a caller with no type checker gets a `ValueError` at the constructor. A
-key computed from several inputs is also a sha256, but of no one file's bytes. `cache_key`, the
-code tree sha and each key in `word_keys` and `compare_keys` are such keys, so each is a `str`. Two
+key computed from several inputs is also a sha256, but of no one file's bytes. A word key is such a
+key, so it is a `WordKey` (section 3.2), which holds the same rule as `Sha256` and is kept apart
+from it. A word job's `cache_key` and each key in `word_keys` and `compare_keys` are word keys.
+The code tree sha and a parse job's `cache_key` stay `str` until the steps that build them. Two
 caches in section 10 are keyed by the sha of a file itself: the PDFs by the doc sha and the
 reader's downloads by the file sha. The desk's sha of a PDF is a `Sha256`. Step 13 decides how the
 reader types the sha of a download, since `phillyledger` does not import the kit.
@@ -2345,26 +2347,36 @@ def compare_sources(primary: Page, other: Page, tolerance_pt: float) -> tuple[Fi
 
 
 # datadesk/core/parse_plan.py
+class WordKey(str):                      # the key of a word cache entry; equals its text
+    __slots__ = ()
+    def __new__(cls, text: str) -> "WordKey": ...   # ValueError for anything but a str of 64
+                                                    # lowercase hex characters; builds from the
+                                                    # characters it matched, as Sha256 does
+    def __repr__(self) -> str: ...                  # WordKey('7c4a...')
+def word_key(doc_sha256: Sha256, pages: tuple[int, ...], tool: str) -> WordKey: ...
+    # sha256 of json.dumps([FORMAT, doc_sha256, list(pages), tool], separators=(",", ":")),
+    # with FORMAT from codec, so a new format number gives new keys
 @dataclass(frozen=True, slots=True)
 class WordJob:
     doc_sha256: Sha256
     pages: tuple[int, ...]               # empty means every page
     source: SourceKind
     compare: SourceKind | None           # change 3: also extract this source for these pages
-    cache_key: str
+    cache_key: WordKey
+    def __post_init__(self) -> None: ...  # ValueError: a page below 1, or pages that are not
+                                          # strictly ascending, a repeat included
 @dataclass(frozen=True, slots=True)
 class ParseJob:
     doc_sha256: Sha256
     table: str                           # a TABLES entry name, looked up in a static tuple
-    word_keys: tuple[str, ...]
-    compare_keys: tuple[str, ...]
+    word_keys: tuple[WordKey, ...]
+    compare_keys: tuple[WordKey, ...]
     cache_key: str                       # sha256(word keys, code tree sha, record and registry shas)
 @dataclass(frozen=True, slots=True)
 class ParsePlan:
     extract: tuple[WordJob, ...]         # word jobs not in the cache, text layer only
     ocr_missing: tuple[WordJob, ...]     # OCR pages with no archived Textract response
-    parse: tuple[ParseJob, ...]          # parse jobs not in the parse cache
-    reuse: tuple[ParseJob, ...]          # parse results served from the cache
+    parse: tuple[ParseJob, ...]
 def plan_parse(snapshot: ParseSnapshot) -> ParsePlan: ...
 def plan_ocr(missing: Sequence[WordJob], config: str) -> OcrPlan: ...
     # pages, Textract config and the archive key for each response; printed with a page count
@@ -2381,8 +2393,16 @@ def textract_to_document(responses: Sequence[tuple[int, bytes]], sha: Sha256, to
 
 
 # datadesk/core/codec.py
+FORMAT = 1                               # numbers the byte layout; every word key holds it
 def encode_document(doc: Document) -> bytes: ...
+    # one JSON object: asdict(doc) and "format": FORMAT, keys sorted, separators (",", ":"),
+    # UTF-8 with surrogatepass, so any str encodes; ValueError for a NaN or an infinity. One
+    # document always gives the same bytes; equal documents may not, since 0.0 == -0.0
 def decode_document(data: bytes) -> Document: ...
+    # each sha through Sha256, each value through its kit constructor, tuples, SourceKind
+    # members; ValueError for bytes that are not such UTF-8 JSON, a NaN or an infinity, a format
+    # that is not the int FORMAT, a missing key, a value of the wrong JSON kind, or a value a
+    # constructor refuses
 def encode_parse_result(result: ParseResult) -> bytes: ...
 def decode_parse_result(data: bytes) -> ParseResult: ...
 
@@ -2538,10 +2558,10 @@ class PdfReader(Protocol):
     def render(self, pdf: bytes, page: int, dpi: int) -> bytes: ...  # for OCR and review images
 
 
-class LocalCache(Protocol):
-    def get(self, key: str) -> bytes | None: ...
-    def put(self, key: str, data: bytes) -> None: ...
-    def keys(self) -> frozenset[str]: ...
+class LocalCache(Protocol):               # a failed effect raises EffectError
+    def get(self, key: WordKey) -> bytes | None: ...    # None when absent
+    def put(self, key: WordKey, data: bytes) -> None: ...   # replaces the entry the key had
+    def keys(self) -> frozenset[WordKey]: ...
 
 
 class GitHost(Protocol):
@@ -2558,8 +2578,10 @@ class Deps:
 Step 3 builds `HttpResponse`, `Http`, the conditions, both exceptions, `ObjectStore` with `put`,
 `head` and `get`, `PdfReader` with `page1_text`, and `Deps` with those three ports. `exists` and
 `list` join `ObjectStore` at the step that first calls them, `words` and `render` join `PdfReader`
-at step 4, and each later port joins `Deps` at the step that builds it. Each adapter turns its
-library's failures into `EffectError`, chained with `from`, and `PreconditionFailed` is not an
+at step 4, and each later port joins `Deps` at the step that builds it. The exception is
+`LocalCache`: step 4 builds it and `cache_dir`, which keeps one file for each key, written under
+another name and then renamed, and the step 5 plan decides when it joins `Deps`. Each adapter turns
+its library's failures into `EffectError`, chained with `from`, and `PreconditionFailed` is not an
 `EffectError`. R2 has no setting that makes one object public, because its S3 API does not take
 `x-amz-acl` (step 3 plan, fact 7). So `put` takes no `public` flag, and each store is bound to one
 bucket. A step that needs another bucket adds a store for it to `Deps`.
@@ -2803,20 +2825,17 @@ def run_parse(deps: Deps, repo: RepoSnapshot) -> ParseOutcome | OcrNeeded:
         pdf = deps.store.get(pdf_key(job.doc_sha256))
         deps.cache.put(job.cache_key, encode_document(deps.pdf.words(pdf, job.doc_sha256, job.pages)))
     results: dict[str, ParseResult] = {}
-    for job in plan.reuse:
-        results[job.cache_key] = decode_parse_result(need_bytes(deps.cache.get(job.cache_key)))
     for job in plan.parse:
         doc = merged_document(deps.cache, job.word_keys)                # decode and join pages
         other = merged_document(deps.cache, job.compare_keys) if job.compare_keys else None
         result = run_parse_job(job, doc, other, parse_context(job, repo))   # pure
-        deps.cache.put(job.cache_key, encode_parse_result(result))
         results[job.cache_key] = result
     return ParseOutcome(plan, results)
 ```
 
-`plan_parse` decides which words to extract, which OCR responses exist and which parse results are
-cached. The executor does not re-read the cache to decide again (R1, R2). `merged_document` builds
-one `Document` whose pages each come from the declared source. A page never appears twice.
+`plan_parse` decides which words to extract and which OCR responses exist. The executor does not
+re-read the cache to decide again (R1, R2). `merged_document` builds one `Document` whose pages
+each come from the declared source. A page never appears twice.
 
 ### 4.5 `release`
 
@@ -4220,15 +4239,12 @@ read as `--saved`.
 
 ## 10. Caching and determinism
 
-Words are cached because extraction is slow and OCR costs money. Parse results are cached under
-a key that covers every input, so a stale parse cannot be served (change 14). There is no
-staleness graph.
+Words are cached because extraction is slow and OCR costs money. There is no staleness graph.
 
 | Cache | Key | Value | Where |
 |---|---|---|---|
-| Words, text layer | `sha256(doc sha, page set, tool string)` | encoded `Document` | `LocalCache`; optional shared copy in the object store |
+| Words, text layer | `sha256(codec format number, doc sha, page set, tool string)`, a `WordKey` | encoded `Document` | `LocalCache`; optional shared copy in the object store |
 | Words, OCR | `sha256(doc sha, page, Textract config)` | raw Textract JSON | private object store, permanent (it costs money) |
-| Parse results | `sha256(word keys, code tree sha, record slice sha, registry sha, schema sha)` | encoded `ParseResult` | `LocalCache` |
 | PDFs | doc sha | bytes | the archive bucket, private at step 3, where the step that first needs a public read decides whether they get a public copy; git-ignored local copy |
 | Reader downloads | file sha | bytes | `phillyledger` cache dir |
 
@@ -4571,7 +4587,7 @@ kit size report that CI prints does.
 | `core/ocr.py` | `textract_to_document` | 90 |
 | `core/codec.py` | encode and decode `Document` and `ParseResult` | 220 |
 | `core/words_audit.py` | `compare_sources` | 90 |
-| `core/parse_plan.py` | `WordJob`, `ParseJob`, `ParsePlan`, `OcrPlan`, `plan_parse`, `plan_ocr`, `parse_context`, `run_parse_job` | 215 |
+| `core/parse_plan.py` | `WordKey`, `word_key`, `WordJob`, `ParseJob`, `ParsePlan`, `OcrPlan`, `plan_parse`, `plan_ocr`, `parse_context`, `run_parse_job` | 215 |
 | `core/vintage.py` | `VintagePolicy`, `select_canonical` by `Subject` | 100 |
 | `core/checks/series.py` | `cross_edition_checks`, `same_subject_agrees` | 200 |
 | `core/checks/run.py` | `checks_for_document`, `check_all`: checks, coverage, one gate per edition | 150 |

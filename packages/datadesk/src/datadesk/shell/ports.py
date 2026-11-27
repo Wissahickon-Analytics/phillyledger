@@ -3,6 +3,8 @@
 from dataclasses import dataclass
 from typing import Protocol
 
+from datadesk.core.parse_plan import WordKey
+
 
 @dataclass(frozen=True, slots=True)
 class HttpResponse:
@@ -108,6 +110,40 @@ class PdfReader(Protocol):
         ------
         EffectError
             When the reader cannot read the file.
+        """
+        ...
+
+
+class LocalCache(Protocol):
+    """Bytes kept on this machine under word keys, such as encoded documents."""
+
+    def get(self, key: WordKey) -> bytes | None:
+        """Return the bytes stored under `key`, or None when there are none.
+
+        Raises
+        ------
+        EffectError
+            When the read fails.
+        """
+        ...
+
+    def put(self, key: WordKey, data: bytes) -> None:
+        """Store `data` under `key`, in place of any bytes stored there.
+
+        Raises
+        ------
+        EffectError
+            When the write fails.
+        """
+        ...
+
+    def keys(self) -> frozenset[WordKey]:
+        """Return every key that holds bytes.
+
+        Raises
+        ------
+        EffectError
+            When the listing fails.
         """
         ...
 

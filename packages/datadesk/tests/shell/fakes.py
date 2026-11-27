@@ -5,6 +5,7 @@ from typing import Any
 
 from botocore.awsrequest import AWSPreparedRequest, AWSResponse
 
+from datadesk.core.parse_plan import WordKey
 from datadesk.shell.adapters.s3 import S3Store
 from datadesk.shell.ports import (
     Condition,
@@ -53,6 +54,20 @@ class DictStore:
 
     def get(self, key: str) -> bytes:
         return self.objects[key]
+
+
+class DictCache:
+    def __init__(self, entries: Mapping[WordKey, bytes] | None = None) -> None:
+        self.entries = dict(entries or {})
+
+    def get(self, key: WordKey) -> bytes | None:
+        return self.entries.get(key)
+
+    def put(self, key: WordKey, data: bytes) -> None:
+        self.entries[key] = data
+
+    def keys(self) -> frozenset[WordKey]:
+        return frozenset(self.entries)
 
 
 class FakePdf:
