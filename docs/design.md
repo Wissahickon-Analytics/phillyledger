@@ -3258,8 +3258,9 @@ What the module shows:
 
 - Columns bind by caption. A lost column on a scan is a binding finding, never a shifted role.
   The three fund captions repeat in each group, so each binds only inside the rule band whose
-  caption prints its group. Two groups that trade places give `columns_out_of_order`, never
-  a wrong name. On all 40 grid pages of FY2022 to FY2026 the ten columns bind so (QPOS-Q02).
+  caption prints its group. On a page bound by caption, two groups that trade places give
+  `columns_out_of_order`. On all 40 grid pages of FY2022 to FY2026 the ten columns bind so
+  (QPOS-Q02).
 - The `prefix` rule takes "23" and "I" off a line before lanes are found. A column of OCR
   prefixes cannot form a lane (R3, QPOS-Q08).
 - Civilian and Uniform match only inside their parent's block. Indentation is never read
