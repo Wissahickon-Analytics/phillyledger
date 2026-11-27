@@ -196,7 +196,7 @@ def plan_fetch(
                         rejections.append(Rejection(fetch.request, finding.code))
                     case ArchiveIndex() as grown:
                         if working.by_sha(version.sha256) is None:
-                            store.append(StoreObject(version.sha256, _pdf_key(version.sha256)))
+                            store.append(StoreObject(version.sha256, pdf_key(version.sha256)))
                         index_add.append(version)
                         working = grown
             case None:
@@ -240,7 +240,12 @@ def _decide(
     )
 
 
-def _pdf_key(sha: Sha256) -> str:
+def pdf_key(sha: Sha256) -> str:
+    """Return the key under which the archive bucket keeps the PDF whose sha256 is `sha`.
+
+    The key is ``pdf/<the sha's first two characters>/<sha>.pdf``. It is built from the sha
+    alone, so one file's bytes have one key.
+    """
     return f"pdf/{sha[:2]}/{sha}.pdf"
 
 

@@ -46,3 +46,18 @@ why, the run that shows it, and the design section updated. Fact and shape numbe
   sections 3.2, 4.4 and 10 no longer cache parse results in it, as section 18.4 already dropped
   that cache. Section 1.4 no longer names the reader's cache, keyed by a download sha, as a
   `LocalCache`. Design sections 1.4, 2.1, 3.2, 4, 10 and 12.3.
+- **S4-C: what the reader gives for a page, its tool string, and the words executor** (November
+  26, 2026, S4-C). The design gave `PdfReader.words` and `render` with no rule for what a page
+  holds, and wrote the word lines of `run_parse` inline through `Deps`. `PdfReader` gains `tool`,
+  so a caller builds a word key before it reads a page (shape 6). The pdfplumber reader stops
+  after the last page asked for (shape 7), runs the old options, keeps a font code as pdfminer
+  writes it (fact 9), reads the median glyph size and the old bold rule, and puts each line object
+  or thin rect on its centerline (shapes 1, 4 and 5). Every coordinate, width and height is a
+  `float`, since pdfplumber gives a whole-number page width such as 792 as an `int` (follow-ups
+  10 and 12 of pull request 47). pdfplumber gives `/Rotate` as written, while pdfminer lays a page
+  out at rotation 0 when `/Rotate` is not an integer, so `/Rotate 90.0` gave a word a top of
+  -117.5 on a page 792 wide, and the reader refuses a rotation that is not an `int`.
+  `extract_words(store, pdf, cache, jobs)` and `merged_document(cache, keys)` take the ports they
+  read (shape 10), and `core/fetch.py` makes its PDF key public as `pdf_key`.
+  `test_a_cache_hit_returns_an_equal_document` failed on both caches, at `assert first == kept`,
+  with a codec that drops `size`. Design sections 2.1, 3.2, 4, 4.4 and 11.5.

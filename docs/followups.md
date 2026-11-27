@@ -97,13 +97,6 @@ by its title is in `docs/plan-notes.md`, `docs/progress.md` or `docs/deviations/
     scratch worktree at that head printed `'\u00b9-\u00b2'` and
     `Total \u00b9 2 'Total \u00b9' ('2',)`, with the superscripts written here as escapes. Both
     inputs are made up.
-  - `transliteration_ok` and `split_numeric_runs` look for a font code as `(cid:` in lower case.
-    At the S2-D fix round 3 head, `transliteration_ok("10(CID:28)", "10028")` is true, where the
-    lower-case form is false, and `split_numeric_runs` cuts `(CID:21)5` into `(CID:21)` and `5`.
-    `pdfminer` writes the code in lower case, as `f"(cid:{cid})"` at line 268 of
-    `pdfminer/converter.py` in the reference repository's environment, read and not run. The
-    last verifier of S2-D found it. The adapter of step 4 is the only source of such words, so
-    its plan decides whether the kit also refuses another case.
   - A small raised digit after a `$` word, with no number word before it, reads as the amount.
     The raised-digit rule measures a digit against the word just before it, which must hold a
     digit, so `$` and a raised `1` give `Amount 1`, with the `$` at full size or small. The S2-D
@@ -116,15 +109,6 @@ by its title is in `docs/plan-notes.md`, `docs/progress.md` or `docs/deviations/
     No page is known to print a `$` and a raised digit alone, and no step owns the form.
   - `apply_reading`'s message for a word that is not on the reading's file and page has no test
     that reads the message. The S2-E fix round 2 found it.
-  - Hand-built words `10(` and `cid:28)` in a count column give an `Unreadable` cell whose text
-    is `10( cid:28)`, and the reading `10028` gives a reviewed `Amount`, because the font-code
-    check looks for `(cid:` in `seen`. The S2-E verifier found it at `2e0f4eca`, and a rerun at
-    `f82950e` printed `cell 'Unreadable not_a_number', reading '10028' -> Amount 10028
-    reviewed`. A text layer gives a font code in place of one character, so no extraction
-    should split it across two words. The note above on the case of `(cid:` cites the
-    `pdfminer` line that writes it. This is for the plan of the step that ports the word
-    reader: the reader must keep a font code inside one word, or the check must look for
-    `cid:`.
   - `pages()` in `packages/checkedtables/tests/test_lines.py` draws, for each word index, the
     word or its children and never both. So `test_every_word_lands_in_exactly_one_line` passes
     when `group_lines` drops a parent word whose child is on the page. The Codex review of S2-C

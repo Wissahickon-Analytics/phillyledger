@@ -1,10 +1,12 @@
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterator, Mapping, Sequence
 from hashlib import sha256
 from io import BytesIO
 from typing import Any
 
 from botocore.awsrequest import AWSPreparedRequest, AWSResponse
 
+from checkedtables.refs import Sha256
+from checkedtables.words import Document
 from datadesk.core.parse_plan import WordKey
 from datadesk.shell.adapters.s3 import S3Store
 from datadesk.shell.ports import (
@@ -76,6 +78,15 @@ class FakePdf:
 
     def page1_text(self, pdf: bytes) -> str:
         return self.texts[pdf]
+
+    def words(self, pdf: bytes, sha256: Sha256, pages: Sequence[int]) -> Document:
+        raise NotImplementedError
+
+    def render(self, pdf: bytes, page: int, dpi: int) -> bytes:
+        raise NotImplementedError
+
+    def tool(self) -> str:
+        raise NotImplementedError
 
 
 class FlakyHttp:
