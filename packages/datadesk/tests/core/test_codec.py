@@ -163,6 +163,8 @@ def test_encode_refuses_a_float_json_cannot_hold(bad: float) -> None:
         pytest.param(b"[]", id="a_json_list"),
         pytest.param(ENCODED.replace(b'"size":8.88', b'"size":NaN'), id="a_nan"),
         pytest.param(ENCODED.replace(b'"size":8.88', b'"size":Infinity'), id="an_infinity"),
+        pytest.param(ENCODED.replace(b'"size":8.88', b'"size":1e400'), id="a_number_past_float"),
+        pytest.param(ENCODED.replace(b'"size":8.88', b'"size":-1e400'), id="a_negative_past_float"),
     ],
 )
 def test_decode_refuses_bytes_that_are_not_an_encoded_document(data: bytes) -> None:
