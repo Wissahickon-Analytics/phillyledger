@@ -15,8 +15,7 @@ class WordSource:
     kind : SourceKind
         The text layer or OCR.
     tool : str
-        The tool and its settings, such as ``"pdfplumber==0.11.4;dedupe_chars"`` or
-        ``"textract:AnalyzeDocument;dpi=300"``.
+        The tool and its settings, such as ``"textract:AnalyzeDocument;dpi=300"``.
     """
 
     kind: SourceKind

@@ -33,11 +33,11 @@ why, the run that shows it, and the design section updated. Fact and shape numbe
   gave the codec signatures and no format, typed a word key as a `str`, and keyed the word cache
   by the doc sha, the page set and the tool string. `encode_document` now writes one JSON object,
   `asdict(doc)` with a `"format"` of `FORMAT`, sorted keys and no spaces, and refuses NaN and
-  infinity, and `decode_document` raises `ValueError` for bytes it did not write (shape 12). A
-  word key is a `WordKey`, held to the rule of `Sha256` but kept apart from it, and `word_key`
-  hashes `FORMAT` with the other three inputs, so a new format number gives new keys. `WordJob` refuses
-  a page below 1 and pages that are not strictly ascending (shape 9). `LocalCache` takes
-  `WordKey`, and `cache_dir` writes each entry under another name and renames it onto the key
+  infinity (shape 12). A word key is a `WordKey`, held to the rule of `Sha256` but kept apart from
+  it, and `word_key` hashes `FORMAT` with the other three inputs, so a new format number gives new
+  keys. `WordJob` refuses a page below 1 and pages that are not strictly ascending (shape 9).
+  `LocalCache` takes `WordKey`, and `cache_dir` writes each entry under another name and renames
+  it onto the key
   (shape 11). `test_a_document_decodes_to_an_equal_document` failed with a codec that drops
   `size`. The codec writes UTF-8 with `surrogatepass`, so every `str` reads back equal. With
   `ensure_ascii`, that property and
@@ -51,8 +51,8 @@ why, the run that shows it, and the design section updated. Fact and shape numbe
   holds, and wrote the word lines of `run_parse` inline through `Deps`. `PdfReader` gains `tool`,
   so a caller builds a word key before it reads a page (shape 6). The pdfplumber reader stops
   after the last page asked for (shape 7), runs the old options, keeps a font code as pdfminer
-  writes it (fact 9), reads the median glyph size and the old bold rule, and puts each line object
-  or thin rect on its centerline (shapes 1, 4 and 5). Every coordinate, width and height is a
+  writes it (fact 9), reads the median glyph size and the old bold rule, and puts each rule on its
+  centerline (shapes 1, 4 and 5). Every coordinate, width and height is a
   `float`, since pdfplumber gives a whole-number page width such as 792 as an `int` (follow-ups
   10 and 12 of pull request 47). pdfplumber gives `/Rotate` as written, while pdfminer lays a page
   out at rotation 0 when `/Rotate` is not an integer, so `/Rotate 90.0` gave a word a top of
@@ -75,8 +75,8 @@ why, the run that shows it, and the design section updated. Fact and shape numbe
   the width as a float, and the overwrite test failed with the sha check removed. Design sections
   3.2, 9 and 11.1.
 - **S4-E: the crops command, the crop file and the row rule** (November 26, 2026, S4-E). The
-  design named `datadesk crops <tsv> <folder>`, a crop file of eight columns and one rule in
-  `shell/report.py` that finds a row's line, and gave none of them a form (shape 13). The
+  plan's shape 13 named `datadesk crops <tsv> <folder>`, a crop file of eight columns and one rule
+  in `shell/report.py` that finds a row's line, and the design held none of them. The
   command writes the page images to `<folder>/pages/` and the row bands to `<folder>/rows/`,
   with `sheet.png` beside them, so a reader's brief can name one folder alone (risk 5). It
   writes the pages on every run that passes the checks made before any PDF is read, one that
