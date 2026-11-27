@@ -56,6 +56,8 @@ FIELD_SNAPSHOT: dict[str, tuple[str, ...]] = {
     "EveryRow": (),
     "DashRule": ("id", "table", "columns", "rows", "meaning", "evidence"),
     "CellRecords": ("readings", "dash_rules", "confidence_floor"),
+    "PageRun": ("first", "last"),
+    "BodyRule": ("start", "stop", "drop", "prefix"),
     "RawRow": ("page", "prefix", "label_words", "cells", "stray", "bold", "x0"),
 }
 
