@@ -66,3 +66,15 @@ def test_each_page_has_one_first_and_one_last_row() -> None:
         for page in pages
         for end in RowEnd
     }
+    labels = {(row.edition, row.page, row.row): row.page_label for row in ROWS}
+    for edition, pages in GRID_PAGES.items():
+        for page in pages:
+            module = fixture(edition, page)
+            first = row_line(module.PAGE, labels[edition, page, RowEnd.FIRST])
+            last = row_line(module.PAGE, labels[edition, page, RowEnd.LAST])
+            assert isinstance(first, Line), f"{edition} page {page} first"
+            assert isinstance(last, Line), f"{edition} page {page} last"
+            assert first.box.bottom < last.box.top, (
+                f"{edition} page {page}: the first row {first.text!r} is not above "
+                f"the last row {last.text!r}"
+            )

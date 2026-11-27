@@ -97,12 +97,12 @@ class KeepingReader:
         return self.inner.tool()
 
 
-def checkout(root: Path) -> Path:
+def checkout(root: Path, sha: Sha256 = SHA) -> Path:
     for path in (CATALOG_PATH, INDEX_PATH):
         (root / path).parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(REPO / CATALOG_PATH, root / CATALOG_PATH)
     version = DocumentVersion(
-        SHA,
+        sha,
         EDITION,
         "20221116102946",
         ("https://www.phila.gov/media/20221116102946/report.pdf",),
@@ -202,6 +202,33 @@ def test_a_labelled_row_gets_a_band_across_the_page_with_ink_where_its_words_are
     assert ink(band, 0, 0, width, 1) == 255
     assert ink(band, 0, height - 1, width, height) == 255
     assert ink(band, line.box.x1 * SCALE + 2, 0, width, height) == 255
+
+
+def test_each_band_is_cut_from_the_page_its_row_names(tmp_path: Path) -> None:
+    pdf = drawn_pdf(upright(ROWS), upright(ROWS[::-1]))
+    sha = Sha256(sha256(pdf).hexdigest())
+    tsv = tsv_file(
+        tmp_path, row(1, "first", "Auditing", sha=sha), row(2, "last", "Auditing", sha=sha)
+    )
+    crops_command(
+        DictStore({pdf_key(sha): pdf}),
+        PdfPlumberReader(),
+        DictCache(),
+        checkout(tmp_path / "checkout", sha),
+        tsv=tsv,
+        folder=tmp_path / "crops",
+    )
+    document = PdfPlumberReader().words(pdf, sha, (1, 2))
+    for page, end, other in ((1, "first", 2), (2, "last", 1)):
+        own = row_line(document.page(page), "Auditing")
+        theirs = row_line(document.page(other), "Mural Arts Fund")
+        assert isinstance(own, Line)
+        assert isinstance(theirs, Line)
+        assert (theirs.box.top, theirs.box.bottom) == (own.box.top, own.box.bottom)
+        band = gray(tmp_path / "crops" / "rows" / f"qcmr_2022_09_30_p{page}_{end}.png")
+        for word in own.words:
+            assert ink(band, word.box.x0 * SCALE, 0, word.box.x1 * SCALE, band.height) < 128
+        assert ink(band, own.box.x1 * SCALE + 2, 0, theirs.box.x1 * SCALE, band.height) == 255
 
 
 @pytest.mark.parametrize("page", [1, 2], ids=["upright", "turned"])
