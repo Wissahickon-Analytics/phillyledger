@@ -90,6 +90,9 @@ def test_a_second_run_writes_the_same_bytes(tmp_path: Path) -> None:
     first = run(root, reader, cache, SHA, "35,36")
     written = fixtures(root)
     assert len(reader.kept) == 1
+    for path in first:
+        path.unlink()
+    assert fixtures(root) == {}
     second = run(root, reader, cache, SHA, "35,36")
     assert len(reader.kept) == 1
     assert second == first
