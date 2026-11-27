@@ -45,17 +45,18 @@ whole file, and lines are those of `group_lines`. A "grid page" prints the ten-c
    | `2023-09-30` | 32 | 33, 34 | 57 | `2026-03-31` | 35 | 36, 37 | 63 |
    | `2023-12-31` | none | 32, 33 | 57 | `2026-06-30` | 32 | 33, 34 | 63 |
 
-   "Rows" counts the body rows of both grid pages. The 19 counts through `2026-03-31` equal the
-   row counts of the old repo's release 2026.07.31, which holds no FY2026 Q4.
+   "Rows" counts the body rows of both grid pages, 1,174 in all. The 19 counts through
+   `2026-03-31` equal the row counts of the old repo's release 2026.07.31, which holds no FY2026
+   Q4. The held folder also holds `qcmr-2026-09-30.pdf`, which is not indexed.
 2. **The header is the same nine lines on all 40 grid pages.** Lines 1 to 5 are the title and
    the period. Line 6 is `FISCAL YEAR 2025 FISCAL YEAR 2026`, with the edition's years. Line 7
    is `YEAR END ACTUAL ADOPTED BUDGET MONTH END ACTUAL MONTH END`. Line 8 is
    `Department ACTUAL (OVER)`. Line 9 is `General Other Total`, three times, then
    `UNDER BUDGET`. The group captions are in capitals and the fund captions are not. `(OVER)` and
    `UNDER` are on two lines.
-3. **A commentary page prints `adopted`, `General`, `Other` and `Total` in its prose.** It prints
-   none of `YEAR END ACTUAL`, `MONTH END ACTUAL` and `(OVER)`. Checked on the commentary pages of
-   `2022-06-30`, `2023-09-30` and `2026-06-30`.
+3. **No commentary page prints a grid caption.** None of the 16 prints `YEAR END ACTUAL`,
+   `ADOPTED BUDGET`, `MONTH END ACTUAL` or `(OVER)`. The prose of three that were read prints
+   `adopted`, `General`, `Other` and `Total` in lower or title case.
 4. **The right edges of the number words make ten lanes on all 40 pages.** Within a lane the
    edges spread at most 3.82 points, and two lanes are at least 50.5 points apart. No body row
    holds two number words in one lane, and the nearest two number words are 29.46 points apart.
@@ -72,23 +73,26 @@ whole file, and lines are those of `group_lines`. A "grid page" prints the ten-c
    `FISCAL YEAR General`, `FISCAL YEAR 2025 YEAR END ACTUAL Other` and `2025 ACTUAL Total`. The
    words inside each band of fact 5, from line 6 down, hold that band's whole group caption on
    all 40 pages.
-7. **Sixteen editions print a raised mark that leaves its row.** Through `2023-06-30` the `(1)`
+7. **Twelve editions print a raised mark that leaves its row.** Through `2023-06-30` the `(1)`
    after `Human Services` has the label's size and line, about 2 points after `Services`. From
    `2023-09-30` it is 4.92 points high beside a label of 7.44, with its bottom about 4.2 points
    above the label's. The line tolerance is 2.60, so `group_lines` makes it a line of its own,
    and `has_values` is true for that line. `2023-09-30` to `2024-06-30` print two marks, `(1)`
    after `Aviation` and `(2)` after `Human Services`. The mark that opens each footnote below the
-   rows is raised the same way. On the first grid pages of `2023-09-30`, `2024-06-30`,
-   `2025-09-30` and `2026-06-30`, each of the 12 raised marks has its bottom edge inside the
-   span of exactly one line, its row or its footnote, at 0.66 of that line's median word height.
+   rows is raised the same way. The 12 editions from `2023-09-30` print 32 raised marks. Each is
+   under 0.7 of the median word height of exactly one line whose span holds its bottom edge, and
+   that line is its row or its footnote. The four pages measured give 0.66.
 8. **A label ends at least 38.94 points before its first number**, on the eight grid pages of
    `2021-09-30`, `2024-06-30`, `2025-09-30` and `2026-06-30`. The longest label is
    `Office of Behavioral Hlth & Intellectual disAbility`.
 9. **Seven editions print a sideways page number in the left margin**, `2021-09-30` to
    `2023-03-31`, on all 14 of their grid pages, at `x0` 12.83 or 5.63. The reader gives it as two
    words. The first, `2`, is a line of its own. The second joins a body row as its first word, as
-   in `5 First Judicial District` and `6 Records`. From `2023-06-30` each grid page ends with a
-   page number, `23` to `28`, as a line of one word.
+   in `5 First Judicial District` and `6 Records`. Each digit is 4.45 points high, and the
+   bottom edge of the `2` is inside the span of that row, so the rule of decision 14 puts both
+   digits on the row. Those 14 digits and the 32 marks of fact 7 are the only words of the 56
+   pages that the rule moves. From `2023-06-30` each grid page ends with a page number, `23` to
+   `28`, as a line of one word.
 10. **Below the rows, a page prints footnotes and one notice.** A footnote reads `(1) Positions
     have been transferred to the Grants Revenue Fund. ...` on one line, and from `2023-09-30` its
     mark is raised (fact 7). The FY2024 editions add `In FY23 and prior, positions for the
@@ -96,8 +100,8 @@ whole file, and lines are those of `group_lines`. A "grid page" prints the ten-c
     prints one line that starts `NOTE: The material in this report is preliminary`. On the second
     grid page, `TOTAL ALL FUNDS` is the last row.
 11. **Every body row has ten number words, and each reads as a count.** `lex_cell` gives an
-    `Amount` with no mark for all 11,620 of them. Forty-six are negative, in parentheses, all in
-    the tenth column. One of those is `(1)`, on the `Water,Sewer & Stormwater Rate Board` row of
+    `Amount` for all 11,740 of them. Forty-seven are negative, in parentheses, all in the tenth
+    column. One of those is `(1)`, on the `Water,Sewer & Stormwater Rate Board` row of
     `2025-06-30`.
 12. **The 20 editions print 62 labels.** Fifty are in all 20. Three parents, `District
     Attorney - Total`, `Fire - Total` and `Police - Total`, each have a `Civilian` and a
@@ -139,6 +143,14 @@ he was shown and the option he picked. Design section 16 holds them as decisions
 | 3 | "The kit pins its bool fields to Word.bold and Column.printed (design section 11.4). Step 5 creates RawRow, which the design gives a field bold: bool \| None, true when all the label's words are bold. On the P-1 pages the three parent rows are bold and their Civilian and Uniform rows are not, but no P-1 rule reads the field. What should step 5 do with RawRow.bold?" The option: "RawRow.bold is built as designed and joins the pinned set beside Word.bold and Column.printed. Section 11.4 changes in the same pull request. It is a fact read from the page, like the other two." | "Pin it as a page fact (Recommended)" |
 | 4 | "From FY2024 Q1, Table P-1 prints an Aviation row with this footnote: "In FY23 and prior, positions for the Department of Aviation was reported under the Department of Commerce." So the label Commerce covers Commerce and Aviation through FY2023 Q4 (690 positions) and Commerce alone after (77). The old release keeps one Commerce entity throughout. Is Commerce an entity seam like Streets, which the step 5 check tests with paired fixtures?" The option: "Through FY2023 Q4 the row is a group entity, Commerce with Aviation, with its own row key. From FY2024 Q1 it is the Commerce department. A paired-fixture test covers FY2023 Q4 and FY2024 Q1, as for Streets. One thing stays as printed: in the four FY2024 editions the Commerce row's prior-year columns still hold the combined FY2023 number, and Aviation's are 0. I leave that for the step 6 plan." | "Yes, two entities (Recommended)" |
 
+Two numbers in what he was shown were wrong, and the Codex review found both. Questions 1 and 2
+said that 16 editions print a raised mark. Twelve do (fact 7), and 16 is the count of commentary
+pages. Question 1 said 11,620 value words. The count is 11,740 (fact 11). A rerun on the held
+files gave 12 and 11,740. Every value word still reads as a number, and every raised mark still
+has one line to join. One result is new since he answered: the rule of decision 14 also moves
+the lone margin digit of 14 pages onto its row (fact 9, shape 9). The pull request's text tells
+him all three.
+
 Question 1 said "the four rows of section 16". The rows stay as the owner saw them on November
 23, and decision 18 says where each is built now. The other option of question 1 was to build all
 five at step 5 on pages that tests build, in eight pull requests. The other options of question 3
@@ -159,8 +171,8 @@ Root tests are in `tests/`. "The fixture folder" is `packages/datadesk/tests/fix
 | C1 | The 20 editions parse with no BLOCK finding | S5-E | `test_each_edition_parses_with_no_block_finding` in `tests/test_qcmr_positions.py`, and `test_each_held_report_parses_whole` in `tests/test_held_reports.py` |
 | C2 | The no-ink-lost property holds on their fixtures | S5-E | `test_no_ink_is_lost_on_any_grid_page` in `tests/test_qcmr_positions.py` |
 | C3a | Each department label resolves through the registry | S5-E | `test_each_department_label_is_a_registry_label` in `tests/test_qcmr_positions.py` |
-| C3b | The schema carries none | S5-D | `test_the_positions_schema_spells_no_department` in `tests/test_registry_data.py`, and `test_an_entity_row_with_labels_is_refused` in `packages/datadesk/tests/core/test_rowschemas.py` |
-| C4a | The ten positions columns have ten different descriptions | S5-F | `test_no_two_published_columns_share_a_description` in `tests/test_table_catalog.py` |
+| C3b | The schema carries none | S5-D | `test_the_positions_schema_spells_no_department` and `test_a_department_spelled_in_a_form_fails_the_schema_test` in `tests/test_registry_data.py`, and `test_an_entity_row_with_labels_is_refused` in `packages/datadesk/tests/core/test_rowschemas.py` |
+| C4a | The ten positions columns have ten different descriptions | S5-F | `test_the_ten_positions_columns_have_ten_descriptions` in `tests/test_table_catalog.py` |
 | C4b | The catalog test fails when two are made equal | S5-F | `test_two_equal_descriptions_fail_the_catalog_rules` in `tests/test_table_catalog.py` |
 | C5 | Paired fixtures on both sides of each entity seam in the range resolve to different entities | S5-E | `test_streets_is_two_entities_across_fy2026` and `test_commerce_is_two_entities_across_fy2024` in `tests/test_qcmr_positions.py` |
 | L1 | From the step's list: a page with the `TABLE P-1` band and no grid captions is commentary, reported and not parsed | S5-E | `test_a_commentary_page_is_reported_and_not_parsed` in `tests/test_qcmr_positions.py` |
@@ -170,26 +182,35 @@ C1 has two tests. The first builds, for each edition, a `Document` from the fixt
 the commentary page where fact 1 lists one, then the two grid pages. It requires a `Parsed` with
 one table, no finding of severity BLOCK, the two grid pages as the table's pages, and the row
 count of fact 1. A drop pattern that removed a row would still pass C2, and the row count stops
-it. The second test parses each whole report from the folder that `DATADESK_HELD_PDFS` names, so
-`find_runs` reads every page, the table of contents among them. It skips with a message when the
-variable is unset, as in CI. The S5-E owner runs it on the held folder and records the run in the
-pull request.
+it. The second test takes its 20 editions from the index, never from a folder listing. For each
+it finds the file of that sha in the folder that `DATADESK_HELD_PDFS` names, and fails when one
+is missing. It parses the whole report, so `find_runs` reads every page, the table of contents
+among them, and makes the same five requirements as the first test. It skips with a message when
+the variable is unset, as in CI. The S5-E owner runs it on the held folder and records the run in
+the pull request.
 
-C2's test takes each of the 40 grid pages through the cut and the row match. Every word of the
-page must be in exactly one place: a header line, a prefix, a label, a cell, a stray, or a
-furniture line. Every raw row must be a keyed row or the subject of an `unknown_row` finding. The
-kit's property test of the same rule on generated pages lands in S5-C, and both tests use one
-helper.
+C2's test takes each of the 40 grid pages through `parse` and through the cut that `parse`
+makes. Every word ref of the page must be in exactly one place: a header line, a furniture line,
+a prefix, the label or a cell of an assembled row, a stray that a finding names, or a raw row
+that an `unknown_row` finding names. So a cell that assembly emptied fails it, and so does a
+stray with no finding. The kit's property test of the same rule on generated pages lands in
+S5-C, and both tests use one helper. The helper has two tests of its own: a ref taken out fails
+it, and a ref counted twice fails it.
 
-C3a's test reads each parsed table. A row whose key has a `dept` or `group` part must have an
-entity, and its label's `norm` must be the normalized form of one of
-`labels_for(registry, entity, scope)` for that edition. C3b's first test reads
-`data/rows/qcmr_positions.toml`: no row with an `entity` has `labels`, and every label in the file
-is `Civilian`, `Uniform` or `TOTAL ALL FUNDS`.
+C3a's test reads each parsed table. A row with an entity must have a label whose `norm` is the
+normalized form of a name from `labels_for(registry, entity, scope)` for that edition, put
+through one of the row's `forms`, so `Police - Total` comes from the name `Police`. Every `item`
+and `subtotal` row has an entity. A row with none is a `breakdown` row, whose parent has one, or
+the root, whose parent is `None`. C3b's first test reads `data/rows/qcmr_positions.toml`. No row
+with an `entity` has `labels`. Every label in the file is `Civilian`, `Uniform` or `TOTAL ALL
+FUNDS`. Every form is `{name}` or `{name} - Total`. The second test puts `{name} Police` among a
+row's forms in a copy of the file and requires the first test's rule to fail.
 
-C4b's test runs the catalog rules on a copy of the positions `MeasureSet` in which
-`adopted_other` has the description of `adopted_general`, and requires the report to name both
-columns.
+C4a's test looks the table up with `entry("qcmr_positions")`. It requires the ten column names
+of design section 5.1, in order, a published meaning for each, and ten different descriptions.
+The prototype's rule skips a column that is `NotPublished`, so two such columns would pass it.
+C4b's test runs the same function on a copy of the entry in which `adopted_other` has the
+description of `adopted_general`, and requires the report to name both columns.
 
 C5's tests parse `qcmr_2025_06_30_p32` and `qcmr_2025_09_30_p36` for `Streets`, and
 `qcmr_2023_06_30_p32` and `qcmr_2023_09_30_p33` for `Commerce`, each with the other grid page of
@@ -205,7 +226,8 @@ pull request that builds a shape records it in `docs/design.md` and in
 1. **Decision 14** (answer 2). In `group_lines`, a word under 0.7 of a line's median word height
    joins that line when the line's top is above the word's bottom edge and the line's bottom is
    at or below it. A word that two lines hold joins the one whose bottom is nearer, and stays a
-   line of its own on a tie. Every other word groups as it does today.
+   line of its own on a tie. Every other word groups as it does today. On the 56 pages the rule
+   moves the 32 marks of fact 7 and the 14 margin digits of fact 9, and no other word.
 2. **`PageLines` carries the page's rules.** `cut_pages` takes `PageLines`, and shape 4 needs the
    rules. `page_lines` copies them from the `Page`.
 3. **Lanes come from values.** `cut_pages` calls `lanes_from_values` on every page. The design
@@ -228,24 +250,27 @@ pull request that builds a shape records it in `docs/design.md` and in
    nine fund columns have the captions `General`, `Other` and `Total` and the three group
    captions. The tenth has `\(OVER\)\s*UNDER` and no group. The regexes of design section 5.1
    are in title case and fail on all 40 pages.
-6. **The run starts at the first page with captions.** `cut_pages` chooses the era from the
-   first page of the run whose header text matches an era. The header of a page with no body
-   start is all of its lines. Each page before that one is not cut and gives one WARN finding,
-   `commentary_page`. A later page that matches no era stops the table, as designed.
+6. **The run starts at the first page with captions.** A page of the run is commentary when its
+   text holds no signature regex of any era. `cut_pages` does not cut a commentary page that
+   comes before the first grid page, and gives one WARN finding for it, `commentary_page`. It
+   chooses the era from the first page that is not commentary. A page that holds some of an
+   era's signature and not all of it stops the table, first page or not, and so does a
+   commentary page after a grid page. So a grid page that lost one caption is never taken for
+   commentary.
 7. **A number beside a label word is label text.** In `lanes_from_values`, a number word that
    stands closer than its line's median word height to a word on its left that is not a number
    seeds no lane. A `(1)` after `Services` is about 2 points away, the first value of a row at
    least 38.94, and the median height 7.44 (facts 7 and 8). `cut_line` then puts the mark left
    of `label_right`, and `parse_label` takes it off the label.
 8. **What is furniture.** `slice_body` also returns as furniture each line below the stop line
-   and each body line that holds only prefix words. So the notice, the page number at the foot
-   (fact 9) and the lone margin `2` have a place in the ink count.
-9. **The margin page numbers leave by the prefix rule.** The design's `prefix` of
-   `(?:\d{1,2}|I)` takes the joined digit off its row before lanes are found (QPOS-Q10), so the
-   row's `Label.text` is right and `Label.printed` keeps the digit. The note in
-   `docs/plan-notes.md` proposed dropping the digits before lines are grouped. That needs a new
-   kit rule, and the kit already has this one. Which label field a release prints is for the
-   step 6 plan.
+   and each body line that holds only prefix words. So the notice below `TOTAL ALL FUNDS` and
+   the page number at the foot (fact 9) have a place in the ink count.
+9. **The margin page numbers leave by the prefix rule.** Shape 1 puts both digits of a margin
+   page number on one row (fact 9). The design's `prefix` of `(?:\d{1,2}|I)` takes both off the
+   row before lanes are found, so the row's `Label.text` is right, and `Label.printed` and the
+   row's prefix keep the digits. The note in `docs/plan-notes.md` proposed dropping the digits
+   before lines are grouped. That needs a new kit rule, and the kit already has this one. Which
+   label field a release prints is for the step 6 plan.
 10. **The P-1 body.** It starts at the first known row and stops at `TOTAL ALL FUNDS`. Its drop
     patterns take a line that starts with `(N)` and a space, and the `NOTE:` line (fact 10).
     Shape 1 joins each raised footnote mark to its footnote, so the first pattern finds it.
@@ -261,22 +286,28 @@ pull request that builds a shape records it in `docs/design.md` and in
     `resolve.py`. `resolve`, `resolve_fund` and `normalize_printed_code` wait for the first
     grammar table, at step 8, and `lint_registry` for step 13, as section 15 says. A label that
     two rows claim in one edition is an `ambiguous_row` finding of `match_rows`, which C1
-    reads. The data is the entities that the 62 labels of fact 12 need, with the ids of the old
-    `config/entities.yml` so that step 6 can compare by entity: `departments.toml`,
+    reads. The data is the entities that the 62 labels of fact 12 need: `departments.toml`,
     `groups.toml`, `aliases/qcmr_positions.toml`, and `funds.toml` with `phl_fund_general` and
-    `phl_fund_other`, which the fund columns name. A name carries fiscal years where the label
-    changes (`Fleet Management`, `Office of Arts and Culture`).
+    `phl_fund_other`, which the fund columns name. A department keeps its id from the old
+    `config/entities.yml`. The two groups of shape 15 do not: the old file calls the first
+    `phl_rollup_streets_and_sanitation` and has no second. A name's range is whole fiscal years,
+    and two spellings change inside a year: `Fleet Management` prints in FY2022 Q1 alone, and
+    `Creative Philadelphia` starts at FY2025 Q3. Each of those two is an alias with the shas of
+    its editions, so `Fleet Management` is no label of `2021-12-31` and `Creative Philadelphia`
+    none of `2024-12-31`.
 15. **The seams** (answer 4, fact 13). `phl_group_streets_sanitation` under the key
     `group=streets_with_sanitation` through `2025-06-30`, then `dept=phl_dept_streets`, as in
     design section 5.1. `phl_group_commerce_aviation` under `group=commerce_with_aviation`
     through `2023-06-30`, then `dept=phl_dept_commerce`. A row that some editions do not print
     (fact 12) has `periods` for the editions that do.
 16. **A loader's refusal has a type.** `load_registry` and `load_row_schema` return their value
-    or `Refused(findings)`, a frozen dataclass in `core/domain.py`, and each caller ends its
-    `match` in `assert_never` (`docs/principles.md`, section 8.3). The design gives
-    `tuple[Finding, ...]`. `parse` tells `PageRun` from `Finding` with `match`, where the design
-    writes `isinstance`. `load_catalog` and `gather_repo` keep their tuples, since step 5 does not
-    change their files.
+    or `Refused(findings)`, a frozen dataclass in `core/registry/load.py` that `rowschemas`
+    imports, and each caller ends its `match` in `assert_never` (`docs/principles.md`, section
+    8.3). The design gives `tuple[Finding, ...]`. `parse` tells `PageRun` from `Finding` with
+    `match`, where the design writes `isinstance`. Step 5 changes neither `core/catalog.py` nor
+    `core/domain.py`, so `load_catalog` keeps its tuple, and the edition id, the `listed_at`
+    stamp and the URLs keep their `str` (`docs/progress.md`, "What the type rules leave for later
+    steps").
 17. **Records at step 5.** `core/context.py` as designed. `core/records.py` gains `TablePages`,
     `declared_run` and `illegible_pages`, which `parse` calls with no record. No loader is
     built, because no record exists for these 20 editions (fact 11). Each loader lands with its
@@ -292,6 +323,12 @@ pull request that builds a shape records it in `docs/design.md` and in
     table" cannot hold with one table, and joins at the step that builds the last table.
 20. **No shell part.** Step 5 adds no command. `LocalCache` joins `Deps` at the step that builds
     `run_parse`.
+21. **The port of `measures.py` takes the design's names.** The prototype differs from design
+    sections 2.2 and 3.2 in four places, and the design wins in each. `describe` becomes
+    `description`. `measure_for` takes a `RowKey`. `Scope` holds `edition`, `table`, `printed`
+    and `actual_through`, where the prototype holds a period, a stage and an instance.
+    `scope_for` returns the scope and the ids of the notes it used. The port uses the `Period`
+    of `core/domain.py` and adds no second one.
 
 ## Pull requests
 
@@ -312,12 +349,17 @@ Builds on `main`. `feat(checkedtables): join a small raised word to the line tha
   16 commentary pages (fact 1). `p1.py` holds the table of fact 1 as a literal, and every later
   test reads its pages and row counts from it.
 - Owns L2. Proves shape 1 on built pages, one test for each detail and one for a word of full
-  size that stays on its own line. Proves on the fixtures that each raised mark of fact 7 is on
-  the line of its row or its footnote, in all 16 editions, and that no line of a grid page is a
-  lone `(N)`.
-- Runs, each recorded in the pull request: `datadesk fixture` against R2 from an empty word
-  cache, and `test_each_word_fixture_regenerates_byte_identical` on the held folder. The 20
-  fixtures of step 4 keep their bytes, and the tests of `tests/test_row_crops.py` pass unchanged.
+  size that stays on its own line. Proves on the fixtures that each of the 32 raised marks of
+  fact 7 is on the line of its row or its footnote, in the 12 editions from `2023-09-30`, with
+  `Human Services (1)` on page 33 of `2026-06-30` among them, and that no line of a grid page is
+  a lone `(N)`. Proves that on the 14 pages of fact 9 both margin digits are on one row's line.
+  Proves, by word ref, that no other word of the 56 fixture pages changes its line.
+- Runs, each recorded in the pull request. `datadesk fixture` reads the archive on R2 from an
+  empty word cache, as `uv run --env-file /Users/nhand/DataProjects/phillyledger/.env datadesk
+  fixture <sha> <pages>` from the worktree (`docs/progress.md`, "The archive bucket from a
+  worktree"). `test_each_word_fixture_regenerates_byte_identical` runs on the held folder. The
+  20 fixtures of step 4 keep their bytes, and the tests of `tests/test_row_crops.py` pass
+  unchanged.
 
 ### S5-B, `step-05/b-cut`: from lines to raw rows
 
@@ -332,7 +374,8 @@ Builds on S5-A. `feat(checkedtables): cut a table's pages into raw rows by capti
   no era, two eras and a date outside the range. A missing required caption is `column_unbound`
   (the test of design section 11.3). Two groups that trade places bind to no wrong name. A
   mark beside a label seeds no lane. A page that binds other columns than the first gives
-  `columns_differ_by_page`. A commentary page first gives one WARN and is not cut.
+  `columns_differ_by_page`. A commentary page first gives one WARN and is not cut. A first grid
+  page that lost one signature caption, before an intact second one, stops the table.
   `bind_by_position` binds only a page that the caller names.
 - Proves on the 40 grid fixtures, with the module's `ERAS`: ten lanes, four bands, and the ten
   columns bound left to right with the group each band prints. Each body row cuts to a label
@@ -351,8 +394,9 @@ Builds on S5-B. `feat(checkedtables): match rows to a schema and assemble a tabl
   block, so `Civilian` under three parents gives three keys. An exact match beats a prefix. A
   dash rule and a reading change a cell and are named in `used`. An unreadable cell with no
   reading blocks. An OCR word under the floor is `low_confidence`.
-- Proves with Hypothesis: no ink is lost on a generated table page, and every total or subtotal
-  row of an assembled table has children or holds no `Amount` (design section 11.2).
+- Proves with Hypothesis that no ink is lost on a generated table page, through assembly, with
+  the helper and its two tests of C2. The rule of design section 11.2 on a total with no parts
+  has an exception that names two checks, so it waits for the coverage of step 6.
 
 ### S5-D, `step-05/d-registry`: the registry and the row schema
 
@@ -366,10 +410,12 @@ Builds on S5-C. `feat(datadesk): keep department spellings in a registry and row
   holds only in its tables, its years and its editions. `forms` builds `Police - Total` from the
   registry name. A row outside its `periods` leaves the schema. An entity row with labels, a
   sha that is not one, and text that is not TOML are each `Refused`.
-- Proves on the data files: every file loads. In each of the 20 editions the schema holds one
-  row for each label that fact 12 lists for it and no other entity row. The schema of
-  `2025-06-30` holds the Streets group and that of `2025-09-30` the department, and the same for
-  Commerce at `2023-06-30` and `2023-09-30`.
+- Proves on the data files: every file loads. The schema of each edition has the row count of
+  fact 1, with `Civilian` and `Uniform` under each of the three parents. Each label of the table
+  in fact 12 is a label of the schemas of the editions that the table lists, and of no other.
+  The two aliases of shape 14 hold in their editions alone. The schema of `2025-06-30` holds the
+  Streets group and that of `2025-09-30` the department, and the same for Commerce at
+  `2023-06-30` and `2023-09-30`.
 - The owner of this pull request may match the cut rows of the fixtures against its schemas to
   get the data right. The clause tests through `parse` are S5-E's.
 
@@ -383,12 +429,13 @@ Builds on S5-D. `feat(datadesk): parse QCMR Table P-1 from the whole report`.
 - Owns C1, C2, C3a, C5 and L1. Builds `parse` as design section 5.1 gives it, with shapes 9, 10,
   16 and 17. L1's test requires one `commentary_page` finding that names the page in each of the
   16 editions of fact 1, and none in the other four.
-- Also proves on the fixtures: the 14 rows of fact 9 have the label of fact 12 in `Label.text`
-  and the digit in their prefix. The `(1)` of `2025-06-30` is the cell -1 and no mark (fact 11).
-  Each of the three parents has its two children as `breakdown` rows, and every other row hangs
-  under `line=total_all_funds`.
+- Also proves on the fixtures: the 14 rows of fact 9 have a label with no digit in `Label.text`
+  and both margin digits in their prefix. The `(1)` of `2025-06-30` is the cell -1 and no mark
+  (fact 11). Each of the three parents has its two children as `breakdown` rows, every other
+  row hangs under `line=total_all_funds`, and that row has no parent. On every first grid page
+  the footnotes and the notice are furniture, and no finding names them.
 - Shows, in the pull request, C1's first test failing when a required row is taken out of a copy
-  of one fixture, and C2's test failing when the notice pattern is removed.
+  of one fixture.
 
 ### S5-F, `step-05/f-vocabulary`: what each column means
 
@@ -398,26 +445,28 @@ Builds on S5-E. `feat(datadesk): describe each positions column in the closed vo
   `tables/qcmr_positions.py` for `measures`, `datadesk/tests/core/test_vocab.py`,
   `test_measures.py`, `tests/test_table_catalog.py`.
 - Owns C4a and C4b. Ports `vocab.py` and `measures.py` from `docs/prototype/vocab/`, never
-  importing from it, with `DEFINITIONS`, shapes 18 and 19, and the six list pins in
+  importing from it, with `DEFINITIONS`, shapes 18, 19 and 21, and the six list pins in
   `test_closed_lists_are_pinned`.
-- Proves, from the prototype's tests: a budget with no version and a version on an actual are
+- Proves, through `entry("qcmr_positions").measures` with a `Scope` that `scope_for` builds and
+  the fund ids of `funds.toml`: a budget with no version and a version on an actual are
   refused. The quarter-end count of FY2024 Q4 and the prior-year count of FY2025 Q1 are one
   subject, and that of FY2024 Q2 is another. An operand that is not a column fails the catalog
-  rules.
+  rules, and so does a fund id that the registry lacks.
 - Sets the step's row in `docs/progress.md`.
 
 ## Risks to probe
 
-1. **Shape 1 changes `group_lines` for every page.** S5-A shows the 20 fixtures of step 4 and
-   the step 2 tests unchanged. If a word that is not a mark joins a line on any of the 76
+1. **Shape 1 changes `group_lines` for every page.** S5-A shows the step 2 tests unchanged. The
+   probe applied the rule to the lines that `group_lines` makes today, and S5-A builds it inside
+   the grouping. If any word but the 32 marks and the 14 margin digits changes its line on the 56
    fixture pages, S5-A stops for the owner.
 2. **Bands need drawn rules.** A scan has none, so a spec with a group cannot bind there
    (shape 4). The note for step 7 says so.
 3. **The limit of shape 7 is sized on one table.** It sits between about 2 and 38.94 points here.
    A later table with tighter columns fails with a missing value, never with a wrong one.
-4. **Fact 7 checked four pages for shape 1, and fact 3 checked three commentary pages.** S5-A
-   and S5-E prove both on every page. A mark with two host lines, or a commentary page that
-   prints a signature caption, stops the pull request for the owner.
+4. **Facts 5 and 8 rest on eight pages each.** S5-B proves the bands and the lanes on all 40. A
+   page whose rules do not cross its last header line, or whose label ends within 7.44 points
+   of its first number, stops the pull request for the owner.
 5. **The registry data is typed from the old file.** A wrong year range shows as `missing_row`
    or `unknown_row` on a fixture in S5-D, and the row counts of fact 1 are a second check.
 6. **Codex's sandbox reads neither R2 nor the held folder.** The owner agent records the runs
@@ -433,8 +482,35 @@ Builds on S5-E. `feat(datadesk): describe each positions column in the closed vo
 the plan of the step that builds decision 13, the note on join shape 1 names the step that builds
 decision 16, and the note on `extract_words` names step 6. New notes: for step 6, the label
 field a release prints (shape 9), the FY2024 prior-year columns of `Commerce` (answer 4), the
-rows that some editions do not print (fact 12), and the check DSL with the catalog rule that
-needs it (shapes 18 and 19). For step 7, that a group needs rule bands (shape 4), that the
-leading numbers of QPOS-Q10 are the margin page numbers of fact 9, and that the captions of
-shape 5 are those of FY2022 to FY2026. For the step that builds the last table, the catalog rule
-on `Quantity` (shape 19). Each Build session removes the notes it acts on.
+two group ids that the old release lacks (shape 14), the rows that some editions do not print
+(fact 12), the check DSL with the catalog rule that needs it (shapes 18 and 19), and the rule
+on a total with no parts. For step 7, that a group needs rule bands (shape 4), that the leading
+digits of seven text-layer editions are margin page numbers (fact 9) while QPOS-Q10 leaves
+those of the scans open, and that the captions of shape 5 are those of FY2022 to FY2026. For
+the step that builds the last table, the catalog rule on `Quantity` (shape 19). Each Build
+session removes the notes it acts on.
+
+## Codex review
+
+Codex reviewed commit `939383d4` on November 27, 2026. Its report is
+`.codex-review/step-05-plan-939383d4.md`. It raised fourteen findings, six as blocking. Each was
+checked against a run on the held files, the fixtures or the quoted lines. All fourteen held,
+and the plan above is revised for each. Finding 10 is answered with the alias that Codex names
+on one side of each change, and not on both, with the reason.
+
+| # | Finding | How it was confirmed | What changed |
+|---|---|---|---|
+| 1 | The rule of decision 14 also joins the lone margin `2`, which met S5-A's own stop | Rerun on all 56 pages: the rule moves 32 marks and 14 margin digits, each to one line, and no other word | Fact 9, shapes 1, 8 and 9, S5-A and risk 1. The step 7 note claims only the seven text-layer editions |
+| 2 | Twelve editions print a raised mark, not 16. The cells are 11,740 and the negatives 47. The fixtures are 56, not 76 | Rerun: 1,174 rows, 11,740 `Amount`, 47 negatives in the tenth column, 12 editions with a mark on a line of its own | Facts 1, 7 and 11, the paragraph under the owner's answers, S5-A, risk 1, and the rows of decisions 18 and 19 in the design |
+| 3 | C3a refused `Police - Total` and its `Civilian` row | Design section 5.1: the parent's label comes from `forms`, and the child's key has a `dept` part and no entity | C3a reads the forms, and S5-D counts `Civilian` under three parents |
+| 4 | C3b passed with a department spelled in `forms` | The test read `labels` alone | C3b lists the forms the file may hold, and a second test plants one |
+| 5 | C2 stopped before assembly, took a stray with no finding, and its shown failure would not fail | Design section 11.2 names the finding, and shape 8 makes the notice furniture | C2 reads the assembled rows and the findings, the helper has two tests, and S5-E proves the notice apart |
+| 6 | C4a passed with two columns that are `NotPublished` | `test_vocab.py`, line 36, skips such a column | C4a requires ten names, ten published meanings and ten descriptions, through `entry` |
+| 7 | The whole-report test took its inputs from a folder that holds 21 PDFs | `ls` of the held folder: 21 | C1's second test takes the 20 editions from the index and fails on a missing file |
+| 8 | A first grid page that lost one caption would be taken for commentary | Shape 6 as written | Shape 6: commentary holds no signature regex at all. None of the 16 pages does (fact 3). S5-B tests the damaged page |
+| 9 | The rule on a total with no parts needs the check DSL | Design section 11.2 names `ColumnSum` and `CellsEqual` in its exception | S5-C drops it, and the step 6 note takes it |
+| 10 | A fiscal-year range cannot mark a spelling that changes inside a year | `Dated` holds `first_fy` and `last_fy` alone. Fleet changes inside FY2022 and Arts inside FY2025 | Shape 14 and S5-D: the spelling that prints for part of a year is an alias with shas. The other spelling of the same entity stays a name for the whole year, since either one gives the same key |
+| 11 | `Refused` in `core/domain.py` would bring that file's waiting type work into step 5 | `docs/progress.md`, lines 60 to 69, and `domain.py`, lines 52, 100 and 101 | Shape 16: `Refused` is in `core/registry/load.py` |
+| 12 | The port of `measures.py` did not name what changes from the prototype | `measures.py` of the prototype, lines 100, 186 and 199, beside design sections 2.2 and 3.2 | Shape 21 and S5-F |
+| 13 | Two new ids have no match in the old release | `config/entities.yml` of the old repo, lines 765 and 1557 | Shape 14 and the step 6 note |
+| 14 | S5-A did not say how its R2 run gets its keys | `docs/progress.md`, "The archive bucket from a worktree" | S5-A names the command |

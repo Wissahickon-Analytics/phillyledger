@@ -515,9 +515,10 @@ file, `docs/progress.md`, `docs/followups.md` or `docs/deviations/`.
   `run_parse`.
 - **What step 5 leaves for the step 6 plan** (November 27, 2026, the step 5 plan). Fact, shape
   and answer numbers are those of `docs/plans/step-05.md`.
-  - Which label a release prints. On 14 rows of seven editions the reader joins a digit of the
-    margin page number to the row, as in `5 First Judicial District` (fact 9). The prefix rule
-    takes it off, so `Label.text` is right and `Label.printed` keeps the digit (shape 9).
+  - Which label a release prints. On 14 rows of seven editions the two digits of the margin
+    page number end up on the row's line, before a label such as `First Judicial District`
+    (fact 9). The prefix rule takes them off, so `Label.text` is right and `Label.printed` keeps
+    the digits (shape 9).
   - The prior-year columns of `Commerce` in the four FY2024 editions. They hold the FY2023 number
     for Commerce with Aviation, 690, under the key of the Commerce department, and Aviation's
     read 0 (fact 13, answer 4). The publisher restated the prior-year columns for `Streets` in
@@ -525,15 +526,26 @@ file, `docs/progress.md`, `docs/followups.md` or `docs/deviations/`.
   - Rows that some editions do not print. `City Representative` is absent from nine editions
     and `Office of Arts and Culture` from five, and no page says where their positions are
     counted then (fact 12). The all-funds check will show whether the totals still tie.
+  - Two ids that the old release lacks. A department keeps its id from the old
+    `config/entities.yml`, so step 6 can compare by entity. The old file files `Streets` through
+    FY2025 under `phl_rollup_streets_and_sanitation`, where step 5 has
+    `phl_group_streets_sanitation`. It files `Commerce` through FY2023 under `phl_dept_commerce`,
+    where step 5 has `phl_group_commerce_aviation` (shapes 14 and 15).
   - The check DSL. `checks/dsl.py`, `checks_for` and the `checks_for` field of `TableEntry` are
     step 6's (shape 18). So is the catalog rule that compares a check's operands with the
     operands of a derived column (shape 19).
+  - A total with no parts. Design section 11.2 says that every total or subtotal row of an
+    assembled table has children or holds no `Amount`, but for a row that a declared
+    `ColumnSum` or `CellsEqual` names. The exception needs the check DSL, so the rule is for the
+    coverage of step 6 and not for `assemble`.
 - **What step 5 leaves for the step 7 plan** (November 27, 2026, the step 5 plan).
   - A group caption binds by the band between two drawn rules (shape 4). A scanned page has no
     rule, so a column with a `group` cannot bind there. Step 7 reads the scans and decides what
     bounds a group on them.
-  - The leading numbers of QPOS-Q10, such as `24 First Judicial District`, are digits of a
-    sideways page number in the left margin. Seven text-layer editions print one (fact 9).
+  - In seven text-layer editions, a digit that leads a row, as in `5 First Judicial District`,
+    is half of a sideways page number in the left margin (fact 9). QPOS-Q10 lists leading
+    numbers in older editions, such as `24 First Judicial District`, and leaves their origin
+    open. Step 7 checks whether they are the same thing.
   - The P-1 captions of step 5 are written as FY2022 to FY2026 print them, in capitals (shape
     5). Older editions may print other forms.
 - **The catalog rule on `Quantity`, a note for the plan of the step that builds the last
