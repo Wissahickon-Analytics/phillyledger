@@ -95,3 +95,13 @@ why, the run that shows it, and the design section updated. Fact and shape numbe
   `match` in `assert_never`. The `row_line` tests failed with the rule flipped, with the first
   of two lines picked and with the label matched anywhere in a line. Design sections 4, 9 and
   12.3.
+- **The step 4 cleanup** (November 27, 2026, the step 4 cleanup). Design section 4 no longer says
+  a broken media box or crop box at or before the last page asked for stops the read, since
+  pdfminer reads `/CropBox [0 0]` and `/MediaBox [0 0]` with a warning. It no longer says the
+  error for a missing page, or for a PDF with no page, is chained, since its `__cause__` is
+  `None`. Sections 1.4 and 12.3 no longer say each command reads the clock once, since `fixture`
+  and `crops` read none. Section 1.4 lists the reader's cache adapter again, as sections 4.6 and
+  12.2 do, and section 12.3 names `render_fixture`. `decode_document` now refuses a number such
+  as `1e400` that reads as an infinity, as its docstring and section 3.2 already said, and
+  `test_decode_refuses_bytes_that_are_not_an_encoded_document` failed on it before the guard.
+  Design sections 1.4, 4, 4.2 and 12.3.
