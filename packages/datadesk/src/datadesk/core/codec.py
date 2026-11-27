@@ -63,7 +63,9 @@ def decode_document(data: bytes) -> Document:
         key, a value of the wrong JSON kind, and a value that a kit constructor refuses.
     """
     text = data.decode("utf-8", "surrogatepass")
-    fields = _checked(loads(text, parse_float=_finite, parse_constant=_refuse), _OBJECT, "the bytes")
+    fields = _checked(
+        loads(text, parse_float=_finite, parse_constant=_refuse), _OBJECT, "the bytes"
+    )
     if (number := _field(fields, "format", _INT)) != FORMAT:
         raise ValueError(f"the bytes are of format {number}, not {FORMAT}")
     pages = tuple(_page(page) for page in _items(fields, "pages"))
