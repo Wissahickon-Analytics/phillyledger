@@ -293,3 +293,59 @@ by its title is in `docs/plan-notes.md`, `docs/progress.md` or `docs/deviations/
     whitespace (pull request 36).
   - An endpoint with no scheme ends `main` in a `ValueError` traceback from inside `s3_store`. It
     prints no key (pull request 36).
+- **Follow-ups after step 4** (November 27, 2026). Step 4's five pull requests, 46, 47, 49, 50
+  and 51, found these and did not fix them. The owner was sent the step's 55 follow-ups with a
+  proposed sort and answered "Take the sort", which kept these 24. The step 4 cleanup closed 20
+  others (`docs/plans/step-04-cleanup.md`).
+  - `DirCache.get` and `keys` disagree. On a case-insensitive file system, `get` reads an
+    upper-case name that `keys` skips. `keys` lists a folder named by a key, and `get` of it
+    raises `EffectError` (47-1).
+  - `WordJob` accepts a `cache_key` built for another page set, and the positive constructor test
+    passes one (47-2).
+  - `test_a_word_key_changes_with_the_format_number` patches the planner's copy of `FORMAT`. It
+    passes when `parse_plan.py` holds its own `FORMAT = 1` (47-5).
+  - The cache contract passes when `DirCache.put` writes straight onto the key's file, with no
+    rename (47-6).
+  - A failed put leaves its `.part` file. `uuid4()` runs outside the `try`, so an `OSError` from
+    it would not become `EffectError` (47-7).
+  - Deeply nested JSON makes `decode_document` raise `RecursionError`, not `ValueError` (47-13).
+  - `word_key` writes its JSON with `ensure_ascii`, so a tool string with a high then a low
+    surrogate gets the key of the one character they stand for. The adapter's tool string is
+    ASCII (47-14).
+  - `words` refuses `/Rotate 90.0` and `render` draws it. `/Rotate true` gives rotation 1,
+    `/Rotate -90` gives 270, and a rotation of 45 passes. Design section 4 says pdfplumber gives
+    `/Rotate` as written (49-2).
+  - The median test cannot tell the median from the largest or the first glyph's size. Glyphs at
+    10.5, 12 and 11 in one word would (49-7).
+  - `words` of a PDF with no page returns a `Document` with no pages, where `page1_text` and
+    `render` raise (49-8).
+  - Two overlapping runs of `fixture` for two versions of one edition can both succeed, and the
+    older one replaces the newer one's file. The sha check runs before the PDF is read, and the
+    replace is unconditional (50-1).
+  - `zip(targets, document.pages, strict=True)` in `fixture_command` checks only the count. A
+    cache entry copied under the wrong key writes page 36's words into `..._p35.py` (50-2).
+  - `root = Path.cwd()` in `fixture` runs before the `try` that design section 9 says covers
+    building the ports, so a vanished working directory raises `FileNotFoundError` out of `main`.
+    `crops` reads it inside its `try` (50-4).
+  - The stage part of a fixture's name has no test. A mutant that drops it passed (50-7).
+  - The refusal of a fixture file that holds no `SHA` line has no test. A mutant that lets such a
+    file be overwritten passed (50-8).
+  - Two versions of one edition in one crop file write the same image names, and the later one
+    wins (51-2).
+  - A `crops` run that stops on a label, or one with fewer rows, leaves the `rows/` files and
+    `sheet.png` of an earlier run in place (51-3).
+  - A caption longer than the contact sheet is cut off. A page 612 points wide gives a sheet 1,700
+    pixels wide. The captions of the 20 grid pages fit their 2,200 pixels (51-4).
+  - Two runs of `crops` at once share one temporary file name, the choice the design makes for
+    `fetch` and `fixture` too (51-5).
+  - A `crops` run with an empty word cache reads each PDF from the store twice, once to extract
+    and once to draw (51-6).
+  - An interior department passes as a page's first row in the C4 tests. The owner chose to keep
+    it a follow-up on November 26, 2026, and again on November 27, 2026. His look at the contact
+    sheet and Codex's `pdftotext` match of both boundary rows on 20 of 20 pages stand for it
+    (51-8).
+  - Two bands of one sha can trade files and every test passes (51-9).
+  - No test holds the sheet back for a row with values and no `crop_label`. With
+    `and row.crop_label` removed from `crops_command`, 82 tests pass (51-11).
+  - No test holds `CropsStopped` for a checkout that cannot be read. With a `RuntimeError` there,
+    82 tests pass (51-12).

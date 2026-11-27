@@ -439,7 +439,7 @@ def _write(target: Path, data: bytes) -> Path:
     return target
 
 
-def _fixture_sha(path: Path) -> str | None:
+def _fixture_sha(path: Path) -> Sha256 | None:
     """Return the sha that the ``SHA`` line of a fixture `render_fixture` wrote names, or None."""
     found = _FIXTURE_SHA.search(path.read_text(encoding="utf-8"))
-    return None if found is None else found.group(1)
+    return None if found is None else Sha256(found.group(1))

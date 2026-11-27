@@ -62,8 +62,9 @@ publisher listings --watch--> WatchPlan --exec--> pull request (index lines, gap
 | Textract | `OcrService` | `datadesk.shell.adapters.textract` | the `ocr` executor only, and only with `--spend` |
 | PDF words, rules and page-1 text | `PdfReader` | `datadesk.shell.adapters.pdf_pdfplumber` | `fetch` and `words` executors |
 | Local content-addressed cache | `LocalCache` | `datadesk.shell.adapters.cache_dir` | executors |
+| The reader's local cache of downloads | the reader's cache port (section 4.6) | `phillyledger._shell.cache_dir` | the reader's `load` |
 | Git and pull requests | `GitHost`, from step 13 | `datadesk.shell.adapters.github` | the `watch` executor. At step 3, `fetch_command` writes the index file into the checkout and the session opens the pull request |
-| Clock | none; each command in `cli.py` reads the time once and passes it down, as a `date` to `fetch_command` and `run_watch` and a `datetime` to `release_command` | `datadesk.shell.cli` | CLI entry only |
+| Clock | none; `cli.py` reads the time and passes it down, as a `date` to `fetch_command` and `run_watch` and a `datetime` to `release_command` | `datadesk.shell.cli` | CLI entry only |
 | Environment | none; `load_settings(environ)` returns a frozen `Settings` once | `datadesk.shell.settings` | CLI entry only |
 | Repository files (TOML records, index, schemas) | none; `gather_repo` reads each file's text once and passes it to a pure loader, and the values make a `RepoSnapshot` | `datadesk.shell.gather` | CLI entry only |
 | Logging and progress | none; findings are values | `datadesk.shell.report` | executors |
@@ -2639,18 +2640,18 @@ page that pdfminer's `PDFPage.create_pages` yields to pdfplumber's `Page` and bu
 so a broken box on a later page does not hide the cover. In pdfplumber 0.11.10 the document's page
 list has pdfminer build every page, even when `pages=[1]` limits the pages pdfplumber builds, and
 `close` builds that list again, so the reader uses neither. Any `Exception` raised while pdfplumber
-opens the PDF and reads page 1 becomes `EffectError`, chained, as for bytes it cannot open, a PDF
-with no page or a box on page 1 that pdfminer or pdfplumber cannot read. The two libraries raise
+opens the PDF and reads page 1 becomes `EffectError`, chained, as for bytes it cannot open or a
+box on page 1 that pdfminer or pdfplumber cannot read. The two libraries raise
 many types on a malformed PDF, such as `TypeError` for a box that is one number, `IndexError` for a
 box of two numbers and `MalformedPDFException` for a box that holds a name.
 
 `words` and `render` walk the pages the same way and build none after the last page asked for.
 pdfminer builds the pages in turn and reads each one's media box and crop box, so a broken one of
-those after that page does not stop the read, and one at or before it does (step 4 plan, fact 10).
+those after that page does not stop the read (step 4 plan, fact 10).
 The reader builds pdfplumber's page only for a page asked for, so a box that pdfplumber alone reads,
 such as an art box, stops the read only on such a page. A page the file lacks, and any `Exception`
-the libraries raise on a page at or before the last page asked for, becomes `EffectError`, chained,
-whose message names the page. pdfplumber's `extract_words` runs with `x_tolerance=2`,
+the libraries raise on a page at or before the last page asked for, becomes `EffectError` whose
+message names the page. pdfplumber's `extract_words` runs with `x_tolerance=2`,
 `y_tolerance=2`, `use_text_flow=True` and `extra_attrs=["fontname"]`, the old backend's options,
 held in one table that the tool string also reads. A word's text is what pdfplumber returns, a font
 code included. Its size is the median size of its glyphs, and it is bold when its font's name holds
@@ -2770,9 +2771,9 @@ typer app, returns the integer code of a `SystemExit` that reaches it, and lets 
 exception propagate. Section 9 lists the exit codes. At step 3 `fetch` was the app's
 one command, and step 4 adds `fixture` and `crops`. An `@app.callback()` holds the tool's help
 line, because typer runs an app that has one command and no callback as that command, and then
-reads `fetch` as the source. At step 3 `--saved` is required. The City refuses a client that is not a browser (step 3 plan, facts
-6 and 11), so no command sends the City a request. A browser saves the listing and the reports,
-and the command reads the saved folder.
+reads `fetch` as the source. At step 3 `--saved` is required. The City refuses a client that is
+not a browser (step 3 plan, facts 6 and 11), so no command sends the City a request. A browser
+saves the listing and the reports, and the command reads the saved folder.
 
 The `fetch` command reads the clock once, calls `load_settings` once for the four
 `DATADESK_R2_*` variables, and reads the working directory as the checkout. It builds `Deps` from
@@ -4673,7 +4674,7 @@ kit size report that CI prints does.
 | `core/registry/resolve.py` | `resolve`, `resolve_fund`, `labels_for`, `normalize_printed_code` | 190 |
 | `core/registry/lint.py` | `lint_registry` | 170 |
 | `core/ocr.py` | `textract_to_document` | 90 |
-| `core/codec.py` | encode and decode `Document` and `ParseResult` | 220 |
+| `core/codec.py` | encode and decode `Document` and `ParseResult`; `render_fixture` | 220 |
 | `core/words_audit.py` | `compare_sources` | 90 |
 | `core/parse_plan.py` | `WordKey`, `word_key`, `WordJob`, `ParseJob`, `ParsePlan`, `OcrPlan`, `plan_parse`, `plan_ocr`, `parse_context`, `run_parse_job` | 215 |
 | `core/vintage.py` | `VintagePolicy`, `select_canonical` by `Subject` | 100 |
@@ -4728,7 +4729,7 @@ kit size report that CI prints does.
 | `shell/run_parse.py` | parse executor | 90 |
 | `shell/run_release.py` | release executor | 75 |
 | `shell/report.py` | printing findings, plans and gates; from step 4, the crop file's `CropRow` and `read_crop_rows`, `row_line`, and the row bands and sheet that `datadesk crops` draws | 140 |
-| `shell/cli.py` | `datadesk` commands on typer; each reads the clock once | 246 |
+| `shell/cli.py` | `datadesk` commands on typer | 246 |
 | **total** | 76 modules | **10,161** |
 
 `datadesk/data/` holds data, not code: `catalog.toml`, `rows/*.toml` (one per table),

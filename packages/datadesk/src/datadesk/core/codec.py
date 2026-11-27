@@ -63,7 +63,9 @@ def decode_document(data: bytes) -> Document:
         key, a value of the wrong JSON kind, and a value that a kit constructor refuses.
     """
     text = data.decode("utf-8", "surrogatepass")
-    fields = _checked(loads(text, parse_constant=_refuse), _OBJECT, "the bytes")
+    fields = _checked(
+        loads(text, parse_float=_finite, parse_constant=_refuse), _OBJECT, "the bytes"
+    )
     if (number := _field(fields, "format", _INT)) != FORMAT:
         raise ValueError(f"the bytes are of format {number}, not {FORMAT}")
     pages = tuple(_page(page) for page in _items(fields, "pages"))
@@ -201,3 +203,11 @@ def _checked(value: Any, kinds: tuple[type, ...], where: str) -> Any:
 def _refuse(constant: str) -> Never:
     """Refuse the NaN and infinities that `json.loads` reads by default and JSON lacks."""
     raise ValueError(f"{constant} is not a number JSON can hold")
+
+
+def _finite(text: str) -> float:
+    """Read a JSON number as a float, refusing one such as ``1e400`` that reads as an infinity."""
+    value = float(text)
+    if value in (float("inf"), float("-inf")):
+        raise ValueError(f"{text} is past the largest float")
+    return value

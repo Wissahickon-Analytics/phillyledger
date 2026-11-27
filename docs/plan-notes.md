@@ -461,14 +461,19 @@ file, `docs/progress.md`, `docs/followups.md` or `docs/deviations/`.
   there that does not print `TABLE P-1` (`docs/plans/step-04.md`, fact 8). The Codex review
   counted six such pages in the old repo's cut copies, and design section 15 now says 16.
 - **Rules and margin page numbers on the P-1 grid pages, a note for the step 5 plan** (November
-  25, 2026, the step 4 plan). The 20 grid pages of FY2023 Q1 to FY2025 Q2 draw no line object and
+  25, 2026, the step 4 plan. Extended November 27, 2026, the step 4 cleanup, from pull request
+  51). The 20 grid pages of FY2023 Q1 to FY2025 Q2 draw no line object and
   410 thin rects, 220 of them upright, 0.72 or 1.44 points wide (`docs/plans/step-04.md`, fact
   4). The step 4 adapter gives each as a `Rule` on its centerline, so these pages have vertical
   rules, and `cut_pages` in design section 3.1 takes `lanes_from_rules` when a page has them and
   `lanes_from_values` when it has none. The step 5 plan decides which the P-1 pages use. Six of
   the 20 pages, in the three editions `qcmr:2022-09-30:none` to `qcmr:2023-03-31:none`, also
   print a sideways page number in the left margin, at `x0` 5.63, which the adapter gives as two
-  words of one digit (fact 5). They are page furniture, and no row's words.
+  words of one digit (fact 5). They are page furniture, and no row's words. On those six pages
+  `group_lines` joins the two digits to table lines. Line 27 holds the digit `2` alone, and line
+  28 begins with `5` or `6` before `First` or `Records`, so `row_line` finds no line for those
+  rows. They sit mid-table, and no row of the step 4 crops is one of them. The step 5 plan drops
+  the digits before it groups lines.
 - **The archive prints no font code in the cash pages, a note for the step 8 plan** (November
   25, 2026, the step 4 plan). QCASH-Q14 and VAL-Q05 describe `E(cid:121)PENSES` in the cash pages
   of FY2023 Q1 and Q2, and design section 3.2 has `split_grids` match `(cid:N)` in that caption.
@@ -482,3 +487,15 @@ file, `docs/progress.md`, `docs/followups.md` or `docs/deviations/`.
   line 40). Step 4 does not port it, because the 20 P-1 grid pages have rotation 90 and read
   upright through pdfplumber (`docs/plans/step-04.md`, fact 3 and shape 4). The plan of the first
   step whose pages need the turn ports it and adds it to the tool string.
+- **Word boxes and `render` use other frames off the origin, a note for the plan of the first
+  step that renders or runs OCR on a page outside the 20 grid pages** (November 27, 2026, the
+  step 4 cleanup, from pull requests 49 and 51). When a page's media box is off the origin or its
+  crop box is smaller, its word boxes are in another frame than `render`. On page 39 of
+  `qcmr-2022-03-31.pdf`, the box of word 530, `62`, holds only white pixels in the reader's 72 dpi
+  render, and Codex counted 51 such pages across the 20 reports. A `/CropBox [50 50 562 742]`
+  page reads as 612 by 792 and renders as 512 by 692. On page 39 of `qcmr-2021-09-30.pdf`, bbox
+  `(-8.39, -8.39, 783.6, 603.6)`, `crops` cuts the band of another row. The 20 grid pages have
+  both boxes at the origin.
+- **`extract_words` never hashes the bytes it reads, a note for the step 5 plan** (November 27,
+  2026, the step 4 cleanup, from pull request 49). `extract_words` labels the bytes it reads from
+  the store with `job.doc_sha256` and never hashes them. A check would be a design change.

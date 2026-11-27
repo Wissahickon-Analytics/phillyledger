@@ -127,8 +127,8 @@ Step 1 creates these. Keep this list true as tooling changes.
 5. Public functions in `checkedtables` take no `bool` parameters, and its types have no flag
    fields. The shape test enforces this.
 6. Closed lists stay closed. Adding a member to a pinned list (check relations, note kinds, the
-   readers' refusal codes, the six vocabulary lists) changes the pin test and the design in the
-   same pull request.
+   readers' refusal codes, the reasons a cell is `Unreadable`, the six vocabulary lists) changes
+   the pin test and the design in the same pull request.
 7. Following pstack, settle a question by running something when a run can settle it, make the
    reversible choice, and record it. Stop for the owner only on calls no run can settle: what a
    printed number means, what gets published, money, or anything touching `../gov-budget-data`.
@@ -173,9 +173,9 @@ Step 1 creates these. Keep this list true as tooling changes.
 - A comment that explains a PDF quirk cites its dossier id (`# QPOS-Q12: ...`). The publisher's
   PDFs are an outside source this repo cannot reshape, so these comments stay.
 - Build the `datadesk` command line with typer, and import typer only in `datadesk.shell.cli`. A
-  command there is a thin typed function. It builds `Deps`, calls a plain function that tests
-  call directly, and prints. Keep typer's own traceback printing off, so every line `datadesk`
-  prints passes through `hide_keys` (hard rule 8).
+  command there is a thin typed function. It builds the ports it reads (`fetch` builds `Deps`),
+  calls a plain function that tests call directly, and prints. Keep typer's own traceback
+  printing off, so every line `datadesk` prints passes through `hide_keys` (hard rule 8).
 - Keep the names and signatures the design gives. Where the design gives a looser type than the
   type rule asks for, change the design in the same pull request (hard rule 7). If a module
   runs well past its estimate in section 12, say so in progress.md. Docstrings do not count
@@ -189,9 +189,10 @@ Step 1 creates these. Keep this list true as tooling changes.
 - Write the step's check as failing tests first, then the code.
 - Core tests run with sockets disabled (pytest-socket) in an empty temporary directory.
 - Property tests use Hypothesis.
-- Real pages enter tests only as word fixtures that `datadesk fixture <sha> <pages>` writes to
-  `packages/datadesk/tests/fixtures/words/` as Python literals. Regenerate a fixture only on
-  purpose, and say so in the commit.
+- CI's tests read real pages only as word fixtures that `datadesk fixture <sha> <pages>` writes
+  to `packages/datadesk/tests/fixtures/words/` as Python literals. One test, which skips in CI,
+  regenerates them from the held PDFs. Regenerate a fixture only on purpose, and say so in the
+  commit.
 - The `verify-step` skill is this repo's verification beside the gates: the check clause by
   clause, and the audits pstack's Prove It Works asks for. Codex runs it for every pull request,
   through the `codex-review` skill.

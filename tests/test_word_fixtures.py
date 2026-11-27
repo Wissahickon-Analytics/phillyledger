@@ -10,6 +10,7 @@ import pytest
 from packages.datadesk.tests.shell.fakes import DictCache, DictStore
 
 from checkedtables.refs import Sha256
+from datadesk.core.codec import render_fixture
 from datadesk.core.fetch import INDEX_PATH, pdf_key
 from datadesk.core.index import parse_index
 from datadesk.shell.adapters.pdf_pdfplumber import PdfPlumberReader
@@ -20,16 +21,16 @@ REPO = Path(__file__).parents[1]
 FIXTURES = REPO / FIXTURE_FOLDER
 HELD_PDFS = "DATADESK_HELD_PDFS"
 GRID_PAGES = {
-    "qcmr:2022-09-30:none": (35, 36),
-    "qcmr:2022-12-31:none": (35, 36),
-    "qcmr:2023-03-31:none": (34, 35),
-    "qcmr:2023-06-30:none": (32, 33),
-    "qcmr:2023-09-30:none": (33, 34),
-    "qcmr:2023-12-31:none": (32, 33),
-    "qcmr:2024-03-31:none": (32, 33),
-    "qcmr:2024-06-30:none": (32, 33),
-    "qcmr:2024-09-30:none": (33, 34),
-    "qcmr:2024-12-31:none": (34, 35),
+    ("qcmr:2022-09-30:none", "2022-07-01"): (35, 36),
+    ("qcmr:2022-12-31:none", "2022-10-01"): (35, 36),
+    ("qcmr:2023-03-31:none", "2023-01-01"): (34, 35),
+    ("qcmr:2023-06-30:none", "2023-04-01"): (32, 33),
+    ("qcmr:2023-09-30:none", "2023-07-01"): (33, 34),
+    ("qcmr:2023-12-31:none", "2023-10-01"): (32, 33),
+    ("qcmr:2024-03-31:none", "2024-01-01"): (32, 33),
+    ("qcmr:2024-06-30:none", "2024-04-01"): (32, 33),
+    ("qcmr:2024-09-30:none", "2024-07-01"): (33, 34),
+    ("qcmr:2024-12-31:none", "2024-10-01"): (34, 35),
 }
 
 
@@ -73,23 +74,34 @@ def test_each_word_fixture_regenerates_byte_identical(tmp_path: Path) -> None:
     assert [name for name in held if written[name] != held[name]] == []
 
 
+def test_each_word_fixture_is_the_text_render_fixture_writes_of_its_page() -> None:
+    held = held_fixtures()
+    assert len(held) == 20
+    for name, data in held.items():
+        module = fixture(name.removesuffix(".py"))
+        assert render_fixture(module.PAGE).encode("utf-8") == data, name
+
+
 def test_no_word_of_the_twenty_grid_pages_holds_a_font_code() -> None:
     index = parse_index((REPO / INDEX_PATH).read_text(encoding="utf-8"))
-    current = {
-        version.edition.id(): version.sha256
+    indexed = {
+        (version.edition.id(), version.edition.period.start.isoformat(), version.sha256)
         for version in index.versions
-        if index.current(version.edition) == version
     }
-    wanted = [(edition, page) for edition, numbers in GRID_PAGES.items() for page in numbers]
+    wanted = [
+        (edition, start, page)
+        for (edition, start), numbers in GRID_PAGES.items()
+        for page in numbers
+    ]
     missing = [
         grid_stem(edition, page)
-        for edition, page in wanted
+        for edition, _, page in wanted
         if not (FIXTURES / f"{grid_stem(edition, page)}.py").exists()
     ]
     assert missing == []
-    for edition, page in wanted:
+    for edition, start, page in wanted:
         module = fixture(grid_stem(edition, page))
-        assert (edition, module.SHA) == (edition, current[edition])
+        assert (edition, start, module.SHA) in indexed
         assert module.PAGE.number == page
         assert [word.text for word in module.PAGE.words[:2]] == ["TABLE", "P-1"]
         assert module.PAGE.rotation == 90

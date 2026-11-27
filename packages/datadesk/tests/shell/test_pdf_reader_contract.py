@@ -91,6 +91,15 @@ def test_a_text_layer_gives_each_words_text_box_style_and_size() -> None:
     assert page.source == WordSource(SourceKind.TEXT_LAYER, READER.tool())
 
 
+def test_words_come_in_drawing_order_and_part_at_a_gap_of_two_and_a_half_points() -> None:
+    pdf = drawn_pdf(
+        "BT /F1 12 Tf 72 300 Td (LAST) Tj ET "
+        "BT /F1 12 Tf 72 720 Td (12) Tj ET "
+        "BT /F1 12 Tf 87.844 720 Td (34) Tj ET"
+    )
+    assert [w.text for w in READER.words(pdf, SHA, ()).page(1).words] == ["LAST", "12", "34"]
+
+
 def test_a_words_size_is_the_median_size_of_its_glyphs() -> None:
     pdf = drawn_pdf("BT /F1 12 Tf 72 720 Td (AB) Tj /F1 11 Tf (C) Tj ET")
     assert [(w.text, w.size) for w in READER.words(pdf, SHA, ()).page(1).words] == [("ABC", 12.0)]
