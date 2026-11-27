@@ -73,12 +73,11 @@ def _height(word: Word) -> float:
 
 
 def _holder(word: Word, own: int, lines: Sequence[Line], medians: Sequence[float]) -> int:
-    """Return the index of the nearest other line that holds a word small for it, else `own`."""
+    """Return the index of the nearest line that holds a word small for it, else `own`."""
     holders = [
         index
         for index, line in enumerate(lines)
-        if index != own
-        and line.box.top < word.box.bottom <= line.box.bottom
+        if line.box.top < word.box.bottom <= line.box.bottom
         and _height(word) < _RAISED_SIZE * medians[index]
     ]
     return min(holders, key=lambda index: lines[index].box.bottom, default=own)
@@ -92,12 +91,12 @@ def group_lines(page: Page) -> tuple[Line, ...]:
     of the bottom of the word that opened the line, and opens a new line otherwise. So lines
     never chain, and a tall word cannot bridge two lines.
 
-    Then a word moves to another of those lines when the line's top is above the word's
-    bottom, the line's bottom is at or below it, and the word's height is under 0.7 of the
-    line's median word height, the ratio of the lexer's raised-digit rule (decision 14).
-    Heights are box heights, in the page's units. Every line keeps the box and the median it
-    had before any word moved, so moves never chain. Of two lines that hold a word, it moves
-    to the one with the nearer bottom. No two lines share a bottom, so no tie can occur. A
+    Then a line holds a word when the line's top is above the word's bottom, the line's bottom
+    is at or below it, and the word's height is under 0.7 of the line's median word height,
+    the ratio of the lexer's raised-digit rule (decision 14). Heights are box heights, in the
+    page's units. Every line keeps the box and the median it had before any word moved, so
+    moves never chain. Of the lines that hold a word, its own among them, it joins the one
+    with the nearest bottom. No two lines share a bottom, so no tie can occur. A
     line that loses all its words is gone. QPOS-Q11: from FY2024 Q1, the bottom of the "(1)"
     after "Human Services" in Table P-1 is about 4.2 points above the label's, past the
     tolerance of 2.60, and this puts the mark back on its row.

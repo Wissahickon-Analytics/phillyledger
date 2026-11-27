@@ -40,7 +40,7 @@ to `docs/plans/step-05.md`.
   the 56 fixture pages. Built in `group_lines`, it also moves the two margin digits of the sideways
   page number on page 34 of `2022-06-30`, `2022-09-30` and `2022-12-31` and page 33 of `2023-03-31`.
   Each digit is 4.45 points high with its bottom at 306.00 or 310.45, inside the span of the prose
-  line `Note for FY.. Q.:`, which runs from 305.06 to 315.06 with a median height of 10.00, so both
+  line `Note for FY.. Q.:`, which runs from 305.06 to 315.06 with a median height of 10.00, and both
   join it. The Plan session's count skipped the pages with no body row. These are commentary pages,
   reported and not parsed, so no value, label or row changes. The step 2 tests
   `test_a_line_never_spans_more_than_the_tolerance` and

@@ -81,10 +81,10 @@ LOW_CONFIDENCE = page_of(
     source=OCR,
 )
 MOVED_OPENER = page_of(
-    placed(0, "a", 0.0, 99.0, 100.0),
-    placed(1, "a2", 20.0, 90.5, 102.5),
-    placed(2, "b", 40.0, 84.0, 104.0),
-    placed(3, "c", 60.0, 98.0, 106.0),
+    placed(0, "a", 0.0, 80.0, 100.0),
+    placed(1, "a2", 20.0, 72.0, 102.0),
+    placed(2, "b", 40.0, 74.0, 114.0),
+    placed(3, "c", 60.0, 76.0, 116.0),
 )
 PAGE_2_OF_ANOTHER_FILE = replace(
     page_from_text("Taxes $ 1,234", OTHER_SHA, 2),
@@ -126,11 +126,15 @@ def unmoved(page: Page) -> set[WordRef]:
         word.ref
         for own, found in enumerate(lines)
         for word in found
-        if not any(
-            index != own
-            and box.top < word.box.bottom <= box.bottom
-            and height(word) < 0.7 * medians[index]
-            for index, box in enumerate(boxes)
+        if own
+        == min(
+            (
+                index
+                for index, box in enumerate(boxes)
+                if box.top < word.box.bottom <= box.bottom and height(word) < 0.7 * medians[index]
+            ),
+            key=lambda index: boxes[index].bottom,
+            default=own,
         )
     }
 
@@ -301,6 +305,16 @@ def test_a_word_two_lines_hold_joins_the_one_with_the_nearer_bottom() -> None:
         mark,
     )
     assert line_texts(mark_not_small_for_the_nearer) == ["Alpha 1 2", "Beta (1) 34 56"]
+
+
+def test_a_word_its_own_line_holds_stays_though_a_farther_line_also_holds_it() -> None:
+    page = page_of(
+        placed(0, "a", 0.0, 99.0, 100.0),
+        placed(1, "a2", 20.0, 90.5, 102.5),
+        placed(2, "b", 40.0, 84.0, 104.0),
+        placed(3, "c", 60.0, 98.0, 106.0),
+    )
+    assert line_texts(page) == ["b c", "a a2"]
 
 
 def test_two_rows_with_one_bottom_are_one_line_so_a_word_never_ties() -> None:
