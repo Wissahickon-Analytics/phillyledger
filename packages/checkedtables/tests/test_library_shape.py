@@ -61,6 +61,9 @@ FIELD_SNAPSHOT: dict[str, tuple[str, ...]] = {
     "CellRecords": ("readings", "dash_rules", "confidence_floor"),
     "PageRun": ("first", "last"),
     "BodyRule": ("start", "stop", "drop", "prefix"),
+    "Layout": ("table", "eras", "body"),
+    "CutPage": ("number", "source", "header", "binding", "raws", "furniture"),
+    "CutPages": ("era", "binding", "pages", "findings"),
     "RawRow": ("page", "prefix", "label_words", "cells", "stray", "bold", "x0"),
 }
 

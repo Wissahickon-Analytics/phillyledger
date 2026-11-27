@@ -249,8 +249,7 @@ def lanes_from_rules(rules: Sequence[Rule], region: Box) -> tuple[Lane, ...]:
 
     A rule is vertical when its box is under 1 point wide, and it sits at the middle of its
     box. Pieces of one rule join first: two pieces under 1 point apart across, whose spans meet
-    or come under 1 point apart, are one rule. Table P-1 draws a rule in up to three such
-    pieces.
+    or come under 1 point apart, are one rule, as a page may draw one rule in several pieces.
 
     Parameters
     ----------
