@@ -22,7 +22,8 @@ to `docs/plans/step-05.md`.
   has its bottom edge inside the span of exactly one line and is under 0.7 of that line's median
   word height (fact 7). The owner chose "Confirm as proposed (Recommended)" (answer 2, decision
   19). The Codex review of the plan then found that the rule also moves the lone digit of a
-  margin page number onto its row, on 14 pages (fact 9). Design sections 16 and 16.3.
+  margin page number onto its row, on 14 pages (fact 9). Shown that result and the two corrected
+  counts, the owner answered "Answers stand". Design sections 16 and 16.3.
 - **`RawRow.bold` joins the pinned `bool` fields, and `Commerce` is a seam** (November 27, 2026,
   the Plan run). The owner chose "Pin it as a page fact (Recommended)" (answer 3, decision 20)
   and "Yes, two entities (Recommended)" (answer 4, decision 21). The FY2024 grid prints the

@@ -148,8 +148,9 @@ said that 16 editions print a raised mark. Twelve do (fact 7), and 16 is the cou
 pages. Question 1 said 11,620 value words. The count is 11,740 (fact 11). A rerun on the held
 files gave 12 and 11,740. Every value word still reads as a number, and every raised mark still
 has one line to join. One result is new since he answered: the rule of decision 14 also moves
-the lone margin digit of 14 pages onto its row (fact 9, shape 9). The pull request's text tells
-him all three.
+the lone margin digit of 14 pages onto its row (fact 9, shape 9). He was shown the two
+corrected counts and that result in the same session and asked "Do your four answers stand with
+the corrected counts, or do you want to revisit one?" He answered "Answers stand".
 
 Question 1 said "the four rows of section 16". The rows stay as the owner saw them on November
 23, and decision 18 says where each is built now. The other option of question 1 was to build all
