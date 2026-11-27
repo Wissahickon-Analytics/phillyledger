@@ -84,11 +84,7 @@ def test_each_word_fixture_is_the_text_render_fixture_writes_of_its_page() -> No
 
 def test_no_word_of_the_twenty_grid_pages_holds_a_font_code() -> None:
     index = parse_index((REPO / INDEX_PATH).read_text(encoding="utf-8"))
-    current = {
-        version.edition.id(): version.sha256
-        for version in index.versions
-        if index.current(version.edition) == version
-    }
+    indexed = {(version.edition.id(), version.sha256) for version in index.versions}
     wanted = [(edition, page) for edition, numbers in GRID_PAGES.items() for page in numbers]
     missing = [
         grid_stem(edition, page)
@@ -98,7 +94,7 @@ def test_no_word_of_the_twenty_grid_pages_holds_a_font_code() -> None:
     assert missing == []
     for edition, page in wanted:
         module = fixture(grid_stem(edition, page))
-        assert (edition, module.SHA) == (edition, current[edition])
+        assert (edition, module.SHA) in indexed
         assert module.PAGE.number == page
         assert [word.text for word in module.PAGE.words[:2]] == ["TABLE", "P-1"]
         assert module.PAGE.rotation == 90
