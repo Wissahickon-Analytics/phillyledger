@@ -9,7 +9,7 @@ Every session reads this file first, so it stays short.
 | 1 | Workspace, tooling, purity and shape tests | check passed | `step-01/a-workspace`, `step-01/b-import-contracts`, `step-01/c-kit-shape`, `step-01/d-test-isolation` | November 22, 2026, runs 45093444380, 45094817250, 45094829990 and 45092206629 |
 | 2 | Kit, words to cells | check passed | `step-02/a-import-pin`, `step-02/b-value-types`, `step-02/c-words-to-lines`, `step-02/d-lexer`, `step-02/e-records` | November 23, 2026, head `73d428e2`, run 45130645501 |
 | 3 | Archive for the QCMR from FY2022 | check passed | `step-03/a-index`, `step-03/b-listing`, `step-03/c-fetch-plan`, `step-03/d-shell`, `step-03/e-archive` | November 24, 2026, head `647b868b`, run 45538468977 |
-| 4 | Words: PDF adapter with font repair, word cache, codec | not started | | |
+| 4 | Words: PDF adapter, word cache, codec | built, waiting on the owner's look at the row crops | `step-04/a-font-code-cells`, `step-04/b-codec-cache`, `step-04/c-words`, `step-04/d-fixtures`, `step-04/e-crops` | |
 | 5 | QCMR positions parser, registry, row schemas, column vocabulary | not started | | |
 | 6 | Checks, gate and release for positions (first release-quality dataset) | not started | | |
 | 7 | Older QCMR positions | not started | | |
@@ -225,6 +225,10 @@ session needs it. A note for one later step goes in `docs/plan-notes.md`.
   `uv run --env-file /Users/nhand/DataProjects/phillyledger/.env ...` from the worktree's root.
   The `aws` CLI reads the bucket with the keys passed through the environment, as "Setting up
   R2" in `docs/plans/step-03.md` shows, and never through a profile (hard rule 8).
+- **`shell/cli.py` runs past its estimate** (November 26, 2026, S4-E). Counted as design section
+  12 counts, `shell/cli.py` holds 309 lines against an estimate of 246. It held 197 at the head
+  of S4-D, and `crops_command` with the `crops` command added 112. `shell/report.py` holds 97
+  lines against 140, all of them the crop work of step 4.
 - **Kit modules against their estimates** (November 23, 2026, step 2. Updated November 25,
   2026, standards sweep B). The kit size report counts lines that are not blank, a comment or a
   docstring, as design section 12 counts. At the head of sweep B,

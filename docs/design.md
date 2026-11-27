@@ -2767,10 +2767,10 @@ fetched, so nothing is stored and no file is written.
 
 `main(argv)` is the `datadesk` script, `datadesk fetch <source> --saved <folder>`. It runs a
 typer app, returns the integer code of a `SystemExit` that reaches it, and lets any other
-exception propagate. Section 9 lists the exit codes. `fetch` is the app's
-one command. An `@app.callback()` holds the tool's help line, because typer runs an app
-that has one command and no callback as that command, and then reads `fetch` as the source. At
-step 3 `--saved` is required. The City refuses a client that is not a browser (step 3 plan, facts
+exception propagate. Section 9 lists the exit codes. At step 3 `fetch` was the app's
+one command, and step 4 adds `fixture` and `crops`. An `@app.callback()` holds the tool's help
+line, because typer runs an app that has one command and no callback as that command, and then
+reads `fetch` as the source. At step 3 `--saved` is required. The City refuses a client that is not a browser (step 3 plan, facts
 6 and 11), so no command sends the City a request. A browser saves the listing and the reports,
 and the command reads the saved folder.
 
@@ -2806,7 +2806,42 @@ the R2 settings.
 Each later command takes the same shape. A typer command in `cli.py` reads the clock and the
 settings, builds `Deps`, calls one plain function that tests call directly, as `fetch` calls
 `fetch_command`, prints through `hide_keys`, and turns the result into an exit code. Only
-`cli.py` imports typer, and an import-linter contract holds it (section 12.5).
+`cli.py` imports typer, and an import-linter contract holds it (section 12.5). The word
+commands of step 4, `fixture` and `crops`, read no clock and build no `Deps`, because its `http`
+needs a saved folder. Each builds the ports it reads and passes them to its plain function
+(step 4 plan, shape 10).
+
+`datadesk crops <tsv> <folder>` draws what the step 4 check compares: a rendered crop of a row
+against its extracted digits (step 4 plan, shape 13). `<tsv>` is a crop file, such as
+`docs/evidence/crops/qcmr_positions.tsv`, with the tab-separated header `edition`, `sha256`,
+`page`, `row`, `page_label`, `crop_label`, `values` and `read_by`, one `CropRow` on each later
+line, and a newline after every line. An empty field is one no reader has typed yet. A
+`page_label` is typed from the image of the whole page, and the crop label and the values from
+the crop alone. `read_crop_rows` in `shell/report.py` reads the file for the command and for
+the check's test, and raises `ValueError` naming the line for another header, a row with another
+number of fields, a sha that is not one, a page that is not a positive integer and a row end
+other than `first` or `last`. `crops_command(store, pdf, cache, root, *, tsv, folder)` stops with
+`CropsStopped` before it reads any PDF for a file it cannot read, a checkout it cannot read, a
+sha the index lacks, and an `edition` that is not the indexed edition of its sha. For each sha
+it reads the words of the pages its rows name through the word cache under one key, as
+`fixture` does, and draws each page at 200 dpi with `PdfReader.render`. It always writes
+`<folder>/pages/<stem>_p<n>.png`, where the stem names the edition as a word fixture does. For
+each row with a `page_label`, `row_line(page, label)` returns the one line of `group_lines` whose
+first words have the texts of the label's words, `NoLine`, or `TwoLines` with each line that
+begins so, and never picks one (step 4 plan, risk 6). The command finds every row's line before
+it writes any row file. When a label begins no line or more than one, it raises `CropsStopped`
+naming each such row and writes no row file and no sheet. Otherwise each such row gets
+`<folder>/rows/<stem>_p<n>_<first|last>.png`, the band of its line across the whole page, from
+one point above the line's box to one point below. When every row has a crop, a `crop_label` and
+`values`, the command writes `<folder>/sheet.png`, the crops stacked in the file's order, each
+followed by one printed line of its edition, page, end, crop label and values. Each file is
+written under a temporary name in its folder and renamed. The pages and the crops go to two
+folders, so a reader can be shown one folder alone, and the sheet, which prints the readings,
+exists only once both readings do (step 4 plan, risk 5). The `crops` command builds the store
+from the four `DATADESK_R2_*` variables, the pdfplumber reader and the word cache in
+`.cache/words`, and no `Http`. It prints `wrote <path>` for each file and stops as `fixture`
+does (section 9), and it reads the working directory inside the part it catches, so a missing
+one prints its traceback through `hide_keys`. No image goes in git.
 
 The saved folder holds the saved files and `responses.tsv`, whose first row is the header
 `url<TAB>file` and whose other rows each pair a URL with a file name. `SavedHttp(folder)` reads it
@@ -4250,13 +4285,14 @@ command.
 
 `fetch` catches every exception raised after the settings load, while it builds `Deps`, runs the
 fetch or prints the plan. `fixture` does the same while it builds its ports, writes the fixtures
-or prints their paths. The `datadesk` script exits with these codes for these reasons.
+or prints their paths, and `crops` while it reads the working directory, builds its ports, writes
+the images or prints their paths. The `datadesk` script exits with these codes for these reasons.
 
 - **0.** A run that ends normally, or help.
 - **2.** A usage error. typer and click write it on stderr.
 - **1.**
   - A refused input (a `MissingSettings`, a saved folder that `SavedHttp` refuses, a
-    `FetchStopped` or a `FixtureStopped`), an `EffectError` or, from `fetch`, a
+    `FetchStopped`, a `FixtureStopped` or a `CropsStopped`), an `EffectError` or, from `fetch`, a
     `PreconditionFailed`. The command writes a message on stderr.
   - Any other exception that the command catches, a `KeyboardInterrupt` included. The command
     writes its traceback on stderr through `hide_keys`. A checkout file that cannot be written
@@ -4270,7 +4306,8 @@ or prints their paths. The `datadesk` script exits with these codes for these re
 `main` returns the integer code of a `SystemExit` that reaches it. It lets any other exception
 propagate.
 
-From the settings load on, everything `fetch` and `fixture` print passes through `hide_keys`.
+From the settings load on, everything `fetch`, `fixture` and `crops` print passes through
+`hide_keys`.
 Before it, no key is loaded.
 
 Help is `--help` alone. typer adds no `-h`, and click takes no abbreviation of an option, so `-h`
@@ -4690,7 +4727,7 @@ kit size report that CI prints does.
 | `shell/run_ocr.py` | OCR executor, only behind `--spend` | 50 |
 | `shell/run_parse.py` | parse executor | 90 |
 | `shell/run_release.py` | release executor | 75 |
-| `shell/report.py` | printing findings, plans and gates | 140 |
+| `shell/report.py` | printing findings, plans and gates; from step 4, the crop file's `CropRow` and `read_crop_rows`, `row_line`, and the row bands and sheet that `datadesk crops` draws | 140 |
 | `shell/cli.py` | `datadesk` commands on typer; each reads the clock once | 246 |
 | **total** | 76 modules | **10,161** |
 
