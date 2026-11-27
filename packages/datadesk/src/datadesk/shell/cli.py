@@ -14,11 +14,13 @@ from typing import Annotated, assert_never
 import typer
 
 from checkedtables.kinds import SourceKind
+from checkedtables.lines import Line
 from checkedtables.refs import Sha256
 from checkedtables.table import Finding
+from checkedtables.words import Page
 from datadesk.core.codec import render_fixture
 from datadesk.core.domain import EditionKey, Stage
-from datadesk.core.fetch import FetchPlan
+from datadesk.core.fetch import FetchPlan, pdf_key
 from datadesk.core.listings import Listing, parse_listing
 from datadesk.core.parse_plan import WordJob, word_key
 from datadesk.core.watch import plan_watch
@@ -35,11 +37,21 @@ from datadesk.shell.ports import (
     PdfReader,
     PreconditionFailed,
 )
+from datadesk.shell.report import (
+    CropRow,
+    NoLine,
+    TwoLines,
+    contact_sheet,
+    read_crop_rows,
+    row_band,
+    row_line,
+)
 from datadesk.shell.run_fetch import retried, run_fetch
 from datadesk.shell.run_parse import extract_words, merged_document
 from datadesk.shell.settings import MissingSettings, hide_keys, load_settings
 
 FIXTURE_FOLDER = "packages/datadesk/tests/fixtures/words"
+CROP_DPI = 200
 _WORD_CACHE = ".cache/words"
 
 _PAGES = compile(r"[1-9][0-9]*(,[1-9][0-9]*)*")
@@ -67,6 +79,10 @@ class FetchStopped(Exception):
 
 class FixtureStopped(Exception):
     """A fixture run stopped before it read the PDF or wrote any file. The message says why."""
+
+
+class CropsStopped(Exception):
+    """A crops run stopped before it wrote any row crop or the sheet. The message says why."""
 
 
 def fetch_command(deps: Deps, root: Path, source: str, today: date) -> FetchRun:
@@ -193,6 +209,109 @@ def fixture_command(
     return tuple(targets)
 
 
+def crops_command(
+    store: ObjectStore, pdf: PdfReader, cache: LocalCache, root: Path, *, tsv: Path, folder: Path
+) -> tuple[Path, ...]:
+    """Draw the pages and the row crops that a crop file names, from the archived PDFs.
+
+    `root` is the checkout, `tsv` a crop file that `read_crop_rows` reads, and `folder` where
+    the images go. For each sha the words of the pages its rows name come from the word cache
+    when it holds the key of those pages, and otherwise from one read of the PDF, cached under
+    that key. Each page is drawn at `CROP_DPI` by `PdfReader.render` and written as
+    ``pages/<stem>_p<n>.png``, where ``<stem>`` names the edition as a word fixture does. Each
+    row with a ``page_label`` gets ``rows/<stem>_p<n>_<first|last>.png``, the band of the one
+    line that `row_line` finds for that label. When every row has a crop, a ``crop_label`` and
+    ``values``, ``sheet.png`` stacks the crops in the file's order with each one's reading.
+    Each file is written to a temporary file with a fixed name in its folder and then renamed.
+
+    Returns
+    -------
+    tuple[Path, ...]
+        The files written: the pages by edition and page, then the rows and the sheet in the
+        file's order.
+
+    Raises
+    ------
+    CropsStopped
+        Before any PDF is read, for a crop file that cannot be read or that `read_crop_rows`
+        refuses, a checkout that cannot be read, a sha the index lacks, and an ``edition`` that
+        is not the indexed edition of its sha. After the pages are written and before any row
+        crop or the sheet is, for every label that begins no line or more than one, each named.
+    KeyError
+        When the store holds no PDF of a sha.
+    EffectError
+        When the store, the reader or the cache fails, or a PDF lacks a page the file names.
+    """
+    try:
+        rows = read_crop_rows(tsv.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, ValueError) as error:
+        raise CropsStopped(f"{tsv} cannot be read: {error}") from None
+    repo = gather_repo(root)
+    match repo:
+        case RepoSnapshot():
+            pass
+        case tuple():
+            raise CropsStopped(_findings("the checkout cannot be read", repo))
+        case _:
+            assert_never(repo)
+    stems: dict[Sha256, str] = {}
+    for row in rows:
+        version = repo.index.by_sha(row.sha256)
+        if version is None:
+            raise CropsStopped(f"the index holds no file with sha256 {row.sha256}")
+        if (indexed := version.edition.id()) != row.edition:
+            raise CropsStopped(f"the index names sha256 {row.sha256} {indexed}, not {row.edition}")
+        stems[row.sha256] = _fixture_stem(version.edition)
+    pages: dict[tuple[Sha256, int], Page] = {}
+    images: dict[tuple[Sha256, int], bytes] = {}
+    cached = cache.keys()
+    for sha in stems:
+        numbers = tuple(sorted({row.page for row in rows if row.sha256 == sha}))
+        key = word_key(sha, numbers, pdf.tool())
+        if key not in cached:
+            extract_words(
+                store, pdf, cache, [WordJob(sha, numbers, SourceKind.TEXT_LAYER, None, key)]
+            )
+        data = store.get(pdf_key(sha))
+        for page in merged_document(cache, [key]).pages:
+            pages[sha, page.number] = page
+            images[sha, page.number] = pdf.render(data, page.number, CROP_DPI)
+    written = [
+        _write(folder / "pages" / f"{stems[sha]}_p{number}.png", image)
+        for (sha, number), image in images.items()
+    ]
+    lines: dict[CropRow, Line] = {}
+    refused: list[str] = []
+    for row in (row for row in rows if row.page_label):
+        found = row_line(pages[row.sha256, row.page], row.page_label)
+        named = f"{row.edition} page {row.page} {row.row} {row.page_label!r}"
+        match found:
+            case Line():
+                lines[row] = found
+            case NoLine():
+                refused.append(f"{named}: no line")
+            case TwoLines():
+                refused.append(f"{named}: {len(found.lines)} lines")
+            case _:
+                assert_never(found)
+    if refused:
+        raise CropsStopped(
+            f"each label must begin one line, and these do not: {'; '.join(refused)}. "
+            f"The page images are in {folder / 'pages'}"
+        )
+    crops = {
+        row: row_band(images[row.sha256, row.page], line, CROP_DPI) for row, line in lines.items()
+    }
+    written += [
+        _write(folder / "rows" / f"{stems[row.sha256]}_p{row.page}_{row.row}.png", crop)
+        for row, crop in crops.items()
+    ]
+    if rows and all(row in crops and row.crop_label and row.values for row in rows):
+        sheet = contact_sheet([(row, crops[row]) for row in rows])
+        written.append(_write(folder / "sheet.png", sheet))
+    return tuple(written)
+
+
 @app.callback()
 def datadesk() -> None:
     """Archive Philadelphia's budget and finance reports."""
@@ -261,6 +380,31 @@ def fixture(
         raise typer.Exit(1) from None
 
 
+@app.command()
+def crops(
+    tsv: Annotated[Path, typer.Argument(help="a crop file, such as one in docs/evidence/crops")],
+    folder: Annotated[Path, typer.Argument(help="the folder for pages/, rows/ and sheet.png")],
+) -> None:
+    """Draw archived pages, and the rows that a crop file names."""
+    try:
+        settings = load_settings(environ)
+    except MissingSettings as error:
+        print(f"datadesk: {error}", file=sys.stderr)
+        raise typer.Exit(1) from None
+    try:
+        root = Path.cwd()
+        store, cache = s3_store(settings), DirCache(root / _WORD_CACHE)
+        written = crops_command(store, PdfPlumberReader(), cache, root, tsv=tsv, folder=folder)
+        for path in written:
+            print(hide_keys(f"wrote {path}", settings))
+    except (CropsStopped, EffectError) as error:
+        print(hide_keys(f"datadesk: {error}", settings), file=sys.stderr)
+        raise typer.Exit(1) from None
+    except BaseException:  # noqa: BLE001
+        print(hide_keys(format_exc(), settings), end="", file=sys.stderr)
+        raise typer.Exit(1) from None
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the `datadesk` command line on `argv`, or on `sys.argv[1:]`, and return its exit code.
 
@@ -284,6 +428,15 @@ def _fixture_stem(edition: EditionKey) -> str:
     """Name an edition's fixtures, as ``qcmr_2022_09_30`` for ``qcmr:2022-09-30:none``."""
     stage = "" if edition.stage is Stage.NONE else f"_{edition.stage}"
     return f"{edition.series}_{edition.period.end:%Y_%m_%d}{stage}"
+
+
+def _write(target: Path, data: bytes) -> Path:
+    """Write `data` to `target` through a temporary file with a fixed name in its folder."""
+    target.parent.mkdir(parents=True, exist_ok=True)
+    written = target.with_name(f".{target.name}.tmp")
+    written.write_bytes(data)
+    written.replace(target)
+    return target
 
 
 def _fixture_sha(path: Path) -> str | None:
