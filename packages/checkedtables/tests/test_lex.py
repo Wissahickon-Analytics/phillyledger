@@ -867,6 +867,12 @@ def test_a_cell_with_a_font_code_is_unreadable_in_every_column() -> None:
         assert cell == expected, (texts, column.kind, source)
 
 
+def test_cid_in_upper_case_is_no_font_code_and_lexes_as_text() -> None:
+    page = page_from_text("(CID:21)", SHA, 1)
+    cell = lex_cell(page.words, LABEL, page.source.kind)
+    assert cell == Text("(CID:21)", (page.words[0].ref,))
+
+
 def test_a_word_with_a_font_code_never_splits() -> None:
     # VAL-Q05
     for text in ("(cid:21)5", "12(cid:3)45,678", "TAX(cid:7)434,605"):
