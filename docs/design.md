@@ -1756,12 +1756,15 @@ def split_line_prefix(line: Line, pattern: str) -> tuple[tuple[Word, ...], Line]
 
 # checkedtables/lines.py
 def group_lines(page: Page) -> tuple[Line, ...]: ...
-    # Decision 14 (section 16) adds at step 5: a small word joins the line whose vertical span
-    # holds its bottom edge. As built:
     # cluster by word bottom; a word joins a line only if its bottom is within 0.35 x median
     # word height of the line's first word. Never chains: a tall word cannot bridge two lines.
     # Words are taken by bottom, then x0, then ref. The first word opens a line, and a word
-    # that does not join the open line opens the next. A line's words sort by x0, lines by top.
+    # that does not join the open line opens the next.
+    # Then decision 14 (section 16), built at step 5: a word moves to another of those lines
+    # when that line's top is above the word's bottom, its bottom is at or below it, and the
+    # word's box height is under 0.7 of the line's median. Boxes and medians are those before
+    # any move, so moves never chain. The nearer bottom wins. No two lines share a bottom, so
+    # no tie occurs. A line's words sort by x0, lines by top.
 def page_lines(page: Page) -> PageLines: ...
 def has_values(line: Line) -> bool: ...                  # a value word, as lanes_from_values defines it
     # Decision 15 (section 16) adds value words at the step decision 18 names: N/A and NA in
