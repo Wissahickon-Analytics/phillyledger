@@ -1,10 +1,10 @@
 from collections import Counter
 from dataclasses import replace
-from itertools import pairwise
 from statistics import median
 
 from hypothesis import example, given
 from hypothesis import strategies as st
+from packages.checkedtables.tests.step_2_rule import step_2_rule_lines
 
 from checkedtables.kinds import SourceKind
 from checkedtables.lines import Line, PageLines, group_lines, has_values, lines_text, page_lines
@@ -80,6 +80,12 @@ LOW_CONFIDENCE = page_of(
     Word(WordRef(SHA, 1, 1), "85.8", Box(60.0, 0.0, 84.0, 12.0), None, None, 89.0),
     source=OCR,
 )
+MOVED_OPENER = page_of(
+    placed(0, "a", 0.0, 80.0, 100.0),
+    placed(1, "a2", 20.0, 72.0, 102.0),
+    placed(2, "b", 40.0, 74.0, 114.0),
+    placed(3, "c", 60.0, 76.0, 116.0),
+)
 PAGE_2_OF_ANOTHER_FILE = replace(
     page_from_text("Taxes $ 1,234", OTHER_SHA, 2),
     rotation=90,
@@ -108,6 +114,31 @@ def tolerance(page: Page) -> float:
     return 0.35 * median(word.box.bottom - word.box.top for word in page.words)
 
 
+def height(word: Word) -> float:
+    return word.box.bottom - word.box.top
+
+
+def unmoved(page: Page) -> set[WordRef]:
+    lines = step_2_rule_lines(page)
+    boxes = [Box.around(word.box for word in found) for found in lines]
+    medians = [median(height(word) for word in found) for found in lines]
+    return {
+        word.ref
+        for own, found in enumerate(lines)
+        for word in found
+        if own
+        == min(
+            (
+                index
+                for index, box in enumerate(boxes)
+                if box.top < word.box.bottom <= box.bottom and height(word) < 0.7 * medians[index]
+            ),
+            key=lambda index: boxes[index].bottom,
+            default=own,
+        )
+    }
+
+
 def line(text: str) -> Line:
     (only,) = group_lines(page_from_text(text, SHA, 1))
     return only
@@ -130,18 +161,23 @@ def test_every_word_lands_in_exactly_one_line(page: Page) -> None:
 @given(pages())
 @example(STAIRCASE)
 @example(UNEVEN_HEIGHTS)
-def test_a_line_never_spans_more_than_the_tolerance(page: Page) -> None:
+@example(MOVED_OPENER)
+def test_the_unmoved_words_of_a_line_never_span_more_than_the_tolerance(page: Page) -> None:
+    kept = unmoved(page)
     for found in group_lines(page):
-        bottoms = [word.box.bottom for word in found.words]
-        assert max(bottoms) - min(bottoms) <= tolerance(page)
+        bottoms = [word.box.bottom for word in found.words if word.ref in kept]
+        assert not bottoms or max(bottoms) - min(bottoms) <= tolerance(page)
 
 
 @given(pages())
 @example(STAIRCASE)
 @example(UNEVEN_HEIGHTS)
-def test_a_word_within_the_tolerance_never_opens_a_line(page: Page) -> None:
-    openers = sorted(min(word.box.bottom for word in found.words) for found in group_lines(page))
-    assert all(after - before > tolerance(page) for before, after in pairwise(openers))
+@example(MOVED_OPENER)
+def test_the_unmoved_words_keep_the_lines_the_step_2_rule_gives_them(page: Page) -> None:
+    kept = unmoved(page)
+    after = {frozenset(word.ref for word in found.words) & kept for found in group_lines(page)}
+    before = {frozenset(word.ref for word in found) & kept for found in step_2_rule_lines(page)}
+    assert after - {frozenset()} == before - {frozenset()}
 
 
 @given(st.data())
@@ -185,6 +221,115 @@ def test_debris_between_two_rows_joins_neither() -> None:
         "Long-Term Debt 12.3",
         "co ~",
         "Interfund Charges 45.6",
+    ]
+
+
+def row_with(*extra: Word) -> Page:
+    return page_of(
+        placed(0, "Human", 0.0, 88.0, 100.0),
+        placed(1, "Services", 36.0, 88.0, 100.0),
+        placed(2, "1,428", 300.0, 88.0, 100.0),
+        *extra,
+    )
+
+
+def line_texts(page: Page) -> list[str]:
+    return [found.text for found in group_lines(page)]
+
+
+def test_a_line_holds_a_word_whose_bottom_is_below_its_top_and_not_below_its_bottom() -> None:
+    # QPOS-Q11
+    assert line_texts(row_with(placed(3, "(1)", 90.0, 83.0, 88.0))) == [
+        "(1)",
+        "Human Services 1,428",
+    ]
+    assert line_texts(row_with(placed(3, "(1)", 90.0, 83.5, 88.5))) == ["Human Services (1) 1,428"]
+    assert line_texts(row_with(placed(3, "(1)", 90.0, 95.0, 100.0))) == ["Human Services (1) 1,428"]
+    assert line_texts(row_with(placed(3, "(1)", 90.0, 100.0, 105.0))) == [
+        "Human Services 1,428",
+        "(1)",
+    ]
+
+
+def test_a_word_moves_only_when_under_0_7_of_the_line_median() -> None:
+    def page(mark_top: float) -> Page:
+        return page_of(
+            placed(0, "Aviation", 0.0, 90.0, 100.0),
+            placed(1, "840", 300.0, 90.0, 100.0),
+            placed(2, "639", 340.0, 90.0, 100.0),
+            placed(3, "(1)", 60.0, mark_top, 93.0),
+        )
+
+    assert line_texts(page(86.0)) == ["(1)", "Aviation 840 639"]
+    assert line_texts(page(86.1)) == ["Aviation (1) 840 639"]
+
+
+def test_the_size_of_a_word_is_measured_against_its_line_and_not_the_page() -> None:
+    title = tuple(placed(4 + index, "TITLE", 60.0 * index, 20.0, 40.0) for index in range(5))
+    small_row = page_of(
+        placed(0, "Aviation", 0.0, 90.0, 100.0),
+        placed(1, "840", 300.0, 90.0, 100.0),
+        placed(2, "639", 340.0, 90.0, 100.0),
+        placed(3, "(1)", 60.0, 84.0, 92.0),
+        *title,
+    )
+    assert line_texts(small_row)[1:] == ["(1)", "Aviation 840 639"]
+    notes = tuple(placed(4 + index, "note", 30.0 * index, 195.0, 200.0) for index in range(6))
+    tall_row = page_of(
+        placed(0, "Aviation", 0.0, 80.0, 100.0),
+        placed(1, "840", 300.0, 80.0, 100.0),
+        placed(2, "639", 340.0, 80.0, 100.0),
+        placed(3, "(1)", 60.0, 84.0, 90.0),
+        *notes,
+    )
+    assert line_texts(tall_row)[0] == "Aviation (1) 840 639"
+
+
+def test_a_word_two_lines_hold_joins_the_one_with_the_nearer_bottom() -> None:
+    mark = placed(4, "(1)", 40.0, 87.0, 92.0)
+    both_hold = page_of(
+        placed(0, "Alpha", 0.0, 80.0, 100.0),
+        placed(1, "12", 300.0, 80.0, 100.0),
+        placed(2, "Beta", 0.0, 90.0, 110.0),
+        placed(3, "34", 300.0, 90.0, 110.0),
+        mark,
+    )
+    assert line_texts(both_hold) == ["Alpha (1) 12", "Beta 34"]
+    mark_not_small_for_the_nearer = page_of(
+        placed(0, "Alpha", 0.0, 80.0, 100.0),
+        placed(1, "1", 300.0, 94.0, 100.0),
+        placed(5, "2", 320.0, 94.0, 100.0),
+        placed(2, "Beta", 0.0, 90.0, 110.0),
+        placed(3, "34", 300.0, 102.0, 110.0),
+        placed(6, "56", 340.0, 102.0, 110.0),
+        mark,
+    )
+    assert line_texts(mark_not_small_for_the_nearer) == ["Alpha 1 2", "Beta (1) 34 56"]
+
+
+def test_a_word_its_own_line_holds_stays_though_a_farther_line_also_holds_it() -> None:
+    page = page_of(
+        placed(0, "a", 0.0, 99.0, 100.0),
+        placed(1, "a2", 20.0, 90.5, 102.5),
+        placed(2, "b", 40.0, 84.0, 104.0),
+        placed(3, "c", 60.0, 98.0, 106.0),
+    )
+    assert line_texts(page) == ["b c", "a a2"]
+
+
+def test_two_rows_with_one_bottom_are_one_line_so_a_word_never_ties() -> None:
+    page = page_of(
+        placed(0, "Alpha", 0.0, 70.0, 100.0),
+        placed(1, "12", 300.0, 90.0, 100.0),
+        placed(2, "(1)", 40.0, 87.0, 92.0),
+    )
+    assert line_texts(page) == ["Alpha (1) 12"]
+
+
+def test_a_full_size_word_inside_a_line_span_stays_on_its_own_line() -> None:
+    assert line_texts(row_with(placed(3, "Note", 90.0, 83.0, 95.0))) == [
+        "Note",
+        "Human Services 1,428",
     ]
 
 

@@ -35,3 +35,21 @@ to `docs/plans/step-05.md`.
   step that builds `run_parse` (shape 20). Section 4.2 said that `load_records` arrives at step
   5. No record exists for the 20 editions, so each loader lands with its first record (shape
   17). Design sections 4 and 4.2.
+- **Decision 14 moves 54 words, and two step 2 properties are restated** (November 27, 2026, S5-A).
+  The plan said the rule moves the 32 marks and the 14 grid-page margin digits and no other word of
+  the 56 fixture pages. Built in `group_lines`, it also moves the two margin digits of the sideways
+  page number on page 34 of `2022-06-30`, `2022-09-30` and `2022-12-31` and page 33 of `2023-03-31`.
+  Each digit is 4.45 points high with its bottom at 306.00 or 310.45, inside the span of the prose
+  line `Note for FY.. Q.:`, which runs from 305.06 to 315.06 with a median height of 10.00, and both
+  join it. The Plan session's count skipped the pages with no body row. These are commentary pages,
+  reported and not parsed, so no value, label or row changes. The step 2 tests
+  `test_a_line_never_spans_more_than_the_tolerance` and
+  `test_a_word_within_the_tolerance_never_opens_a_line` held every word of a line to the tolerance,
+  which a raised mark with its bottom 4.2 points above its label's cannot meet. They now hold for
+  the words the rule does not move, which a reference of the step 2 rule finds. Those words of a
+  line span at most the tolerance, and they keep the lines the step 2 rule gives them. The lead's
+  probe on the held PDFs found the 54, and
+  `test_only_the_54_pinned_words_leave_the_lines_of_the_step_2_rule` pins them by ref. The owner
+  chose "Build as confirmed (Recommended)" (decision 19). The bottoms of the step 2 lines rise
+  strictly from line to line, so no two share a bottom, the tie of section 16.3 cannot occur, and
+  the rule needs no code for it. Design sections 3.1 and 16.

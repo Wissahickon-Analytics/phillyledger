@@ -112,9 +112,9 @@ file, `docs/progress.md`, `docs/followups.md` or `docs/deviations/`.
   plan decides whether `Page` refuses those states too, and records the choice in design section
   2.1.
 - **What the step 2 rules do on real pages, for the plans of steps 5, 8, 10, 11
-  and 12** (November 23, 2026, step 2, S2-C, found in the Codex reviews). Decisions 14 to 17 of
-  design section 16 settle four of the results below. Step 5 builds decision 14, and decision 18
-  moves the other three to the first step whose pages print the case. Codex read three PDFs of
+  and 12** (November 23, 2026, step 2, S2-C, found in the Codex reviews). Decisions 15 to 17 of
+  design section 16 settle three of the results below, and decision 18 moves them to the first
+  step whose pages print the case. Codex read three PDFs of
   `../gov-budget-data/data/phila/` with `pdftotext -bbox` and ran `group_lines`, `has_values` and
   `parse_label` on their word boxes at `8846f05`. The S2-C fix round reran the command (the
   block "PDF reproduction for findings 1-4" of `.codex-review/step-02-pr-8846f05c.md`) and
@@ -122,26 +122,6 @@ file, `docs/progress.md`, `docs/followups.md` or `docs/deviations/`.
   that `datadesk fixture` writes, from step 4 on (`CLAUDE.md`, Tests), so S2-C changed none of
   the three functions for them. The boxes are those of `pdftotext`, not those of the adapter
   that step 4 builds.
-  - A raised footnote mark leaves its row, for the step 5 plan and the owner. On page 2 of the
-    FY2026 Q4 QCMR positions report (`qcmr/positions/FY26_Q4.pdf`), the mark of "Human Services
-    (1)" is raised. The word `(1)` has top 357.95 and bottom 363.44, "Human" has bottom 367.62,
-    and the tolerance of `group_lines` is 2.906, 0.35 of the median word height of 8.303. The
-    mark's bottom is 4.18 above the row's, so `group_lines` makes `(1)` a line of its own. The
-    run printed `(1) True` and `Human Services 438 1,059 1,497 532 1,323 1,855 448 1,045 1,493
-    362 True`. So `has_values` is true for the lone mark, and `parse_label` never sees it with
-    its label (QPOS-Q11). `group_lines` is the design's rule as written. FY2026 Q4 is one of the
-    20 editions step 5 parses, so the step 5 plan tests this page with the real adapter's words
-    and decides the rule. The same rule would keep a raised footnote digit out of its cell, and
-    the lexer's rule for VAL-Q28 expects to find that digit in the cell. The second Codex review
-    says that it reproduced this raised `(1)` and the lower-case `n/a` row below with `pdfplumber`
-    word boxes as well (`.codex-review/step-02-pr-6442b4eb.md`, "What I checked"), which is Codex's
-    statement and not a run of ours, because `pdfplumber` is not installed in this repository until
-    step 4. The S2-D fix round reran the Codex command at the S2-D head on the words of
-    `test_a_raised_digit_after_a_small_dollar_sign_is_a_mark`. Through `group_lines` they make two
-    lines, and in a money column the run printed `'1' Amount 1` and `'$ 2.8' Amount 2.8`, so the row
-    loses its mark and gains a value of 1. Given the three words as one cell, `lex_cell` returns
-    `Amount 2.8` with the mark `1` and three refs, which is right for the words it gets, so the line
-    rule and the raised-mark rule cannot both hold when a mark rises more than the line tolerance.
   - Margin debris joins a cash row, for the step 8 plan.
     `test_debris_between_two_rows_joins_neither` (QCASH-Q16, VAL-Q13) uses made-up boxes. On
     page 1 of the FY2008 Q4 QCMR cash report (`qcmr/cash/FY08_Q4.pdf`), the run printed the

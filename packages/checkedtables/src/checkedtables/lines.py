@@ -11,6 +11,7 @@ from checkedtables.text import normalize_space
 from checkedtables.words import Page, Word
 
 _TOLERANCE = 0.35
+_RAISED_SIZE = 0.7
 _MARKS = "*\u2020\u2021\xa7#`\u2070\xb9\xb2\xb3\u2074-\u2079"
 _VALUE_GLYPHS = r"\d,.$%()\-\u2212\u2013\u2014"
 _MARK_WORD = compile(f"[{_MARKS}]+")
@@ -67,13 +68,38 @@ def _line(page: int, words: Sequence[Word]) -> Line:
     return Line(page, ordered, Box.around(word.box for word in ordered))
 
 
+def _height(word: Word) -> float:
+    return word.box.bottom - word.box.top
+
+
+def _holder(word: Word, own: int, lines: Sequence[Line], medians: Sequence[float]) -> int:
+    """Return the index of the nearest line that holds a word small for it, else `own`."""
+    holders = [
+        index
+        for index, line in enumerate(lines)
+        if line.box.top < word.box.bottom <= line.box.bottom
+        and _height(word) < _RAISED_SIZE * medians[index]
+    ]
+    return min(holders, key=lambda index: lines[index].box.bottom, default=own)
+
+
 def group_lines(page: Page) -> tuple[Line, ...]:
-    """Group a page's words into lines by their bottoms.
+    """Group a page's words into lines by their bottoms, then move each small raised word.
 
     The words are taken by bottom, then `x0`, then ref. The first word opens a line. A later
     word joins the open line when its bottom is within 0.35 of the page's median word height
     of the bottom of the word that opened the line, and opens a new line otherwise. So lines
     never chain, and a tall word cannot bridge two lines.
+
+    Then a line holds a word when the line's top is above the word's bottom, the line's bottom
+    is at or below it, and the word's height is under 0.7 of the line's median word height,
+    the ratio of the lexer's raised-digit rule (decision 14). Heights are box heights, in the
+    page's units. Every line keeps the box and the median it had before any word moved, so
+    moves never chain. Of the lines that hold a word, its own among them, it joins the one
+    with the nearest bottom. No two lines share a bottom, so no tie can occur. A
+    line that loses all its words is gone. QPOS-Q11: from FY2024 Q1, the bottom of the "(1)"
+    after "Human Services" in Table P-1 is about 4.2 points above the label's, past the
+    tolerance of 2.60, and this puts the mark back on its row.
 
     Parameters
     ----------
@@ -88,14 +114,20 @@ def group_lines(page: Page) -> tuple[Line, ...]:
     """
     if not page.words:
         return ()
-    tolerance = _TOLERANCE * median(word.box.bottom - word.box.top for word in page.words)
+    tolerance = _TOLERANCE * median(_height(word) for word in page.words)
     groups: list[list[Word]] = []
     for word in sorted(page.words, key=lambda word: (word.box.bottom, word.box.x0, word.ref)):
         if groups and word.box.bottom - groups[-1][0].box.bottom <= tolerance:
             groups[-1].append(word)
         else:
             groups.append([word])
-    lines = (_line(page.number, group) for group in groups)
+    clusters = [_line(page.number, group) for group in groups]
+    medians = [median(_height(word) for word in cluster.words) for cluster in clusters]
+    members: list[list[Word]] = [[] for _ in clusters]
+    for own, cluster in enumerate(clusters):
+        for word in cluster.words:
+            members[_holder(word, own, clusters, medians)].append(word)
+    lines = (_line(page.number, words) for words in members if words)
     return tuple(sorted(lines, key=lambda line: line.box.top))
 
 
