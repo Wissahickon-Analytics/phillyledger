@@ -90,9 +90,10 @@ whole file, and lines are those of `group_lines`. A "grid page" prints the ten-c
    words. The first, `2`, is a line of its own. The second joins a body row as its first word, as
    in `5 First Judicial District` and `6 Records`. Each digit is 4.45 points high, and the
    bottom edge of the `2` is inside the span of that row, so the rule of decision 14 puts both
-   digits on the row. Those 14 digits and the 32 marks of fact 7 are the only words of the 56
-   pages that the rule moves. From `2023-06-30` each grid page ends with a page number, `23` to
-   `28`, as a line of one word.
+   digits on the row. The rule moves 54 words of the 56 pages: those 14 digits, the 32 marks of
+   fact 7, and the two margin digits of each commentary page of `2022-06-30`, `2022-09-30`,
+   `2022-12-31` and `2023-03-31`, which join the line `Note for FY.. Q.:`. From `2023-06-30`
+   each grid page ends with a page number, `23` to `28`, as a line of one word.
 10. **Below the rows, a page prints footnotes and one notice.** A footnote reads `(1) Positions
     have been transferred to the Grants Revenue Fund. ...` on one line, and from `2023-09-30` its
     mark is raised (fact 7). The FY2024 editions add `In FY23 and prior, positions for the
@@ -228,7 +229,7 @@ pull request that builds a shape records it in `docs/design.md` and in
    joins that line when the line's top is above the word's bottom edge and the line's bottom is
    at or below it. A word that two lines hold joins the one whose bottom is nearer, and stays a
    line of its own on a tie. Every other word groups as it does today. On the 56 pages the rule
-   moves the 32 marks of fact 7 and the 14 margin digits of fact 9, and no other word.
+   moves the 54 words of fact 9, and no other word.
 2. **`PageLines` carries the page's rules.** `cut_pages` takes `PageLines`, and shape 4 needs the
    rules. `page_lines` copies them from the `Page`.
 3. **Lanes come from values.** `cut_pages` calls `lanes_from_values` on every page. The design
@@ -354,7 +355,8 @@ Builds on `main`. `feat(checkedtables): join a small raised word to the line tha
   fact 7 is on the line of its row or its footnote, in the 12 editions from `2023-09-30`, with
   `Human Services (1)` on page 33 of `2026-06-30` among them, and that no line of a grid page is
   a lone `(N)`. Proves that on the 14 pages of fact 9 both margin digits are on one row's line.
-  Proves, by word ref, that no other word of the 56 fixture pages changes its line.
+  Proves, by word ref, that no word of the 56 fixture pages but the 54 of fact 9 changes its
+  line.
 - Runs, each recorded in the pull request. `datadesk fixture` reads the archive on R2 from an
   empty word cache, as `uv run --env-file /Users/nhand/DataProjects/phillyledger/.env datadesk
   fixture <sha> <pages>` from the worktree (`docs/progress.md`, "The archive bucket from a
@@ -457,10 +459,9 @@ Builds on S5-E. `feat(datadesk): describe each positions column in the closed vo
 
 ## Risks to probe
 
-1. **Shape 1 changes `group_lines` for every page.** S5-A shows the step 2 tests unchanged. The
-   probe applied the rule to the lines that `group_lines` makes today, and S5-A builds it inside
-   the grouping. If any word but the 32 marks and the 14 margin digits changes its line on the 56
-   fixture pages, S5-A stops for the owner.
+1. **Shape 1 changes `group_lines` for every page.** The probe applied the rule to the lines
+   that `group_lines` makes today, and S5-A builds it inside the grouping. If any word but the 54
+   of fact 9 changes its line on the 56 fixture pages, S5-A stops for the owner.
 2. **Bands need drawn rules.** A scan has none, so a spec with a group cannot bind there
    (shape 4). The note for step 7 says so.
 3. **The limit of shape 7 is sized on one table.** It sits between about 2 and 38.94 points here.
