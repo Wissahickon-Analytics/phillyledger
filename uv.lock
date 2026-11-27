@@ -373,6 +373,7 @@ source = { editable = "packages/datadesk" }
 dependencies = [
     { name = "boto3" },
     { name = "pdfplumber" },
+    { name = "pillow" },
     { name = "typer" },
 ]
 
@@ -380,6 +381,7 @@ dependencies = [
 requires-dist = [
     { name = "boto3", specifier = ">=1.40" },
     { name = "pdfplumber", specifier = ">=0.11" },
+    { name = "pillow", specifier = ">=13" },
     { name = "typer", specifier = ">=0.28,<0.29" },
 ]
 

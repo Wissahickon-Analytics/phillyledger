@@ -106,6 +106,11 @@ Step 1 creates these. Keep this list true as tooling changes.
   sha from the bucket and writes a word fixture of each page, as `35,36`, to
   `packages/datadesk/tests/fixtures/words/<series>_<YYYY_MM_DD>_p<n>.py`, with the stage before
   `_p` when it is not `none`. It caches the words in `.cache/words` and only reads the bucket.
+- `uv run --env-file .env datadesk crops <tsv> <folder>` reads the archived PDFs of the rows of
+  a crop file, such as `docs/evidence/crops/qcmr_positions.tsv`, and writes each page they name
+  at 200 dpi to `<folder>/pages/`, the band of each row with a `page_label` to `<folder>/rows/`,
+  and `<folder>/sheet.png` once every row has its crop label and values. It caches the words in
+  `.cache/words` and only reads the bucket. Keep its images out of git.
 
 ## Hard rules
 

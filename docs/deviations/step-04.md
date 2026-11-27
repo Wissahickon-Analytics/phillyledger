@@ -74,3 +74,24 @@ why, the run that shows it, and the design section updated. Fact and shape numbe
   with `match` and `assert_never` (shape 14). The property test failed with a renderer that writes
   the width as a float, and the overwrite test failed with the sha check removed. Design sections
   3.2, 9 and 11.1.
+- **S4-E: the crops command, the crop file and the row rule** (November 26, 2026, S4-E). The
+  design named `datadesk crops <tsv> <folder>`, a crop file of eight columns and one rule in
+  `shell/report.py` that finds a row's line, and gave none of them a form (shape 13). The
+  command writes the page images to `<folder>/pages/` and the row bands to `<folder>/rows/`,
+  with `sheet.png` beside them, so a reader's brief can name one folder alone (risk 5). It
+  writes the pages on every run that passes the checks made before any PDF is read, one that
+  stops on a label included, since the labels are typed from them.
+  `test_each_page_is_written_at_200_dpi_whether_or_not_a_row_has_a_label` and
+  `test_a_label_that_begins_no_line_or_two_lines_stops_before_any_row_file` show both.
+  A band runs across the page from `ROW_PAD`, one point, above the line's box to one point
+  below it. On the 20 grid fixtures the median gap from one line's box to the next is 2.158
+  points, and so is the fifth percentile of the gaps above zero, so the pad stops more than a
+  point short of the next box. The band test failed with the pad dropped and with a pad of three
+  points. A row of the file is `CropRow`, a frozen dataclass with `sha256: Sha256` and
+  `row: RowEnd`, a `StrEnum` of `first` and `last`, and its header is the dataclass's field
+  names. `read_crop_rows` serves the command and the check's test, and raises `ValueError`
+  naming the line. `row_line` returns `Line | NoLine | TwoLines`, `TwoLines` holds every line
+  that begins with the label, a label of no words begins no line, and both callers end their
+  `match` in `assert_never`. The `row_line` tests failed with the rule flipped, with the first
+  of two lines picked and with the label matched anywhere in a line. Design sections 4, 9 and
+  12.3.
