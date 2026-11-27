@@ -10,6 +10,7 @@ import pytest
 from packages.datadesk.tests.shell.fakes import DictCache, DictStore
 
 from checkedtables.refs import Sha256
+from datadesk.core.codec import render_fixture
 from datadesk.core.fetch import INDEX_PATH, pdf_key
 from datadesk.core.index import parse_index
 from datadesk.shell.adapters.pdf_pdfplumber import PdfPlumberReader
@@ -71,6 +72,14 @@ def test_each_word_fixture_regenerates_byte_identical(tmp_path: Path) -> None:
     written = {path.name: path.read_bytes() for path in sorted((root / FIXTURE_FOLDER).iterdir())}
     assert sorted(written) == sorted(held)
     assert [name for name in held if written[name] != held[name]] == []
+
+
+def test_each_word_fixture_is_the_text_render_fixture_writes_of_its_page() -> None:
+    held = held_fixtures()
+    assert len(held) == 20
+    for name, data in held.items():
+        module = fixture(name.removesuffix(".py"))
+        assert render_fixture(module.PAGE).encode("utf-8") == data, name
 
 
 def test_no_word_of_the_twenty_grid_pages_holds_a_font_code() -> None:
