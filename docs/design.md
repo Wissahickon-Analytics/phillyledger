@@ -1817,17 +1817,19 @@ def choose_era(eras: Sequence[Era], header_text: str, on: date) -> Era | Finding
 def lanes_from_values(body: Sequence[Line]) -> tuple[Lane, ...]: ...
     # Decision 15 (section 16) adds value words at the step decision 18 names, as at
     # has_values. As built:
-    # cluster right edges of value words. A value word is a numeric word with no non-numeric
-    # word to its right on its line but mark words, so "Class 100 Total" never seeds a lane.
-    # A value word seeds no lane when the word on its left is no value word and stands closer
-    # than the line's median word height: a mark beside a label is label text (QPOS-Q11). The
-    # "(1)" after "Human Services" in Table P-1 stands at most 2.06 points off, and a label
-    # ends at least 38.94 points before its first number, against a median height of 7.44 on
-    # all 40 grid pages. Sorted, an edge joins the open lane when it is within the median
-    # height of the value words of the lane's first edge, so lanes never chain. A lane runs
-    # from the right edge of the lane before it to its own rightmost edge, so lanes meet and a
-    # caption over the left part of a column lands over its lane. The first lane starts at the
-    # left edge of its widest word.
+    # cluster right edges of the cells of value words. A value word is a numeric word with no
+    # non-numeric word to its right on its line but mark words, so "Class 100 Total" never
+    # seeds a lane. A cell is a run of words, each closer than the line's median word height
+    # to the word on its left, that holds a value word and no other word with a letter, so
+    # "$ 2.8 1" with a raised mark (VAL-Q28) and "$ -" (RTT-Q39) are each one cell. A mark
+    # beside a label is in the label's run and seeds no lane (QPOS-Q11). The "(1)" after
+    # "Human Services" in Table P-1 stands at most 2.06 points off, and a label ends at least
+    # 38.94 points before its first number, against a median height of 7.44 on all 40 grid
+    # pages. Sorted, an edge joins the open lane when it is within the median height of the
+    # cells of the lane's first edge, so lanes never chain. A lane runs from the right edge of
+    # the lane before it to its own rightmost edge, so lanes meet and a caption over the left
+    # part of a column lands over its lane. The first lane starts at the leftmost left edge of
+    # its cells, so a "$" that opens a cell is in it.
 def lanes_from_rules(rules: Sequence[Rule], region: Box) -> tuple[Lane, ...]: ...
     # lanes between consecutive vertical rules that run from the region's top or above to its
     # bottom or below; the region's x0 and x1 are not read. A rule is vertical when under 1 pt

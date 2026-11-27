@@ -204,15 +204,16 @@ def choose_era(eras: Sequence[Era], header_text: str, on: date) -> Era | Finding
 
 
 def lanes_from_values(body: Sequence[Line]) -> tuple[Lane, ...]:
-    """Return the lanes that the right edges of a page's value words make.
+    """Return the lanes that the right edges of the cells of a page's value words make.
 
     A value word is a number, a dash placeholder or N/A with no word right of it on its line
-    but other value words and mark words, so "Class 100 Total" seeds no lane. A value word
-    seeds no lane when the word on its left is not a value word and stands closer than its
-    line's median word height: a mark beside a label, such as the "(1)" about 2 points after
-    "Human Services", is label text (QPOS-Q11). Sorted, a right edge joins the open lane when it
-    is within the median height of the value words of the lane's first edge, so lanes never
-    chain.
+    but other value words and mark words, so "Class 100 Total" seeds no lane. A cell is a run
+    of words, each closer than its line's median word height to the word on its left, that
+    holds a value word and no other word with a letter. So "$ 2.8 1" with a raised mark is one
+    cell (VAL-Q28), and so is "$ -" (RTT-Q39). A mark beside a label, such as the "(1)" about 2
+    points after "Human Services", is in the label's run and seeds no lane (QPOS-Q11). Sorted,
+    a right edge joins the open lane when it is within the median height of the cells of the
+    lane's first edge, so lanes never chain.
 
     Parameters
     ----------
@@ -223,20 +224,21 @@ def lanes_from_values(body: Sequence[Line]) -> tuple[Lane, ...]:
     -------
     tuple[Lane, ...]
         The lanes, left to right, each with an empty caption. A lane runs from the right edge
-        of the lane before it to the rightmost edge of its own words, so the lanes meet. The
-        first lane starts at the left edge of its widest word. Empty when no word seeds one.
+        of the lane before it to the rightmost edge of its own cells, so the lanes meet. The
+        first lane starts at the leftmost left edge of its cells, so a "$" that opens a cell is
+        in it. Empty when no cell seeds one.
     """
-    seeds = [word for line in body for word in _seeds(line)]
+    seeds = [box for line in body for box in _seeds(line)]
     if not seeds:
         return ()
-    tolerance = median(_height(word) for word in seeds)
+    tolerance = median(box.bottom - box.top for box in seeds)
     clusters: list[list[float]] = []
-    for edge in sorted(word.box.x1 for word in seeds):
+    for edge in sorted(box.x1 for box in seeds):
         if clusters and edge - clusters[-1][0] <= tolerance:
             clusters[-1].append(edge)
         else:
             clusters.append([edge])
-    left = min(word.box.x0 for word in seeds if word.box.x1 <= clusters[0][-1])
+    left = min(box.x0 for box in seeds if box.x1 <= clusters[0][-1])
     lanes: list[Lane] = []
     for cluster in clusters:
         lanes.append(Lane(left, cluster[-1], ""))
@@ -437,19 +439,26 @@ def _height(word: Word) -> float:
     return word.box.bottom - word.box.top
 
 
-def _seeds(line: Line) -> list[Word]:
-    """Return the value words of a line that seed lanes, leaving out one beside a label word."""
+def _seeds(line: Line) -> list[Box]:
+    """Return the box of each cell of a line that seeds a lane, leaving out a label's mark."""
     values = _value_words(line.words)
     if not values:
         return []
     height = median(_height(word) for word in line.words)
-    seeds: list[Word] = []
-    for word in values:
-        index = line.words.index(word)
-        left = line.words[index - 1] if index else None
-        if left is None or left in values or word.box.x0 - left.box.x1 >= height:
-            seeds.append(word)
-    return seeds
+    runs: list[list[Word]] = []
+    for word in line.words:
+        if runs and word.box.x0 - runs[-1][-1].box.x1 < height:
+            runs[-1].append(word)
+        else:
+            runs.append([word])
+    return [
+        Box.around(word.box for word in run)
+        for run in runs
+        if any(word in values for word in run)
+        and not any(
+            word not in values and any(glyph.isalpha() for glyph in word.text) for word in run
+        )
+    ]
 
 
 def _joined(rules: Sequence[Rule]) -> list[tuple[float, float, float]]:

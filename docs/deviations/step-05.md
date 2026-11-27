@@ -77,16 +77,24 @@ to `docs/plans/step-05.md`.
   width open. A lane of the value words' own extent misses captions: the tenth P-1 column
   prints `UNDER` at x 685.5 to 711.9 over numbers from 729.8 to 743.5 (page 33 of
   `2026-06-30`). So a lane runs from the right edge of the lane before it to its own rightmost
-  edge, the first from the left edge of its widest word, and a word is in a lane by its right
-  edge. `test_right_edges_cluster_into_lanes_that_meet` and the 40-fixture binding test show it.
+  edge, and a word is in a lane by its right edge.
+  `test_right_edges_cluster_into_lanes_that_meet` and the 40-fixture binding test show it.
   Design sections 2.1 and 3.1.
-- **A number beside a label word seeds no lane** (November 27, 2026, S5-B). Shape 7 as planned.
-  On the 40 grid fixtures the 24 marks in row labels stand 1.27 to 2.06 points after their
-  label word, and the smallest gap from a label to its first number is 38.94 points, on
-  `Office of Behavioral Hlth & Intellectual disAbility` in `2021-09-30`, against a median
-  word height of 7.44 on every row. Lanes cluster by the median value-word height, and the
-  widest lane spreads 3.82 points (`over_under`, page 32 of `2024-06-30`).
-  `test_a_mark_beside_a_label_seeds_no_lane`. Design section 3.1.
+- **A number beside a label word seeds no lane** (November 27, 2026, S5-B). Shape 7, with
+  cells. A lane is seeded by a cell: a run of words, each closer than the line's median word
+  height to the word on its left, that holds a value word and no other word with a letter. A
+  mark beside a label is in its label's run. Shape 7 as planned took a `$` for label text, so
+  in `Tax $ 2.8 1` (VAL-Q28) the raised `1` seeded the only lane and `lex_cell` read 1 (Codex
+  finding 1 on pull request 55). Now that cell reads 2.8 with the mark `1`, and `$ -` is one
+  cell (RTT-Q39). On the 40 grid fixtures the 24 marks in row labels stand 1.27 to 2.06 points
+  after `Services` or `Aviation`, and the smallest gap from a label to its first number is
+  38.94 points, on `Office of Behavioral Hlth & Intellectual disAbility` in `2021-09-30`,
+  against a median word height of 7.44 on every row. Lanes cluster by the median cell height,
+  and the widest lane spreads 3.82 points (`over_under`, page 32 of `2024-06-30`). Every lane
+  and every row's cut on the 40 pages is the same as under the rule as planned.
+  `test_a_mark_beside_a_label_seeds_no_lane`,
+  `test_a_dollar_sign_and_a_raised_mark_cut_into_the_cell_of_their_number` and
+  `test_a_dash_after_a_dollar_sign_cuts_into_one_cell`. Design section 3.1.
 - **`cut_pages` reads commentary and every page's era** (November 27, 2026, S5-B). Shape 6 as
   planned. The design chose the era once from the first page. Now every grid page's header must
   choose the same era, so a later page that lost a caption stops the table as the first does,

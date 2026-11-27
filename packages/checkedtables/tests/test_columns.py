@@ -1,5 +1,6 @@
 from dataclasses import replace
 from datetime import date
+from decimal import Decimal
 
 import pytest
 from packages.checkedtables.tests.grid import (
@@ -12,11 +13,13 @@ from packages.checkedtables.tests.grid import (
     header,
 )
 
+from checkedtables.cells import Amount, Dash
 from checkedtables.columns import (
     Binding,
     ColumnSpec,
     Era,
     Lane,
+    NumberFormat,
     bind_by_position,
     bind_columns,
     choose_era,
@@ -24,7 +27,8 @@ from checkedtables.columns import (
     lanes_from_rules,
     lanes_from_values,
 )
-from checkedtables.kinds import Presence, ValueKind
+from checkedtables.kinds import Presence, SourceKind, ValueKind
+from checkedtables.lex import lex_cell
 from checkedtables.lines import Line, PageLines, page_lines
 from checkedtables.refs import Box
 from checkedtables.table import Finding
@@ -35,6 +39,8 @@ from checkedtables.words import Rule
 BUDGET = ColumnSpec("budget", "Budget", ValueKind.MONEY)
 ACTUAL = ColumnSpec("actual", "Actual", ValueKind.MONEY)
 TWO = Era("two", ("Budget",), (BUDGET, ACTUAL), (date(2020, 7, 1), None))
+MONEY = ColumnSpec("money", "Money", ValueKind.MONEY, NumberFormat(decimals=None))
+CASH = Era("cash", ("Money",), (MONEY,), (date(2020, 7, 1), None))
 
 
 def text_lines(text: str) -> tuple[Line, ...]:
@@ -112,6 +118,42 @@ def test_a_mark_beside_a_label_seeds_no_lane() -> None:
     spaced = lanes_from_values(text_lines("Ward  7    12     34"))
     assert [lane.x1 for lane in spaced] == [42.0, 78.0, 120.0]
     assert lanes_from_values(text_lines("Class 100 Total")) == ()
+
+
+def test_a_dollar_sign_and_a_raised_mark_cut_into_the_cell_of_their_number() -> None:
+    # VAL-Q28
+    page = page_from_text("         Money\nTax      $ 2.8 1", SHA, 1)
+    mark = page.words[-1]
+    box = replace(mark.box, top=mark.box.top + 1.0, bottom=mark.box.bottom - 5.0)
+    lines = page_lines(replace(page, words=(*page.words[:-1], replace(mark, box=box, size=6.0))))
+    lanes = lanes_from_values(lines.lines[1:])
+    assert lanes == (Lane(54.0, 96.0, ""),)
+    binding = bind_columns(CASH, lines.lines[:1], lanes, ())
+    assert isinstance(binding, Binding)
+    assert binding.label_right == 54.0
+    row = cut_line(lines.lines[1], binding, ())
+    assert [word.text for word in row.label_words] == ["Tax"]
+    assert [(name, [word.text for word in words]) for name, words in row.cells] == [
+        ("money", ["$", "2.8", "1"])
+    ]
+    cell = lex_cell(row.cells[0][1], MONEY, SourceKind.TEXT_LAYER)
+    assert isinstance(cell, Amount)
+    assert (cell.printed, cell.marks) == (Decimal("2.8"), ("1",))
+
+
+def test_a_dash_after_a_dollar_sign_cuts_into_one_cell() -> None:
+    # RTT-Q39
+    lines = text_lines("         Money\nTax      $ -")
+    lanes = lanes_from_values(lines[1:])
+    assert lanes == (Lane(54.0, 72.0, ""),)
+    binding = bind_columns(CASH, lines[:1], lanes, ())
+    assert isinstance(binding, Binding)
+    row = cut_line(lines[1], binding, ())
+    assert [word.text for word in row.label_words] == ["Tax"]
+    assert [(name, [word.text for word in words]) for name, words in row.cells] == [
+        ("money", ["$", "-"])
+    ]
+    assert isinstance(lex_cell(row.cells[0][1], MONEY, SourceKind.TEXT_LAYER), Dash)
 
 
 def test_touching_pieces_of_a_rule_count_as_one_rule() -> None:
