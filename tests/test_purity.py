@@ -15,6 +15,7 @@ PURE_IMPORTS: dict[str, tuple[str, ...]] = {
         "collections.abc.Sequence",
         "dataclasses.dataclass",
         "dataclasses.replace",
+        "datetime.date",
         "decimal.Decimal",
         "enum.StrEnum",
         "re.compile",
