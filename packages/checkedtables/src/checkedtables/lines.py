@@ -8,7 +8,7 @@ from statistics import median
 from checkedtables.kinds import SourceKind
 from checkedtables.refs import Box
 from checkedtables.text import normalize_space
-from checkedtables.words import Page, Word
+from checkedtables.words import Page, Rule, Word
 
 _TOLERANCE = 0.35
 _RAISED_SIZE = 0.7
@@ -46,7 +46,7 @@ class Line:
 
 @dataclass(frozen=True, slots=True)
 class PageLines:
-    """The lines of one page, with the source of its words.
+    """The lines of one page, with the source of its words and the rules drawn on it.
 
     Attributes
     ----------
@@ -56,11 +56,15 @@ class PageLines:
         The text layer or OCR.
     lines : tuple[Line, ...]
         The lines, top to bottom.
+    rules : tuple[Rule, ...]
+        The page's drawn lines, as the `Page` holds them. `cut_pages` finds the bands of a
+        table's group captions between them.
     """
 
     number: int
     source: SourceKind
     lines: tuple[Line, ...]
+    rules: tuple[Rule, ...] = ()
 
 
 def _line(page: int, words: Sequence[Word]) -> Line:
@@ -142,9 +146,9 @@ def page_lines(page: Page) -> PageLines:
     Returns
     -------
     PageLines
-        The lines that `group_lines` finds.
+        The lines that `group_lines` finds, and the page's rules.
     """
-    return PageLines(page.number, page.source.kind, group_lines(page))
+    return PageLines(page.number, page.source.kind, group_lines(page), page.rules)
 
 
 def has_values(line: Line) -> bool:
@@ -165,10 +169,22 @@ def has_values(line: Line) -> bool:
     bool
         True when the line ends in a value word, so "Class 100 Total" has no values.
     """
-    for word in reversed(line.words):
-        if not _MARK_WORD.fullmatch(word.text):
-            return _VALUE_WORD.fullmatch(word.text) is not None
-    return False
+    return bool(_value_words(line.words))
+
+
+def _value_words(words: Sequence[Word]) -> tuple[Word, ...]:
+    """Return the value words that end a line, left to right, without its mark words.
+
+    A value word joins only while no word right of it is neither a value word nor a mark word.
+    """
+    found: list[Word] = []
+    for word in reversed(words):
+        if _MARK_WORD.fullmatch(word.text):
+            continue
+        if not _VALUE_WORD.fullmatch(word.text):
+            break
+        found.append(word)
+    return tuple(reversed(found))
 
 
 def lines_text(lines: Sequence[Line]) -> str:

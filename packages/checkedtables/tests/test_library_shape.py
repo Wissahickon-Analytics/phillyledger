@@ -40,7 +40,7 @@ FIELD_SNAPSHOT: dict[str, tuple[str, ...]] = {
     "Page": ("doc_sha256", "number", "width", "height", "rotation", "source", "words", "rules"),
     "Document": ("sha256", "pages"),
     "Line": ("page", "words", "box"),
-    "PageLines": ("number", "source", "lines"),
+    "PageLines": ("number", "source", "lines", "rules"),
     "Label": ("printed", "text", "norm", "squash", "marks", "line_no"),
     "Amount": ("printed", "text", "words", "source", "reading", "review_id", "marks"),
     "Dash": ("text", "words", "meaning", "rule_id"),
@@ -56,6 +56,7 @@ FIELD_SNAPSHOT: dict[str, tuple[str, ...]] = {
     "EveryRow": (),
     "DashRule": ("id", "table", "columns", "rows", "meaning", "evidence"),
     "CellRecords": ("readings", "dash_rules", "confidence_floor"),
+    "RawRow": ("page", "prefix", "label_words", "cells", "stray", "bold", "x0"),
 }
 
 
@@ -295,7 +296,7 @@ def test_kit_dataclass_fields_are_pinned() -> None:
 
 
 def test_bool_fields_are_page_facts_only() -> None:
-    assert bool_fields(kit_dataclasses()) == {("Word", "bold")}
+    assert bool_fields(kit_dataclasses()) == {("Word", "bold"), ("RawRow", "bold")}
 
 
 def planted_package(folder: Path, text: str) -> ModuleType:
