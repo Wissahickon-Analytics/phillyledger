@@ -36,7 +36,7 @@ def misplaced(
     A word's places are a header or furniture line of the cut, the label or a cell of a row of
     the table, a stray that a stray finding names, and a raw row that an unknown or ambiguous
     row finding names, if no row of the table holds a word of it. A finding fits a stray or a
-    raw row when it is on the row's page, its subject ends with ":" and the row's printed
+    raw row when it is on the row's page, its subject after its second ":" is the row's printed
     label, and, for a stray, its message quotes the word's text. Each finding names one stray
     or one raw row that it fits (`_named`). The result maps each word of the pages that is in
     no place or in two or more, and each placed word that is on none of the pages, to its
@@ -84,7 +84,7 @@ def _named(
             index
             for index, (raw, quote, _) in enumerate(places)
             if finding.page == raw.page
-            and finding.subject.endswith(f":{_printed(raw)}")
+            and finding.subject.split(":", 2)[-1] == _printed(raw)
             and quote in finding.message
         ]
         fresh = [index for index in fits if index not in named]

@@ -145,6 +145,19 @@ def test_the_ledger_finds_a_ref_taken_out() -> None:
     assert misplaced((page,), cut, table, no_unknown) == {word.ref: 0 for word in zoo_words}
 
 
+def test_a_finding_names_no_row_whose_label_only_ends_with_the_label_it_quotes() -> None:
+    page = laid_out(EXAMPLE.replace("Zoo        ", "Board:Roads"))
+    cut, table, findings = parsed(page)
+    assert misplaced((page,), cut, table, findings) == {}
+    [roads_zz] = cut.raws[0].stray
+    [_, board_zz] = cut.raws[2].stray
+    to_board = tuple(
+        replace(f, subject="aaaaaaaa:stray:Board:Roads") if f.code == "stray_word" else f
+        for f in findings
+    )
+    assert misplaced((page,), cut, table, to_board) == {roads_zz.ref: 0, board_zz.ref: 2}
+
+
 def test_the_ledger_finds_a_ref_counted_twice() -> None:
     page = laid_out(EXAMPLE)
     cut, table, findings = parsed(page)
