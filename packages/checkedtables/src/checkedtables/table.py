@@ -265,9 +265,8 @@ class Column:
     kind : ValueKind
         What the column holds.
     caption : str
-        The words that bound the column on the first page, for the release: the words its group
-        regex found, then the words its caption regex found (`Binding.captions`). Empty for a
-        column the page did not print, or one bound by position.
+        The caption the column prints on the first page, for the release, as `Binding.captions`
+        holds it. Empty for a column the page did not print, or one bound by position.
     printed : bool
         A fact read from the page: False for an optional column that the page did not print.
     """

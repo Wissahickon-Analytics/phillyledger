@@ -1,4 +1,5 @@
 from dataclasses import replace
+from datetime import date
 from decimal import Decimal
 
 from packages.checkedtables.tests.grid import (
@@ -17,7 +18,7 @@ from packages.checkedtables.tests.grid import (
 
 from checkedtables.assemble import Assembly, assemble
 from checkedtables.cells import Amount, Blank, Dash, Reading, Unreadable
-from checkedtables.columns import Era
+from checkedtables.columns import ColumnSpec, Era
 from checkedtables.kinds import DashMeaning, SourceKind, UnreadableReason, ValueKind
 from checkedtables.lines import has_values, page_lines
 from checkedtables.pages import BodyRule
@@ -270,7 +271,7 @@ def test_a_row_whose_parent_is_not_in_the_table_gives_no_table() -> None:
     ]
 
 
-def test_a_column_caption_is_the_words_that_bound_it_and_not_a_title_over_its_lane() -> None:
+def test_a_column_caption_leaves_out_a_title_over_its_lane_and_its_band() -> None:
     titled = header().replace("TABLE X-1", at((15, "TABLE X-1 ALL STAFF")))
     text = "\n".join((titled, values("Parks", "12", "3", "14", "4", "2"), TOTAL))
     cut = cut_pages(Layout("staff", (ERA,), BODY), (grid_page(3, text),), ON)
@@ -295,3 +296,54 @@ def test_a_caption_regex_that_finds_part_of_a_word_captions_the_whole_word() -> 
     table = assembled(cut).table
     assert table is not None
     assert table.columns[0].caption == "FIRST YEAR General"
+
+
+def test_two_columns_of_one_caption_regex_each_keep_the_period_printed_under_it() -> None:
+    month = r"MONTH\s+OF"
+    columns = tuple(
+        ColumnSpec(name, caption, ValueKind.MONEY)
+        for name, caption in (
+            ("month", month),
+            ("month_prior", month),
+            ("fytd", "JULY"),
+            ("fytd_prior", "JULY"),
+            ("remaining", "NECESSARY"),
+        )
+    )
+    era = Era("ordinary", ("NECESSARY",), columns, (date(2014, 7, 1), None))
+    printed = (
+        ("", "MONTH OF", "MONTH OF", "JULY 1 TO", "JULY 1 TO", "AMOUNT NECESSARY"),
+        ("", "SEPTEMBER 2022", "SEPTEMBER 2021", "SEPTEMBER 30,", "SEPTEMBER 30,", "TO ATTAIN"),
+        ("Tax", "", "", "2022", "2021", "ESTIMATE"),
+        ("Wage Tax", "1,000,000", "900,000", "3,000,000", "2,800,000", "9,000,000"),
+    )
+    ends = (34, 52, 70, 88, 108)
+    text = "\n".join(
+        (
+            at((24, "COMPARATIVE STATEMENT OF TAX COLLECTIONS")),
+            *(
+                at(
+                    (0, label),
+                    *((end - len(cell), cell) for end, cell in zip(ends, cells, strict=True)),
+                )
+                for label, *cells in printed
+            ),
+        )
+    )
+    body = BodyRule(start=lambda row: row.text.startswith("Wage"), stop=None)
+    page = page_lines(page_from_text(text, SHA, 2))
+    cut = cut_pages(Layout("collections", (era,), body), (page,), date(2022, 9, 30))
+    assert isinstance(cut, CutPages), cut
+    assert [lane.caption for _, lane in cut.binding.columns if lane][:2] == [
+        "COMPARATIVE MONTH OF SEPTEMBER 2022",
+        "COMPARATIVE STATEMENT OF TAX MONTH OF SEPTEMBER 2021",
+    ]
+    table = assemble(TableId("collections"), cut, (), NO_RECORDS).table
+    assert table is not None
+    assert [(column.name, column.caption) for column in table.columns] == [
+        ("month", "MONTH OF SEPTEMBER 2022"),
+        ("month_prior", "MONTH OF SEPTEMBER 2021"),
+        ("fytd", "JULY 1 TO SEPTEMBER 30, 2022"),
+        ("fytd_prior", "JULY 1 TO SEPTEMBER 30, 2021"),
+        ("remaining", "AMOUNT NECESSARY TO ATTAIN ESTIMATE"),
+    ]
