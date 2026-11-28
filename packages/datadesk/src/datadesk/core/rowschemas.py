@@ -174,7 +174,12 @@ def load_row_schema(table: str, toml_text: str) -> RowSchemaSource | Refused:
         except ValueError as error:
             findings.append(refusal("rowschema", f"{table}:row {number}", error))
     findings += [
-        Finding(Severity.BLOCK, "rowschema_duplicate_key", f"{table}:{key}", f"{count} rows")
+        Finding(
+            Severity.BLOCK,
+            "rowschema_duplicate_key",
+            f"{table}:{key}",
+            f"{count} rows have this key",
+        )
         for key, count in Counter(row.key for row in rows).items()
         if count > 1
     ]
@@ -260,7 +265,7 @@ def _key(fields: dict[str, Any], name: str) -> RowKey | None:
 
 
 def _period(item: object) -> Period:
-    """Read ``[start, end]``, with ``""`` for an open end, as a `Period` to `date.min` or `max`."""
+    """Read ``[start, end]`` as a `Period`. An open end, ``""``, is `date.min` or `date.max`."""
     if not isinstance(item, list) or len(item) != 2 or not all(type(end) is str for end in item):
         raise RecordError("wrong_type", "a period is not an array of two date strings")
     start, end = item

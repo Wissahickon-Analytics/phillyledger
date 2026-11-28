@@ -233,11 +233,7 @@ def refusal(prefix: str, subject: str, error: ValueError) -> Finding:
         A `RecordError`, whose code the finding takes, or the error of a value's builder,
         which gives bad_value.
     """
-    match error:
-        case RecordError(code=code):
-            pass
-        case _:
-            code = "bad_value"
+    code = error.code if isinstance(error, RecordError) else "bad_value"
     return _block(f"{prefix}_{code}", subject, str(error))
 
 
