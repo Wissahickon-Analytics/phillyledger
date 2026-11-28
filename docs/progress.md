@@ -107,14 +107,15 @@ session needs it. A note for one later step goes in `docs/plan-notes.md`.
   forbidden strings, tried first, let eight broken workflows pass. The `Kit size report` step is
   not a gate, so it sits in the pinned header, after `Python version`.
 - **The shape pins grow with the kit** (November 22, 2026, step 1, S1-C. Updated November 23,
-  2026, S2-B, and November 27, 2026, S5-B). In `packages/checkedtables/tests/test_library_shape.py`, `FIELD_SNAPSHOT` started
+  2026, S2-B, and November 27, 2026, S5-B and S5-C). In `packages/checkedtables/tests/test_library_shape.py`, `FIELD_SNAPSHOT` started
   as `{}` and `test_bool_fields_are_page_facts_only` expected `set()`. S2-B pins the fields of
   its 18 dataclasses, each in the commit that creates the class, and the bool test expected
   `{("Word", "bold")}`. The pull request that adds a kit dataclass adds its fields to
-  `FIELD_SNAPSHOT`. The one that creates `Column` adds `("Column", "printed")`.
+  `FIELD_SNAPSHOT`.
   `kit_dataclasses` counts every dataclass of `checkedtables` that a public name in a public
   module reaches. S5-B created `RawRow`, and the bool test expects `("RawRow", "bold")` beside
-  `("Word", "bold")` (decision 20).
+  `("Word", "bold")` (decision 20). S5-C created `Column`, and the test expects
+  `("Column", "printed")` too.
 - **Kit types imported only under `TYPE_CHECKING`** (November 22, 2026, step 1, S1-C). The shape
   test evaluates a parameter's annotation with each name that does not resolve at run time
   standing for an unknown type. So `amount: "Decimal"`, with `Decimal` imported only under
@@ -129,7 +130,8 @@ session needs it. A note for one later step goes in `docs/plan-notes.md`.
   `packages/checkedtables/tests/test_library_shape.py` (`CLAUDE.md`, hard rule 6). S3-C
   creates `NoteKind` and writes the test with its pin. Sweep B pins the readers' refusal codes,
   `PeriodRefusal` in `datadesk.core.fetch` and `SkipReason` in `datadesk.core.listings.titles`.
-  S4-A pins `UnreadableReason`, the reasons a cell is `Unreadable`, in `checkedtables.kinds`.
+  S4-A pins `UnreadableReason`, the reasons a cell is `Unreadable`, in `checkedtables.kinds`,
+  and S5-C adds `low_confidence` to it.
   The other lists that design section 11.4
   pins (`Check`, `RowSel`, `Kind`, `Version`, `Window`, `How`, `Dim` and `Quantity`) do not exist
   yet. The `StrEnum` classes that S2-B created, such as `Severity`, are pinned nowhere, because
@@ -230,7 +232,7 @@ session needs it. A note for one later step goes in `docs/plan-notes.md`.
   of S4-D, and `crops_command` with the `crops` command added 112. `shell/report.py` holds 97
   lines against 140, all of them the crop work of step 4.
 - **Kit modules against their estimates** (November 23, 2026, step 2. Updated November 25,
-  2026, standards sweep B, and November 27, 2026, S5-B). The kit size report counts lines that
+  2026, standards sweep B, and November 27, 2026, S5-B and S5-C). The kit size report counts lines that
   are not blank, a comment or a docstring, as design section 12 counts. At the head of sweep B,
   `uv run python packages/checkedtables/tests/test_library_shape.py` prints
   `checkedtables: 753 lines (budget 3,800), 0 public names (budget 140)`. At the head of sweep A
@@ -243,4 +245,6 @@ session needs it. A note for one later step goes in `docs/plan-notes.md`.
   with its check. Every other module is under its estimate. At the head of S5-B the report
   prints 1,213 lines: `lines` 90 (120), `pages` 61 (130), `columns` 240 (330), `pipeline` 123
   (130), `lex` 176 (230), which gave its raised-digit test to `lines`, and `rows` 13 for
-  `RawRow` alone (290).
+  `RawRow` alone (290). At the head of S5-C it prints 1,635 lines: `table` 144 (190), `rows`
+  199 (290), `assemble` 149 (140) and `kinds` 31 (40). `assemble` runs 9 lines past its
+  estimate, most of them the formatter's one line for each argument of `Row`.

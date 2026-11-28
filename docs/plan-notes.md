@@ -15,12 +15,6 @@ file, `docs/progress.md`, `docs/followups.md` or `docs/deviations/`.
   - Open question for the model, not verified: `created_at` goes into the manifest (section 10).
     If the manifest is one of the create-only files, a retry with the same release id and a new
     `now` may fail in `put_immutable` instead of resuming.
-- **`assemble` passes the words of the cut page to `reading_for`, a note for the step 5 plan**
-  (November 23, 2026, step 2, S2-E). `reading_for` compares the page words its box holds with
-  the cell's words as values. So `assemble` passes the words the cells were cut from, after any
-  `split_numeric_runs`, and not the page's raw words. Probed at S2-E: for "TAX434,605,553" on an
-  OCR page, a reading around the child "434,605,553" gives `stale_reading` with the raw word as
-  `page_words`, and the reading itself with the two children.
 - **The loader's digit check and a footnoted reading disagree, a note for the plan of the step
   that builds decision 13**
   (November 23, 2026, step 2, S2-E fix round 2, finding 3 of the second Codex review of S2-E.
@@ -292,9 +286,6 @@ file, `docs/progress.md`, `docs/followups.md` or `docs/deviations/`.
     `85.8` and a `NotApplicable` from `85.8`, the digit disagreement of QCASH-Q22. `Amount` also
     accepts `Decimal("NaN")`. The step 2 plan has the number reader of S2-D build a `Decimal`
     from digit text, so it cannot return NaN.
-  - `Dash` accepts `NO_VALUE` with a `rule_id`, where the block says the rule set `ZERO`. The
-    design names no function yet that applies a `DashRule`, so the step that builds one keeps
-    this fact.
   - `Finding` accepts a `subject` with no colon, where the block gives the form
     `<doc sha8>:<table>:<row key or label>`. Each function that makes a finding builds its
     subject, and no step checks the form.
@@ -523,6 +514,10 @@ file, `docs/progress.md`, `docs/followups.md` or `docs/deviations/`.
     open. Step 7 checks whether they are the same thing.
   - The P-1 captions of step 5 are written as FY2022 to FY2026 print them, in capitals (shape
     5). Older editions may print other forms.
+  - The confidence floor of `assemble` reads only a cell that lexes as an `Amount`, since a
+    reading cannot apply to a `Dash` or a `NotApplicable` (S5-C). So an OCR dash or N/A under
+    the floor publishes as it lexes, and a ZERO dash publishes 0. The first OCR pages show
+    whether a low-confidence dash hides a digit.
 - **The catalog rule on `Quantity`, a note for the plan of the step that builds the last
   table** (November 27, 2026, the step 5 plan). Design section 11.2 has the catalog test require
   that every `Quantity` member is used by at least one table. With one table it cannot hold, so

@@ -155,3 +155,54 @@ to `docs/plans/step-05.md`.
   and 12 as planned: `test_bool_fields_are_page_facts_only` expects `("RawRow", "bold")`
   beside `("Word", "bold")`, and `datetime.date` joins the pin of `tests/test_purity.py`.
   Design sections 2, 11.1 and 11.4.
+- **`low_confidence` joins `UnreadableReason`, and `Column.printed` joins the pinned `bool`
+  fields** (November 27, 2026, S5-C). Shape 13 as planned: the floor rule of `assemble` gives
+  the new reason, so its pin in `test_closed_lists_are_pinned` changes with the list (hard rule
+  6). S5-C creates `Column`, and `test_bool_fields_are_page_facts_only` expects
+  `("Column", "printed")`. Design sections 2.1 and 11.4.
+- **The confidence floor reads only a cell that lexes as an `Amount`** (November 27, 2026, S5-C).
+  Design section 3.1 had "an OCR value word under the confidence floor" become `Unreadable`,
+  and a value word is also a dash or N/A. `assemble` applies readings before the floor, and
+  `apply_reading` takes only an `Amount` or an `Unreadable`, so a dash under the floor could
+  never be cleared by a reading. Section 8.3 says such words need a reading "before they lex
+  as a number". No P-1 page is OCR, and `docs/plan-notes.md` leaves the dash and N/A case to the
+  step 7 plan. `test_an_ocr_number_under_the_confidence_floor_is_low_confidence_until_a_reading_reads_it`
+  holds a word at 94.9 to the floor of 95 and one at 95.0 clear of it. Design section 3.1.
+- **How `match_rows` keeps its blocks** (November 27, 2026, S5-C). The design had a row with
+  children in the schema open a block, and a row match "only when `within` is the open
+  block". A block that only `within` names must open too, and a `Civilian` printed after an
+  unknown line under `Police - Total` still belongs to Police. So a row opens a block when a
+  definition names its key as `parent` or `within`, a matched row closes the blocks above its
+  home (its `within`, else its `parent`), and an unmatched row closes none. `within` must be
+  open. The four block tests of `test_rows.py` prove it. A probe that matched the 40 grid
+  fixtures against a schema built from their own labels put all 120 `Civilian` and `Uniform`
+  rows under their parent. Design section 3.1.
+- **A wrapped label joins only a row of its page** (November 27, 2026, S5-C). Joined across a
+  page break, a row's cells would lie on a page other than its own, and `assemble` hands
+  `reading_for` the words of the row's page. Both lines are then `unknown_row`.
+  `test_a_label_only_line_never_joins_a_row_on_the_next_page`. Design section 3.1.
+- **The finding codes and subjects of rows and assembly** (November 27, 2026, S5-C). Section 7.3
+  named the four row outcomes. This pull request adds `truncated_label` (WARN) for a prefix
+  match, `stray_value` (BLOCK) and `stray_word` (WARN), and in `assemble`
+  `duplicate_dash_rule`, `unreadable_cell`, `duplicate_key` and `dangling_parent`. Two dash
+  rules on one dash block, as two readings do (`duplicate_reading`). `stray_findings` takes raw
+  rows and no table name, so its subject is `<doc sha8>:stray:<printed label>`, as the reading
+  findings use `<doc sha8>:reading:<id>`. Each code has a test in `test_rows.py` or
+  `test_assemble.py`. Design section 3.1.
+- **What a row and a column carry** (November 27, 2026, S5-C). The design left three things
+  open. `Row.label_words` holds the line number words and then the label words, the words of
+  `Label.printed`, so every printed word of a row has a place in the table. `Column.caption` is
+  the first page's lane caption. A dash rule names itself on a `Dash` only when it sets ZERO,
+  which keeps the `Dash` block true, and a record is in `used` only when it changed a cell.
+  `starts_known_row` takes a line whose `normalize_label` text is a schema label or starts with
+  one and a space. Tests in `test_assemble.py` and `test_rows.py`. Design sections 2.1 and 3.1.
+- **The ink property names its places** (November 27, 2026, S5-C). Section 11.2 listed a cell, a
+  label, a prefix, furniture, and a stray-word or unknown-row finding. A header line is a place
+  too, as clause C2 of the plan says, and an `ambiguous_row` finding names its raw row as
+  `unknown_row` does. `misplaced` in `packages/checkedtables/tests/ink.py` counts the places, and
+  says how a finding names a word or a row. The 100 pages that
+  `test_no_ink_is_lost_on_a_generated_table_page` draws under the project's Hypothesis profile
+  hold 681 raw rows, 174 unknown rows, 104 breakdown rows, 34 wrapped labels, 424 stray words
+  and 35 OCR pages, and every word has one place. The probe above found none of the 18,541
+  words of the 40 grid fixtures out of place.
+  Design section 11.2.

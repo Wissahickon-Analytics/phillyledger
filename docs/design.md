@@ -171,7 +171,7 @@ class UnreadableReason(StrEnum):   # why a cell's words give no value of its col
     DECIMALS = "decimals"
     FONT_CODE = "font_code"        # a word holds "(cid:", no evidence of any glyph (VAL-Q05)
     REVIEWED_NULL = "reviewed_null"  # only from apply_reading, an Amount read as null
-    # low_confidence joins at the step that builds the OCR confidence floor of assemble
+    LOW_CONFIDENCE = "low_confidence"  # only from assemble: an OCR Amount under the floor, unread
 ```
 
 ```python
@@ -569,7 +569,8 @@ class TableId:
 class Column:
     name: str
     kind: ValueKind
-    caption: str               # printed caption text, for the release
+    caption: str               # printed caption text, for the release: the first page's lane
+                               # caption; empty when not printed or bound by position
     printed: bool              # a fact read from the page: False when an optional column was absent
 
 
@@ -580,7 +581,7 @@ class Row:
     label: Label
     parent: RowKey | None
     page: int
-    label_words: tuple[WordRef, ...]
+    label_words: tuple[WordRef, ...]   # the words of label.printed: line number words, then label
     cells: tuple[Cell, ...]    # aligned with Table.columns
     entity: str | None
     unit: str | None
@@ -608,7 +609,7 @@ class Table:
         if any(r.parent is not None and r.parent not in known for r in self.rows):
             raise ValueError(f"{self.id}: parent key not in table")
 
-    def cell(self, key: RowKey, column: str) -> Cell: ...
+    def cell(self, key: RowKey, column: str) -> Cell: ...   # KeyError: no such row or column
     def row(self, key: RowKey) -> Row | None: ...
     def children(self, key: RowKey) -> tuple[Row, ...]: ...
 ```
@@ -1983,19 +1984,30 @@ def apply_reading(cell: Cell, reading: ReviewedReading) -> Cell | Finding: ...
 
 # checkedtables/rows.py
 def join_rows(upper: RawRow, lower: RawRow) -> RawRow: ...
+    # the words of upper, then of lower, on upper's page; bold read again from both labels
 def starts_known_row(schema: RowSchema) -> Callable[[Line], bool]: ...
+    # a line whose normalize_label text is a schema label, normalized, or starts with one and
+    # a space; the empty label of an unlabeled row starts no line
 def match_rows(raws: Sequence[RawRow], schema: RowSchema) -> RowMatch: ...
-    # Walks rows in print order with a stack of open blocks; a row that has children in the
-    # schema opens one. Candidates: label matches by norm, then squash, then (with
-    # Truncation.UNIQUE_PREFIX) a unique prefix; the first stage with candidates decides, so an
-    # exact match always beats a prefix. `within` must be the open block. `follows` must be the
-    # row just matched. Exactly one candidate or a Finding. A label-only row with no candidate
-    # joins the next row when that gives exactly one candidate (a wrapped label).
-    # Parent: the RowDef's parent, else the schema root; the root row itself has none. After the walk: duplicate_row,
-    # missing_row for an unmatched REQUIRED RowDef, unknown_row for an unmatched raw row.
-    # A truncated match adds a WARN finding naming the full label. No row is ever guessed.
+    # Walks rows in print order, across pages, with a stack of open blocks. A row whose key a
+    # RowDef names as its parent or within opens one when it matches. A matched row pops the
+    # blocks above its home (its within, else its parent), so a home that is not open closes
+    # them all; a row that matches nothing leaves them. Candidates: label matches by norm,
+    # then squash, then (with Truncation.UNIQUE_PREFIX, for a label that is not empty) a
+    # prefix of a norm; the first stage with candidates decides, so an exact match always
+    # beats a prefix. `within` must be on the stack. `follows` must be the row just before,
+    # matched. Exactly one candidate or a Finding. A label-only row with no candidate joins
+    # the next row of its page when that gives exactly one candidate (a wrapped label).
+    # Parent: the RowDef's parent, else the schema root; the root row itself has none.
+    # BLOCK unknown_row (no candidate) and ambiguous_row (two or more), named by the printed
+    # label; WARN truncated_label for a prefix match, quoting the full label. After the walk:
+    # duplicate_row for a key two rows got, both kept, and missing_row for an unmatched
+    # REQUIRED RowDef. The subject is "<doc sha8>:<table>:<label or row key>". No row is
+    # ever guessed.
 def stray_findings(raws: Sequence[RawRow]) -> tuple[Finding, ...]: ...
-    # a numeric stray word is BLOCK (a value outside every lane); other strays are WARN
+    # one per stray word, quoted: a value word (has_values) is BLOCK stray_value, a value
+    # outside every lane; others are WARN stray_word. The subject is
+    # "<doc sha8>:stray:<printed label>", since a raw row knows no table.
 
 
 # checkedtables/grammar.py
@@ -2007,10 +2019,16 @@ def read_grammar(raws: Sequence[RawRow], grammar: RowGrammar,
 # checkedtables/assemble.py
 def assemble(table_id: TableId, cut: CutPages, rows: Sequence[KeyedRow],
              records: CellRecords) -> Assembly: ...
-    # lexes every cell with lex_cell and the page's source; applies dash rules, then readings;
-    # an OCR value word under the confidence floor with no reading becomes
-    # Unreadable("low_confidence"); an Unreadable cell without an accepting reading is a BLOCK
-    # finding; duplicate keys or dangling parents give table=None with findings.
+    # lexes every cell with lex_cell and the page's source; applies dash rules, then readings.
+    # The one dash rule of the table that names a Dash's column and row gives it the rule's
+    # meaning, and its rule_id only for ZERO; two such rules are BLOCK duplicate_dash_rule and
+    # change nothing. reading_for gets the words of the cut page: header, rows, furniture.
+    # A cell that no reading covers, that lexes as an Amount and holds an OCR word under the
+    # confidence floor becomes Unreadable("low_confidence"); apply_reading takes no Dash and no
+    # NotApplicable, so the floor reads neither. An Unreadable cell without an accepting
+    # reading is BLOCK unreadable_cell. A record is in `used` when it changed a cell.
+    # Duplicate keys (duplicate_key) or dangling parents (dangling_parent) give table=None
+    # with findings. The columns are the first page's binding, the caption from its lane.
 
 
 # checkedtables/checks/engine.py
@@ -4488,7 +4506,8 @@ outside the list changes the list and the pin together.
 - An `Amount`'s digits are the digits of its words, always.
 - Every word lands in exactly one line.
 - No ink lost (from A). On any generated table page, every word ends in exactly one place. That
-  is a cell, a label, a prefix, declared furniture, or a stray-word or unknown-row finding.
+  is a header line, a cell or the label of an assembled row (a prefix included), declared
+  furniture, or a stray-word, unknown-row or ambiguous-row finding.
 - A total row is never one of its own parts, for every `RowSel` case.
 - Every TOTAL or SUBTOTAL row in an assembled table has children or holds no Amount. The one
   exception is a row that a declared `ColumnSum` or `CellsEqual` names as total.
@@ -4622,7 +4641,8 @@ def test_closed_lists_are_pinned() -> None:
                                              "unstaged"]
     assert [r.value for r in UnreadableReason] == ["not_a_number", "two_tokens", "sign",
                                                    "percent_sign", "grouping", "decimals",
-                                                   "font_code", "reviewed_null"]
+                                                   "font_code", "reviewed_null",
+                                                   "low_confidence"]
     assert [k.value for k in Kind] == ["actual", "budget", "projection"]
     assert [v.value for v in Version] == ["none", "adopted", "revised", "proposed", "target"]
     assert [w.value for w in Window] == ["month", "quarter", "fiscal_ytd", "calendar_ytd",
@@ -4652,8 +4672,8 @@ it inherits from a base class in the scanned package, private or not, each read 
 resolves it, without `self`. A base outside the package, such as `object`, `Enum` or `Exception`,
 adds nothing. A dataclass's generated constructor stays out, because the two field tests pin its
 fields and allow the `bool` fields `Word.bold`, `RawRow.bold` and `Column.printed`. Each is a fact
-read from the page. `RawRow.bold` joined at step 5 (decision 20), and `Column.printed` joins
-with `Column`.
+read from the page. `RawRow.bold` joined at step 5 (decision 20), and `Column.printed` joined
+with `Column` at step 5.
 
 `NoteKind` lives in `datadesk`, but its list is pinned in the same test file. A new kind of
 per-edition switch is then as visible as a new kit field (R1). The six vocabulary lists are pinned
