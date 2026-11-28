@@ -227,7 +227,16 @@ def test_a_department_spelled_in_a_form_fails_the_schema_test() -> None:
 def test_a_department_spelled_in_a_drop_pattern_fails_the_schema_test() -> None:
     file = parsed()
     file["drop"].insert(0, r"^Finance\b")
-    assert schema_problems(file) == [f"{TABLE}.drop[0] holds 'Finance'"]
+    assert schema_problems(file) == [
+        f"{TABLE}.drop[0] holds 'Finance'",
+        f"drop is {file['drop']!r}, not the two patterns of shape 10",
+    ]
+
+
+def test_a_drop_pattern_outside_shape_10_fails_the_schema_test() -> None:
+    file = parsed()
+    file["drop"].append(r"^Fin\w+")
+    assert schema_problems(file) == [f"drop is {file['drop']!r}, not the two patterns of shape 10"]
 
 
 def test_a_department_spelled_in_a_row_key_fails_the_schema_test() -> None:
