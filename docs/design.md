@@ -1820,8 +1820,10 @@ def lanes_from_values(body: Sequence[Line]) -> tuple[Lane, ...]: ...
     # cluster right edges of the cells of value words. A value word is a numeric word with no
     # non-numeric word to its right on its line but mark words, so "Class 100 Total" never
     # seeds a lane. A cell is a run of words, each closer than the line's median word height
-    # to the word on its left, that holds a value word and no other word with a letter, so
-    # "$ 2.8 1" with a raised mark (VAL-Q28) and "$ -" (RTT-Q39) are each one cell. A mark
+    # to the word on its left, that holds a value word and no other word with a letter. A
+    # value word opens a new run when the open run holds one, unless it is a raised digit
+    # after the word before it, which lex_cell reads as a mark. So two amounts that stand
+    # close are two cells, and "$ 2.8 1" with a raised mark is one (VAL-Q28). A mark
     # beside a label is in the label's run and seeds no lane (QPOS-Q11). The "(1)" after
     # "Human Services" in Table P-1 stands at most 2.06 points off, and a label ends at least
     # 38.94 points before its first number, against a median height of 7.44 on all 40 grid

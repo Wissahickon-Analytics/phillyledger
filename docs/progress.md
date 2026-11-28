@@ -241,5 +241,6 @@ session needs it. A note for one later step goes in `docs/plan-notes.md`.
   `RowKey` and `Finding`, and for `Severity`, which the row does not list. `refs` runs 14 lines
   past its estimate. It writes four comparison methods for `WordRef`, and sweep B added `Sha256`
   with its check. Every other module is under its estimate. At the head of S5-B the report
-  prints 1,202 lines: `lines` 76 (120), `pages` 61 (130), `columns` 230 (330), `pipeline` 123
-  (130), and `rows` 13 for `RawRow` alone (290).
+  prints 1,213 lines: `lines` 90 (120), `pages` 61 (130), `columns` 240 (330), `pipeline` 123
+  (130), `lex` 176 (230), which gave its raised-digit test to `lines`, and `rows` 13 for
+  `RawRow` alone (290).

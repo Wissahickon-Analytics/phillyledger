@@ -141,6 +141,22 @@ def test_a_dollar_sign_and_a_raised_mark_cut_into_the_cell_of_their_number() -> 
     assert (cell.printed, cell.marks) == (Decimal("2.8"), ("1",))
 
 
+def test_two_amounts_that_stand_close_seed_two_lanes_and_cut_into_two_cells() -> None:
+    lines = text_lines("Office    Budget Actual\nParks       120 130")
+    first, second = lines[1].words[1:]
+    assert second.box.x0 - first.box.x1 < 12.0
+    lanes = lanes_from_values(lines[1:])
+    assert lanes == (Lane(72.0, 90.0, ""), Lane(90.0, 114.0, ""))
+    binding = bind_columns(TWO, lines[:1], lanes, ())
+    assert isinstance(binding, Binding)
+    row = cut_line(lines[1], binding, ())
+    assert [word.text for word in row.label_words] == ["Parks"]
+    assert [(name, [word.text for word in words]) for name, words in row.cells] == [
+        ("budget", ["120"]),
+        ("actual", ["130"]),
+    ]
+
+
 def test_a_dash_after_a_dollar_sign_cuts_into_one_cell() -> None:
     # RTT-Q39
     lines = text_lines("         Money\nTax      $ -")

@@ -7,7 +7,7 @@ from re import compile
 from statistics import median
 
 from checkedtables.kinds import DashMeaning, PercentSign, Presence, ValueKind
-from checkedtables.lines import Line, _value_words
+from checkedtables.lines import Line, _is_raised_digit, _value_words
 from checkedtables.refs import Box
 from checkedtables.rows import RawRow
 from checkedtables.table import Finding, Severity
@@ -209,11 +209,13 @@ def lanes_from_values(body: Sequence[Line]) -> tuple[Lane, ...]:
     A value word is a number, a dash placeholder or N/A with no word right of it on its line
     but other value words and mark words, so "Class 100 Total" seeds no lane. A cell is a run
     of words, each closer than its line's median word height to the word on its left, that
-    holds a value word and no other word with a letter. So "$ 2.8 1" with a raised mark is one
-    cell (VAL-Q28), and so is "$ -" (RTT-Q39). A mark beside a label, such as the "(1)" about 2
-    points after "Human Services", is in the label's run and seeds no lane (QPOS-Q11). Sorted,
-    a right edge joins the open lane when it is within the median height of the cells of the
-    lane's first edge, so lanes never chain.
+    holds a value word and no other word with a letter. A value word opens a new run when the
+    open run holds one, unless it is a raised digit after the word before it, which `lex_cell`
+    reads as a mark. So two amounts that stand close are two cells, and "$ 2.8 1" with a raised
+    mark is one (VAL-Q28). A mark beside a label, such as the "(1)" about 2 points after "Human
+    Services", is in the label's run and seeds no lane (QPOS-Q11). Sorted, a right edge joins
+    the open lane when it is within the median height of the cells of the lane's first edge,
+    so lanes never chain.
 
     Parameters
     ----------
@@ -447,7 +449,10 @@ def _seeds(line: Line) -> list[Box]:
     height = median(_height(word) for word in line.words)
     runs: list[list[Word]] = []
     for word in line.words:
-        if runs and word.box.x0 - runs[-1][-1].box.x1 < height:
+        joins = bool(runs) and word.box.x0 - runs[-1][-1].box.x1 < height
+        if joins and word in values and any(other in values for other in runs[-1]):
+            joins = _is_raised_digit((runs[-1][-1], word))
+        if joins:
             runs[-1].append(word)
         else:
             runs.append([word])

@@ -12,9 +12,11 @@ from checkedtables.words import Page, Rule, Word
 
 _TOLERANCE = 0.35
 _RAISED_SIZE = 0.7
+_DIGITS = "0123456789"
 _MARKS = "*\u2020\u2021\xa7#`\u2070\xb9\xb2\xb3\u2074-\u2079"
 _VALUE_GLYPHS = r"\d,.$%()\-\u2212\u2013\u2014"
 _MARK_WORD = compile(f"[{_MARKS}]+")
+_FOOTNOTE = compile(f"[0-9][{_MARKS}]*")
 _VALUE_WORD = compile(
     rf"N/A|NA|-|--|\u2013|\u2014|[{_VALUE_GLYPHS}]*\d[{_VALUE_GLYPHS}]*[{_MARKS}]*"
 )
@@ -185,6 +187,27 @@ def _value_words(words: Sequence[Word]) -> tuple[Word, ...]:
             break
         found.append(word)
     return tuple(reversed(found))
+
+
+def _is_raised_digit(words: Sequence[Word]) -> bool:
+    """Return whether the last word is a raised digit after a number, which is its mark.
+
+    The last word is one digit, alone or with mark glyphs after it, under 0.7 of the size of
+    the word before it, which holds a digit, and its bottom is above that word's bottom
+    (VAL-Q28). `lex_cell` reads it as a mark, and `lanes_from_values` lets it join the cell of
+    its number.
+    """
+    if len(words) < 2:
+        return False
+    number, digit = words[-2], words[-1]
+    return (
+        _FOOTNOTE.fullmatch(digit.text) is not None
+        and any(glyph in _DIGITS for glyph in number.text)
+        and digit.size is not None
+        and number.size is not None
+        and digit.size < _RAISED_SIZE * number.size
+        and digit.box.bottom < number.box.bottom
+    )
 
 
 def lines_text(lines: Sequence[Line]) -> str:
