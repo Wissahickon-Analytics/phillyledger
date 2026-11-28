@@ -76,8 +76,8 @@ where order carries no meaning. No frozen type holds a `Mapping` or a `list`. Mo
 `Decimal`. Floats appear only in geometry and OCR confidence.
 
 A kit dataclass holds no switch. A field that changes behaviour is an enum or a union case. The
-only `bool` fields are facts read from the page: `Word.bold` and `Column.printed`. The shape test
-in section 11.4 enforces both rules.
+only `bool` fields are facts read from the page: `Word.bold`, `RawRow.bold` and `Column.printed`
+(decision 20). The shape test in section 11.4 enforces both rules.
 
 ### 2.1 `checkedtables` types
 
@@ -288,6 +288,7 @@ class PageLines:
     number: int
     source: SourceKind
     lines: tuple[Line, ...]
+    rules: tuple[Rule, ...] = ()   # the Page's rules; cut_pages finds the group bands in them
 
 
 # checkedtables/pages.py
@@ -307,7 +308,8 @@ class BodyRule:
     start: Callable[[Line], bool]            # first body line; everything above is header
     stop: Callable[[Line], bool] | None      # last body line, inclusive; None runs to page end
     drop: tuple[str, ...] = ()               # regexes searched in each body line; a hit is furniture
-    prefix: str | None = None                # regex for a leading line-number word (QPOS-Q08)
+    prefix: str | None = None                # regex for a leading line-number word (QPOS-Q08);
+                                             # a body line of only such words is furniture
 ```
 
 ```python
@@ -338,19 +340,26 @@ class ColumnSpec:
     fmt: NumberFormat = NumberFormat()
     presence: Presence = Presence.REQUIRED
     dash: DashMeaning = DashMeaning.NO_VALUE
+    group: str | None = None                 # regex for the caption printed once over a group
+                                             # of columns, searched in the caption of the rule
+                                             # band that holds the lane (bind_columns)
 
-    def __post_init__(self) -> None: ...     # ValueError: an empty name or an empty caption
+    def __post_init__(self) -> None: ...     # ValueError: an empty name, an empty caption or an
+                                             # empty group
 
 
 @dataclass(frozen=True, slots=True)
 class Era:
     name: str
-    signature: tuple[str, ...]               # caption regexes that must all appear in the header
+    signature: tuple[str, ...]               # caption regexes that must all appear in the header;
+                                             # a page that holds none of any era is commentary
     columns: tuple[ColumnSpec, ...]          # left to right
     expected: tuple[date, date | None]       # cross-check only; a mismatch is a BLOCK finding
     excludes: tuple[str, ...] = ()           # caption regexes that must not appear
 
     def __post_init__(self) -> None:
+        if not self.signature:
+            raise ValueError(f"era {self.name} has no signature")
         names = [c.name for c in self.columns]
         if len(names) != len(set(names)):
             raise ValueError(f"duplicate column names in era {self.name}")
@@ -360,22 +369,25 @@ class Era:
 
 @dataclass(frozen=True, slots=True)
 class Lane:
-    x0: float
-    x1: float
-    caption: str               # header words over the lane, top to bottom
+    x0: float                  # a word is in the lane when its right edge is after x0
+    x1: float                  # and at or before x1
+    caption: str               # header words over the lane, top to bottom; empty until
+                               # bind_columns reads them
 
 
 @dataclass(frozen=True, slots=True)
 class Binding:
     era: str
     columns: tuple[tuple[ColumnSpec, Lane | None], ...]   # None: optional column not printed
-    label_right: float                                    # x where the label area ends
+    label_right: float                                    # x where the label area ends: the
+                                                          # first lane's x0
 ```
 
 What these make impossible:
 
-- a column without a name and a caption;
-- an era with duplicate column names;
+- a column without a name and a caption, or with an empty group;
+- an era with duplicate column names, or with no signature, which would make every page
+  commentary;
 - mapping a column by its count from the right, because no type carries a right-to-left index;
 - a silent decimal repair, because no format says "insert a decimal point".
 
@@ -383,6 +395,7 @@ What these make impossible:
 # checkedtables/pipeline.py
 @dataclass(frozen=True, slots=True)
 class Layout:
+    table: str                         # the subject "<doc sha8>:<table>" of cut_pages' findings
     eras: tuple[Era, ...]
     body: BodyRule
 
@@ -394,7 +407,7 @@ class CutPage:
     header: tuple[Line, ...]
     binding: Binding
     raws: tuple["RawRow", ...]
-    furniture: tuple[Line, ...]        # lines a drop pattern removed; kept for the ink ledger
+    furniture: tuple[Line, ...]        # lines slice_body made furniture; kept for the ink ledger
 
 
 @dataclass(frozen=True, slots=True)
@@ -402,7 +415,7 @@ class CutPages:
     era: Era
     binding: Binding                   # the first page's binding; every page binds the same columns
     pages: tuple[CutPage, ...]         # at least one
-    findings: tuple["Finding", ...]
+    findings: tuple["Finding", ...]    # those that do not stop the table, as commentary_page
 
     @property
     def raws(self) -> tuple["RawRow", ...]: ...
@@ -610,13 +623,15 @@ parents into findings. Reaching the raise is a bug (section 9).
 class RawRow:
     page: int
     prefix: tuple[Word, ...]                          # words BodyRule.prefix split off
-    label_words: tuple[Word, ...]
-    cells: tuple[tuple[str, tuple[Word, ...]], ...]   # column name -> words in that lane
+    label_words: tuple[Word, ...]                     # left of label_right, marks included
+    cells: tuple[tuple[str, tuple[Word, ...]], ...]   # each column of the binding, declared order,
+                                                      # -> words in its lane; () when not printed
     stray: tuple[Word, ...]                           # in no lane, right of the label area
     bold: bool | None                                 # all label words bold; None if style unknown
-    x0: float
+                                                      # or no label word; a page fact (decision 20)
+    x0: float                                         # left edge of the first word after the prefix
 
-    def has_values(self) -> bool: ...
+    def has_values(self) -> bool: ...                 # a lane holds a word of the row
 
 
 class Truncation(StrEnum):
@@ -1766,7 +1781,7 @@ def group_lines(page: Page) -> tuple[Line, ...]: ...
     # among them, it joins the one with the nearest bottom. Boxes and medians are those before
     # any move, so moves never chain. No two lines share a bottom, so no tie occurs. A line's
     # words sort by x0, lines by top.
-def page_lines(page: Page) -> PageLines: ...
+def page_lines(page: Page) -> PageLines: ...             # group_lines, and the page's rules
 def has_values(line: Line) -> bool: ...                  # a value word, as lanes_from_values defines it
     # Decision 15 (section 16) adds value words at the step decision 18 names: N/A and NA in
     # any case, U+2010 alone or as a minus sign, #DIV/0!.
@@ -1787,44 +1802,90 @@ def only_run(runs: Sequence[PageRun], subject: str) -> PageRun | Finding: ...
     # break around an inserted page joins runs with its own named rule and says why.
 def slice_body(lines: Sequence[Line], body: BodyRule
                ) -> tuple[tuple[Line, ...], tuple[Line, ...], tuple[Line, ...]]: ...
-    # (header, body, furniture). Header: lines above the first start match. Body: from it to
-    # the first stop match inclusive, or the page end. Furniture: body lines a drop regex matched.
+    # (header, body, furniture), each line in one of them. Header: lines above the first start
+    # match, or every line when none matches. Body: from it to the first stop match inclusive,
+    # or the page end. Furniture: body lines a drop regex matched, body lines of only prefix
+    # words (a page number at the foot), and every line below the stop line (a notice).
 
 
 # checkedtables/columns.py
 def choose_era(eras: Sequence[Era], header_text: str, on: date) -> Era | Finding: ...
     # exactly one era whose signature regexes all match and whose excludes all miss; then the
-    # expected range must contain `on`. Zero or two candidates, or a date outside: a Finding.
+    # expected range, both ends included, must contain `on`. BLOCK findings whose subject is
+    # the eras' names: era_not_found for no candidate, several_eras for two or more, and
+    # era_out_of_range for a date outside.
 def lanes_from_values(body: Sequence[Line]) -> tuple[Lane, ...]: ...
     # Decision 15 (section 16) adds value words at the step decision 18 names, as at
     # has_values. As built:
-    # cluster right edges of value words. A value word is a numeric word with no non-numeric
-    # word to its right on its line, so "Class 100 Total" never seeds a lane.
+    # cluster right edges of the cells of value words. A value word is a numeric word with no
+    # non-numeric word to its right on its line but mark words, so "Class 100 Total" never
+    # seeds a lane. A cell is a run of words, each closer than the line's median word height
+    # to the word on its left, that holds a value word and no other word with a letter. A
+    # value word opens a new run when the open run holds one, unless it is a raised digit
+    # after the word before it, which lex_cell reads as a mark. So two amounts that stand
+    # close are two cells, and "$ 2.8 1" with a raised mark is one (VAL-Q28). A mark
+    # beside a label is in the label's run and seeds no lane (QPOS-Q11). The "(1)" after
+    # "Human Services" in Table P-1 stands at most 2.06 points off, and a label ends at least
+    # 38.94 points before its first number, against a median height of 7.44 on all 40 grid
+    # pages. Sorted, an edge joins the open lane when it is within the median height of the
+    # cells of the lane's first edge, so lanes never chain. A lane runs from the right edge of
+    # the lane before it to its own rightmost edge, so lanes meet and a caption over the left
+    # part of a column lands over its lane. The first lane starts at the leftmost left edge of
+    # its cells, so a "$" that opens a cell is in it.
 def lanes_from_rules(rules: Sequence[Rule], region: Box) -> tuple[Lane, ...]: ...
-    # lanes between consecutive vertical rules that span the region (BiB, supplemental)
-def bind_columns(era: Era, header: Sequence[Line], lanes: Sequence[Lane]) -> Binding | Finding: ...
+    # lanes between consecutive vertical rules that run from the region's top or above to its
+    # bottom or below; the region's x0 and x1 are not read. A rule is vertical when under 1 pt
+    # wide, at the middle of its box. Pieces under 1 pt apart across whose spans meet or come
+    # under 1 pt apart are one rule (Table P-1 draws a rule in up to three). cut_pages takes
+    # the group bands from it; lanes from rules alone wait for the first table whose rules
+    # bound its columns (BiB, supplemental), which declares that choice.
+def bind_columns(era: Era, header: Sequence[Line], lanes: Sequence[Lane],
+                 bands: Sequence[Lane]) -> Binding | Finding: ...
     # 1. Lane caption: header words that overlap the lane horizontally, top to bottom. A group
     #    caption spanning three lanes lands in all three; captions that share one printed line
     #    each land over their own lanes (from B, MCITY-Q12).
-    # 2. Add an empty lane for a required caption printed over no values (QCASH-Q35).
-    # 3. Each lane's candidates are the specs whose caption regex it contains. The longest
-    #    match wins and a spec binds once, so "Prior Year Actual" never binds to "Actual".
-    #    Specs with identical captions bind in declared left-to-right order.
-    # 4. An unclaimed lane, an unbound required spec, a tie or an out-of-order binding: Finding.
+    # 2. Not built yet: add an empty lane for a required caption printed over no values
+    #    (QCASH-Q35). It waits for the step that parses the first page that prints the case.
+    # 3. Each lane's candidates are the specs whose caption regex it contains and, for a spec
+    #    with a group, whose group regex is found in the caption of the band that holds the
+    #    lane's right edge. A band's caption is the header words whose horizontal middle is in
+    #    it, top to bottom, so a group caption centered over three lanes, and whole over none,
+    #    is whole in its band. With no band, a spec with a group has no lane. Lanes take their
+    #    specs left to right. The longest match wins and a spec binds once, so "Prior Year
+    #    Actual" never binds to "Actual". Specs with identical captions and groups bind in
+    #    declared left-to-right order. Binding equal fund captions by order would pass a page
+    #    that swaps two groups (QPOS-Q02, section 18.1).
+    # 4. BLOCK findings whose subject is the era's name, the first of: columns_tie for two
+    #    candidates of different caption or group with the same longest match, column_unbound
+    #    for a required spec with no lane, lane_unclaimed for a lane with no candidate, and
+    #    columns_out_of_order when the bound specs are not left to right in declared order.
 def bind_by_position(era: Era, lanes: Sequence[Lane]) -> Binding | Finding: ...
-    # only for pages a HEADER_ILLEGIBLE note names; lane count must equal the era's column count
+    # only for pages a HEADER_ILLEGIBLE note names; lane count must equal the era's column
+    # count, else a BLOCK finding lane_count_differs. The lanes keep empty captions.
 def cut_line(line: Line, binding: Binding, prefix: tuple[Word, ...]) -> RawRow: ...
-    # label words: left of label_right; lane words by right-edge overlap; the rest is stray
+    # label words: right edge at or left of label_right; any other word goes to the first bound
+    # lane that holds its right edge; the rest is stray. Each word lands in one place.
 
 
 # checkedtables/pipeline.py
 def cut_pages(layout: Layout, pages: Sequence[PageLines], on: date,
               positional: frozenset[int] = frozenset()) -> CutPages | Finding: ...
-    # For each page: split_line_prefix on every body line, slice_body, lanes_from_values (or
-    # lanes_from_rules when the page has vertical rules), bind_columns, cut_line. The era is
-    # chosen once from the first page's header. Every page must bind the same column names,
-    # else a page-level Finding `columns_differ_by_page` (from B). A page-level failure stops
-    # the table; line-level problems travel in the result (change 19).
+    # A page is commentary when its text holds no signature regex of any era. A commentary
+    # page before the first grid page is not cut and gives a WARN finding commentary_page. A
+    # commentary page after a grid page stops the table with commentary_after_grid. A page
+    # that `positional` names is a grid page whatever it prints.
+    # The era is chosen from the first grid page that `positional` does not name, and every
+    # such page's header must choose it: a choose_era finding stops the table, so a grid page
+    # that lost one signature caption is never taken for commentary, and another era gives
+    # eras_differ_by_page. No such page at all gives no_grid_page.
+    # For each grid page: slice_body, split_line_prefix on every body line, lanes_from_values,
+    # then bind_by_position for a page that `positional` names, else bind_columns with the
+    # bands of lanes_from_rules over the last header line, then cut_line. Lanes always come
+    # from values: the rules of Table P-1 bound each group of three fund columns, not one
+    # column (QPOS-Q01). Every page must bind the same column names, else a page-level Finding
+    # `columns_differ_by_page` (from B). A page-level failure stops the table, as a BLOCK
+    # finding on its page with the subject "<doc sha8>:<table>", the sha from the pages' words;
+    # line-level problems travel in the result (change 19).
 
 
 # checkedtables/lex.py
@@ -3054,19 +3115,20 @@ from datadesk.core.vocab import ALL, Dim, How, Kind, Version, Window
 
 TABLE = "qcmr_positions"
 _COUNT = NumberFormat(decimals=0)
-_GROUPS = (("prior", r"Year.?End\s+Actual"), ("adopted", r"Adopted"),
-           ("actual", r"Month.?End\s+Actual"))
-_FUNDS = (("general", r"General"), ("other", r"Other"), ("total", r"Total"))
+_GROUPS = (("prior", r"YEAR\s+END\s+ACTUAL"), ("adopted", r"ADOPTED\s+BUDGET"),
+           ("actual", r"MONTH\s+END\s+ACTUAL"))     # as FY2022 to FY2026 print them
+_FUNDS = (("general", "General"), ("other", "Other"), ("total", "Total"))
+_OVER = r"\(OVER\)"
 
-COLUMNS: tuple[ColumnSpec, ...] = (
-    *(ColumnSpec(f"{g}_{f}", rf"{gcap}.*{fcap}", ValueKind.COUNT, _COUNT)
+COLUMNS: tuple[ColumnSpec, ...] = (     # each fund caption binds inside its group's band
+    *(ColumnSpec(f"{g}_{f}", fcap, ValueKind.COUNT, _COUNT, group=gcap)
       for g, gcap in _GROUPS for f, fcap in _FUNDS),
-    ColumnSpec("over_under", r"\(Over\)\s*Under", ValueKind.COUNT, _COUNT),
+    ColumnSpec("over_under", rf"{_OVER}\s*UNDER", ValueKind.COUNT, _COUNT),
 )
 _FUND_COLUMNS = tuple(c.name for c in COLUMNS if c.name != "over_under")
 _ALL_COLUMNS = tuple(c.name for c in COLUMNS)
-ERAS = (Era("p1_ten_columns", signature=(r"Adopted", r"\(Over\)\s*Under"), columns=COLUMNS,
-            expected=(date(2007, 7, 1), None)),)
+ERAS = (Era("p1_ten_columns", signature=(*(gcap for _, gcap in _GROUPS), _OVER),
+            columns=COLUMNS, expected=(date(2007, 7, 1), None)),)
 
 _FURNITURE = (r"^TABLE\s+P-1", r"^FULL.TIME\s+POSITIONS", r"^\(\d+\)\s", r"^Notes?:")
 _LINE_NO = r"(?:\d{1,2}|I)"          # "23 Civilian", "I Uniform" (QPOS-Q08)
@@ -3109,7 +3171,7 @@ def parse(doc: Document, ctx: ParseContext) -> ParseResult:
     body = BodyRule(start=starts_known_row(schema), stop=_is_grand_total,
                     drop=_FURNITURE, prefix=_LINE_NO)
     positional, notes_used = illegible_pages(ctx.notes, doc.sha256)   # scans, with a note only
-    cut = cut_pages(Layout(ERAS, body), run.take(pages), ctx.period.end, positional)
+    cut = cut_pages(Layout(TABLE, ERAS, body), run.take(pages), ctx.period.end, positional)
     if isinstance(cut, Finding):
         return Failed((cut,))
     matched = match_rows(cut.raws, schema)
@@ -3197,7 +3259,10 @@ last_fy = 2025
 What the module shows:
 
 - Columns bind by caption. A lost column on a scan is a binding finding, never a shifted role.
-  The unsure QPOS-Q02 is settled on the first run.
+  The three fund captions repeat in each group, so each binds only inside the rule band whose
+  caption prints its group. On a page bound by caption, two groups that trade places give
+  `columns_out_of_order`. On all 40 grid pages of FY2022 to FY2026 the ten columns bind so
+  (QPOS-Q02).
 - The `prefix` rule takes "23" and "I" off a line before lanes are found. A column of OCR
   prefixes cannot form a lane (R3, QPOS-Q08).
 - Civilian and Uniform match only inside their parent's block. Indentation is never read
@@ -3328,7 +3393,7 @@ def _one_statement(st: Statement, ctx: ParseContext) -> ParseResult:
     fund = resolve_fund(ctx.registry, st.fund_banner, st.fund_code, ctx.fiscal_year)
     if not isinstance(fund, Resolved):
         return Failed((st.finding("unknown_fund", repr(fund)),))
-    layout = Layout(ERAS, BodyRule(start=body_start, stop=None, drop=_DROP))
+    layout = Layout(TABLE, ERAS, BodyRule(start=body_start, stop=None, drop=_DROP))
     cut = cut_pages(layout, st.pages, ctx.period.end)
     if isinstance(cut, Finding):
         return Failed((cut,))
@@ -3506,7 +3571,7 @@ def parse(doc: Document, ctx: ParseContext) -> ParseResult:
         pages.append(PageLines(page.number, page.source.kind, lines))
         used |= dropped
     body = BodyRule(start=starts_known_row(schema), stop=None, drop=_FURNITURE)
-    cut = cut_pages(Layout(ERAS, body), pages, ctx.period.end)
+    cut = cut_pages(Layout(TABLE, ERAS, body), pages, ctx.period.end)
     if isinstance(cut, Finding):
         return Failed((cut,))
     findings: tuple[Finding, ...] = cut.findings
@@ -3751,7 +3816,7 @@ def parse(doc: Document, ctx: ParseContext) -> ParseResult:
     halves = tuple(half for pl in run.take(pages) for half in _halves(pl))    # QSMR-Q10
     body = BodyRule(start=_ends_in_amount, stop=_is_grand_total, drop=GRAMMAR.drop,
                     prefix=_VENDOR_NO)
-    cut = cut_pages(Layout(ERAS, body), halves, ctx.period.end)
+    cut = cut_pages(Layout(TABLE, ERAS, body), halves, ctx.period.end)
     if isinstance(cut, Finding):
         return Failed((cut,))
     raws = tuple(_void_to_label(r) for r in cut.raws)
@@ -4413,7 +4478,7 @@ outside the list changes the list and the pin together.
 
 | Package | Outside modules it imports from |
 |---|---|
-| `checkedtables` | `collections.abc`, `dataclasses`, `decimal`, `enum`, `re`, `statistics`, `typing` |
+| `checkedtables` | `collections.abc`, `dataclasses`, `datetime`, `decimal`, `enum`, `re`, `statistics`, `typing` |
 | `datadesk.core` | `collections`, `collections.abc`, `dataclasses`, `datetime`, `enum`, `hashlib`, `json`, `re`, `tomllib`, `types`, `typing` |
 
 ### 11.2 Property tests
@@ -4466,7 +4531,8 @@ def test_transliteration_refuses_a_digit_swap() -> None:           # H1, QCASH-Q
 
 def test_police_lesson_missing_column_is_a_binding_finding() -> None:   # SUPOP-Q14
     page = page_from_text(REVENUES_PAGE_WITHOUT_PERCENT, sha=SHA, page=1)
-    cut = cut_pages(Layout(supp_revenues.ERAS, BODY), (page_lines(page),), date(2021, 6, 30))
+    layout = Layout(supp_revenues.TABLE, supp_revenues.ERAS, BODY)
+    cut = cut_pages(layout, (page_lines(page),), date(2021, 6, 30))
     assert isinstance(cut, Finding) and cut.code == "column_unbound"
 
 
@@ -4539,7 +4605,8 @@ def test_kit_dataclass_fields_are_pinned() -> None:
 
 
 def test_bool_fields_are_page_facts_only() -> None:
-    assert bool_fields(kit_dataclasses()) == {("Word", "bold"), ("Column", "printed")}
+    assert bool_fields(kit_dataclasses()) == {("Word", "bold"), ("RawRow", "bold"),
+                                              ("Column", "printed")}
 
 
 def test_closed_lists_are_pinned() -> None:
@@ -4584,7 +4651,9 @@ included. A public class's methods, and its `__init__` when it is not a dataclas
 it inherits from a base class in the scanned package, private or not, each read once as the class
 resolves it, without `self`. A base outside the package, such as `object`, `Enum` or `Exception`,
 adds nothing. A dataclass's generated constructor stays out, because the two field tests pin its
-fields and allow the `bool` fields `Word.bold` and `Column.printed`.
+fields and allow the `bool` fields `Word.bold`, `RawRow.bold` and `Column.printed`. Each is a fact
+read from the page. `RawRow.bold` joined at step 5 (decision 20), and `Column.printed` joins
+with `Column`.
 
 `NoteKind` lives in `datadesk`, but its list is pinned in the same test file. A new kind of
 per-edition switch is then as visible as a new kit field (R1). The six vocabulary lists are pinned

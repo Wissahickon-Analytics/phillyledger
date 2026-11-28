@@ -10,10 +10,12 @@ import pytest
 PURE_PACKAGES = ("checkedtables", "datadesk.core")
 PURE_IMPORTS: dict[str, tuple[str, ...]] = {
     "checkedtables": (
+        "collections.abc.Callable",
         "collections.abc.Iterable",
         "collections.abc.Sequence",
         "dataclasses.dataclass",
         "dataclasses.replace",
+        "datetime.date",
         "decimal.Decimal",
         "enum.StrEnum",
         "re.compile",

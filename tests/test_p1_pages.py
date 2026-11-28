@@ -1,17 +1,24 @@
 import re
 from collections.abc import Sequence
+from datetime import date
 from importlib import import_module
+from statistics import median
 
 from packages.checkedtables.tests.step_2_rule import step_2_rule_lines
-from packages.datadesk.tests.fixtures.p1 import RUNS
+from packages.datadesk.tests.fixtures.p1 import RUNS, P1Run
 
-from checkedtables.lines import Line, group_lines
+from checkedtables.columns import lanes_from_rules
+from checkedtables.lines import Line, PageLines, group_lines, page_lines
+from checkedtables.pages import BodyRule
+from checkedtables.pipeline import CutPages, Layout, cut_pages
 from checkedtables.refs import WordRef
 from checkedtables.words import Page, Word
+from datadesk.core.tables.qcmr_positions import COLUMNS, ERAS, TABLE
 from datadesk.shell.cli import FIXTURE_FOLDER
 
 MARK = re.compile(r"\(\d\)")
 NUMBER = re.compile(r"\(?\d[\d,]*\)?")
+GROUPS = ("YEAR END ACTUAL", "ADOPTED BUDGET", "MONTH END ACTUAL", "(OVER)")
 MOVED: dict[str, tuple[tuple[int, str, str], ...]] = {
     "qcmr_2021_09_30_p35": ((521, "2", "2 5 First Judicial District"),),
     "qcmr_2021_09_30_p36": ((393, "2", "2 6 Records"),),
@@ -207,3 +214,72 @@ def test_only_the_54_pinned_words_leave_the_lines_of_the_step_2_rule() -> None:
             assert not joined & stayed, (
                 f"{name} word {index} kept the line the step 2 rule gives it"
             )
+
+
+def is_row(line: Line) -> bool:
+    return len(line.words) > 10 and all(NUMBER.fullmatch(word.text) for word in line.words[-10:])
+
+
+GRID_BODY = BodyRule(
+    start=is_row,
+    stop=lambda line: line.text.startswith("TOTAL ALL FUNDS"),
+    drop=(r"^\(\d+\)\s", r"^NOTE:"),
+    prefix=r"\d{1,2}",
+)
+
+
+def grid_of(run: P1Run) -> tuple[tuple[PageLines, ...], CutPages]:
+    pages = tuple(page_lines(fixture_page(stem(run.edition, number))) for number in run.grid)
+    on = date.fromisoformat(run.edition.split(":")[1])
+    cut = cut_pages(Layout(TABLE, ERAS, GRID_BODY), pages, on)
+    assert isinstance(cut, CutPages), f"{run.edition}: {cut}"
+    return pages, cut
+
+
+def band_text(lines: Sequence[Line], x0: float, x1: float) -> str:
+    centered = (w for line in lines for w in line.words if x0 <= (w.box.x0 + w.box.x1) / 2 < x1)
+    return " ".join(word.text for word in centered)
+
+
+def test_the_ten_columns_bind_left_to_right_under_the_group_each_band_prints() -> None:
+    names = [column.name for column in COLUMNS]
+    for run in RUNS:
+        pages, cut = grid_of(run)
+        assert cut.findings == (), run.edition
+        for page, cut_page in zip(pages, cut.pages, strict=True):
+            columns = cut_page.binding.columns
+            lanes = [lane for _, lane in columns if lane is not None]
+            assert [spec.name for spec, _ in columns] == names, page.number
+            assert len(lanes) == 10, f"{run.edition} page {page.number}"
+            assert [lane.x1 for lane in lanes] == sorted(lane.x1 for lane in lanes)
+            assert len(cut_page.header) == 9, f"{run.edition} page {page.number}"
+            last = cut_page.header[-1]
+            assert last.text == "General Other Total " * 3 + "UNDER BUDGET"
+            bands = lanes_from_rules(page.rules, last.box)
+            assert len(bands) == 5, f"{run.edition} page {page.number}"
+            holders = [
+                next(index for index, band in enumerate(bands) if band.x0 < lane.x1 <= band.x1)
+                for lane in lanes
+            ]
+            assert holders == [1, 1, 1, 2, 2, 2, 3, 3, 3, 4], f"{run.edition} page {page.number}"
+            for band, group in zip(bands[1:], GROUPS, strict=True):
+                assert group in band_text(cut_page.header[5:], band.x0, band.x1), (
+                    f"{run.edition} page {page.number} band {band}"
+                )
+            assert cut_page.binding.label_right == lanes[0].x0 > bands[0].x0
+
+
+def test_each_body_row_cuts_to_a_label_and_ten_cells_of_one_word() -> None:
+    for run in RUNS:
+        _, cut = grid_of(run)
+        assert len(cut.raws) == run.rows, run.edition
+        for raw in cut.raws:
+            where = f"{run.edition} page {raw.page} {[word.text for word in raw.label_words]}"
+            assert raw.label_words, where
+            assert [len(words) for _, words in raw.cells] == [1] * 10, where
+            assert raw.stray == (), where
+            numbers = [word.text for word in raw.label_words if NUMBER.fullmatch(word.text)]
+            assert all(MARK.fullmatch(text) for text in numbers), where
+            words = [*raw.label_words, *(word for _, cell in raw.cells for word in cell)]
+            height = median(word.box.bottom - word.box.top for word in words)
+            assert raw.cells[0][1][0].box.x0 - raw.label_words[-1].box.x1 > height, where

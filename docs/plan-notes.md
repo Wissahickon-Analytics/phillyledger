@@ -15,17 +15,6 @@ file, `docs/progress.md`, `docs/followups.md` or `docs/deviations/`.
   - Open question for the model, not verified: `created_at` goes into the manifest (section 10).
     If the manifest is one of the create-only files, a retry with the same release id and a new
     `now` may fail in `put_immutable` instead of resuming.
-- **`RawRow.bold` and the pinned `bool` fields, a finding for the step 5 plan** (November 22,
-  2026, step corrected November 23). Design section 11.4 pins the kit's `bool` fields to
-  `Word.bold` and `Column.printed`. `RawRow.bold` in `checkedtables/rows.py` is also
-  `bool | None` (section 2.1), the same annotation as `Word.bold`. The design does not define
-  `bool_fields` or `kit_dataclasses`, so it does not say whether `RawRow` counts. Read from the
-  design, not run. Step 5 builds `rows.py` (section 15). The design names `RawRow` only in
-  `pipeline.py`, `rows.py`, `columns.py` and `grammar.py` of the kit, and step 2 builds none of
-  them, so steps 1 to 4 are unaffected. This note first named step 2 by mistake. The owner
-  decides, before the step 5 plan, whether `RawRow.bold` joins the pinned set or `RawRow` stays
-  out of `kit_dataclasses`. On November 27, 2026 he chose to pin it (design section 16, decision
-  20). S5-B removes this note when it builds `RawRow`.
 - **`assemble` passes the words of the cut page to `reading_for`, a note for the step 5 plan**
   (November 23, 2026, step 2, S2-E). `reading_for` compares the page words its box holds with
   the cell's words as values. So `assemble` passes the words the cells were cut from, after any
@@ -466,6 +455,12 @@ file, `docs/progress.md`, `docs/followups.md` or `docs/deviations/`.
   the design's prefix rule take each digit off its row (`docs/plans/step-05.md`, shapes 3 and 9).
   Its probe found the margin number in seven editions, on 14 pages (fact 9). S5-E removes this
   note.
+- **An empty lane for a caption printed over no values, a note for the step 8 plan** (November
+  27, 2026, S5-B). Step 2 of `bind_columns` in design section 3.1 adds an empty lane for a
+  required caption that a page prints over no values (QCASH-Q35). S5-B left it out, since no
+  P-1 page prints the case and where the lane goes needs a real page. Until it is built such a
+  column is `column_unbound`. The plan of the step that parses the first page that prints it,
+  most likely the cash pages of step 8, builds it on a word fixture of that page.
 - **The archive prints no font code in the cash pages, a note for the step 8 plan** (November
   25, 2026, the step 4 plan). QCASH-Q14 and VAL-Q05 describe `E(cid:121)PENSES` in the cash pages
   of FY2023 Q1 and Q2, and design section 3.2 has `split_grids` match `(cid:N)` in that caption.

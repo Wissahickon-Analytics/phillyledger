@@ -9,6 +9,7 @@ from typing import assert_never
 from checkedtables.cells import Amount, Blank, Cell, Dash, NotApplicable, Text, Unreadable
 from checkedtables.columns import ColumnSpec
 from checkedtables.kinds import PercentSign, SourceKind, UnreadableReason, ValueKind
+from checkedtables.lines import _FOOTNOTE, _is_raised_digit
 from checkedtables.words import Word
 
 _DIGITS = "0123456789"
@@ -25,7 +26,6 @@ _PERCENT_ALLOWED = (
     (PercentSign.OPTIONAL, True),
     (PercentSign.REQUIRED, True),
 )
-_RAISED_SIZE = 0.7
 _CONFUSABLES = (
     ("B", "8"),
     ("b", "8"),
@@ -42,7 +42,6 @@ _NUMBER = compile(
     r"(?P<digits>(?:0|[1-9][0-9]{0,2}(?:,[0-9]{3})*|[1-9][0-9]*)(?:\.[0-9]+)?)%?(?(open)\))"
 )
 _MARK_WORD = compile(f"[{_MARKS}]+")
-_FOOTNOTE = compile(f"[0-9][{_MARKS}]*")
 _ONE_DIGIT = compile("[0-9]")
 _JOINS = (
     (_ONE_DIGIT, compile("[0-9]{1,2}(?:,[0-9]{3})+")),
@@ -59,20 +58,6 @@ def _read_number(token: str) -> Decimal | None:
         return None
     sign = "-" if found["open"] or found["minus"] else ""
     return Decimal(sign + found["digits"].replace(",", ""))
-
-
-def _is_raised_digit(words: Sequence[Word]) -> bool:
-    if len(words) < 2:
-        return False
-    number, digit = words[-2], words[-1]
-    return (
-        _FOOTNOTE.fullmatch(digit.text) is not None
-        and any(glyph in _DIGITS for glyph in number.text)
-        and digit.size is not None
-        and number.size is not None
-        and digit.size < _RAISED_SIZE * number.size
-        and digit.box.bottom < number.box.bottom
-    )
 
 
 def _tokens_and_marks(words: Sequence[Word]) -> tuple[tuple[str, ...], tuple[str, ...]]:

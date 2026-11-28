@@ -384,3 +384,10 @@ def test_page_lines_carry_the_source_and_the_text() -> None:
     assert lines_text(found.lines) == "CASH FLOW PROJECTIONS\nNon-Tax 1,234"
     assert lines_text(()) == ""
     assert group_lines(page_of()) == ()
+
+
+def test_page_lines_carry_the_rules_of_the_page() -> None:
+    rules = (Rule(Box(30.0, 0.0, 30.0, 36.0)), Rule(Box(0.0, 12.0, 60.0, 12.0)))
+    page = replace(page_from_text("Taxes 1,234", SHA, 3), rules=rules)
+    assert page_lines(page).rules == rules
+    assert page_lines(page_from_text("Taxes 1,234", SHA, 3)).rules == ()
