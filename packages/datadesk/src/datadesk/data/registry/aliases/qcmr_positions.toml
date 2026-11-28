@@ -1,0 +1,38 @@
+# Spellings that hold in Table P-1 alone. Fact and shape numbers are those of
+# docs/plans/step-05.md. Streets and Commerce print a group's row through FY2025 and FY2023
+# (facts 10 and 13, shape 15).
+
+[[alias]]
+entity = "phl_group_streets_sanitation"
+label = "Streets"
+tables = ["qcmr_positions"]
+first_fy = 2022
+last_fy = 2025
+
+[[alias]]
+entity = "phl_group_commerce_aviation"
+label = "Commerce"
+tables = ["qcmr_positions"]
+first_fy = 2022
+last_fy = 2023
+
+# In FY2022, Fleet Management prints only in 2021-09-30,
+# so the alias names that file (shape 14).
+[[alias]]
+entity = "phl_dept_fleet_management"
+label = "Fleet Management"
+tables = ["qcmr_positions"]
+editions = [
+  "7c4a2e5abb00a5084cdb24fb35325cd1f2cdee42cfd9b30cf7c62c46c2f22918",
+]
+
+# In FY2025, Creative Philadelphia prints only in 2025-03-31 and 2025-06-30,
+# so the alias names those files (shape 14).
+[[alias]]
+entity = "phl_dept_office_of_arts_and_culture"
+label = "Creative Philadelphia"
+tables = ["qcmr_positions"]
+editions = [
+  "0e6895f1cc3fa8476761cf71decc930a473f7be48662b11fdfa8663f94eeb63f",
+  "fdae8df31b0d7144557d5a803b1eb5f0a969ee43b60a55960db71b7e77e4afdd",
+]

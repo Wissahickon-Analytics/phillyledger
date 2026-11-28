@@ -1,0 +1,11 @@
+# Funds, named as the fund captions of Table P-1 print them.
+
+[[fund]]
+id = "phl_fund_general"
+names = [{ value = "General" }]
+
+# Every fund but the General: the Total column of P-1 is General plus Other.
+[[fund]]
+id = "phl_fund_other"
+names = [{ value = "Other" }]
+residual = "yes"
