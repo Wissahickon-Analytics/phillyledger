@@ -60,14 +60,13 @@ _LINE_NO = r"(?:\d{1,2}|I)"
 _COUNT_WORD = compile(r"\(?\d[\d,]*\)?")
 
 
-def layout(schema: RowSchema) -> Layout:
+def _layout(schema: RowSchema) -> Layout:
     """Return how `parse` cuts the pages of one edition, whose rows `schema` holds.
 
     The body starts at the first line that opens with a label of the schema or ends with a
-    count for each column, so a first row whose label the schema lacks is an unknown row and
-    never header. It stops at TOTAL ALL FUNDS. The schema's ``drop`` makes the footnotes and
-    the notice under the rows of the first grid page furniture, and a line of line number words
-    alone, such as the page number at the foot, is furniture too.
+    count for each column. It stops at TOTAL ALL FUNDS. The schema's ``drop`` makes the
+    footnotes and the notice under the rows of the first grid page furniture, and a line of
+    line number words alone, such as the page number at the foot, is furniture too.
 
     Parameters
     ----------
@@ -96,10 +95,10 @@ def parse(doc: Document, ctx: ParseContext) -> ParseResult:
     Returns
     -------
     ParseResult
-        `Parsed` with the table, every finding of the cut, the match, the assembly and the
-        strays, sorted, and the ids of the records used. `Failed` with the one finding when no
-        run, or more than one, prints the band, or when the cut stops, and with every finding
-        when the assembly builds no table.
+        `Parsed` with the table, the cut it was assembled from, every finding of the cut, the
+        match, the assembly and the strays, sorted, and the ids of the records used. `Failed`
+        with the one finding when no run, or more than one, prints the band, or when the cut
+        stops, and with every finding when the assembly builds no table.
     """
     schema = ctx.schema(TABLE)
     pages = tuple(page_lines(page) for page in doc.pages)
@@ -113,7 +112,7 @@ def parse(doc: Document, ctx: ParseContext) -> ParseResult:
         case _:
             assert_never(run)
     positional, notes_used = illegible_pages(ctx.notes, doc.sha256)
-    cut = cut_pages(layout(schema), run.take(pages), ctx.period.end, positional)
+    cut = cut_pages(_layout(schema), run.take(pages), ctx.period.end, positional)
     match cut:
         case CutPages():
             pass
@@ -126,7 +125,8 @@ def parse(doc: Document, ctx: ParseContext) -> ParseResult:
     findings = (*cut.findings, *matched.findings, *built.findings, *stray_findings(cut.raws))
     if built.table is None:
         return Failed(tuple(sorted(findings)))
-    return Parsed((built.table,), tuple(sorted(findings)), built.used | notes_used | pages_used)
+    used = built.used | notes_used | pages_used
+    return Parsed((built.table,), (cut,), tuple(sorted(findings)), used)
 
 
 def _is_p1(band: str) -> bool:

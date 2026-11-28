@@ -6,6 +6,7 @@ records of one file, and a table's `parse` returns `Parsed` or `Failed` (design 
 
 from dataclasses import dataclass
 
+from checkedtables.pipeline import CutPages
 from checkedtables.records import CellRecords
 from checkedtables.rows import RowSchema
 from checkedtables.table import Finding, Severity, Table
@@ -95,17 +96,32 @@ class Parsed:
     ----------
     tables : tuple[Table, ...]
         The tables, in the order the parser built them.
+    cuts : tuple[CutPages, ...]
+        The cut that each table was assembled from, in the order of `tables`. Its header and
+        furniture lines and its raw rows hold the words that no row of the table holds, so
+        every word of a grid page has a place in the result (design section 11.2).
     findings : tuple[Finding, ...]
         Every finding, sorted. A BLOCK finding beside a table fails the gate, as an unknown
         row does.
     used : frozenset[str]
         The ids of the records that changed a cell or chose a page, so that a record passed in
         and not used becomes an ``unused_record`` finding.
+
+    Raises
+    ------
+    ValueError
+        When the tables and the cuts differ in number.
     """
 
     tables: tuple[Table, ...]
+    cuts: tuple[CutPages, ...]
     findings: tuple[Finding, ...]
     used: frozenset[str]
+
+    def __post_init__(self) -> None:
+        """Refuse a table with no cut, and a cut with no table."""
+        if len(self.cuts) != len(self.tables):
+            raise ValueError(f"{len(self.tables)} tables and {len(self.cuts)} cuts")
 
 
 @dataclass(frozen=True, slots=True)
