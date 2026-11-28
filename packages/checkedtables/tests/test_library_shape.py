@@ -69,6 +69,20 @@ FIELD_SNAPSHOT: dict[str, tuple[str, ...]] = {
     "Column": ("name", "kind", "caption", "printed"),
     "Row": ("key", "kind", "label", "parent", "page", "label_words", "cells", "entity", "unit"),
     "Table": ("id", "doc_sha256", "era", "pages", "columns", "rows"),
+    "RowDef": (
+        "key",
+        "kind",
+        "labels",
+        "parent",
+        "within",
+        "follows",
+        "presence",
+        "entity",
+        "unit",
+    ),
+    "RowSchema": ("table", "rows", "root", "drop", "truncation"),
+    "KeyedRow": ("raw", "label", "key", "kind", "parent", "entity", "unit"),
+    "RowMatch": ("rows", "findings"),
 }
 
 
