@@ -149,6 +149,30 @@ def test_a_department_spelled_in_a_form_fails_the_schema_test() -> None:
     assert department_spellings(planted) == ["dept=phl_dept_police has the form '{name} Police'"]
 
 
+def test_a_department_spelled_in_a_drop_pattern_fails_the_schema_test() -> None:
+    text = SCHEMA_FILE.read_text(encoding="utf-8")
+    drop = "drop = ['"
+    assert text.count(drop) == 1
+    finance = r"^Finance\b"
+    planted = text.replace(drop, f"{drop}{finance}', '")
+    assert isinstance(load_row_schema(TABLE, planted), RowSchemaSource)
+    assert department_spellings(planted) == [f"drop has the pattern {finance!r}"]
+
+
+def test_a_field_the_schema_test_does_not_read_fails_it() -> None:
+    text = SCHEMA_FILE.read_text(encoding="utf-8")
+    table = f'table = "{TABLE}"\n'
+    police = 'entity = "phl_dept_police"\n'
+    assert text.count(table) == text.count(police) == 1
+    planted = text.replace(table, f"{table}keep = ['^Finance']\n").replace(
+        police, f'{police}label_editions = ["Finance"]\n'
+    )
+    assert department_spellings(planted) == [
+        "the file has the field 'keep'",
+        "dept=phl_dept_police has the field 'label_editions'",
+    ]
+
+
 def test_every_entity_that_a_row_or_an_alias_names_is_in_the_registry() -> None:
     reg = registry()
     ids = [entity.id for entity in reg.entities]
