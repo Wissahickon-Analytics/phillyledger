@@ -218,11 +218,13 @@ to `docs/plans/step-05.md`.
   5.3, both read `MONTH OF` (finding 1 of Codex's read of that round). Now the new field
   `Binding.captions` holds, for each column bound by caption, its band's words on the header
   lines that its group regex matches, then its lane's words from the first header line that its
-  caption regex matches to the last, and `assemble` captions each column with them. On the 40
-  grid fixtures the tenth column reads `ACTUAL (OVER) UNDER BUDGET`, and the lanes, the
-  binding's three other fields and the raw rows are the same at `d8ba4cb`, at `aab6e72` and
-  after. `test_each_p1_caption_is_printed_over_its_column_and_holds_no_title_or_fiscal_year` in
+  caption regex matches to the last, and `assemble` captions each column with them. On all 40
+  grid fixtures the page prints `MONTH END`, `ACTUAL (OVER)` and `UNDER BUDGET` over the tenth
+  column, so the `over_under` regex of section 5.1 now starts at `MONTH`, and the tenth column
+  reads `MONTH END ACTUAL (OVER) UNDER BUDGET`. The era, the lanes, the label edge and the raw
+  rows of the 40 grid fixtures are the same at `d8ba4cb`, at `aab6e72` and after.
+  `test_each_p1_caption_is_printed_over_its_column_and_holds_no_title_or_fiscal_year` in
   `tests/test_p1_captions.py`, and
   `test_two_columns_of_one_caption_regex_each_keep_the_period_printed_under_it`. The answer was
   taken on November 28, 2026 while the owner was away, under his standing permission of
-  November 27, and he has not seen the question. Design sections 2.1 and 3.1.
+  November 27, and he has not seen the question. Design sections 2.1, 3.1 and 5.1.

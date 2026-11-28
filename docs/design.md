@@ -3147,7 +3147,8 @@ _OVER = r"\(OVER\)"
 COLUMNS: tuple[ColumnSpec, ...] = (     # each fund caption binds inside its group's band
     *(ColumnSpec(f"{g}_{f}", fcap, ValueKind.COUNT, _COUNT, group=gcap)
       for g, gcap in _GROUPS for f, fcap in _FUNDS),
-    ColumnSpec("over_under", rf"{_OVER}\s*UNDER", ValueKind.COUNT, _COUNT),
+    ColumnSpec("over_under", rf"MONTH\s+END\s+ACTUAL\s+{_OVER}\s*UNDER", ValueKind.COUNT,
+               _COUNT),         # MONTH END, ACTUAL (OVER), UNDER BUDGET: three header lines
 )
 _FUND_COLUMNS = tuple(c.name for c in COLUMNS if c.name != "over_under")
 _ALL_COLUMNS = tuple(c.name for c in COLUMNS)

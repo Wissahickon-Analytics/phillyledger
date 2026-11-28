@@ -12,7 +12,7 @@ GROUPS = ("YEAR END ACTUAL", "ADOPTED BUDGET", "MONTH END ACTUAL")
 FUNDS = ("General", "Other", "Total")
 PRINTED = (
     *((group, fund) for group in GROUPS for fund in FUNDS),
-    ("", "ACTUAL (OVER) UNDER BUDGET"),
+    ("", "MONTH END ACTUAL (OVER) UNDER BUDGET"),
 )
 
 

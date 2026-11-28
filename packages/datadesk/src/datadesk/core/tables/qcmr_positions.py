@@ -4,7 +4,8 @@ The table prints ten count columns: General, Other and Total under each of three
 captions, then the variance (QPOS-Q01). The captions are written as the archived reports of
 FY2022 to FY2026 print them, in capitals. Each fund column binds by its own caption inside the
 rule band of its group, never by its place in the row (QPOS-Q02). The tenth column prints
-"(OVER)" and "UNDER" on two header lines and has no group.
+"MONTH END", "ACTUAL (OVER)" and "UNDER BUDGET" on three header lines and has no group, so its
+caption regex starts at "MONTH" to caption the column with all three.
 """
 
 from datetime import date
@@ -28,7 +29,7 @@ COLUMNS: tuple[ColumnSpec, ...] = (
         for group, printed in _GROUPS
         for fund, caption in _FUNDS
     ),
-    ColumnSpec("over_under", rf"{_OVER}\s*UNDER", ValueKind.COUNT, _COUNT),
+    ColumnSpec("over_under", rf"MONTH\s+END\s+ACTUAL\s+{_OVER}\s*UNDER", ValueKind.COUNT, _COUNT),
 )
 ERAS = (
     Era(
