@@ -167,16 +167,17 @@ to `docs/plans/step-05.md`.
   never be cleared by a reading. Section 8.3 says such words need a reading "before they lex
   as a number". No P-1 page is OCR, and `docs/plan-notes.md` leaves the dash and N/A case to the
   step 7 plan. `test_an_ocr_number_under_the_confidence_floor_is_low_confidence_until_a_reading_reads_it`
-  holds a word at 94.9 to the floor of 95 and one at 95.0 clear of it. Design section 3.1.
+  holds a word at 94.9 to the floor of 95 and one at 95.0 clear of it. The answer was taken on
+  November 27, 2026 while the owner was away, under his standing permission of November 27, and
+  he has not seen the question. Design section 3.1.
 - **How `match_rows` keeps its blocks** (November 27, 2026, S5-C). The design had a row with
   children in the schema open a block, and a row match "only when `within` is the open
   block". A block that only `within` names must open too, and a `Civilian` printed after an
   unknown line under `Police - Total` still belongs to Police. So a row opens a block when a
   definition names its key as `parent` or `within`, a matched row closes the blocks above its
   home (its `within`, else its `parent`), and an unmatched row closes none. `within` must be
-  open. The four block tests of `test_rows.py` prove it. A probe that matched the 40 grid
-  fixtures against a schema built from their own labels put all 120 `Civilian` and `Uniform`
-  rows under their parent. Design section 3.1.
+  open. A probe that matched the 40 grid fixtures against a schema built from their own labels
+  put all 120 `Civilian` and `Uniform` rows under their parent. Design section 3.1.
 - **A wrapped label joins only a row of its page** (November 27, 2026, S5-C). Joined across a
   page break, a row's cells would lie on a page other than its own, and `assemble` hands
   `reading_for` the words of the row's page. Both lines are then `unknown_row`.
@@ -206,15 +207,22 @@ to `docs/plans/step-05.md`.
   and 35 OCR pages, and every word has one place. The probe above found none of the 18,541
   words of the 40 grid fixtures out of place.
   Design section 11.2.
-- **A column's caption is the words that bound it, and the binding keeps them** (November 27,
-  2026, S5-C fix round). `Column.caption`, which the release publishes as `caption_printed`, was
+- **A column's caption is the words on the header lines that bind it** (November 27 and 28,
+  2026, S5-C fix rounds). `Column.caption`, which the release publishes as `caption_printed`, was
   the first page's lane caption: every header word over the lane, title lines included. On all
   20 P-1 editions some caption held title words, such as `TABLE P-1 CITY MANAGERS FULL TIME
   POSITIONS ALL FUNDS PERIOD ENDING JUNE ADOPTED General` for `adopted_general` on page 33 of
-  `2026-06-30` (finding 1 of the Codex review). `bind_columns` now keeps, in the new field
-  `Binding.captions`, the whole words that the column's group regex found in its band's caption
-  and then those its caption regex found in its lane's caption, and `assemble` captions each
-  column with them. The lanes, bands and their captions do not change, and a dump of the
-  bindings and raw rows of the 40 grid fixtures is the same before and after.
-  `test_each_p1_caption_is_the_words_that_bound_its_column_and_no_title_word` in
-  `tests/test_p1_captions.py`. Design sections 2.1 and 3.1.
+  `2026-06-30` (finding 1 of the Codex review). The first fix round kept only the words that the
+  column's regexes matched, which dropped caption words too: the tenth P-1 column read
+  `(OVER) UNDER`, and two columns of one regex, such as `month` and `month_prior` of section
+  5.3, both read `MONTH OF` (finding 1 of Codex's read of that round). Now the new field
+  `Binding.captions` holds, for each column bound by caption, its band's words on the header
+  lines that its group regex matches, then its lane's words from the first header line that its
+  caption regex matches to the last, and `assemble` captions each column with them. On the 40
+  grid fixtures the tenth column reads `ACTUAL (OVER) UNDER BUDGET`, and the lanes, the
+  binding's three other fields and the raw rows are the same at `d8ba4cb`, at `aab6e72` and
+  after. `test_each_p1_caption_is_printed_over_its_column_and_holds_no_title_or_fiscal_year` in
+  `tests/test_p1_captions.py`, and
+  `test_two_columns_of_one_caption_regex_each_keep_the_period_printed_under_it`. The answer was
+  taken on November 28, 2026 while the owner was away, under his standing permission of
+  November 27, and he has not seen the question. Design sections 2.1 and 3.1.
