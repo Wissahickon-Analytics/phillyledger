@@ -83,6 +83,7 @@ FIELD_SNAPSHOT: dict[str, tuple[str, ...]] = {
     "RowSchema": ("table", "rows", "root", "drop", "truncation"),
     "KeyedRow": ("raw", "label", "key", "kind", "parent", "entity", "unit"),
     "RowMatch": ("rows", "findings"),
+    "Assembly": ("table", "findings", "used"),
 }
 
 
@@ -412,6 +413,7 @@ def test_closed_lists_are_pinned() -> None:
         "decimals",
         "font_code",
         "reviewed_null",
+        "low_confidence",
     ]
 
 
