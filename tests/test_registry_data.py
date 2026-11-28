@@ -1,6 +1,7 @@
 import tomllib
 from functools import cache
 from pathlib import Path
+from typing import Any
 
 from packages.datadesk.tests.fixtures.p1 import RUNS
 from tests.test_p1_pages import grid_of
@@ -133,8 +134,16 @@ def schemas() -> dict[str, RowSchema]:
     return {name: schema_for(source(), versions()[name], registry()) for name in EDITIONS}
 
 
-def department_spellings(text: str) -> list[str]:
-    file = tomllib.loads(text)
+def parsed() -> dict[str, Any]:
+    return tomllib.loads(SCHEMA_FILE.read_text(encoding="utf-8"))
+
+
+def row_index(file: dict[str, Any], key: str) -> int:
+    (index,) = [index for index, row in enumerate(file["row"]) if row["key"] == key]
+    return index
+
+
+def schema_problems(file: dict[str, Any]) -> list[str]:
     problems = [f"the file has the field {name!r}" for name in file if name not in FILE_FIELDS]
     problems += [f"drop has the pattern {p!r}" for p in file.get("drop", ()) if p not in DROP]
     for row in file.get("row", []):
@@ -154,40 +163,65 @@ def department_spellings(text: str) -> list[str]:
 
 
 def test_the_positions_schema_spells_no_department() -> None:
-    text = SCHEMA_FILE.read_text(encoding="utf-8")
-    assert isinstance(load_row_schema(TABLE, text), RowSchemaSource)
-    assert department_spellings(text) == []
+    assert isinstance(
+        load_row_schema(TABLE, SCHEMA_FILE.read_text(encoding="utf-8")), RowSchemaSource
+    )
+    assert schema_problems(parsed()) == []
 
 
 def test_a_department_spelled_in_a_form_fails_the_schema_test() -> None:
-    text = SCHEMA_FILE.read_text(encoding="utf-8")
-    police = 'entity = "phl_dept_police"\nforms = ["{name} - Total"]'
-    assert text.count(police) == 1
-    planted = text.replace(police, police.replace("]", ', "{name} Police"]'))
-    assert department_spellings(planted) == ["dept=phl_dept_police has the form '{name} Police'"]
+    file = parsed()
+    police = row_index(file, "dept=phl_dept_police")
+    file["row"][police]["forms"].append("{name} Police")
+    assert schema_problems(file) == [
+        f"{TABLE}.row[{police}].forms[1] holds 'Police'",
+        "dept=phl_dept_police has the form '{name} Police'",
+    ]
 
 
 def test_a_department_spelled_in_a_drop_pattern_fails_the_schema_test() -> None:
-    text = SCHEMA_FILE.read_text(encoding="utf-8")
-    drop = "drop = ['"
-    assert text.count(drop) == 1
-    finance = r"^Finance\b"
-    planted = text.replace(drop, f"{drop}{finance}', '")
-    assert isinstance(load_row_schema(TABLE, planted), RowSchemaSource)
-    assert department_spellings(planted) == [f"drop has the pattern {finance!r}"]
+    file = parsed()
+    file["drop"].insert(0, r"^Finance\b")
+    assert schema_problems(file) == [f"{TABLE}.drop[0] holds 'Finance'"]
 
 
-def test_a_field_the_schema_test_does_not_read_fails_it() -> None:
-    text = SCHEMA_FILE.read_text(encoding="utf-8")
-    table = f'table = "{TABLE}"\n'
-    police = 'entity = "phl_dept_police"\n'
-    assert text.count(table) == text.count(police) == 1
-    planted = text.replace(table, f"{table}keep = ['^Finance']\n").replace(
-        police, f'{police}label_editions = ["Finance"]\n'
-    )
-    assert department_spellings(planted) == [
-        "the file has the field 'keep'",
-        "dept=phl_dept_police has the field 'label_editions'",
+def test_a_department_spelled_in_a_row_key_fails_the_schema_test() -> None:
+    file = parsed()
+    fleet = row_index(file, "dept=phl_dept_fleet_management")
+    file["row"][fleet]["key"] = "dept=Fleet Management"
+    assert schema_problems(file) == [
+        f"{TABLE}.row[{fleet}].key holds 'Fleet Management'",
+        "dept=Fleet Management is not the key of phl_dept_fleet_management",
+    ]
+
+
+def test_a_department_spelled_in_a_field_the_loader_does_not_know_fails_the_schema_test() -> None:
+    file = parsed()
+    police = row_index(file, "dept=phl_dept_police")
+    file["row"][police]["label_editions"] = ["Law"]
+    file["keep"] = {"Sheriff": [r"^Fleet\s+Services"]}
+    assert schema_problems(file) == [
+        f"{TABLE}.row[{police}].label_editions[0] holds 'Law'",
+        f"{TABLE}.keep holds 'Sheriff'",
+        f"{TABLE}.keep.Sheriff[0] holds 'Fleet Services'",
+    ]
+
+
+def test_a_row_unit_passes_the_schema_test() -> None:
+    file = parsed()
+    file["row"][row_index(file, "dept=phl_dept_finance")]["unit"] = "positions"
+    assert schema_problems(file) == []
+
+
+def test_a_row_key_of_another_entity_or_parent_fails_the_schema_test() -> None:
+    file = parsed()
+    civilian = row_index(file, "breakdown=civilian|dept=phl_dept_fire")
+    law = row_index(file, "dept=phl_dept_law")
+    file["row"][civilian]["parent"] = "dept=phl_dept_police"
+    file["row"][law]["entity"] = "phl_dept_labor_mayors_office_of"
+    assert schema_problems(file) == [
+        "breakdown=civilian|dept=phl_dept_fire does not hold its parent dept=phl_dept_police",
+        "dept=phl_dept_law is not the key of phl_dept_labor_mayors_office_of",
     ]
 
 
