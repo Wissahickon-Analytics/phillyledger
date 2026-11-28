@@ -98,8 +98,8 @@ class Parsed:
         The tables, in the order the parser built them.
     cuts : tuple[CutPages, ...]
         The cut that each table was assembled from, in the order of `tables`. Its header and
-        furniture lines and its raw rows hold the words that no row of the table holds, so
-        every word of a grid page has a place in the result (design section 11.2).
+        furniture lines, and the raw rows that findings name, are the places of the words that
+        no row of the table holds (design section 11.2).
     findings : tuple[Finding, ...]
         Every finding, sorted. A BLOCK finding beside a table fails the gate, as an unknown
         row does.

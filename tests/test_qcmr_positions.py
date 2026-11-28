@@ -28,10 +28,6 @@ BY_EDITION = {run.edition: run for run in RUNS}
 FOOTNOTE = re.compile(r"\(\d\) ")
 NOTICE = "NOTE: The material in this report is preliminary"
 DIGIT = re.compile(r"\d")
-# Labels as the grid fixtures print them, with their page and the entity each names. The
-# labels and pages were copied from the fixtures by a script that reads no code under test.
-# The ids are the registry's for the name, and for the two group rows those of design section
-# 5.1 and shape 15 of docs/plans/step-05.md, since FY2025 and FY2023 also name a department so.
 PRINTED_ENTITIES = (
     ("qcmr:2026-06-30:none", 33, "Finance", "phl_dept_finance"),
     ("qcmr:2026-06-30:none", 34, "Revenue", "phl_dept_revenue"),

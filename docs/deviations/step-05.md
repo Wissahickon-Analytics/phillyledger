@@ -291,9 +291,10 @@ to `docs/plans/step-05.md`.
   sketch's title patterns are cut too: the body starts at the first row, so the title lines
   are header. `test_the_footnotes_and_the_notice_are_furniture_and_no_finding_names_them`.
   Design section 5.1.
-- **A first row that the schema lacks is a row, never header** (November 28, 2026, S5-E). The
-  sketch started the body at `starts_known_row(schema)`, so a page whose first printed row the
-  schema lacks put that row in the header with no finding (follow-up 7 of pull request 57).
+- **A first row of counts that the schema lacks is a row, never header** (November 28, 2026,
+  S5-E). The sketch started the body at `starts_known_row(schema)`, so a page whose first
+  printed row the schema lacks put that row in the header with no finding (follow-up 7 of pull
+  request 57).
   The body now also starts at a line that ends with a count for each column. No header line of
   the 40 grid pages ends so (fact 2), and `parse` gives equal results for the 20 editions under
   both rules. With `Auditing` renamed `Zoo` on page 33 of `2026-06-30`, the sketch's rule gives one
@@ -301,10 +302,9 @@ to `docs/plans/step-05.md`.
   for `Zoo (City Controller's Office)` on page 33.
   `test_a_first_row_that_the_schema_lacks_is_an_unknown_row_and_never_header` fails under the
   sketch's rule. Design section 5.1.
-- **`layout` is public, and `parse` matches its unions** (November 28, 2026, S5-E). `layout(schema)`
-  gives the `Layout` that `parse` cuts with, so the test of clause C2 counts the ink of the cut
-  that `parse` makes. `parse` tells `PageRun` and `CutPages` from `Finding` with `match` and
-  `assert_never`, where the sketch wrote `isinstance` (shape 16). Design section 5.1.
+- **`parse` matches its unions** (November 28, 2026, S5-E). `parse` tells `PageRun` and
+  `CutPages` from `Finding` with `match` and `assert_never`, where the sketch wrote
+  `isinstance` (shape 16). Design section 5.1.
 - **`ParseContext` derives its period and fiscal year, and checks its records** (November 28,
   2026, S5-E). Shape 17 builds `core/context.py` as designed. The design gave `period` and
   `fiscal_year` as fields beside `version`, which a builder could set apart from it, so they are
@@ -318,3 +318,15 @@ to `docs/plans/step-05.md`.
   `ValueError` when two records name one table, and the note for the step 7 plan asks its
   records loader to refuse such a pair. A HEADER_ILLEGIBLE note on no page names no page.
   `test_records.py`. Design sections 2.2 and 3.2.
+- **`Parsed` carries the cut of each table** (November 28, 2026, the S5-E fix round). Design
+  section 2.2 gave `Parsed` the tables, the findings and the used ids, and none of them holds
+  the header and furniture lines. So the test of clause C2 built a cut of its own with a public
+  `layout`, and a word that `parse` lost before its cut was placed by the test's cut. With
+  `parse` dropping the `NOTE:` line of each of the 40 grid pages, the test passed and 960 words
+  were in no place (blocker 1 of Codex's review of pull request 59). `Parsed.cuts` now holds the
+  cut each table was assembled from, and the constructor refuses a table with no cut. The test
+  counts the ink of that cut, and under the same mutant it fails on the 960 words of those
+  lines. `layout` is private again, since no test rebuilds the cut, and the sketches of sections
+  5.2, 5.3 and 5.5 pass their cuts. No codec of a parse result is built yet.
+  `test_no_ink_is_lost_on_any_grid_page` and `test_a_parsed_table_needs_its_cut`. Design sections
+  2.2, 5.1, 5.2, 5.3 and 5.5.

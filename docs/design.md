@@ -1534,6 +1534,8 @@ class ParseContext:
 @dataclass(frozen=True, slots=True)
 class Parsed:
     tables: tuple[Table, ...]
+    cuts: tuple[CutPages, ...]             # each table's cut, kept for the ink ledger; the
+                                           # constructor refuses a table with no cut
     findings: tuple[Finding, ...]
     used: frozenset[str]                   # record ids that changed a cell or a line
 
@@ -3260,11 +3262,11 @@ def _ends_with_counts(line: Line) -> bool:     # a word, then a count for each c
     return len(line.words) > len(COLUMNS) and all(_COUNT_WORD.fullmatch(w.text) for w in tail)
 
 
-def layout(schema: RowSchema) -> Layout:
+def _layout(schema: RowSchema) -> Layout:
     known = starts_known_row(schema)
 
-    def starts(line: Line) -> bool:          # a first row the schema lacks is unknown_row,
-        return known(line) or _ends_with_counts(line)       # never header
+    def starts(line: Line) -> bool:
+        return known(line) or _ends_with_counts(line)
 
     body = BodyRule(start=starts, stop=_is_grand_total, drop=schema.drop, prefix=_LINE_NO)
     return Layout(TABLE, ERAS, body)
@@ -3280,7 +3282,7 @@ def parse(doc: Document, ctx: ParseContext) -> ParseResult:
         case Finding(): return Failed((run,))
         case _: assert_never(run)
     positional, notes_used = illegible_pages(ctx.notes, doc.sha256)   # scans, with a note only
-    cut = cut_pages(layout(schema), run.take(pages), ctx.period.end, positional)
+    cut = cut_pages(_layout(schema), run.take(pages), ctx.period.end, positional)
     match cut:
         case CutPages(): pass
         case Finding(): return Failed((cut,))
@@ -3291,7 +3293,7 @@ def parse(doc: Document, ctx: ParseContext) -> ParseResult:
                              *stray_findings(cut.raws))))
     if built.table is None:
         return Failed(findings)
-    return Parsed((built.table,), findings, built.used | notes_used | pages_used)
+    return Parsed((built.table,), (cut,), findings, built.used | notes_used | pages_used)
 
 
 def checks_for(era: str, period: Period) -> CheckSet:
@@ -3313,7 +3315,7 @@ def checks_for(era: str, period: Period) -> CheckSet:
 ```
 
 106 lines, with no blank line, docstring or path comment counted. Step 5 built `TABLE`,
-`COLUMNS`, `ERAS`, `layout` and `parse` as shown and ran them on the 20 editions of FY2022 to
+`COLUMNS`, `ERAS`, `_layout` and `parse` as shown and ran them on the 20 editions of FY2022 to
 FY2026. The row schema is data. Department spellings are not in it (change 11):
 
 ```toml
@@ -3389,10 +3391,9 @@ What the module shows:
   prefixes cannot form a lane (R3, QPOS-Q08). On 14 grid pages of FY2022 Q1 to FY2023 Q3 it
   takes the two digits of the sideways page number off the row they join (QPOS-Q10).
 - The body starts at the first line that opens with a schema label or ends with a count for
-  each column, so a first row that the schema lacks is `unknown_row`, never header. Its drop
-  patterns are the schema's `drop`, `^\(\d+\)\s` and `^NOTE:`, so the footnotes and the
-  notice under the first grid page's rows are furniture, and so is a line of line number words
-  alone, such as the page number at the foot.
+  each column. Its drop patterns are the schema's `drop`, `^\(\d+\)\s` and `^NOTE:`, so the
+  footnotes and the notice under the first grid page's rows are furniture, and so is a line
+  of line number words alone, such as the page number at the foot.
 - Civilian and Uniform match only inside their parent's block. Indentation is never read
   (QPOS-Q07).
 - `all_funds_total` is a children sum under the schema root. The engine never counts a total
@@ -3424,7 +3425,7 @@ from checkedtables.columns import ColumnSpec, Era, NumberFormat
 from checkedtables.grammar import AllSlots, RowGrammar, RowRule, Style, Values, read_grammar
 from checkedtables.kinds import PercentSign, ValueKind
 from checkedtables.pages import BodyRule
-from checkedtables.pipeline import Layout, cut_pages
+from checkedtables.pipeline import CutPages, Layout, cut_pages
 from checkedtables.rows import stray_findings
 from checkedtables.table import Finding, RowKind, Severity, Table, TableId
 from checkedtables.words import Document
@@ -3503,18 +3504,20 @@ def measures(era: Era, scope: Scope) -> MeasureSet:
 def parse(doc: Document, ctx: ParseContext) -> ParseResult:
     statements, findings = split_statements(doc, TITLE)
     tables: list[Table] = []
+    cuts: list[CutPages] = []
     used: frozenset[str] = frozenset()
     for statement in statements:
         result = _one_statement(statement, ctx)
         findings = (*findings, *result.findings)
         if isinstance(result, Parsed):
             tables.extend(result.tables)
+            cuts.extend(result.cuts)
             used |= result.used
     if not tables:
         missing = Finding(Severity.BLOCK, "no_table", f"{doc.sha256[:8]}:{TABLE}",
                           "no revenue statement could be read")
         return Failed(tuple(sorted((*findings, missing))))
-    return Parsed(tuple(tables), tuple(sorted(findings)), used)
+    return Parsed(tuple(tables), tuple(cuts), tuple(sorted(findings)), used)
 
 
 def _one_statement(st: Statement, ctx: ParseContext) -> ParseResult:
@@ -3537,7 +3540,7 @@ def _one_statement(st: Statement, ctx: ParseContext) -> ParseResult:
         findings = (*findings, st.finding("fund_banner_conflict", fund.conflict, Severity.WARN))
     if built.table is None:
         return Failed(tuple(sorted(findings)))
-    return Parsed((built.table,), tuple(sorted(findings)), built.used)
+    return Parsed((built.table,), (cut,), tuple(sorted(findings)), built.used)
 
 
 def checks_for(era: str, period: Period) -> CheckSet:
@@ -3716,7 +3719,7 @@ def parse(doc: Document, ctx: ParseContext) -> ParseResult:
                              *stray_findings(raws))))
     if built.table is None:
         return Failed(findings)
-    return Parsed((built.table,), findings, built.used | used)
+    return Parsed((built.table,), (cut,), findings, built.used | used)
 
 
 def checks_for(era: str, period: Period) -> CheckSet:
@@ -3954,7 +3957,7 @@ def parse(doc: Document, ctx: ParseContext) -> ParseResult:
                              *stray_findings(raws))))
     if built.table is None:
         return Failed(findings)
-    return Parsed((built.table,), findings, built.used)
+    return Parsed((built.table,), (cut,), findings, built.used)
 
 
 def _is_cf3(band: str) -> bool:

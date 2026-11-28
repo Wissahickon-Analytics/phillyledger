@@ -199,11 +199,17 @@ stray with no finding. The kit's property test of the same rule on generated pag
 S5-C, and both tests use one helper. The helper has two tests of its own: a ref taken out fails
 it, and a ref counted twice fails it.
 
-C3a's test reads each parsed table. A row with an entity must have a label whose `norm` is the
-normalized form of a name from `labels_for(registry, entity, scope)` for that edition, put
-through one of the row's `forms`, so `Police - Total` comes from the name `Police`. Every `item`
-and `subtotal` row has an entity. A row with none is a `breakdown` row, whose parent has one, or
-the root, whose parent is `None`. C3b's first test reads `data/rows/qcmr_positions.toml`. No row
+C3a's test reads each parsed table, and its oracle never calls `labels_for`, which builds the
+schema, or a loader. It pins nine labels that the grid fixtures print, each with its edition,
+its page and its row's entity: `Finance`, `Revenue`, `Police - Total`, both sides of the two
+seams, and the aliases `Fleet Management` and `Creative Philadelphia`. Then a row with an entity
+must have a label whose `norm` is the normalized form of a spelling that the registry TOML
+files, read with `tomllib`, write under the row's own id for the edition's fiscal year and
+file, put through one of the forms that the rows file gives the entity, so `Police - Total`
+comes from the name `Police`. The files catch a label under another entity's id, and the pins
+also catch a file that writes a name under the wrong id. Every `item` and `subtotal` row has an
+entity. A row with none is a `breakdown` row, whose parent has one, or the root, whose parent is
+`None`. C3b's first test reads `data/rows/qcmr_positions.toml`. No row
 with an `entity` has `labels`. Every label in the file is `Civilian`, `Uniform` or `TOTAL ALL
 FUNDS`. Every form is `{name}` or `{name} - Total`. The second test puts `{name} Police` among a
 row's forms in a copy of the file and requires the first test's rule to fail.
