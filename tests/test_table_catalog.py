@@ -265,6 +265,16 @@ def test_a_fund_id_that_the_registry_lacks_fails_the_catalog_rules() -> None:
     ]
 
 
+def test_a_dimension_value_outside_its_list_fails_the_catalog_rules() -> None:
+    prior = by_name(entry("qcmr_positions"), "2026-06-30")["prior_total"].meaning
+    assert isinstance(prior, Stated)
+    sliced = replace(prior, dims=((Dim.FUND, ALL), (Dim.RESIDENCY, "commuter")))
+    copy = positions_with("prior_total", lambda spec: replace(spec, meaning=sliced))
+    assert catalog_problems(copy, fund_ids()) == [
+        "p1_ten_columns: prior_total names the residency commuter, which is no value of it"
+    ]
+
+
 def test_a_column_with_no_measure_fails_the_catalog_rules() -> None:
     table = entry("qcmr_positions")
 
