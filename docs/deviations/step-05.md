@@ -73,6 +73,19 @@ to `docs/plans/step-05.md`.
   a page that swaps two groups (shape 4). `test_two_groups_that_trade_places_bind_to_no_wrong_name`
   gives `columns_out_of_order` for the swap. An empty group is refused, as an empty caption is.
   Design sections 2.1, 3.1 and 5.1.
+- **The P-1 captions are written as the pages print them** (November 27, 2026, S5-B). Shape 5
+  as planned. Design section 5.1 gave the group captions in title case, `Year.?End\s+Actual`,
+  `Adopted` and `Month.?End\s+Actual`, the tenth column `\(Over\)\s*Under`, and the era the
+  signature `Adopted` and `\(Over\)\s*Under`. The 40 grid pages print the group captions and
+  `(OVER)` in capitals (fact 2). So the group captions are now `YEAR\s+END\s+ACTUAL`,
+  `ADOPTED\s+BUDGET` and `MONTH\s+END\s+ACTUAL`, the tenth column is `\(OVER\)\s*UNDER`, and
+  the signature is the three group captions and `\(OVER\)`. Run on the 40 grid fixtures, no
+  title-case regex of the old section 5.1 is found in a page's text or a lane's caption, so
+  with the old era `cut_pages` takes every page for commentary and gives `no_grid_page`. The
+  four new signature regexes are found in all 40 headers and in none of the 16 commentary
+  fixtures, and each new caption is found in its bound lane's caption on all 40.
+  `test_the_ten_columns_bind_left_to_right_under_the_group_each_band_prints`. Design section
+  5.1.
 - **A lane runs from the lane before it** (November 27, 2026, S5-B). The design left a lane's
   width open. A lane of the value words' own extent misses captions: the tenth P-1 column
   prints `UNDER` at x 685.5 to 711.9 over numbers from 729.8 to 743.5 (page 33 of
