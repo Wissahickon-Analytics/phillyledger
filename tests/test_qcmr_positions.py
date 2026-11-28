@@ -1,27 +1,26 @@
 import re
+import tomllib
 from collections.abc import Sequence
 from dataclasses import replace
 from decimal import Decimal
 from functools import cache
+from typing import Any
 
 from packages.checkedtables.tests.ink import cell_refs, misplaced
 from packages.datadesk.tests.fixtures.p1 import RUNS, P1Run
 from tests.test_p1_pages import fixture_page, stem
-from tests.test_registry_data import PARENTS, registry, source, versions
+from tests.test_registry_data import DATA, PARENTS, SCHEMA_FILE, registry, source, versions
 
 from checkedtables.cells import Amount
-from checkedtables.lines import page_lines
-from checkedtables.pipeline import CutPages, cut_pages
+from checkedtables.pipeline import CutPages
 from checkedtables.records import CellRecords
 from checkedtables.refs import WordRef
 from checkedtables.table import RowKey, RowKind, Severity, Table
 from checkedtables.text import normalize_label
 from checkedtables.words import Document, Page
 from datadesk.core.context import ParseContext, Parsed, ParseResult
-from datadesk.core.registry.model import LookupScope
-from datadesk.core.registry.resolve import labels_for
-from datadesk.core.rowschemas import RegistryLabels, schema_for
-from datadesk.core.tables.qcmr_positions import TABLE, layout, parse
+from datadesk.core.rowschemas import schema_for
+from datadesk.core.tables.qcmr_positions import TABLE, parse
 
 FLOOR = 95.0
 ROOT = RowKey.of(line="total_all_funds")
@@ -29,6 +28,21 @@ BY_EDITION = {run.edition: run for run in RUNS}
 FOOTNOTE = re.compile(r"\(\d\) ")
 NOTICE = "NOTE: The material in this report is preliminary"
 DIGIT = re.compile(r"\d")
+# Labels as the grid fixtures print them, with their page and the entity each names. The
+# labels and pages were copied from the fixtures by a script that reads no code under test.
+# The ids are the registry's for the name, and for the two group rows those of design section
+# 5.1 and shape 15 of docs/plans/step-05.md, since FY2025 and FY2023 also name a department so.
+PRINTED_ENTITIES = (
+    ("qcmr:2026-06-30:none", 33, "Finance", "phl_dept_finance"),
+    ("qcmr:2026-06-30:none", 34, "Revenue", "phl_dept_revenue"),
+    ("qcmr:2026-06-30:none", 34, "Police - Total", "phl_dept_police"),
+    ("qcmr:2025-06-30:none", 32, "Streets", "phl_group_streets_sanitation"),
+    ("qcmr:2025-09-30:none", 36, "Streets", "phl_dept_streets"),
+    ("qcmr:2023-06-30:none", 32, "Commerce", "phl_group_commerce_aviation"),
+    ("qcmr:2023-09-30:none", 33, "Commerce", "phl_dept_commerce"),
+    ("qcmr:2021-09-30:none", 35, "Fleet Management", "phl_dept_fleet_management"),
+    ("qcmr:2025-03-31:none", 33, "Creative Philadelphia", "phl_dept_office_of_arts_and_culture"),
+)
 
 
 def context(edition: str) -> ParseContext:
@@ -73,11 +87,9 @@ def table_of(edition: str) -> Table:
     return checked_table(parsed(edition), BY_EDITION[edition])
 
 
-def cut_of(run: P1Run) -> CutPages:
-    ctx = context(run.edition)
-    pages = tuple(page_lines(page) for page in document(run, run_pages(run)).pages)
-    cut = cut_pages(layout(ctx.schema(TABLE)), pages, ctx.period.end)
-    assert isinstance(cut, CutPages), f"{run.edition}: {cut}"
+def cut_of(result: ParseResult) -> CutPages:
+    assert isinstance(result, Parsed), result
+    (cut,) = result.cuts
     return cut
 
 
@@ -99,7 +111,7 @@ def test_no_ink_is_lost_on_any_grid_page() -> None:
     for run in RUNS:
         result = parsed(run.edition)
         table = checked_table(result, run)
-        cut = cut_of(run)
+        cut = cut_of(result)
         assert tuple(page.number for page in cut.pages) == run.grid, run.edition
         grid = document(run, run.grid).pages
         assert misplaced(grid, cut, table, result.findings) == {}, run.edition
@@ -108,17 +120,54 @@ def test_no_ink_is_lost_on_any_grid_page() -> None:
     assert sum(len(page.words) for page in pages) == 18541
 
 
+@cache
+def registry_files() -> tuple[dict[str, Any], ...]:
+    paths = sorted((DATA / "registry").rglob("*.toml"))
+    return tuple(tomllib.loads(path.read_text(encoding="utf-8")) for path in paths)
+
+
+def in_years(record: dict[str, Any], year: int) -> bool:
+    return record.get("first_fy", year) <= year <= record.get("last_fy", year)
+
+
+def written_spellings(entity: str, year: int, sha: str) -> set[str]:
+    spellings: set[str] = set()
+    for file in registry_files():
+        for kind, records in file.items():
+            if kind == "alias":
+                spellings |= {
+                    alias["label"]
+                    for alias in records
+                    if alias["entity"] == entity
+                    and TABLE in alias["tables"]
+                    and in_years(alias, year)
+                    and sha in alias.get("editions", [sha])
+                }
+            elif kind != "relation":
+                spellings |= {
+                    name["value"]
+                    for record in records
+                    if record["id"] == entity
+                    for name in record.get("names", [])
+                    if in_years(name, year)
+                }
+    return spellings
+
+
 def test_each_department_label_is_a_registry_label() -> None:
+    for edition, page, label, entity in PRINTED_ENTITIES:
+        rows = [row for row in table_of(edition).rows if row.label.text == label]
+        assert [(row.page, row.entity) for row in rows] == [(page, entity)], (edition, label)
+    schema_file = tomllib.loads(SCHEMA_FILE.read_text(encoding="utf-8"))
     forms = {
-        row.labels.entity: row.labels.forms
-        for row in source().rows
-        if isinstance(row.labels, RegistryLabels)
+        row["entity"]: row.get("forms", ["{name}"]) for row in schema_file["row"] if "entity" in row
     }
     resolved = 0
     for run in RUNS:
         table = table_of(run.edition)
-        ctx = context(run.edition)
-        scope = LookupScope(TABLE, ctx.fiscal_year, ctx.version.sha256)
+        version = versions()[run.edition]
+        end = version.edition.period.end
+        year = end.year + (end.month >= 7)
         for row in table.rows:
             where = f"{run.edition} {row.label.printed!r}"
             if row.entity is None:
@@ -129,10 +178,9 @@ def test_each_department_label_is_a_registry_label() -> None:
                     parent = table.row(row.parent) if row.parent is not None else None
                     assert parent is not None and parent.entity is not None, where
                 continue
-            names = labels_for(registry(), row.entity, scope)
             allowed = {
                 normalize_label(form.replace("{name}", name))
-                for name in names
+                for name in written_spellings(row.entity, year, version.sha256)
                 for form in forms[row.entity]
             }
             assert row.label.norm in allowed, where
@@ -247,7 +295,7 @@ def test_each_parent_holds_its_two_breakdown_rows_and_every_other_row_hangs_unde
 
 def test_the_footnotes_and_the_notice_are_furniture_and_no_finding_names_them() -> None:
     for run in RUNS:
-        first, second = cut_of(run).pages
+        first, second = cut_of(parsed(run.edition)).pages
         texts = [line.text for line in first.furniture]
         footnotes = [text for text in texts if FOOTNOTE.match(text)]
         two = "qcmr:2023-09-30:none" <= run.edition <= "qcmr:2024-06-30:none"
@@ -277,8 +325,6 @@ def test_a_first_row_that_the_schema_lacks_is_an_unknown_row_and_never_header() 
         ("missing_row", f"{sha8}:{TABLE}:dept=phl_dept_auditing_city_controllers_office", None),
         ("unknown_row", f"{sha8}:{TABLE}:Zoo (City Controller's Office)", 33),
     ]
-    lines = tuple(page_lines(page) for page in doc.pages)
-    cut = cut_pages(layout(ctx.schema(TABLE)), lines, ctx.period.end)
-    assert isinstance(cut, CutPages)
+    cut = cut_of(result)
     assert [len(page.header) for page in cut.pages] == [9, 9]
     assert misplaced(doc.pages, cut, result.tables[0], result.findings) == {}

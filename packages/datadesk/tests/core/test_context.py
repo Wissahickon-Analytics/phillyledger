@@ -7,8 +7,8 @@ from checkedtables.kinds import SourceKind
 from checkedtables.records import CellRecords, ReviewedReading
 from checkedtables.refs import Box, Sha256
 from checkedtables.rows import RowSchema
-from checkedtables.table import Finding, Severity
-from datadesk.core.context import Failed, ParseContext
+from checkedtables.table import Finding, Severity, Table, TableId
+from datadesk.core.context import Failed, ParseContext, Parsed
 from datadesk.core.domain import DocumentVersion, EditionKey, Period
 from datadesk.core.records import EditionNote, NoteKind, TablePages
 from datadesk.core.registry.model import Registry
@@ -98,3 +98,10 @@ def test_a_failed_parse_needs_a_block_finding() -> None:
         Failed((warn,))
     block = replace(warn, severity=Severity.BLOCK, code="table_not_found", page=None)
     assert Failed((warn, block)).findings == (warn, block)
+
+
+def test_a_parsed_table_needs_its_cut() -> None:
+    table = Table(TableId("qcmr_positions"), SHA, "p1_ten_columns", (35, 36), (), ())
+    with pytest.raises(ValueError, match="1 tables and 0 cuts"):
+        Parsed((table,), (), (), frozenset())
+    assert Parsed((), (), (), frozenset()).tables == ()
