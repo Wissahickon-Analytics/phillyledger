@@ -75,6 +75,8 @@ CIVILIAN = RowKey.of(breakdown="civilian", dept="phl_dept_police")
 GROUP = RowKey.of(group="streets_with_sanitation")
 STREETS = RowKey.of(dept="phl_dept_streets")
 TOTAL = RowKey.of(line="total_all_funds")
+POLICE_ROW = 'key = "dept=phl_dept_police"\nkind = "item"\nentity = "phl_dept_police"'
+X_ROW = 'key = "line=x"\nkind = "item"\nlabels = ["X"]'
 
 
 def source(text: str = SCHEMA) -> RowSchemaSource:
@@ -204,10 +206,10 @@ def test_load_row_schema_reads_the_other_fields_of_a_row() -> None:
 
 
 def test_an_entity_row_with_labels_is_refused() -> None:
-    text = row(
-        'key = "dept=phl_dept_police"\nkind = "item"\nentity = "phl_dept_police"\nlabels = ["Police"]'
-    )
-    assert codes(load_row_schema(TABLE, text)) == [("rowschema_entity_with_labels", f"{TABLE}:row 1")]
+    text = row(f'{POLICE_ROW}\nlabels = ["Police"]')
+    assert codes(load_row_schema(TABLE, text)) == [
+        ("rowschema_entity_with_labels", f"{TABLE}:row 1")
+    ]
 
 
 @pytest.mark.parametrize(
@@ -244,16 +246,12 @@ def test_an_entity_row_with_labels_is_refused() -> None:
             id="forms_without_an_entity",
         ),
         pytest.param(
-            row(
-                'key = "dept=phl_dept_police"\nkind = "item"\nentity = "phl_dept_police"\nforms = ["Total"]'
-            ),
+            row(f'{POLICE_ROW}\nforms = ["Total"]'),
             [("rowschema_bad_value", f"{TABLE}:row 1")],
             id="form_without_the_name",
         ),
         pytest.param(
-            row(
-                'key = "dept=phl_dept_police"\nkind = "item"\nentity = "phl_dept_police"\nforms = ["{name} {year}"]'
-            ),
+            row(POLICE_ROW + '\nforms = ["{name} {year}"]'),
             [("rowschema_bad_value", f"{TABLE}:row 1")],
             id="form_with_another_field",
         ),
@@ -268,31 +266,27 @@ def test_an_entity_row_with_labels_is_refused() -> None:
             id="key_with_no_part",
         ),
         pytest.param(
-            row('key = "line=x"\nkind = "item"\nlabels = ["X"]\nperiods = [["2025-07-01"]]'),
+            row(f'{X_ROW}\nperiods = [["2025-07-01"]]'),
             [("rowschema_wrong_type", f"{TABLE}:row 1")],
             id="period_with_one_end",
         ),
         pytest.param(
-            row(
-                'key = "line=x"\nkind = "item"\nlabels = ["X"]\nperiods = [["2025-07-01", "FY26"]]'
-            ),
+            row(f'{X_ROW}\nperiods = [["2025-07-01", "FY26"]]'),
             [("rowschema_bad_value", f"{TABLE}:row 1")],
             id="period_end_not_a_date",
         ),
         pytest.param(
-            row(
-                'key = "line=x"\nkind = "item"\nlabels = ["X"]\nperiods = [["2025-07-01", "2025-06-30"]]'
-            ),
+            row(f'{X_ROW}\nperiods = [["2025-07-01", "2025-06-30"]]'),
             [("rowschema_bad_value", f"{TABLE}:row 1")],
             id="period_that_ends_before_it_starts",
         ),
         pytest.param(
-            row('key = "line=x"\nkind = "item"\nlabels = ["X"]\nabsent_editions = ["FY2026 Q1"]'),
+            row(f'{X_ROW}\nabsent_editions = ["FY2026 Q1"]'),
             [("rowschema_bad_value", f"{TABLE}:row 1")],
             id="absent_edition_not_a_sha",
         ),
         pytest.param(
-            row('key = "line=x"\nkind = "item"\nlabels = ["X"]\nfollows = "line=total"'),
+            row(f'{X_ROW}\nfollows = "line=total"'),
             [("rowschema_bad_value", f"{TABLE}:row 1")],
             id="follows_on_a_row_with_a_label",
         ),
@@ -302,8 +296,7 @@ def test_an_entity_row_with_labels_is_refused() -> None:
             id="unknown_field",
         ),
         pytest.param(
-            row('key = "line=x"\nkind = "item"\nlabels = ["X"]')
-            + '\n[[row]]\nkey = "line=x"\nkind = "item"\nlabels = ["Y"]\n',
+            row(X_ROW) + '\n[[row]]\nkey = "line=x"\nkind = "item"\nlabels = ["Y"]\n',
             [("rowschema_duplicate_key", f"{TABLE}:line=x")],
             id="one_key_twice",
         ),
