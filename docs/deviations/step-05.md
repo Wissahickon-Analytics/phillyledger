@@ -344,3 +344,56 @@ to `docs/plans/step-05.md`.
   `labels_for`, the test fails. The first round's rewrite of the plan's C3a paragraph is
   undone, since no pull request still to be built reads it (`docs/plans/README.md`).
   `test_each_department_label_is_a_registry_label`.
+- **The vocabulary and the measures take the design's names** (November 28, 2026, S5-F). Shape 21
+  as planned: the port of `docs/prototype/vocab/` calls `describe` `description`, `measure_for`
+  takes a `RowKey`, `Scope` holds the edition, the `TableId`, the printed names and
+  `actual_through`, `scope_for` returns the note ids it read, and `Period` is the one of
+  `core/domain.py`. The port keeps two constructor checks the prototype had and the design's
+  blocks lacked: a fiscal month is 1 to 12, and a `Derived` takes two or more operands for a
+  difference, one for a share and two for the other ways. The cases of
+  `test_a_meaning_that_breaks_a_rule_of_its_type_is_refused` fail with either check taken out.
+  Design section 2.2.
+- **How `period_of` dates a window** (November 28, 2026, S5-F). The prototype took a quarter as
+  the three months that end with the edition's last month, which runs across two years for a
+  January or a February end. A quarter is now the fiscal quarter that holds that month. Every
+  window ends on the last day of that month, `year` years back, and a fiscal month of a grid is
+  a month of the edition's fiscal year. `fiscal_period` takes the first and the last month and
+  refuses a month outside 1 to 12 and a span that runs back. For the quarter of each of the 20
+  indexed editions, and the quarter a year back, both rules give the same days, 40 of 40.
+  `test_each_window_covers_the_days_of_its_year_basis` and
+  `test_fiscal_period_reads_the_label_year_in_the_basis_of_its_window`. Design section 3.2.
+- **A CUTOFF note gives a month** (November 28, 2026, S5-F). The design gave the note's value as
+  `"2009-04"` and did not say what `scope_for` does with it. `actual_through` is the last day of
+  that month, and `scope_for` raises `ValueError` for two CUTOFF notes of one file or a value
+  that is not `YYYY-MM`. No CUTOFF record exists yet (shape 17). `test_measures.py`. Design
+  section 3.2.
+- **`TableEntry` has no `checks_for` yet** (November 28, 2026, S5-F). Shape 18 as planned. The
+  check DSL, `checks_for` and the catalog rule on a check's operands join step 6's list in
+  section 15, whose check is unchanged. Design sections 2.2 and 15.
+- **The catalog rules are one function in the catalog test** (November 28, 2026, S5-F). Shape 19
+  as planned, in `tests/test_table_catalog.py`, since the rules are a test and no code calls
+  them. They also require a derived percent change, ratio, share or annual growth to be in
+  `percent`, rule 5 of the prototype's `check_decl`. The rule on `DEFINITIONS` is in
+  `test_vocab.py`, and "every `RowMeasure` names a declared row" waits for step 8, whose O-3 and
+  cash tables build the first override, with a note for that plan. Each rule has a test that
+  breaks it in a copy of the positions entry, or with `phl_fund_other` taken out of the fund
+  ids. Design section 11.2.
+- **C4a reads published meanings** (November 28, 2026, S5-F). The Codex review of the plan
+  found that the prototype's rule skips a `NotPublished` column (finding 6). With
+  `adopted_general` and `adopted_other` `NotPublished`, `catalog_problems` gives no complaint and
+  `test_the_ten_positions_columns_have_ten_descriptions` fails, and so it does with `over_under`
+  taken out or `NotPublished`. Design section 15 is unchanged.
+- **`decimal` joins the outside modules of `datadesk.core`** (November 28, 2026, S5-F).
+  `MeasureSpec.scale` is a `Decimal`, as `CLAUDE.md` asks of every amount, and `fiscal_period`
+  reads a month's last day with `timedelta`. `tests/test_purity.py` pins `decimal.Decimal` and
+  `datetime.timedelta`. Design section 11.1.
+- **`Quantity` is pinned by its values** (November 28, 2026, S5-F). Section 11.4 pinned its
+  length alone, so a renamed member passed. `test_closed_lists_are_pinned` now lists the 14
+  values, as it does for the other five lists, and every list is the one of section 2.2. Design
+  section 11.4.
+- **The 37 definitions** (November 28, 2026, S5-F). The prototype has no `DEFINITIONS` (fact
+  15). Each line comes from the comments of section 2.2 and the captions that the prototype
+  records, and the five `Quantity` members whose meaning is provisional name their caption. The
+  release manifest publishes the lines at step 6. The answer was taken on November 28, 2026
+  while the owner was away, under his standing permission of November 27, and he has not seen
+  the question. Design section 2.2.

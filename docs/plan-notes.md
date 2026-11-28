@@ -258,9 +258,6 @@ file, `docs/progress.md`, `docs/followups.md` or `docs/deviations/`.
   - The record lint meets the record ids, at the step that builds the first record loader
     (`docs/plans/step-05.md`, shape 17). `Dash` accepts an empty `rule_id`, and
     `Unreadable` accepts an empty `accepted_by`.
-  - The catalog test of step 5 meets the column declarations. `NumberFormat` accepts
-    `decimals=-1`. `ColumnSpec` accepts the caption `"Adopted ("`, which `re.compile` refuses
-    with `missing ), unterminated subpattern at position 8`.
   - `parse_label` of S2-C and its tests keep the label facts. `Label` accepts a `squash` that is
     not its `norm` without spaces, a `line_no` that is not in `printed`, and a `text` that is not
     drawn from `printed`.
@@ -526,3 +523,10 @@ file, `docs/progress.md`, `docs/followups.md` or `docs/deviations/`.
   table** (November 27, 2026, the step 5 plan). Design section 11.2 has the catalog test require
   that every `Quantity` member is used by at least one table. With one table it cannot hold, so
   step 5 leaves it out (`docs/plans/step-05.md`, shape 19).
+- **The catalog rule on a row override's row, a note for the step 8 plan** (November 28, 2026,
+  S5-F). Design section 11.2 has the catalog test require that every `RowMeasure` names a
+  declared row and column. `catalog_problems` in `tests/test_table_catalog.py` reads the
+  `MeasureSet` alone, so it checks the column and that two overrides of one column disagree on a
+  key part, and not that a row of the table's schema or grammar carries an override's `match`.
+  P-1 has no override. The first ones are those of O-3 on `metric=positions` and of the cash
+  lifecycle rows (design section 2.2), so the step 8 plan gives the rule the row keys it reads.
