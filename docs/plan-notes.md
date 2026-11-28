@@ -497,6 +497,12 @@ file, `docs/progress.md`, `docs/followups.md` or `docs/deviations/`.
     FY2025 under `phl_rollup_streets_and_sanitation`, where step 5 has
     `phl_group_streets_sanitation`. It files `Commerce` through FY2023 under `phl_dept_commerce`,
     where step 5 has `phl_group_commerce_aviation` (shapes 14 and 15).
+  - The prior-year columns of `Office of Education` in the four FY2025 editions (S5-D). Each
+    prints 3, 0 and 3, which `2024-06-30` prints as the month-end actual of `Office of Children
+    and Families`, and no FY2025 edition prints that row. The registry gives the two rows two ids
+    and no relation. The old `config/entities.yml` also has two ids, and gives department number
+    66 to Education through 2020, to Children and Families from 2021 to 2024, and to Education
+    from 2025 (lines 4492 to 4494). Whether they are one entity is the owner's call.
   - The check DSL. `checks/dsl.py`, `checks_for` and the `checks_for` field of `TableEntry` are
     step 6's (shape 18). So is the catalog rule that compares a check's operands with the
     operands of a derived column (shape 19).

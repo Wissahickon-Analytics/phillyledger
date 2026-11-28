@@ -256,7 +256,7 @@ to `docs/plans/step-05.md`.
   is a label that a grid fixture prints:
   `test_every_spelling_the_positions_rows_take_from_the_files_is_printed_on_a_grid_page`. Design
   sections 2.2 and 7.2.
-- **The whole-year name is a label of two editions that do not print it** (November 28, 2026,
+- **A whole-year name is a label of editions that do not print it** (November 28, 2026,
   S5-D). The plan's S5-D section says each label of fact 12 is a label of the schemas of the
   editions that print it "and of no other". Shape 14 keeps the other spelling a name for the
   whole fiscal year, so `Fleet Services` is a label of `2021-09-30`, and `Office of Arts and
