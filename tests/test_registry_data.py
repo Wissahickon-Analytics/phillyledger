@@ -202,10 +202,11 @@ def test_the_two_edition_aliases_hold_in_their_editions_alone() -> None:
 
 
 def test_streets_and_commerce_are_two_entities_across_their_seams() -> None:
-    for label, *sides in SEAMS:
-        for name, key, entity in sides:
-            rows = [(row.key, row.entity) for row in schemas()[name].rows if label in row.labels]
-            assert rows == [(key, entity)], (label, name)
+    for label, before, after in SEAMS:
+        for (name, key, entity), (_, other, _) in ((before, after), (after, before)):
+            rows = schemas()[name].rows
+            assert [(row.key, row.entity) for row in rows if label in row.labels] == [(key, entity)]
+            assert other not in [row.key for row in rows], (label, name)
 
 
 def test_every_cut_row_of_the_40_grid_pages_matches_one_schema_row() -> None:
