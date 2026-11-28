@@ -30,6 +30,7 @@ DATA = REPO / "packages/datadesk/src/datadesk/data"
 SCHEMA_FILE = DATA / "rows" / f"{TABLE}.toml"
 SCHEMA_LABELS = {"Civilian", "Uniform", "TOTAL ALL FUNDS"}
 FORMS = {"{name}", "{name} - Total"}
+DROP = [r"^\(\d+\)\s", r"^NOTE:"]
 ESCAPE = re.compile(r"\\.")
 # Design section 5.1 gives the Streets group row its key, and shape 15 of docs/plans/step-05.md
 # the Commerce one. Each key holds the words of the departments its group joins.
@@ -184,6 +185,8 @@ def schema_problems(file: dict[str, Any]) -> list[str]:
         if path not in designed
         for spelling in held(text)
     ]
+    if file.get("drop") != DROP:
+        problems.append(f"drop is {file.get('drop')!r}, not the two patterns of shape 10")
     for row in rows:
         key = row.get("key")
         if "entity" in row:
