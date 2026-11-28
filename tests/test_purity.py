@@ -33,6 +33,8 @@ PURE_IMPORTS: dict[str, tuple[str, ...]] = {
         "dataclasses.dataclass",
         "dataclasses.replace",
         "datetime.date",
+        "datetime.timedelta",
+        "decimal.Decimal",
         "enum.StrEnum",
         "hashlib.sha256",
         "json.dumps",
