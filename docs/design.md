@@ -1598,7 +1598,7 @@ class Residual(StrEnum):
 class Entity:
     id: str
     kind: EntityKind
-    names: tuple[Dated, ...]          # official names with fiscal-year ranges
+    names: tuple[Dated, ...]          # official names with fiscal-year ranges; a group has none
     codes: tuple[Dated, ...] = ()     # department numbers, fund codes, class codes
     parents: tuple[Dated, ...] = ()   # parent id with a year range (QOBL-Q15: Sanitation)
     members: tuple[str, ...] = ()     # GROUP only: "City Rep. / Commerce"
@@ -1629,7 +1629,8 @@ class Alias:
     tables: tuple[str, ...]           # never empty: an alias always has a table scope
     first_fy: int | None
     last_fy: int | None
-    editions: tuple[Sha256, ...] = ()   # doc shas; required for OCR damage and one-edition misprints
+    editions: tuple[Sha256, ...] = ()   # doc shas; required for OCR damage, one-edition misprints
+                                        # and a spelling that changes inside a fiscal year
 
 
 @dataclass(frozen=True, slots=True)
@@ -1637,6 +1638,13 @@ class Registry:
     entities: tuple[Entity, ...]
     relations: tuple[Relation, ...]
     aliases: tuple[Alias, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class LookupScope:
+    table: str
+    fiscal_year: int                  # of the edition's period end
+    edition: Sha256                   # the file, which an alias with editions must name
 
 
 @dataclass(frozen=True, slots=True)
@@ -1659,6 +1667,8 @@ class Ambiguous:
 
 Resolution = Resolved | Unknown | Ambiguous
 ```
+
+Step 5 builds every type above but the four of a resolution, which join `resolve` at step 8.
 
 What this makes impossible:
 
@@ -2400,6 +2410,21 @@ def declared_run(records: Sequence[TablePages], table: str) -> tuple[PageRun | N
     # the run a TablePages record names for this table, and its id for the used set
 
 
+# datadesk/core/registry/load.py
+@dataclass(frozen=True, slots=True)
+class Refused:
+    findings: tuple[Finding, ...]          # never empty, every one BLOCK
+
+
+def load_registry(texts: Sequence[tuple[str, str]]) -> Registry | Refused: ...
+    # (path, text) of each file. A file holds arrays of tables named by EntityKind values,
+    # [[department]], [[fund]], [[group]] and the rest, then [[alias]] and [[relation]]. A
+    # name, code or parent is an inline table { value, first_fy, last_fy }. Each record gives
+    # its first problem, and a repeated entity id is registry_duplicate_id. The module also
+    # holds the record readers that rowschemas shares: fields_of, required, optional, items_of,
+    # texts_of, shas_of, member_of and refusal, with RecordError for a record's shape
+
+
 # datadesk/core/registry/resolve.py
 def resolve(reg: Registry, kind: EntityKind, label: Label, scope: LookupScope) -> Resolution: ...
     # LookupScope(table, fiscal_year, edition). Candidates: official names valid in that FY,
@@ -2413,12 +2438,47 @@ def lint_registry(reg: Registry, schemas: Sequence[RowSchemaSource]) -> tuple[Fi
 
 
 # datadesk/core/rowschemas.py
-def load_row_schema(table: str, toml_text: str) -> RowSchemaSource | tuple[Finding, ...]: ...
+@dataclass(frozen=True, slots=True)
+class RegistryLabels:
+    entity: str
+    forms: tuple[str, ...]           # "{name}" once and no other field; ("{name}",) by default
+
+
+@dataclass(frozen=True, slots=True)
+class SchemaLabels:
+    labels: tuple[str, ...]          # a table line's own labels: "Civilian", "TOTAL ALL FUNDS"
+
+
+@dataclass(frozen=True, slots=True)
+class RowSource:                     # one [[row]], before schema_for narrows it
+    key: RowKey
+    kind: RowKind
+    labels: RegistryLabels | SchemaLabels   # one home per spelling, never both (change 11)
+    parent: RowKey | None = None
+    within: RowKey | None = None
+    follows: RowKey | None = None
+    presence: Presence = Presence.REQUIRED
+    unit: str | None = None
+    periods: tuple[Period, ...] = ()          # empty: every edition; an open end is date.min
+                                              # or date.max, written "" in the file
+    absent_editions: tuple[Sha256, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class RowSchemaSource:
+    table: str
+    rows: tuple[RowSource, ...]
+    root: RowKey | None = None
+    drop: tuple[str, ...] = ()
+    truncation: Truncation = Truncation.NONE
+
+
+def load_row_schema(table: str, toml_text: str) -> RowSchemaSource | Refused: ...
     # a [[row]] with `entity` and `labels` is refused: one home per spelling (change 11)
 def schema_for(source: RowSchemaSource, version: DocumentVersion, reg: Registry) -> RowSchema: ...
-    # keeps RowDefs whose periods hold the edition and whose `absent_editions` do not name its
-    # sha (MSCH-Q23); fills an entity row's labels from labels_for() and the row's `forms`
-    # templates ("{name} Total", "{name} - Total", QPOS-Q37)
+    # keeps RowDefs with no periods or a period that holds the edition's period end, and whose
+    # `absent_editions` do not name its sha (MSCH-Q23); fills an entity row's labels from
+    # labels_for() and the row's `forms` templates ("{name} Total", "{name} - Total", QPOS-Q37)
 
 
 # datadesk/core/measures.py
@@ -3229,16 +3289,16 @@ def checks_for(era: str, period: Period) -> CheckSet:
 95 lines. The row schema is data. Department spellings are not in it (change 11):
 
 ```toml
-# datadesk/data/rows/qcmr_positions.toml
+# datadesk/data/rows/qcmr_positions.toml (an excerpt)
 table = "qcmr_positions"
 root = "line=total_all_funds"     # every department hangs under the grand total (change 2)
-drop = ['^\(\d+\)\s']
+drop = ['^\(\d+\)\s', '^NOTE:']  # the footnotes and the notice under the first grid page's rows
 
 [[row]]
 key = "dept=phl_dept_police"
 kind = "subtotal"
 entity = "phl_dept_police"
-forms = ["{name} Total", "{name} - Total"]    # QPOS-Q37; "Police" itself lives in the registry
+forms = ["{name} - Total"]        # QPOS-Q37; "Police" itself lives in the registry
 
 [[row]]
 key = "breakdown=civilian|dept=phl_dept_police"
@@ -3248,16 +3308,16 @@ within = "dept=phl_dept_police"
 labels = ["Civilian"]
 
 [[row]]
-key = "dept=phl_dept_streets"
-kind = "item"
-entity = "phl_dept_streets"
-periods = [["2007-07-01", "2013-06-30"], ["2025-07-01", ""]]
-
-[[row]]
 key = "group=streets_with_sanitation"
 kind = "item"
 entity = "phl_group_streets_sanitation"
-periods = [["2017-07-01", "2025-06-30"]]
+periods = [["2021-07-01", "2025-06-30"]]
+
+[[row]]
+key = "dept=phl_dept_streets"
+kind = "item"
+entity = "phl_dept_streets"
+periods = [["2025-07-01", ""]]    # "" leaves the end open
 
 [[row]]
 key = "line=total_all_funds"
@@ -3265,21 +3325,30 @@ kind = "total"
 labels = ["TOTAL ALL FUNDS"]
 ```
 
-```toml
-# datadesk/data/registry/aliases/qcmr_positions.toml
-[[alias]]
-entity = "phl_dept_finance"
-label = "Binance"                           # OCR damage, bound to one file (QPOS-Q09)
-tables = ["qcmr_positions"]
-editions = ["<sha of FY2012 Q3>"]           # the old continuity test pins FY2012 Q3
+The file holds the rows of FY2022 to FY2026. A row that every one of those 20 editions prints
+has no periods. Another row's period starts on the first day of the first quarter that prints
+it, and its end stays open when FY2026 Q4 prints it. So an older edition has neither Streets
+row until step 7 reads it and widens each period. QPOS-Q12 has Streets as the department in
+FY2008 to FY2013 and as Streets with Sanitation from FY2018.
 
+```toml
+# datadesk/data/registry/aliases/qcmr_positions.toml (an excerpt)
 [[alias]]
 entity = "phl_group_streets_sanitation"
-label = "Streets"                           # P-1 only, FY2018 to FY2025 (QPOS-Q12, ENT-Q02)
+label = "Streets"                           # P-1 only (QPOS-Q12, ENT-Q02); a group has no name
 tables = ["qcmr_positions"]
-first_fy = 2018
+first_fy = 2022
 last_fy = 2025
+
+[[alias]]
+entity = "phl_dept_fleet_management"
+label = "Fleet Management"                  # prints in FY2022 Q1 alone, and Fleet Services is
+tables = ["qcmr_positions"]                 # the department's name for all of FY2022
+editions = ["<sha of FY2022 Q1>"]
 ```
+
+Step 7 adds the OCR aliases of the scans, each bound to its files, such as `Binance` for Finance
+in FY2012 Q3 (QPOS-Q09).
 
 What the module shows:
 
@@ -4139,7 +4208,8 @@ The printed label is published beside the key, always (ENT section 11, step 6).
 ```text
 datadesk/data/registry/
   departments.toml     ~110 entities: names and codes with FY ranges, dated parents, residual
-  groups.toml          combined scopes: City Rep. / Commerce, Streets including Sanitation
+  groups.toml          combined scopes: City Rep. / Commerce, Streets with Sanitation, Commerce
+                       with Aviation; each with its members and no name
   funds.toml           17 City funds with dated codes; scopes ("All Funds", "Operating Funds")
   school_funds.toml    QSMR funds under their own ids; none is a City fund (QSMR section 6)
   classes.toml         major classes 100 to 900 with dated labels
@@ -4157,6 +4227,12 @@ One home for each spelling (change 11):
   labels, and the lint repeats the check in CI.
 - An OCR misspelling or a one-edition misprint is an alias with an `editions` list of file
   hashes. It matches in that file only (QPOS-Q09, SUPOP-Q34).
+- A name's span is whole fiscal years. A spelling that changes inside a year is an alias with
+  the shas of the files that print it in that year, and the other spelling stays a name for
+  the whole year, since either one gives the row its one key. P-1 prints `Fleet Management` in
+  FY2022 Q1 alone and `Creative Philadelphia` from FY2025 Q3.
+- A group has no name, since no page names it. A table that prints it as one row reaches it
+  through a table-scoped alias, as P-1 prints `Streets` and `Commerce`.
 - Lines that belong to one table (cohorts, cash lines, collection lines, industries, RTT
   classes) keep their labels in that table's row schema. Putting them in a shared registry is
   what made one label claim several ids (ENT-Q01).
@@ -4773,9 +4849,9 @@ kit size report that CI prints does.
 | `core/fetch.py` | `confirm_period`, `plan_fetch` | 230 |
 | `core/index.py` | archive index parse, render, add | 100 |
 | `core/records.py` | record types, TOML loaders, `records_for`, `unused_records`, `drop_noted_lines`, `illegible_pages`, `declared_run` | 370 |
-| `core/rowschemas.py` | `load_row_schema`, `schema_for` with registry labels and forms | 200 |
+| `core/rowschemas.py` | `RegistryLabels`, `SchemaLabels`, `RowSource`, `RowSchemaSource`, `load_row_schema`, `schema_for` with registry labels and forms | 200 |
 | `core/registry/model.py` | entity, alias, relation and resolution types | 120 |
-| `core/registry/load.py` | TOML loaders | 110 |
+| `core/registry/load.py` | `Refused`, `load_registry`, and the TOML record readers that `rowschemas` shares | 110 |
 | `core/registry/resolve.py` | `resolve`, `resolve_fund`, `labels_for`, `normalize_printed_code` | 190 |
 | `core/registry/lint.py` | `lint_registry` | 170 |
 | `core/ocr.py` | `textract_to_document` | 90 |

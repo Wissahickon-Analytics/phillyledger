@@ -228,3 +228,49 @@ to `docs/plans/step-05.md`.
   `test_two_columns_of_one_caption_regex_each_keep_the_period_printed_under_it`. The answer was
   taken on November 28, 2026 while the owner was away, under his standing permission of
   November 27, and he has not seen the question. Design sections 2.1, 3.1 and 5.1.
+- **The registry loads from each file's text, and a loader refuses with `Refused`** (November 28,
+  2026, S5-D). Shape 16 as planned. The design gave `load_registry` no signature, so it takes
+  each file's path and text, as `load_records` does, and gives each record's first problem as a
+  BLOCK finding. A file holds arrays of tables named by the `EntityKind` values, then `[[alias]]`
+  and `[[relation]]`. `load.py` also holds the record readers that `rowschemas` shares, which is
+  most of why it counts 147 lines against 110. `Resolved`, `Unknown`, `Ambiguous` and
+  `Resolution` join `resolve` at step 8 (shape 14). `test_registry.py` and
+  `test_rowschemas.py`. Design sections 2.2, 3.2 and 12.3.
+- **A row's labels have one home in its type** (November 28, 2026, S5-D). `RowSource.labels` is
+  `RegistryLabels | SchemaLabels`, so no row value holds both an entity and labels, and
+  `load_row_schema` refuses a file that writes both with `rowschema_entity_with_labels` (clause
+  C3b). An entity row with no `forms` prints its name alone. A row's period holds an edition
+  when it holds the edition's period end, and `""` leaves an end open.
+  `test_an_entity_row_with_labels_is_refused` fails with the refusal taken out. Design section
+  3.2.
+- **The positions rows are bounded by the 20 editions** (November 28, 2026, S5-D). Design section
+  5.1 gave Streets the periods FY2008 to FY2013 and FY2018 to FY2025 from QPOS-Q12. A row that
+  some of the 20 editions do not print now has periods that start at the first quarter that
+  prints it, and end open when FY2026 Q4 prints it, so an older edition has neither Streets row
+  until step 7 reads it. Matched against these schemas, all 1,174 cut rows of the 40 grid
+  fixtures match one row each with no finding, and each edition's schema has the row count of
+  fact 1. `test_every_cut_row_of_the_40_grid_pages_matches_one_schema_row`. Design section 5.1.
+- **A group has no name** (November 28, 2026, S5-D). The old `config/entities.yml` names the
+  rollup `Streets (including Sanitation)`, which none of the 20 editions prints. A group's P-1
+  label is a table-scoped alias, and every spelling that the positions rows take from the files
+  is a label that a grid fixture prints:
+  `test_every_spelling_the_positions_rows_take_from_the_files_is_printed_on_a_grid_page`. Design
+  sections 2.2 and 7.2.
+- **The whole-year name is a label of two editions that do not print it** (November 28, 2026,
+  S5-D). The plan's S5-D section says each label of fact 12 is a label of the schemas of the
+  editions that print it "and of no other". Shape 14 keeps the other spelling a name for the
+  whole fiscal year, so `Fleet Services` is a label of `2021-09-30`, and `Office of Arts and
+  Culture` of `2025-03-31` and `2025-06-30`, which print `Fleet Management` and `Creative
+  Philadelphia`. Either spelling gives the row its one key. The test names those three pairs
+  and requires the same row to hold the spelling the edition prints. `Creative Philadelphia` is
+  also a name from FY2026, so its alias names the two FY2025 files alone.
+  `test_each_label_that_changes_is_a_label_of_the_editions_that_print_it`. Design section 7.2.
+- **The TOML loaders are written by hand** (November 28, 2026, S5-D). Section 8.7 of
+  `docs/principles.md` leaves pydantic for `datadesk` to the owner at the step that builds the
+  TOML loaders, from a run of a hand-written and a strict pydantic loader on the same TOML. The
+  answer was taken on November 28, 2026 while the owner was away, under his standing permission
+  of November 27, and he has not seen the question. The loaders are written by hand, as
+  `load_catalog` and `parse_index` are, and typer stays below 0.29. The run was not made:
+  `uv run --offline --no-project --with pydantic` fails because the uv cache holds no pydantic,
+  and the session made no download. The two cases of pull request 38 are refused as findings:
+  `id_not_a_string` and `member_not_a_string` in `test_registry.py`. Section 8.7 is unchanged.

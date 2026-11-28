@@ -231,6 +231,12 @@ session needs it. A note for one later step goes in `docs/plan-notes.md`.
   12 counts, `shell/cli.py` holds 309 lines against an estimate of 246. It held 197 at the head
   of S4-D, and `crops_command` with the `crops` command added 112. `shell/report.py` holds 97
   lines against 140, all of them the crop work of step 4.
+- **Registry and row schema modules against their estimates** (November 28, 2026, S5-D).
+  Counted as design section 12 counts: `core/registry/load.py` 147 lines (estimate 110),
+  `core/registry/model.py` 60 (120), `core/registry/resolve.py` 22 for `labels_for` alone (190)
+  and `core/rowschemas.py` 176 (200). `load.py` runs 37 lines past its estimate, since it also
+  holds the TOML record readers that `rowschemas` shares. The four hold 405 lines against the
+  plan's 620.
 - **Kit modules against their estimates** (November 23, 2026, step 2. Updated November 25,
   2026, standards sweep B, and November 27, 2026, S5-B and S5-C). The kit size report counts lines that
   are not blank, a comment or a docstring, as design section 12 counts. At the head of sweep B,

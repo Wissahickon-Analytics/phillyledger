@@ -514,10 +514,24 @@ file, `docs/progress.md`, `docs/followups.md` or `docs/deviations/`.
     open. Step 7 checks whether they are the same thing.
   - The P-1 captions of step 5 are written as FY2022 to FY2026 print them, in capitals (shape
     5). Older editions may print other forms.
+  - The positions row schema and the registry hold FY2022 to FY2026 alone (S5-D). A row that
+    some of those 20 editions do not print has periods that start at FY2022 Q1 or later, so an
+    older edition has no row for Streets, Commerce, Aviation, City Representative, the Office of
+    Arts and Culture or the Office of Children and Families. QPOS section 3 gives the
+    Streets eras (QPOS-Q12) and the City Rep. / Commerce row (QPOS-Q13). `Fleet Management` is
+    an alias of one FY2022 file and no name, and the alias years of `Streets` and `Commerce`
+    start at FY2022. Step 7 widens each with its paired fixtures.
   - The confidence floor of `assemble` reads only a cell that lexes as an `Amount`, since a
     reading cannot apply to a `Dash` or a `NotApplicable` (S5-C). So an OCR dash or N/A under
     the floor publishes as it lexes, and a ZERO dash publishes 0. The first OCR pages show
     whether a low-confidence dash hides a digit.
+- **Two spellings that the registry lint must read with the row periods, a note for the step
+  13 plan** (November 28, 2026, S5-D). Rule 1 of `lint_registry` in design section 7.2 blocks a
+  label that two entities claim in one table and period. In Table P-1, `Streets` is the name of
+  `phl_dept_streets` in every year and an alias of `phl_group_streets_sanitation` in FY2022 to
+  FY2025, and `Commerce` is the same for `phl_dept_commerce` and `phl_group_commerce_aviation`
+  in FY2022 and FY2023. No edition's schema holds both rows of a pair, so the lint reads the
+  rows' periods before it calls the label claimed twice.
 - **The catalog rule on `Quantity`, a note for the plan of the step that builds the last
   table** (November 27, 2026, the step 5 plan). Design section 11.2 has the catalog test require
   that every `Quantity` member is used by at least one table. With one table it cannot hold, so
