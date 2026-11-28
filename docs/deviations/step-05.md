@@ -283,3 +283,64 @@ to `docs/plans/step-05.md`.
   one-row schema that writes `label_editions = []` is refused with `rowschema_unknown_field`, as
   the `unknown_field` case of `test_load_row_schema_refuses_text_that_breaks_a_rule` refuses
   another field. Design section 6.1.
+- **`parse` takes its drop patterns from the schema** (November 28, 2026, S5-E). The sketch of
+  design section 5.1 passed `_FURNITURE`, whose `^Notes?:` does not match the printed `NOTE:`
+  (finding 4 of the Fable read of pull request 58). With that list as the drop, each of the 20
+  editions gives one BLOCK `unknown_row` for the notice under the rows of its first grid page.
+  The schema's `drop` holds `^\(\d+\)\s` and `^NOTE:` (shape 10), and `parse` passes it. The
+  sketch's title patterns are cut too: the body starts at the first row, so the title lines
+  are header. `test_the_footnotes_and_the_notice_are_furniture_and_no_finding_names_them`.
+  Design section 5.1.
+- **A first row of counts that the schema lacks is a row, never header** (November 28, 2026,
+  S5-E). The sketch started the body at `starts_known_row(schema)`, so a page whose first
+  printed row the schema lacks put that row in the header with no finding (follow-up 7 of pull
+  request 57).
+  The body now also starts at a line that ends with a count for each column. No header line of
+  the 40 grid pages ends so (fact 2), and `parse` gives equal results for the 20 editions under
+  both rules. With `Auditing` renamed `Zoo` on page 33 of `2026-06-30`, the sketch's rule gives one
+  BLOCK `missing_row` and puts the row in the header, and this rule also gives `unknown_row`
+  for `Zoo (City Controller's Office)` on page 33.
+  `test_a_first_row_that_the_schema_lacks_is_an_unknown_row_and_never_header` fails under the
+  sketch's rule. Design section 5.1.
+- **`parse` matches its unions** (November 28, 2026, S5-E). `parse` tells `PageRun` and
+  `CutPages` from `Finding` with `match` and `assert_never`, where the sketch wrote
+  `isinstance` (shape 16). Design section 5.1.
+- **`ParseContext` derives its period and fiscal year, and checks its records** (November 28,
+  2026, S5-E). Shape 17 builds `core/context.py` as designed. The design gave `period` and
+  `fiscal_year` as fields beside `version`, which a builder could set apart from it, so they are
+  properties of `version` (`docs/principles.md`, section 8.3). The constructor refuses two
+  schemas of one table, since `schema` would take the first, and a note, a `TablePages` record
+  or a reading of another sha, since `declared_run` reads no sha. `Failed` refuses findings with
+  no BLOCK one. `test_context.py`. Design section 2.2.
+- **`TablePages`, `declared_run` and `illegible_pages`** (November 28, 2026, S5-E). Shape 17 as
+  planned: `parse` calls both functions with no record, and no loader is built. A `TablePages`
+  record refuses a first page under 1 and a last page before its first. `declared_run` raises
+  `ValueError` when two records name one table, and the note for the step 7 plan asks its
+  records loader to refuse such a pair. A HEADER_ILLEGIBLE note on no page names no page.
+  `test_records.py`. Design sections 2.2 and 3.2.
+- **`Parsed` carries the cut of each table** (November 28, 2026, the S5-E fix round). Design
+  section 2.2 gave `Parsed` the tables, the findings and the used ids, and none of them holds
+  the header and furniture lines. So the test of clause C2 built a cut of its own with a public
+  `layout`, and a word that `parse` lost before its cut was placed by the test's cut. With
+  `parse` dropping the `NOTE:` line of each of the 40 grid pages, the test passed and 960 words
+  were in no place (blocker 1 of Codex's review of pull request 59). `Parsed.cuts` now holds the
+  cut each table was assembled from, and the constructor refuses a table with no cut. The test
+  counts the ink of that cut, and fails under the same mutant. `layout` is private again, since
+  no test rebuilds the cut, and the sketches of sections 5.2, 5.3 and 5.5 pass their cuts. No
+  codec of a parse result is built yet. `test_no_ink_is_lost_on_any_grid_page` and
+  `test_a_parsed_table_needs_its_cut`. Design sections 2.2, 5.1, 5.2, 5.3 and 5.5.
+- **C3a's test reads the printed labels against a table of its own** (November 28, 2026, the
+  S5-E second fix round). This changes no design section. The first fix round's test compared
+  registry spellings with `row.label.norm`, the field the matcher used, so `Law` and `Water`
+  swapped after normalization in `parse_label` passed it (finding 1 of Codex's read of that
+  round), and so did `Law` and `Prisons` traded in `departments.toml` (finding 3 of the Fable
+  read). The test now reads each entity row's label from the fixture page's words by the row's
+  `label_words`, without the margin words left of the first rule and without a footnote mark.
+  That label with the row's entity must be in a literal table of 61 pairs, 8 of them scoped by
+  edition, and the registry files must write it under that id. A script built the table from
+  the fixture words and the registry files. Its pairs equal those that `parse` gives, and 59 of
+  the 61 are a name or alias of the same id in the old `config/entities.yml`, which lacks the
+  two group ids. Under each of those two mutants, and under `Finance` and `Revenue` swapped in
+  `labels_for`, the test fails. The first round's rewrite of the plan's C3a paragraph is
+  undone, since no pull request still to be built reads it (`docs/plans/README.md`).
+  `test_each_department_label_is_a_registry_label`.

@@ -85,10 +85,10 @@ def laid_out(text: str) -> Page:
     return replace(page_from_text(text, SHA, 3), rules=rules)
 
 
-def parsed(page: Page) -> tuple[CutPages, Table, tuple[Finding, ...]]:
+def parsed(page: Page, schema: RowSchema = SCHEMA) -> tuple[CutPages, Table, tuple[Finding, ...]]:
     cut = cut_pages(LAYOUT, (page_lines(page),), ON)
     assert isinstance(cut, CutPages), cut
-    matched = match_rows(cut.raws, SCHEMA)
+    matched = match_rows(cut.raws, schema)
     built = assemble(TableId("staff"), cut, matched.rows, CellRecords((), (), 95.0))
     assert built.table is not None, built.findings
     findings = (*cut.findings, *matched.findings, *built.findings, *stray_findings(cut.raws))
@@ -177,3 +177,36 @@ def test_the_ledger_finds_a_ref_counted_twice() -> None:
     elsewhere = replace(roads, label_words=(*roads.label_words, foreign))
     outside = replace(table, rows=(elsewhere, *table.rows[1:]))
     assert misplaced((page,), cut, outside, findings) == {foreign: 1}
+
+
+def test_a_stray_finding_with_a_bare_or_foreign_subject_names_no_stray() -> None:
+    page = laid_out(EXAMPLE)
+    cut, table, findings = parsed(page)
+    [roads_zz] = cut.raws[0].stray
+    for subject in ("Roads", "stray:Roads", "bbbbbbbb:stray:Roads"):
+        renamed = tuple(
+            replace(f, subject=subject) if f.subject == "aaaaaaaa:stray:Roads" else f
+            for f in findings
+        )
+        assert misplaced((page,), cut, table, renamed) == {roads_zz.ref: 0}, subject
+
+
+def test_the_ledger_places_an_ambiguous_row_by_its_finding() -> None:
+    docks = tuple(
+        RowDef(RowKey.of(dept=name), RowKind.ITEM, ("Dock",)) for name in ("east", "west")
+    )
+    schema = replace(SCHEMA, rows=(*SCHEMA.rows, *docks))
+    text = "\n".join(
+        (header(), values("Roads", "1", "2", "3", "4", "5"), values("Dock", "6"), TOTAL)
+    )
+    page = laid_out(text)
+    cut, table, findings = parsed(page, schema)
+    [ambiguous] = [f for f in findings if f.code == "ambiguous_row"]
+    assert misplaced((page,), cut, table, findings) == {}
+    dock = cut.raws[1]
+    dock_words = (*dock.label_words, *(word for _, cell in dock.cells for word in cell))
+    others = tuple(f for f in findings if f.code != "ambiguous_row")
+    assert misplaced((page,), cut, table, others) == {word.ref: 0 for word in dock_words}
+    assert misplaced((page,), cut, table, (*findings, ambiguous)) == {
+        word.ref: 2 for word in dock_words
+    }

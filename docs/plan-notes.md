@@ -163,23 +163,6 @@ file, `docs/progress.md`, `docs/followups.md` or `docs/deviations/`.
     prints U+2010 for the hyphens of its labels (SUPOP-Q32). The owner decides whether U+2010 and
     U+2011 join the dash placeholders of `has_values` and `lex_cell`. A change would touch both
     `lines.py` of S2-C and `lex.py` of S2-D, and the two lists of design section 3.1.
-  - A number in the left margin reads as a recap line number, for the step 5 plan.
-    `test_split_line_prefix_takes_recap_line_numbers` (ENT-Q08) and
-    `test_split_line_prefix_takes_numbered_recap_labels` (QOBL-Q55) use the text `24 First
-    Judicial District`, and ENT-Q08 reads the `24` as a printed line number. `pdftotext -layout`
-    prints that text on page 1 of the FY2021 Q1 QCMR positions report
-    (`qcmr/positions/FY21_Q1.pdf`) and `25 Records` on page 2, each on line 28 of its page. The
-    S2-C fix round 3 reran that and added `pdftotext -bbox`, which puts the `24` of page 1 and
-    the `25` of page 2 in the same box, x 9.19 to 18.12 and y 301.55 to 310.45. Finding 2 of
-    `.codex-review/step-02-pr-0df73f36.md` says that with `pdfplumber` word boxes the two are
-    the only rotated words on their pages, so they are page numbers and not line numbers of the
-    departments. That is Codex's statement and not a run of ours, because `pdfplumber` is not
-    installed in this repository until step 4. The tests check what `split_line_prefix` and
-    `parse_label` do with a declared pattern, and that stays right, so S2-C changed no test for
-    this. What the number is, and whether the positions parser of step 5 declares it page
-    furniture or a line prefix, is for the step 5 plan. QPOS-Q10 left the origin of the leading
-    numbers open, and `test_split_line_prefix_takes_leading_numbers` reads the same `24` and `25`
-    before `Recreation`.
   - Join shape 1 joins two printed amounts, for the owner and the plan of the step that builds
     decision 16
     (finding 2 of `.codex-review/step-02-pr-0603fce3.md`). On page 1 of the adopted FY2006 Budget
@@ -423,29 +406,6 @@ file, `docs/progress.md`, `docs/followups.md` or `docs/deviations/`.
   <pages>` and `decode_document` in `core/codec.py`. Each builds it with `Sha256`, since the
   kit's constructors refuse plain text. This note replaces "The kit checks a hash for presence
   only", on which sweep B acted.
-- **Sixteen archived reports have a commentary page before the P-1 grid, a note for the step 5
-  plan** (November 25, 2026, the step 4 plan). In every archived file from `qcmr:2022-06-30:none`
-  on except `qcmr:2023-12-31:none`, the page before the two grid pages has rotation 0, begins
-  `TABLE P-1` and goes on "ABOUT THIS SECTION:". The other four files have a 19-word divider page
-  there that does not print `TABLE P-1` (`docs/plans/step-04.md`, fact 8). The Codex review
-  counted six such pages in the old repo's cut copies, and design section 15 now says 16.
-- **Rules and margin page numbers on the P-1 grid pages, a note for the step 5 plan** (November
-  25, 2026, the step 4 plan. Extended November 27, 2026, the step 4 cleanup, from pull request
-  51). The 20 grid pages of FY2023 Q1 to FY2025 Q2 draw no line object and
-  410 thin rects, 220 of them upright, 0.72 or 1.44 points wide (`docs/plans/step-04.md`, fact
-  4). The step 4 adapter gives each as a `Rule` on its centerline, so these pages have vertical
-  rules, and `cut_pages` in design section 3.1 takes `lanes_from_rules` when a page has them and
-  `lanes_from_values` when it has none. The step 5 plan decides which the P-1 pages use. Six of
-  the 20 pages, in the three editions `qcmr:2022-09-30:none` to `qcmr:2023-03-31:none`, also
-  print a sideways page number in the left margin, at `x0` 5.63, which the adapter gives as two
-  words of one digit (fact 5). They are page furniture, and no row's words. On those six pages
-  `group_lines` joins the two digits to table lines. Line 27 holds the digit `2` alone, and line
-  28 begins with `5` or `6` before `First` or `Records`, so `row_line` finds no line for those
-  rows. They sit mid-table, and no row of the step 4 crops is one of them. This note proposed
-  dropping the digits before lines are grouped. The step 5 plan takes lanes from values and lets
-  the design's prefix rule take each digit off its row (`docs/plans/step-05.md`, shapes 3 and 9).
-  Its probe found the margin number in seven editions, on 14 pages (fact 9). S5-E removes this
-  note.
 - **An empty lane for a caption printed over no values, a note for the step 8 plan** (November
   27, 2026, S5-B). Step 2 of `bind_columns` in design section 3.1 adds an empty lane for a
   required caption that a page prints over no values (QCASH-Q35). S5-B left it out, since no
@@ -503,6 +463,17 @@ file, `docs/progress.md`, `docs/followups.md` or `docs/deviations/`.
     and no relation. The old `config/entities.yml` also has two ids, and gives department number
     66 to Education through 2020, to Children and Families from 2021 to 2024, and to Education
     from 2025 (lines 4492 to 4494). Whether they are one entity is the owner's call.
+  - Two rows that shrink as new rows first print, at `2025-09-30` (S5-E, from the Fable read
+    of pull request 59). `Managing Director's Office` prints 634 positions as its month-end
+    actual at `2025-06-30` and 493 at `2025-09-30`, and 716 then 558 adopted, while its
+    prior-year total stays 634. In the same edition `Office of Public Safety` (108 actual, 161
+    adopted) and `Citizens Police Oversight Commission` (16 and 30) first print, each with a
+    prior-year total of 0. `Mayor's Office-Comm. Empowerment & Opp.` goes from 86 to 61 actual
+    and from 109 to 80 adopted, as `Mayor's Office-Neighborhood Comm. Act. Ctrs.` first prints
+    with 28 and 38 and a prior-year total of 0. That is the pattern of `Commerce` in FY2024, but
+    no grid or commentary page of the 20 editions prints a note on it, and the counts do not
+    net. The owner was asked about
+    `Commerce` alone (decision 21). Whether either row is an entity seam is his call.
   - The check DSL. `checks/dsl.py`, `checks_for` and the `checks_for` field of `TableEntry` are
     step 6's (shape 18). So is the catalog rule that compares a check's operands with the
     operands of a derived column (shape 19).
@@ -527,6 +498,12 @@ file, `docs/progress.md`, `docs/followups.md` or `docs/deviations/`.
     Streets eras (QPOS-Q12) and the City Rep. / Commerce row (QPOS-Q13). `Fleet Management` is
     an alias of one FY2022 file and no name, and the alias years of `Streets` and `Commerce`
     start at FY2022. Step 7 widens each with its paired fixtures.
+  - Two `TablePages` records of one file and table (S5-E). `declared_run` raises `ValueError`
+    for them, since the file prints the table on one run of pages, so the records loader of
+    step 7 refuses such a pair as a finding before `parse` runs.
+  - A HEADER_ILLEGIBLE note joins the used set of `parse` when it names a page of its file,
+    whether or not that page is in the table's run (S5-E). So a note on a wrong page is never
+    `unused_record`. Step 7 decides whether `parse` counts only the pages it cut.
   - The confidence floor of `assemble` reads only a cell that lexes as an `Amount`, since a
     reading cannot apply to a `Dash` or a `NotApplicable` (S5-C). So an OCR dash or N/A under
     the floor publishes as it lexes, and a ZERO dash publishes 0. The first OCR pages show

@@ -36,11 +36,12 @@ def misplaced(
     A word's places are a header or furniture line of the cut, the label or a cell of a row of
     the table, a stray that a stray finding names, and a raw row that an unknown or ambiguous
     row finding names, if no row of the table holds a word of it. A finding fits a stray or a
-    raw row when it is on the row's page, its subject after its second ":" is the row's printed
-    label, and, for a stray, its message quotes the word's text. Each finding names one stray
-    or one raw row that it fits (`_named`). The result maps each word of the pages that is in
-    no place or in two or more, and each placed word that is on none of the pages, to its
-    count of places. It is empty when no ink is lost.
+    raw row when it is on the row's page, its subject is ``"<doc sha8>:<part>:<printed label>"``
+    with the sha8 of the row's words and the row's printed label, and, for a stray, its message
+    quotes the word's text. Each finding names one stray or one raw row that it fits
+    (`_named`). The result maps each word of the pages that is in no place or in two or more,
+    and each placed word that is on none of the pages, to its count of places. It is empty
+    when no ink is lost.
     """
     placed: list[WordRef] = []
     for page in cut.pages:
@@ -80,11 +81,13 @@ def _named(
     for finding in findings:
         if finding.code not in codes:
             continue
+        parts = finding.subject.split(":", 2)
         fits = [
             index
             for index, (raw, quote, _) in enumerate(places)
             if finding.page == raw.page
-            and finding.subject.split(":", 2)[-1] == _printed(raw)
+            and len(parts) == 3
+            and (parts[0], parts[2]) == (_sha8(raw), _printed(raw))
             and quote in finding.message
         ]
         fresh = [index for index in fits if index not in named]
@@ -94,3 +97,10 @@ def _named(
 
 def _printed(raw: RawRow) -> str:
     return " ".join(word.text for word in (*raw.prefix, *raw.label_words))
+
+
+def _sha8(raw: RawRow) -> str:
+    cells = (word for _, cell in raw.cells for word in cell)
+    return next(
+        word.ref.doc_sha256[:8] for word in (*raw.prefix, *raw.label_words, *cells, *raw.stray)
+    )
