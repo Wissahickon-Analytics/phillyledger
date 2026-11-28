@@ -288,9 +288,9 @@ def measure_for(measures: MeasureSet, row: RowKey, column: str) -> MeasureSpec:
 def period_of(stated: Stated, scope: Scope) -> Period:
     """Return the days that a stated column covers in its edition, through `fiscal_period`.
 
-    A window ends with the last month of the edition's period, `stated.year` years back. A
-    quarter is the fiscal quarter that holds that month. A month column of a grid covers its
-    fiscal month of the edition's fiscal year.
+    A quarter is the fiscal quarter that holds the last month of the edition's period, and a
+    month column of a grid covers its fiscal month of the edition's fiscal year, each
+    `stated.year` years back.
     """
     end = scope.edition.period.end
     calendar_year = end.year + stated.year

@@ -2513,9 +2513,9 @@ def measure_for(measures: MeasureSet, row: RowKey, column: str) -> MeasureSpec: 
     # the override whose match the row's parts hold, else the column's spec; ValueError for
     # two overrides that match, KeyError for a column with no spec
 def period_of(stated: Stated, scope: Scope) -> Period: ...
-    # the dates a stated column covers, through periods.fiscal_period: the window ends with the
-    # last month of the edition's period, `year` years back; a quarter is the fiscal quarter
-    # that holds that month, and a fiscal month of a grid is a month of the edition's fiscal year
+    # the dates a stated column covers, through periods.fiscal_period; a quarter is the fiscal
+    # quarter that holds the last month of the edition's period, and a fiscal month of a grid is
+    # a month of the edition's fiscal year, each `year` years back
 def subject_of(spec: MeasureSpec, scope: Scope) -> Subject | None: ...
     # None for Derived and NotPublished: computed columns are never matched across editions
 def description(meaning: Meaning) -> tuple[object, ...]: ...   # the comparable form the catalog test uses
@@ -3335,8 +3335,8 @@ def checks_for(era: str, period: Period) -> CheckSet:
 
 106 lines, with no blank line, docstring or path comment counted. Step 5 built `TABLE`,
 `COLUMNS`, `ERAS`, `measures`, `_layout` and `parse` as shown and ran them on the 20 editions of
-FY2022 to FY2026. Its constants are tuples, since the purity test refuses a dict display at module
-level. The row schema is data. Department spellings are not in it (change 11):
+FY2022 to FY2026. Its fund and group tables are tuples, since the purity test refuses a dict
+display at module level. The row schema is data. Department spellings are not in it (change 11):
 
 ```toml
 # datadesk/data/rows/qcmr_positions.toml (an excerpt)

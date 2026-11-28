@@ -355,11 +355,11 @@ to `docs/plans/step-05.md`.
   Design section 2.2.
 - **How `period_of` dates a window** (November 28, 2026, S5-F). The prototype took a quarter as
   the three months that end with the edition's last month, which runs across two years for a
-  January or a February end. A quarter is now the fiscal quarter that holds that month. Every
-  window ends on the last day of that month, `year` years back, and a fiscal month of a grid is
-  a month of the edition's fiscal year. `fiscal_period` takes the first and the last month and
-  refuses a month outside 1 to 12 and a span that runs back. For the quarter of each of the 20
-  indexed editions, and the quarter a year back, both rules give the same days, 40 of 40.
+  January or a February end. A quarter is now the fiscal quarter that holds that month, and a
+  fiscal month of a grid is a month of the edition's fiscal year, each `year` years back.
+  `fiscal_period` takes the first and the last month and refuses a month outside 1 to 12 and a
+  span that runs back. For the quarter of each of the 20 indexed editions, and the quarter a year
+  back, both rules give the same days, 40 of 40.
   `test_each_window_covers_the_days_of_its_year_basis` and
   `test_fiscal_period_reads_the_label_year_in_the_basis_of_its_window`. Design section 3.2.
 - **A CUTOFF note gives a month** (November 28, 2026, S5-F). The design gave the note's value as
