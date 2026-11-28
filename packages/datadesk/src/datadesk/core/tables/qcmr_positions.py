@@ -86,9 +86,9 @@ def parse(doc: Document, ctx: ParseContext) -> ParseResult:
     """Read Table P-1 from the words of a whole QCMR report.
 
     The run is the pages that a `TablePages` record names, or else the one run of pages whose
-    two-line band prints TABLE P-1. A page of the run that prints no caption of the era's
-    signature, such as the commentary page before the grid of 16 of the 20 editions of FY2022
-    to FY2026, is a WARN ``commentary_page`` finding and is not cut. The rows match the
+    two-line band prints TABLE P-1. A page before the grid that prints no caption of the era's
+    signature, such as the commentary page of 16 of the 20 editions of FY2022 to FY2026, is a
+    WARN ``commentary_page`` finding and is not cut. The rows match the
     edition's schema, and a page that a HEADER_ILLEGIBLE note names binds its columns by
     position.
 

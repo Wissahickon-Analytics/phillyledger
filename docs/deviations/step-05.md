@@ -325,8 +325,22 @@ to `docs/plans/step-05.md`.
   `parse` dropping the `NOTE:` line of each of the 40 grid pages, the test passed and 960 words
   were in no place (blocker 1 of Codex's review of pull request 59). `Parsed.cuts` now holds the
   cut each table was assembled from, and the constructor refuses a table with no cut. The test
-  counts the ink of that cut, and under the same mutant it fails on the 960 words of those
-  lines. `layout` is private again, since no test rebuilds the cut, and the sketches of sections
-  5.2, 5.3 and 5.5 pass their cuts. No codec of a parse result is built yet.
-  `test_no_ink_is_lost_on_any_grid_page` and `test_a_parsed_table_needs_its_cut`. Design sections
-  2.2, 5.1, 5.2, 5.3 and 5.5.
+  counts the ink of that cut, and fails under the same mutant. `layout` is private again, since
+  no test rebuilds the cut, and the sketches of sections 5.2, 5.3 and 5.5 pass their cuts. No
+  codec of a parse result is built yet. `test_no_ink_is_lost_on_any_grid_page` and
+  `test_a_parsed_table_needs_its_cut`. Design sections 2.2, 5.1, 5.2, 5.3 and 5.5.
+- **C3a's test reads the printed labels against a table of its own** (November 28, 2026, the
+  S5-E second fix round). This changes no design section. The first fix round's test compared
+  registry spellings with `row.label.norm`, the field the matcher used, so `Law` and `Water`
+  swapped after normalization in `parse_label` passed it (finding 1 of Codex's read of that
+  round), and so did `Law` and `Prisons` traded in `departments.toml` (finding 3 of the Fable
+  read). The test now reads each entity row's label from the fixture page's words by the row's
+  `label_words`, without the margin words left of the first rule and without a footnote mark.
+  That label with the row's entity must be in a literal table of 61 pairs, 8 of them scoped by
+  edition, and the registry files must write it under that id. A script built the table from
+  the fixture words and the registry files. Its pairs equal those that `parse` gives, and 59 of
+  the 61 are a name or alias of the same id in the old `config/entities.yml`, which lacks the
+  two group ids. Under each of those two mutants, and under `Finance` and `Revenue` swapped in
+  `labels_for`, the test fails. The first round's rewrite of the plan's C3a paragraph is
+  undone, since no pull request still to be built reads it (`docs/plans/README.md`).
+  `test_each_department_label_is_a_registry_label`.

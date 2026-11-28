@@ -1,8 +1,8 @@
 """Records that a person writes about an edition's file, such as a note on what it prints.
 
-Step 5 builds the notes, `TablePages`, `declared_run` and `illegible_pages`, which the parsers
-call. No record exists for the editions that step 5 parses, so each record's loader lands with
-its first record (design section 4.2).
+Step 5 builds `TablePages`, `declared_run` and `illegible_pages`, which the parsers call. No
+record exists for the editions that step 5 parses, so each record's loader lands with its first
+record (design section 4.2).
 """
 
 from collections.abc import Sequence

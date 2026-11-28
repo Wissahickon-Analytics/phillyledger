@@ -463,6 +463,17 @@ file, `docs/progress.md`, `docs/followups.md` or `docs/deviations/`.
     and no relation. The old `config/entities.yml` also has two ids, and gives department number
     66 to Education through 2020, to Children and Families from 2021 to 2024, and to Education
     from 2025 (lines 4492 to 4494). Whether they are one entity is the owner's call.
+  - Two rows that shrink as new rows first print, at `2025-09-30` (S5-E, from the Fable read
+    of pull request 59). `Managing Director's Office` prints 634 positions as its month-end
+    actual at `2025-06-30` and 493 at `2025-09-30`, and 716 then 558 adopted, while its
+    prior-year total stays 634. In the same edition `Office of Public Safety` (108 actual, 161
+    adopted) and `Citizens Police Oversight Commission` (16 and 30) first print, each with a
+    prior-year total of 0. `Mayor's Office-Comm. Empowerment & Opp.` goes from 86 to 61 actual
+    and from 109 to 80 adopted, as `Mayor's Office-Neighborhood Comm. Act. Ctrs.` first prints
+    with 28 and 38 and a prior-year total of 0. That is the pattern of `Commerce` in FY2024, but
+    no grid or commentary page of the 20 editions prints a note on it, and the counts do not
+    net. The owner was asked about
+    `Commerce` alone (decision 21). Whether either row is an entity seam is his call.
   - The check DSL. `checks/dsl.py`, `checks_for` and the `checks_for` field of `TableEntry` are
     step 6's (shape 18). So is the catalog rule that compares a check's operands with the
     operands of a derived column (shape 19).
