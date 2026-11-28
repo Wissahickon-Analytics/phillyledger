@@ -8,16 +8,25 @@ from typing import Any
 
 from packages.checkedtables.tests.ink import cell_refs, misplaced
 from packages.datadesk.tests.fixtures.p1 import RUNS, P1Run
-from tests.test_p1_pages import fixture_page, stem
-from tests.test_registry_data import DATA, PARENTS, SCHEMA_FILE, registry, source, versions
+from tests.test_p1_pages import MARK, fixture_page, stem
+from tests.test_registry_data import (
+    DATA,
+    FIRST,
+    LAST,
+    PARENTS,
+    SCHEMA_FILE,
+    between,
+    registry,
+    source,
+    versions,
+)
 
 from checkedtables.cells import Amount
 from checkedtables.pipeline import CutPages
 from checkedtables.records import CellRecords
 from checkedtables.refs import WordRef
-from checkedtables.table import RowKey, RowKind, Severity, Table
-from checkedtables.text import normalize_label
-from checkedtables.words import Document, Page
+from checkedtables.table import Row, RowKey, RowKind, Severity, Table
+from checkedtables.words import Document, Page, Word
 from datadesk.core.context import ParseContext, Parsed, ParseResult
 from datadesk.core.rowschemas import schema_for
 from datadesk.core.tables.qcmr_positions import TABLE, parse
@@ -28,16 +37,86 @@ BY_EDITION = {run.edition: run for run in RUNS}
 FOOTNOTE = re.compile(r"\(\d\) ")
 NOTICE = "NOTE: The material in this report is preliminary"
 DIGIT = re.compile(r"\d")
-PRINTED_ENTITIES = (
-    ("qcmr:2026-06-30:none", 33, "Finance", "phl_dept_finance"),
-    ("qcmr:2026-06-30:none", 34, "Revenue", "phl_dept_revenue"),
-    ("qcmr:2026-06-30:none", 34, "Police - Total", "phl_dept_police"),
-    ("qcmr:2025-06-30:none", 32, "Streets", "phl_group_streets_sanitation"),
-    ("qcmr:2025-09-30:none", 36, "Streets", "phl_dept_streets"),
-    ("qcmr:2023-06-30:none", 32, "Commerce", "phl_group_commerce_aviation"),
-    ("qcmr:2023-09-30:none", 33, "Commerce", "phl_dept_commerce"),
-    ("qcmr:2021-09-30:none", 35, "Fleet Management", "phl_dept_fleet_management"),
-    ("qcmr:2025-03-31:none", 33, "Creative Philadelphia", "phl_dept_office_of_arts_and_culture"),
+# Each department and group label that the 40 grid pages print, without its footnote mark, with
+# the entity of its row. A label that names its entity in some editions only is in SCOPED with
+# them: the two seams (QPOS-Q12, decision 21), and Fleet Management and Office of Arts and
+# Culture with the names that replace them.
+PRINTED_ENTITIES = {
+    "Auditing (City Controller's Office)": "phl_dept_auditing_city_controllers_office",
+    "Aviation": "phl_dept_aviation",
+    "Board of Ethics": "phl_dept_board_of_ethics",
+    "Board of Pensions": "phl_dept_board_of_pensions",
+    "Board of Revision of Taxes": "phl_dept_board_of_revision_of_taxes",
+    "Citizens Police Oversight Commission": "phl_dept_citizens_police_oversight_commission",
+    "City Commissioners (Election Board)": "phl_dept_city_commissioners_election_board",
+    "City Council": "phl_dept_city_council",
+    "City Representative": "phl_dept_city_representative",
+    "City Treasurer": "phl_dept_city_treasurer",
+    "Civil Service Commission": "phl_dept_civil_service_commission",
+    "District Attorney - Total": "phl_dept_district_attorney",
+    "Finance": "phl_dept_finance",
+    "Fire - Total": "phl_dept_fire",
+    "First Judicial District": "phl_dept_first_judicial_district",
+    "Free Library": "phl_dept_free_library",
+    "Human Relations Commission": "phl_dept_human_relations_commission",
+    "Human Services": "phl_dept_human_services",
+    "L&I-Board of Building Standards": "phl_dept_l_and_i_board_of_building_standards",
+    "L&I-Board of L & I Review": "phl_dept_l_and_i_board_of_l_and_i_review",
+    "Labor": "phl_dept_labor_mayors_office_of",
+    "Law": "phl_dept_law",
+    "Licenses & Inspections": "phl_dept_licenses_and_inspections",
+    "Managing Director's Office": "phl_dept_managing_directors_office",
+    "Mayor's Office": "phl_dept_mayors_office",
+    "Mayor's Office-Comm. Empowerment & Opp.": (
+        "phl_dept_mayors_office_of_community_empowerment_and_oppo"
+    ),
+    "Mayor's Office-Neighborhood Comm. Act. Ctrs.": (
+        "phl_dept_neighborhood_community_action_centers"
+    ),
+    "Mural Arts Program": "phl_dept_mural_arts_program",
+    "Office of Behavioral Hlth & Intellectual disAbility": (
+        "phl_dept_office_of_behavioral_health_and_intellectual_dis"
+    ),
+    "Office of Children and Families": "phl_dept_office_of_children_and_families",
+    "Office of Education": "phl_dept_office_of_education",
+    "Office of Homeless Services": "phl_dept_office_of_homeless_services",
+    "Office of Human Resources": "phl_dept_office_of_human_resources",
+    "Office of Innovation and Technology": "phl_dept_office_of_innovation_and_technology",
+    "Office of Property Assessment": "phl_dept_office_of_property_assessment",
+    "Office of Public Safety": "phl_dept_office_of_public_safety",
+    "Office of Sustainability": "phl_dept_office_of_sustainability",
+    "Office of the Chief Administrative Officer": (
+        "phl_dept_office_of_the_chief_administrative_officer"
+    ),
+    "Office of the Inspector General": "phl_dept_office_of_the_inspector_general",
+    "Parks and Recreation": "phl_dept_parks_and_recreation",
+    "Planning & Development": "phl_dept_planning_and_development",
+    "Police - Total": "phl_dept_police",
+    "Prisons": "phl_dept_prisons",
+    "Procurement": "phl_dept_procurement",
+    "Public Health": "phl_dept_public_health",
+    "Public Property": "phl_dept_public_property",
+    "Records": "phl_dept_records",
+    "Register of Wills": "phl_dept_register_of_wills",
+    "Revenue": "phl_dept_revenue",
+    "Sanitation": "phl_dept_streets_sanitation",
+    "Sheriff": "phl_dept_sheriff",
+    "Water": "phl_dept_water",
+    "Water,Sewer & Stormwater Rate Board": "phl_dept_water_sewer_and_stormwater_rate_board",
+}
+SCOPED = (
+    ("Streets", "phl_group_streets_sanitation", between(FIRST, "2025-06-30")),
+    ("Streets", "phl_dept_streets", between("2025-09-30", LAST)),
+    ("Commerce", "phl_group_commerce_aviation", between(FIRST, "2023-06-30")),
+    ("Commerce", "phl_dept_commerce", between("2023-09-30", LAST)),
+    ("Fleet Management", "phl_dept_fleet_management", between(FIRST, FIRST)),
+    ("Fleet Services", "phl_dept_fleet_management", between("2021-12-31", LAST)),
+    (
+        "Office of Arts and Culture",
+        "phl_dept_office_of_arts_and_culture",
+        between(FIRST, "2024-12-31"),
+    ),
+    ("Creative Philadelphia", "phl_dept_office_of_arts_and_culture", between("2025-03-31", LAST)),
 )
 
 
@@ -137,7 +216,7 @@ def written_spellings(entity: str, year: int, sha: str) -> set[str]:
                     if alias["entity"] == entity
                     and TABLE in alias["tables"]
                     and in_years(alias, year)
-                    and sha in alias.get("editions", [sha])
+                    and (not alias.get("editions") or sha in alias["editions"])
                 }
             elif kind != "relation":
                 spellings |= {
@@ -150,23 +229,39 @@ def written_spellings(entity: str, year: int, sha: str) -> set[str]:
     return spellings
 
 
+def printed_entities(edition: str) -> dict[str, str]:
+    scoped = {label: entity for label, entity, editions in SCOPED if edition in editions}
+    return PRINTED_ENTITIES | scoped
+
+
+@cache
+def page_words(edition: str, number: int) -> tuple[float, dict[WordRef, Word]]:
+    page = fixture_page(stem(edition, number))
+    return min(rule.box.x0 for rule in page.rules), {word.ref: word for word in page.words}
+
+
+def printed_label(edition: str, row: Row) -> str:
+    left, words = page_words(edition, row.page)
+    kept = [words[ref] for ref in row.label_words]
+    return " ".join(w.text for w in kept if w.box.x1 >= left and not MARK.fullmatch(w.text))
+
+
 def test_each_department_label_is_a_registry_label() -> None:
-    for edition, page, label, entity in PRINTED_ENTITIES:
-        rows = [row for row in table_of(edition).rows if row.label.text == label]
-        assert [(row.page, row.entity) for row in rows] == [(page, entity)], (edition, label)
     schema_file = tomllib.loads(SCHEMA_FILE.read_text(encoding="utf-8"))
     forms = {
         row["entity"]: row.get("forms", ["{name}"]) for row in schema_file["row"] if "entity" in row
     }
+    printed: set[tuple[str, str]] = set()
     resolved = 0
     for run in RUNS:
         table = table_of(run.edition)
         version = versions()[run.edition]
         end = version.edition.period.end
         year = end.year + (end.month >= 7)
+        entities = printed_entities(run.edition)
         for row in table.rows:
-            where = f"{run.edition} {row.label.printed!r}"
             if row.entity is None:
+                where = f"{run.edition} {row.key}"
                 if row.key == ROOT:
                     assert (row.kind, row.parent) == (RowKind.TOTAL, None), where
                 else:
@@ -174,16 +269,20 @@ def test_each_department_label_is_a_registry_label() -> None:
                     parent = table.row(row.parent) if row.parent is not None else None
                     assert parent is not None and parent.entity is not None, where
                 continue
-            allowed = {
-                normalize_label(form.replace("{name}", name))
+            label = printed_label(run.edition, row)
+            assert entities.get(label) == row.entity, (run.edition, label)
+            spellings = {
+                form.replace("{name}", name)
                 for name in written_spellings(row.entity, year, version.sha256)
                 for form in forms[row.entity]
             }
-            assert row.label.norm in allowed, where
+            assert label in spellings, (run.edition, label, row.entity)
+            printed.add((label, row.entity))
             resolved += 1
         kinds = {row.kind for row in table.rows if row.entity is None}
         assert kinds <= {RowKind.BREAKDOWN, RowKind.TOTAL}, run.edition
     assert resolved == 1174 - 20 - 6 * 20
+    assert printed == {*PRINTED_ENTITIES.items(), *((label, e) for label, e, _ in SCOPED)}
 
 
 def seam_row(edition: str, page: int, label: str) -> tuple[RowKey, str | None]:
@@ -324,3 +423,35 @@ def test_a_first_row_that_the_schema_lacks_is_an_unknown_row_and_never_header() 
     cut = cut_of(result)
     assert [len(page.header) for page in cut.pages] == [9, 9]
     assert misplaced(doc.pages, cut, result.tables[0], result.findings) == {}
+
+
+def findings_on_page_33(words: Sequence[Word]) -> list[tuple[Severity, str, str, int | None]]:
+    edition = "qcmr:2026-06-30:none"
+    first = fixture_page(stem(edition, 33))
+    pages = (replace(first, words=tuple(words)), fixture_page(stem(edition, 34)))
+    result = parse(Document(first.doc_sha256, pages), context(edition))
+    assert isinstance(result, Parsed)
+    return [(f.severity, f.code, f.subject, f.page) for f in result.findings]
+
+
+def test_parse_returns_the_finding_of_a_cell_that_assembly_cannot_read() -> None:
+    first = fixture_page(stem("qcmr:2026-06-30:none", 33))
+    finance, count = first.words[240:242]
+    assert (finance.text, count.text) == ("Finance", "126")
+    words = [replace(word, text="(cid:5)") if word is count else word for word in first.words]
+    sha8 = first.doc_sha256[:8]
+    assert findings_on_page_33(words) == [
+        (Severity.BLOCK, "unreadable_cell", f"{sha8}:{TABLE}:dept=phl_dept_finance", 33)
+    ]
+
+
+def test_parse_returns_the_finding_of_a_stray_word_on_a_row() -> None:
+    first = fixture_page(stem("qcmr:2026-06-30:none", 33))
+    finance, last = first.words[240], first.words[250]
+    assert (finance.text, last.text) == ("Finance", "14")
+    box = replace(last.box, x0=last.box.x1 + 10, x1=last.box.x1 + 16)
+    stray = replace(last, ref=replace(last.ref, index=len(first.words)), text="x", box=box)
+    sha8 = first.doc_sha256[:8]
+    assert findings_on_page_33([*first.words, stray]) == [
+        (Severity.WARN, "stray_word", f"{sha8}:stray:Finance", 33)
+    ]
