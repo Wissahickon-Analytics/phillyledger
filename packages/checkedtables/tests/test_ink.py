@@ -69,7 +69,7 @@ VALUE = st.sampled_from(("", "-", "0", "7", "42", "999", "(12)"))
 EXAMPLE = "\n".join(
     (
         header(),
-        values("Roads", "12", "3", "14", "4", "2"),
+        values("Roads", "12", "3", "14", "4", "2").ljust(66) + "zz",
         values("9 Parks", "1", "-", "", "4", "(12)"),
         "NOTE: see below",
         values("Zoo", "1", "2", "3", "4", "5").ljust(66) + "99 zz",
@@ -133,9 +133,12 @@ def test_the_ledger_finds_a_ref_taken_out() -> None:
     assert misplaced((page,), cut, replace(table, rows=(emptied, *table.rows[1:])), findings) == {
         twelve.ref: 0
     }
-    [stray, _] = cut.raws[2].stray
+    [stray, zoo_zz] = cut.raws[2].stray
     no_stray = tuple(f for f in findings if f.code != "stray_value")
     assert misplaced((page,), cut, table, no_stray) == {stray.ref: 0}
+    [roads_zz] = cut.raws[0].stray
+    to_zoo = tuple(replace(f, subject=f.subject.replace(":Roads", ":Zoo")) for f in findings)
+    assert misplaced((page,), cut, table, to_zoo) == {roads_zz.ref: 0, zoo_zz.ref: 2}
     zoo = cut.raws[2]
     no_unknown = tuple(f for f in findings if f.code != "unknown_row")
     zoo_words = (*zoo.label_words, *(word for _, cell in zoo.cells for word in cell))
@@ -150,6 +153,13 @@ def test_the_ledger_finds_a_ref_counted_twice() -> None:
     doubled = replace(roads, label_words=(*roads.label_words, twelve))
     twice = replace(table, rows=(doubled, *table.rows[1:]))
     assert misplaced((page,), cut, twice, findings) == {twelve: 2}
+    zoo = cut.raws[2]
+    [stray, _] = zoo.stray
+    [stray_value] = [f for f in findings if f.code == "stray_value"]
+    assert misplaced((page,), cut, table, (*findings, stray_value)) == {stray.ref: 2}
+    [unknown] = [f for f in findings if f.code == "unknown_row"]
+    zoo_words = (*zoo.label_words, *(word for _, cell in zoo.cells for word in cell))
+    assert misplaced((page,), cut, table, (*findings, unknown)) == {w.ref: 2 for w in zoo_words}
     foreign = WordRef(SHA, 9, 0)
     elsewhere = replace(roads, label_words=(*roads.label_words, foreign))
     outside = replace(table, rows=(elsewhere, *table.rows[1:]))
