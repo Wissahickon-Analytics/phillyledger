@@ -1,5 +1,6 @@
 import re
 from collections.abc import Sequence
+from dataclasses import replace
 from decimal import Decimal
 from functools import cache
 
@@ -256,3 +257,28 @@ def test_the_footnotes_and_the_notice_are_furniture_and_no_finding_names_them() 
             assert len(notices) == 1, (run.edition, page.number)
         codes = {finding.code for finding in parsed(run.edition).findings}
         assert codes <= {"commentary_page"}, run.edition
+
+
+def test_a_first_row_that_the_schema_lacks_is_an_unknown_row_and_never_header() -> None:
+    run = BY_EDITION["qcmr:2026-06-30:none"]
+    first = fixture_page(stem(run.edition, 33))
+    auditing = first.words[50]
+    assert auditing.text == "Auditing"
+    words = tuple(replace(word, text="Zoo") if word is auditing else word for word in first.words)
+    doc = Document(
+        first.doc_sha256, (replace(first, words=words), fixture_page(stem(run.edition, 34)))
+    )
+    ctx = context(run.edition)
+    result = parse(doc, ctx)
+    assert isinstance(result, Parsed)
+    sha8 = first.doc_sha256[:8]
+    blocks = [(f.code, f.subject, f.page) for f in result.findings if f.severity is Severity.BLOCK]
+    assert blocks == [
+        ("missing_row", f"{sha8}:{TABLE}:dept=phl_dept_auditing_city_controllers_office", None),
+        ("unknown_row", f"{sha8}:{TABLE}:Zoo (City Controller's Office)", 33),
+    ]
+    lines = tuple(page_lines(page) for page in doc.pages)
+    cut = cut_pages(layout(ctx.schema(TABLE)), lines, ctx.period.end)
+    assert isinstance(cut, CutPages)
+    assert [len(page.header) for page in cut.pages] == [9, 9]
+    assert misplaced(doc.pages, cut, result.tables[0], result.findings) == {}
