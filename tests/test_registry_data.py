@@ -1,4 +1,6 @@
+import re
 import tomllib
+from collections.abc import Iterator
 from functools import cache
 from pathlib import Path
 from typing import Any
@@ -8,7 +10,7 @@ from tests.test_p1_pages import grid_of
 
 from checkedtables.rows import RowSchema, match_rows
 from checkedtables.table import RowKey, RowKind
-from checkedtables.text import parse_label
+from checkedtables.text import normalize_label, parse_label, squash
 from datadesk.core.domain import DocumentVersion
 from datadesk.core.fetch import INDEX_PATH
 from datadesk.core.index import parse_index
@@ -28,20 +30,12 @@ DATA = REPO / "packages/datadesk/src/datadesk/data"
 SCHEMA_FILE = DATA / "rows" / f"{TABLE}.toml"
 SCHEMA_LABELS = {"Civilian", "Uniform", "TOTAL ALL FUNDS"}
 FORMS = {"{name}", "{name} - Total"}
-DROP = {r"^\(\d+\)\s", r"^NOTE:"}
-FILE_FIELDS = {"table", "root", "drop", "truncation", "row"}
-ROW_FIELDS = {
-    "key",
-    "kind",
-    "entity",
-    "forms",
-    "labels",
-    "parent",
-    "within",
-    "follows",
-    "presence",
-    "periods",
-    "absent_editions",
+ESCAPE = re.compile(r"\\.")
+# Design section 5.1 gives the Streets group row its key, and shape 15 of docs/plans/step-05.md
+# the Commerce one. Each key holds the words of the departments its group joins.
+GROUP_KEYS = {
+    "phl_group_streets_sanitation": "group=streets_with_sanitation",
+    "phl_group_commerce_aviation": "group=commerce_with_aviation",
 }
 PARENTS = {
     "phl_dept_district_attorney": "District Attorney - Total",
@@ -143,14 +137,65 @@ def row_index(file: dict[str, Any], key: str) -> int:
     return index
 
 
+def strings(value: object, path: str) -> Iterator[tuple[str, str]]:
+    if isinstance(value, str):
+        yield path, value
+    elif isinstance(value, dict):
+        for name, item in value.items():
+            yield path, name
+            yield from strings(item, f"{path}.{name}")
+    elif isinstance(value, list):
+        for index, item in enumerate(value):
+            yield from strings(item, f"{path}[{index}]")
+
+
+@cache
+def spellings() -> dict[str, str]:
+    reg = registry()
+    printed = [name.value for entity in reg.entities for name in entity.names]
+    printed += [alias.label for alias in reg.aliases]
+    return {squash(normalize_label(text)): text for text in printed}
+
+
+@cache
+def entity_ids() -> re.Pattern[str]:
+    return re.compile("|".join(rf"\b{re.escape(entity.id)}\b" for entity in registry().entities))
+
+
+# A string holds a spelling when a run of its words, normalized as match_rows normalizes a label,
+# squashes to the spelling squashed. Each regex escape and each registry id is cut first, so
+# r"^Fleet\s+Management" holds a spelling and "dept=phl_dept_finance" holds none.
+def held(text: str) -> list[str]:
+    words = normalize_label(entity_ids().sub(" ", ESCAPE.sub(" ", text))).split()
+    runs = {"".join(words[i:j]) for i in range(len(words)) for j in range(i + 1, len(words) + 1)}
+    return sorted(spelling for run, spelling in spellings().items() if run in runs)
+
+
 def schema_problems(file: dict[str, Any]) -> list[str]:
-    problems = [f"the file has the field {name!r}" for name in file if name not in FILE_FIELDS]
-    problems += [f"drop has the pattern {p!r}" for p in file.get("drop", ()) if p not in DROP]
-    for row in file.get("row", []):
+    rows = file.get("row", [])
+    designed = {
+        f"{TABLE}.row[{index}].key"
+        for index, row in enumerate(rows)
+        if "entity" in row and row.get("key") == GROUP_KEYS.get(row["entity"])
+    }
+    problems = [
+        f"{path} holds {spelling!r}"
+        for path, text in strings(file, TABLE)
+        if path not in designed
+        for spelling in held(text)
+    ]
+    for row in rows:
         key = row.get("key")
-        problems += [f"{key} has the field {name!r}" for name in row if name not in ROW_FIELDS]
-        if "entity" in row and "labels" in row:
-            problems.append(f"{key} names an entity and has labels")
+        if "entity" in row:
+            entity = row["entity"]
+            if "labels" in row:
+                problems.append(f"{key} names an entity and has labels")
+            if key != GROUP_KEYS.get(entity, f"dept={entity}"):
+                problems.append(f"{key} is not the key of {entity}")
+        if row.get("kind") == "breakdown" and not (
+            set(RowKey.parse(row["parent"]).parts) <= set(RowKey.parse(key).parts)
+        ):
+            problems.append(f"{key} does not hold its parent {row['parent']}")
         problems += [
             f"{key} prints {label!r}"
             for label in row.get("labels", ())
