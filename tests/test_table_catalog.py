@@ -242,6 +242,21 @@ def test_the_q4_fy2024_quarter_end_count_is_the_fy2025_q1_prior_year_count() -> 
         assert mid_year != prior_year
 
 
+def test_the_fy2025_q1_budget_ends_june_30_2025_and_the_prior_year_june_30_2024() -> None:
+    table = entry("qcmr_positions")
+    scope = scope_of(table, "2024-09-30")
+    ends: dict[str, date | None] = {}
+    for name, spec in by_name(table, "2024-09-30").items():
+        subject = subject_of(spec, scope)
+        ends[name] = None if subject is None else subject.end
+    assert ends == {
+        **dict.fromkeys(("prior_general", "prior_other", "prior_total"), date(2024, 6, 30)),
+        **dict.fromkeys(("adopted_general", "adopted_other", "adopted_total"), date(2025, 6, 30)),
+        **dict.fromkeys(("actual_general", "actual_other", "actual_total"), date(2024, 9, 30)),
+        "over_under": None,
+    }
+
+
 def test_an_operand_that_is_not_a_column_fails_the_catalog_rules() -> None:
     misread = Derived(How.DIFFERENCE, of=("adopted_total", "actual_totl"))
     copy = positions_with("over_under", lambda spec: replace(spec, meaning=misread))
