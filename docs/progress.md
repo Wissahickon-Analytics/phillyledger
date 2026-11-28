@@ -10,7 +10,7 @@ Every session reads this file first, so it stays short.
 | 2 | Kit, words to cells | check passed | `step-02/a-import-pin`, `step-02/b-value-types`, `step-02/c-words-to-lines`, `step-02/d-lexer`, `step-02/e-records` | November 23, 2026, head `73d428e2`, run 45130645501 |
 | 3 | Archive for the QCMR from FY2022 | check passed | `step-03/a-index`, `step-03/b-listing`, `step-03/c-fetch-plan`, `step-03/d-shell`, `step-03/e-archive` | November 24, 2026, head `647b868b`, run 45538468977 |
 | 4 | Words: PDF adapter, word cache, codec | check passed | `step-04/a-font-code-cells`, `step-04/b-codec-cache`, `step-04/c-words`, `step-04/d-fixtures`, `step-04/e-crops` | November 26, 2026, head `3c3d6df`, run 45927301261, and the owner's words on the row crops |
-| 5 | QCMR positions parser, registry, row schemas, column vocabulary | not started | | |
+| 5 | QCMR positions parser, registry, row schemas, column vocabulary | built as six stacked pull requests, 54, 55, 57, 58, 59 and 60, none landed; 55, 57, 58 and 59 each wait for the owner on one point, and 60 waits for its review | `step-05/a-raised-marks`, `step-05/b-cut`, `step-05/c-rows`, `step-05/d-registry`, `step-05/e-positions`, `step-05/f-vocabulary` | |
 | 6 | Checks, gate and release for positions (first release-quality dataset) | not started | | |
 | 7 | Older QCMR positions | not started | | |
 | 8 | Cash, O-2, O-3, source comparison, `suggest` | not started | | |
@@ -124,18 +124,19 @@ session needs it. A note for one later step goes in `docs/plan-notes.md`.
   `typing.get_type_hints`. A kit dataclass with the field `amount: "Decimal"` and that import
   fails `test_bool_fields_are_page_facts_only` with `NameError`, so import a field's type at run
   time.
-- **`test_closed_lists_are_pinned` pins `NoteKind`, `PeriodRefusal`, `SkipReason` and
-  `UnreadableReason`** (November 22, 2026, step 1, S1-C. Updated November 26, 2026, S4-A). Each
-  list's pin lands in the pull request that creates the list, in
+- **`test_closed_lists_are_pinned` pins `NoteKind`, `PeriodRefusal`, `SkipReason`,
+  `UnreadableReason` and the six vocabulary lists** (November 22, 2026, step 1, S1-C. Updated
+  November 26, 2026, S4-A, and November 28, 2026, S5-F). Each list's pin lands in the pull
+  request that creates the list, in
   `packages/checkedtables/tests/test_library_shape.py` (`CLAUDE.md`, hard rule 6). S3-C
   creates `NoteKind` and writes the test with its pin. Sweep B pins the readers' refusal codes,
   `PeriodRefusal` in `datadesk.core.fetch` and `SkipReason` in `datadesk.core.listings.titles`.
   S4-A pins `UnreadableReason`, the reasons a cell is `Unreadable`, in `checkedtables.kinds`,
-  and S5-C adds `low_confidence` to it.
-  The other lists that design section 11.4
-  pins (`Check`, `RowSel`, `Kind`, `Version`, `Window`, `How`, `Dim` and `Quantity`) do not exist
-  yet. The `StrEnum` classes that S2-B created, such as `Severity`, are pinned nowhere, because
-  section 11.4 does not list them.
+  and S5-C adds `low_confidence` to it. S5-F pins the six vocabulary lists of
+  `datadesk.core.vocab`, `Kind`, `Version`, `Window`, `How`, `Dim` and `Quantity`, each by its
+  values. `Check` and `RowSel`, the other lists that design section 11.4 pins, are step 6's. The
+  `StrEnum` classes that S2-B created, such as `Severity`, are pinned nowhere, because section
+  11.4 does not list them.
 - **Every test runs with sockets blocked** (November 22, 2026, step 1, S1-D). `--disable-socket`
   and the audit hook in the root `conftest.py` apply to every test, so a later adapter contract
   test that needs the network opts in with the `enable_socket` marker of pytest-socket. The
@@ -241,6 +242,12 @@ session needs it. A note for one later step goes in `docs/plan-notes.md`.
   section 12 counts: `core/context.py` 56 lines (estimate 80), `core/records.py` 53 for the
   notes, `TablePages`, `declared_run` and `illegible_pages` (370 for the whole module), and
   `core/tables/qcmr_positions.py` 82 (90), before `measures` (S5-F) and `checks_for` (step 6).
+- **The vocabulary modules against their estimates** (November 28, 2026, S5-F). Counted as
+  design section 12 counts: `core/vocab.py` 112 lines (estimate 120), `core/measures.py` 173
+  (230), `core/periods.py` 40 (200) and `core/tables/catalog.py` 30 (90).
+  `core/tables/qcmr_positions.py` holds 102 with `measures`, 12 past its estimate of 90, and
+  `checks_for` joins it at step 6. The sketch of design section 5.1, with `checks_for`, counts
+  106.
 - **Kit modules against their estimates** (November 23, 2026, step 2. Updated November 25,
   2026, standards sweep B, and November 27, 2026, S5-B and S5-C). The kit size report counts lines that
   are not blank, a comment or a docstring, as design section 12 counts. At the head of sweep B,

@@ -1372,9 +1372,14 @@ class Quantity(StrEnum):         # set on a column that counts something other t
 
 
 ALL = "all"
-DIM_VALUES: Mapping[Dim, tuple[str, ...]]        # RESIDENCY and TAX_BASE; FUND is checked against the registry
-DEFINITIONS: Mapping[str, str]                   # "kind.actual" -> one line, for the release manifest
+DIM_VALUES: MappingProxyType[Dim, tuple[str, ...]]   # RESIDENCY and TAX_BASE; FUND is checked against the registry
+DEFINITIONS: MappingProxyType[str, str]              # "kind.actual" -> one line, for the release manifest
 ```
+
+Step 5 wrote the 37 lines of `DEFINITIONS` from the comments above and the captions that the
+prototype records. The lines of five `Quantity` members, `encumbered_authorizations`,
+`authorizations_merged`, `not_accrued`, `vouchers_payable` and `mergers`, name the caption that
+prints the column, since their meaning is provisional until their table is built (section 17.3).
 
 ```python
 # datadesk/core/measures.py
@@ -1401,6 +1406,8 @@ class Stated:                          # a number the publisher reports
             raise ValueError("a budget column has a version, and only a budget column has one")
         if self.month is not None and self.window is not Window.MONTH:
             raise ValueError("only a month column names a fiscal month")
+        if self.month is not None and not 1 <= self.month <= 12:
+            raise ValueError(f"fiscal month {self.month} is not 1 to 12")
         if self.year > 0:
             raise ValueError("a column never reports a later year than its edition")
 
@@ -1411,6 +1418,9 @@ class Derived:                         # a number the publisher computed from ot
     of: tuple[str, ...]                # operand columns of the same table, in the order `how` reads them;
                                        # a difference takes two or more: of[0] minus each later one
     dims: Dims = ()                    # for a share: which part of the whole
+
+    def __post_init__(self) -> None:   # a difference takes two or more operands, a share one,
+        ...                            # and the other three ways two each
 
 
 @dataclass(frozen=True, slots=True)
@@ -1576,7 +1586,8 @@ def entry(name: str) -> TableEntry: ...       # linear search; KeyError names th
 ```
 
 `TABLES` is a tuple literal. Importing the module runs no code beyond building it. There is no
-dispatch by module-name string and no `PARSER_REVISION`.
+dispatch by module-name string and no `PARSER_REVISION`. Step 5 builds `TableEntry` without
+`checks_for`, which joins with the check DSL at step 6, the first step whose check names a check.
 
 ```python
 # datadesk/core/registry/model.py
@@ -2153,7 +2164,9 @@ def fiscal_quarter(period_end: date) -> tuple[int, int]: ...  # Sep 30 -> (FY+1,
 def fiscal_period(kind: Window, label_year: int, months: tuple[int, int]) -> Period: ...
     # one place for "FY2026 July to December is calendar 2025" (WAGE-Q07) and for the year
     # basis of each window: month, quarter and calendar year use calendar years; FYTD and
-    # fiscal year use July to June (RTT-Q41, WAGE-Q34)
+    # fiscal year use July to June (RTT-Q41, WAGE-Q34). `months` is the first and the last
+    # calendar month, both included, and the period runs from the first day of one to the
+    # last day of the other; ValueError for a month outside 1 to 12 or a span that runs back
 def match_month(token: str) -> int | None: ...                # one-edit match, unique only
 
 
@@ -2493,11 +2506,16 @@ def schema_for(source: RowSchemaSource, version: DocumentVersion, reg: Registry)
 # datadesk/core/measures.py
 def scope_for(version: DocumentVersion, table: TableId, printed: frozenset[str],
               notes: Sequence[EditionNote]) -> tuple[Scope, frozenset[str]]: ...
-    # actual_through is the period end, or the value of a CUTOFF note for this sha (QCASH-Q41);
+    # actual_through is the period end, or the last day of the month that a CUTOFF note for
+    # this sha gives as "YYYY-MM" (QCASH-Q41); ValueError for two such notes or another value;
     # returns the note ids used, which join the parser's used set. It never sees a cell.
 def measure_for(measures: MeasureSet, row: RowKey, column: str) -> MeasureSpec: ...
+    # the override whose match the row's parts hold, else the column's spec; ValueError for
+    # two overrides that match, KeyError for a column with no spec
 def period_of(stated: Stated, scope: Scope) -> Period: ...
-    # the dates a stated column covers, through periods.fiscal_period
+    # the dates a stated column covers, through periods.fiscal_period; a quarter is the fiscal
+    # quarter that holds the last month of the edition's period, and a fiscal month of a grid is
+    # a month of the edition's fiscal year, each `year` years back
 def subject_of(spec: MeasureSpec, scope: Scope) -> Subject | None: ...
     # None for Derived and NotPublished: computed columns are never matched across editions
 def description(meaning: Meaning) -> tuple[object, ...]: ...   # the comparable form the catalog test uses
@@ -3230,23 +3248,24 @@ _LINE_NO = r"(?:\d{1,2}|I)"          # "23 Civilian", "I Uniform" (QPOS-Q08), "2
 _COUNT_WORD = compile(r"\(?\d[\d,]*\)?")
 
 
-_FUND_IDS = {"general": "phl_fund_general", "other": "phl_fund_other", "total": ALL}
-_GROUP_MEANING = {
-    "prior": Stated(Kind.ACTUAL, Window.FISCAL_YEAR, year=-1),       # the level when last year ended
-    "adopted": Stated(Kind.BUDGET, Window.FISCAL_YEAR, version=Version.ADOPTED),
-    "actual": Stated(Kind.ACTUAL, Window.QUARTER),                   # the level when the quarter ended
-}
+_FUND_IDS = (("general", "phl_fund_general"), ("other", "phl_fund_other"), ("total", ALL))
+_GROUP_MEANINGS = (
+    ("prior", Stated(Kind.ACTUAL, Window.FISCAL_YEAR, year=-1)),     # the level when last year ended
+    ("adopted", Stated(Kind.BUDGET, Window.FISCAL_YEAR, version=Version.ADOPTED)),
+    ("actual", Stated(Kind.ACTUAL, Window.QUARTER)),                 # the level when the quarter ended
+)
 
 
 def measures(era: Era, scope: Scope) -> MeasureSet:
-    def count(column: str, meaning: Meaning) -> MeasureSpec:
-        return MeasureSpec(column, meaning, unit="positions", scale=Decimal(1), basis=Basis.POINT)
-
     by_fund = tuple(
-        count(f"{g}_{f}", replace(_GROUP_MEANING[g], dims=((Dim.FUND, _FUND_IDS[f]),)))
-        for g in _GROUP_MEANING for f in _FUND_IDS)
-    variance = count("over_under", Derived(How.DIFFERENCE, of=("adopted_total", "actual_total")))
+        _count(f"{g}_{f}", replace(meaning, dims=((Dim.FUND, fund_id),)))
+        for g, meaning in _GROUP_MEANINGS for f, fund_id in _FUND_IDS)
+    variance = _count("over_under", Derived(How.DIFFERENCE, of=("adopted_total", "actual_total")))
     return MeasureSet((*by_fund, variance))
+
+
+def _count(column: str, meaning: Meaning) -> MeasureSpec:
+    return MeasureSpec(column, meaning, unit="positions", scale=Decimal(1), basis=Basis.POINT)
 
 
 def _is_p1(band: str) -> bool:
@@ -3315,8 +3334,9 @@ def checks_for(era: str, period: Period) -> CheckSet:
 ```
 
 106 lines, with no blank line, docstring or path comment counted. Step 5 built `TABLE`,
-`COLUMNS`, `ERAS`, `_layout` and `parse` as shown and ran them on the 20 editions of FY2022 to
-FY2026. The row schema is data. Department spellings are not in it (change 11):
+`COLUMNS`, `ERAS`, `measures`, `_layout` and `parse` as shown and ran them on the 20 editions of
+FY2022 to FY2026. Its fund and group tables are tuples, since the purity test refuses a dict
+display at module level. The row schema is data. Department spellings are not in it (change 11):
 
 ```toml
 # datadesk/data/rows/qcmr_positions.toml (an excerpt)
@@ -4617,7 +4637,7 @@ outside the list changes the list and the pin together.
 | Package | Outside modules it imports from |
 |---|---|
 | `checkedtables` | `collections.abc`, `dataclasses`, `datetime`, `decimal`, `enum`, `re`, `statistics`, `typing` |
-| `datadesk.core` | `collections`, `collections.abc`, `dataclasses`, `datetime`, `enum`, `hashlib`, `json`, `re`, `tomllib`, `types`, `typing` |
+| `datadesk.core` | `collections`, `collections.abc`, `dataclasses`, `datetime`, `decimal`, `enum`, `hashlib`, `json`, `re`, `tomllib`, `types`, `typing` |
 
 ### 11.2 Property tests
 
@@ -4652,6 +4672,17 @@ outside the list changes the list and the pin together.
     `DIM_VALUES`;
   - every list member has a line in `DEFINITIONS`, and every `Quantity` member is used by at
     least one table.
+
+  Step 5 builds the rules that read one table as one function, `catalog_problems` in
+  `tests/test_table_catalog.py`, which returns its complaints. Beside the rules above, it
+  requires each caption, group, signature and excludes regex to compile, each `decimals` to be
+  None or at least 0, and a percent change, ratio, share or annual growth to have the unit
+  `percent`, as the prototype did. `packages/datadesk/tests/core/test_vocab.py` holds the rule on
+  `DEFINITIONS`. Three rules wait. The one on a check's operands needs the check DSL of step 6.
+  "Every `RowMeasure` names a declared row" needs the table's row keys, and the first override
+  is built at step 8. Until then the rules check that an override names a column and that two
+  overrides of one column disagree on a key part. "Every `Quantity` member is used" holds only
+  once the last table is built.
 
 ### 11.3 Example tests
 
@@ -4770,7 +4801,11 @@ def test_closed_lists_are_pinned() -> None:
     assert [h.value for h in How] == ["difference", "percent_change", "ratio", "share",
                                       "annual_growth"]
     assert [d.value for d in Dim] == ["fund", "residency", "tax_base"]
-    assert len(Quantity) == 14
+    assert [q.value for q in Quantity] == ["obligations", "expenditures", "encumbrances",
+                                           "not_financed", "encumbered_authorizations",
+                                           "authorizations_merged", "cash", "budget_basis",
+                                           "accruals", "not_accrued", "vouchers_payable",
+                                           "mergers", "transactions", "accounts"]
 
 
 def report_budget() -> None:                    # printed in CI and in the PR; never fails the build
@@ -5344,7 +5379,9 @@ prints the `TABLE P-1` band (`docs/plans/step-04.md`, facts 1, 2 and 8).
    two are made equal. Paired fixtures on both sides of each entity seam in the range resolve to
    different entities: "Streets" in FY2025 Q4 is Streets with Sanitation, and in FY2026 Q1 it is
    Streets.
-6. **Checks, gate and release for positions.** Engine, coverage, acks, gate, report; release
+6. **Checks, gate and release for positions.** The check DSL (`checks/dsl.py`), with
+   `checks_for` and its field of `TableEntry`, and the catalog rule on a check's operands;
+   engine, coverage, acks, gate, report; release
    rows, proof, provenance, encoders, diff, `plan_release` and its executor, with conditional
    writes and a two-writer test; the manifest schema. The reader is built at step 13 (section
    18.4).

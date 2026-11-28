@@ -7,11 +7,18 @@ rule band of its group, never by its place in the row (QPOS-Q02). The tenth colu
 "MONTH END", "ACTUAL (OVER)" and "UNDER BUDGET" on three header lines and has no group, so its
 caption regex starts at "MONTH" to caption the column with all three.
 
+`measures` describes the columns as QPOS section 2 reads them. Each of the nine fund columns
+counts positions at a point in time, in the General fund, in the other funds or in all funds: at
+the end of the prior fiscal year, in the year's adopted budget, or at the end of the edition's
+quarter. The tenth is the adopted total less the quarter-end total.
+
 The rows are the closed schema of ``datadesk/data/rows/qcmr_positions.toml``, and the registry
 spells every department (design section 7.2).
 """
 
+from dataclasses import replace
 from datetime import date
+from decimal import Decimal
 from re import compile
 from typing import assert_never
 
@@ -25,7 +32,9 @@ from checkedtables.rows import RowSchema, match_rows, starts_known_row, stray_fi
 from checkedtables.table import Finding, TableId
 from checkedtables.words import Document
 from datadesk.core.context import Failed, ParseContext, Parsed, ParseResult
+from datadesk.core.measures import Basis, Derived, Meaning, MeasureSet, MeasureSpec, Scope, Stated
 from datadesk.core.records import declared_run, illegible_pages
+from datadesk.core.vocab import ALL, Dim, How, Kind, Version, Window
 
 TABLE = "qcmr_positions"
 _COUNT = NumberFormat(decimals=0)
@@ -53,6 +62,34 @@ ERAS = (
         expected=(date(2007, 7, 1), None),
     ),
 )
+
+_FUND_IDS = (("general", "phl_fund_general"), ("other", "phl_fund_other"), ("total", ALL))
+_GROUP_MEANINGS = (
+    ("prior", Stated(Kind.ACTUAL, Window.FISCAL_YEAR, year=-1)),
+    ("adopted", Stated(Kind.BUDGET, Window.FISCAL_YEAR, version=Version.ADOPTED)),
+    ("actual", Stated(Kind.ACTUAL, Window.QUARTER)),
+)
+
+
+def measures(era: Era, scope: Scope) -> MeasureSet:
+    """Describe the ten columns, which mean the same in every era and scope.
+
+    Each count is a level, so the quarter-end count of a Q4 edition and the prior-year count of
+    the next Q1 are one subject. The tenth column is the adopted total less the quarter-end
+    total, so a positive value is under budget.
+    """
+    by_fund = tuple(
+        _count(f"{group}_{fund}", replace(meaning, dims=((Dim.FUND, fund_id),)))
+        for group, meaning in _GROUP_MEANINGS
+        for fund, fund_id in _FUND_IDS
+    )
+    variance = _count("over_under", Derived(How.DIFFERENCE, of=("adopted_total", "actual_total")))
+    return MeasureSet((*by_fund, variance))
+
+
+def _count(column: str, meaning: Meaning) -> MeasureSpec:
+    return MeasureSpec(column, meaning, unit="positions", scale=Decimal(1), basis=Basis.POINT)
+
 
 # "23 Civilian" and "I Uniform" on the scans (QPOS-Q08), and the two digits of the sideways
 # page number that join a row in FY2022 Q1 to FY2023 Q3 (QPOS-Q10).

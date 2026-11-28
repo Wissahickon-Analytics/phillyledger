@@ -25,6 +25,7 @@ from datadesk.core.fetch import PeriodRefusal
 from datadesk.core.listings.titles import SkipReason
 from datadesk.core.records import NoteKind
 from datadesk.core.tables import bib_common, collections_common, qcmr_common, supp_common
+from datadesk.core.vocab import Dim, How, Kind, Quantity, Version, Window
 
 if TYPE_CHECKING:
     import _typeshed
@@ -414,6 +415,41 @@ def test_closed_lists_are_pinned() -> None:
         "font_code",
         "reviewed_null",
         "low_confidence",
+    ]
+    assert [k.value for k in Kind] == ["actual", "budget", "projection"]
+    assert [v.value for v in Version] == ["none", "adopted", "revised", "proposed", "target"]
+    assert [w.value for w in Window] == [
+        "month",
+        "quarter",
+        "fiscal_ytd",
+        "calendar_ytd",
+        "fiscal_year",
+        "calendar_year",
+        "tax_year",
+    ]
+    assert [h.value for h in How] == [
+        "difference",
+        "percent_change",
+        "ratio",
+        "share",
+        "annual_growth",
+    ]
+    assert [d.value for d in Dim] == ["fund", "residency", "tax_base"]
+    assert [q.value for q in Quantity] == [
+        "obligations",
+        "expenditures",
+        "encumbrances",
+        "not_financed",
+        "encumbered_authorizations",
+        "authorizations_merged",
+        "cash",
+        "budget_basis",
+        "accruals",
+        "not_accrued",
+        "vouchers_payable",
+        "mergers",
+        "transactions",
+        "accounts",
     ]
 
 
