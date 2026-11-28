@@ -9,6 +9,8 @@ from packages.checkedtables.tests.grid import (
     OPTIONAL_OVER,
     RULE_XS,
     SECOND,
+    at,
+    grid_page,
     header,
     values,
 )
@@ -268,12 +270,28 @@ def test_a_row_whose_parent_is_not_in_the_table_gives_no_table() -> None:
     ]
 
 
-def test_the_columns_of_the_table_follow_the_binding_of_the_cut() -> None:
-    cut = cut_of(values("Parks", "12", "3", "14", "4", "2"))
+def test_a_column_caption_is_the_words_that_bound_it_and_not_a_title_over_its_lane() -> None:
+    titled = header().replace("TABLE X-1", at((15, "TABLE X-1 ALL STAFF")))
+    text = "\n".join((titled, values("Parks", "12", "3", "14", "4", "2"), TOTAL))
+    cut = cut_pages(Layout("staff", (ERA,), BODY), (grid_page(3, text),), ON)
+    assert isinstance(cut, CutPages), cut
+    first = cut.binding.columns[0][1]
+    assert first is not None
+    assert "TABLE" in first.caption
     table = assembled(cut).table
     assert table is not None
-    assert table.columns == tuple(
-        Column(spec.name, spec.kind, lane.caption, True)
-        for spec, lane in cut.binding.columns
-        if lane is not None
+    assert table.columns == (
+        Column("first_general", ValueKind.COUNT, "FIRST YEAR General", True),
+        Column("first_other", ValueKind.COUNT, "FIRST YEAR Other", True),
+        Column("second_general", ValueKind.COUNT, "SECOND YEAR General", True),
+        Column("second_other", ValueKind.COUNT, "SECOND YEAR Other", True),
+        Column("over_under", ValueKind.COUNT, "(OVER) UNDER", True),
     )
+
+
+def test_a_caption_regex_that_finds_part_of_a_word_captions_the_whole_word() -> None:
+    era = replace(ERA, columns=(replace(ERA.columns[0], caption="Gen"), *ERA.columns[1:]))
+    cut = cut_of(values("Parks", "12", "3", "14", "4", "2"), era=era)
+    table = assembled(cut).table
+    assert table is not None
+    assert table.columns[0].caption == "FIRST YEAR General"

@@ -78,10 +78,11 @@ def assemble(
     -------
     Assembly
         The table, with a column for each column of the first page's binding, in its declared
-        order, and a row for each keyed row. A row's `label_words` are its prefix words, then
-        its label words. A record is in `used` when it changed a cell. The findings come cell by
-        cell, then for the table. The findings of `reading_for` and `apply_reading` keep their
-        own subjects. The others are BLOCK, with the subject
+        order, captioned with the words that bound it there, and a row for each keyed row. A
+        row's `label_words` are its prefix words, then its label words. A record is in `used`
+        when it changed a cell. The findings come cell by cell, then for the table. The
+        findings of `reading_for` and `apply_reading` keep their own subjects. The others are
+        BLOCK, with the subject
         ``"<doc sha8>:<table id>:<row key>"``: ``duplicate_dash_rule`` on the row's page for a
         dash that two or more rules name, which keeps its meaning, ``unreadable_cell`` on the
         row's page for an `Unreadable` cell that no reading accepts, and then, on no page,
@@ -127,8 +128,9 @@ def assemble(
     stops = _stops(built, subject)
     if stops:
         return Assembly(None, (*findings, *stops), frozenset(used))
+    captions = dict(cut.binding.captions)
     columns = tuple(
-        Column(spec.name, spec.kind, "" if lane is None else lane.caption, lane is not None)
+        Column(spec.name, spec.kind, captions.get(spec.name, ""), lane is not None)
         for spec, lane in cut.binding.columns
     )
     numbers = tuple(page.number for page in cut.pages)

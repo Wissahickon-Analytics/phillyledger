@@ -52,7 +52,7 @@ FIELD_SNAPSHOT: dict[str, tuple[str, ...]] = {
     "ColumnSpec": ("name", "caption", "kind", "fmt", "presence", "dash", "group"),
     "Era": ("name", "signature", "columns", "expected", "excludes"),
     "Lane": ("x0", "x1", "caption"),
-    "Binding": ("era", "columns", "label_right"),
+    "Binding": ("era", "columns", "label_right", "captions"),
     "RowKey": ("parts",),
     "Finding": ("severity", "code", "subject", "message", "page"),
     "ReviewedReading": ("id", "doc_sha256", "page", "box", "source", "seen", "reading", "reason"),

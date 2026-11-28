@@ -245,6 +245,7 @@ session needs it. A note for one later step goes in `docs/plan-notes.md`.
   with its check. Every other module is under its estimate. At the head of S5-B the report
   prints 1,213 lines: `lines` 90 (120), `pages` 61 (130), `columns` 240 (330), `pipeline` 123
   (130), `lex` 176 (230), which gave its raised-digit test to `lines`, and `rows` 13 for
-  `RawRow` alone (290). At the head of S5-C it prints 1,635 lines: `table` 144 (190), `rows`
-  199 (290), `assemble` 149 (140) and `kinds` 31 (40). `assemble` runs 9 lines past its
-  estimate, most of them the formatter's one line for each argument of `Row`.
+  `RawRow` alone (290). At the head of S5-C it prints 1,654 lines: `table` 144 (190), `rows`
+  199 (290), `assemble` 150 (140), `kinds` 31 (40), and `columns` 258, which keeps the words
+  that bound each column. `assemble` runs 10 lines past its estimate, most of them the
+  formatter's one line for each argument of `Row`.

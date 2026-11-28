@@ -155,11 +155,16 @@ class Binding:
         column that the page does not print.
     label_right : float
         The x where the label area ends: the left edge of the first lane.
+    captions : tuple[tuple[str, str], ...]
+        Each column that `bind_columns` bound by caption, in declared order, with the words that
+        bound it: the words its group regex found in its band's caption, then the words its
+        caption regex found in its lane's caption. Empty from `bind_by_position`.
     """
 
     era: str
     columns: tuple[tuple[ColumnSpec, Lane | None], ...]
     label_right: float
+    captions: tuple[tuple[str, str], ...] = ()
 
 
 def choose_era(eras: Sequence[Era], header_text: str, on: date) -> Era | Finding:
@@ -305,16 +310,17 @@ def bind_columns(
     Returns
     -------
     Binding | Finding
-        The binding, whose lanes hold their captions. Otherwise a BLOCK finding whose subject
-        is the era's name, the first of: ``columns_tie`` when two candidates of different
-        captions or groups match a lane equally long, ``column_unbound`` when a required column
-        has no lane, ``lane_unclaimed`` when a lane has no candidate, and
-        ``columns_out_of_order`` when the bound columns are not in their declared order left to
-        right.
+        The binding, whose lanes hold their captions and whose `captions` hold the words that
+        bound each column. Otherwise a BLOCK finding whose subject is the era's name, the first
+        of: ``columns_tie`` when two candidates of different captions or groups match a lane
+        equally long, ``column_unbound`` when a required column has no lane, ``lane_unclaimed``
+        when a lane has no candidate, and ``columns_out_of_order`` when the bound columns are
+        not in their declared order left to right.
     """
     named = [replace(lane, caption=_caption(header, _over(lane))) for lane in lanes]
     groups = [replace(band, caption=_caption(header, _centered(band))) for band in bands]
     bound: dict[str, Lane] = {}
+    bound_by: dict[str, str] = {}
     unclaimed: list[Lane] = []
     ties: list[str] = []
     for lane in named:
@@ -335,6 +341,7 @@ def bind_columns(
             ties.append(f"{', '.join(column.name for column in top)} over {lane.caption!r}")
             continue
         bound[top[0].name] = lane
+        bound_by[top[0].name] = _bound_caption(top[0], group, lane.caption)
     missing = [
         column.name
         for column in era.columns
@@ -353,7 +360,8 @@ def bind_columns(
         message = f"the page prints {', '.join(printed)} left to right"
         return _block("columns_out_of_order", era.name, message)
     columns = tuple((column, bound.get(column.name)) for column in era.columns)
-    return Binding(era.name, columns, min(lane.x0 for lane in bound.values()))
+    captioned = tuple((column.name, bound_by[column.name]) for column, lane in columns if lane)
+    return Binding(era.name, columns, min(lane.x0 for lane in bound.values()), captioned)
 
 
 def bind_by_position(era: Era, lanes: Sequence[Lane]) -> Binding | Finding:
@@ -503,6 +511,29 @@ def _caption(header: Sequence[Line], holds: Callable[[Word], bool]) -> str:
     return normalize_space(
         " ".join(word.text for line in header for word in line.words if holds(word))
     )
+
+
+def _bound_caption(column: ColumnSpec, group: str | None, caption: str) -> str:
+    """Return the words that bind a column: its group's in the band's caption, then its own."""
+    grouped = "" if column.group is None or group is None else _touched(column.group, group)
+    return " ".join(part for part in (grouped, _touched(column.caption, caption)) if part)
+
+
+def _touched(regex: str, caption: str) -> str:
+    """Return each whole word of a caption that the regex's first match touches.
+
+    A match inside a word gives the whole word, and no match gives the empty string.
+    """
+    found = compile(regex).search(caption)
+    if found is None:
+        return ""
+    touched: list[str] = []
+    start = 0
+    for word in caption.split(" "):
+        if start < found.end() and found.start() < start + len(word):
+            touched.append(word)
+        start += len(word) + 1
+    return " ".join(touched)
 
 
 def _in_group(column: ColumnSpec, group: str | None) -> bool:

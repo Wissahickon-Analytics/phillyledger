@@ -381,6 +381,10 @@ class Binding:
     columns: tuple[tuple[ColumnSpec, Lane | None], ...]   # None: optional column not printed
     label_right: float                                    # x where the label area ends: the
                                                           # first lane's x0
+    captions: tuple[tuple[str, str], ...] = ()            # each column bound by caption, with
+                                                          # the words its group regex found in
+                                                          # its band, then its caption regex in
+                                                          # its lane; empty from bind_by_position
 ```
 
 What these make impossible:
@@ -569,8 +573,9 @@ class TableId:
 class Column:
     name: str
     kind: ValueKind
-    caption: str               # printed caption text, for the release: the first page's lane
-                               # caption; empty when not printed or bound by position
+    caption: str               # printed caption text, for the release: the words that bound
+                               # the column on the first page (Binding.captions); empty when
+                               # not printed or bound by position
     printed: bool              # a fact read from the page: False when an optional column was absent
 
 
@@ -2028,7 +2033,8 @@ def assemble(table_id: TableId, cut: CutPages, rows: Sequence[KeyedRow],
     # NotApplicable, so the floor reads neither. An Unreadable cell without an accepting
     # reading is BLOCK unreadable_cell. A record is in `used` when it changed a cell.
     # Duplicate keys (duplicate_key) or dangling parents (dangling_parent) give table=None
-    # with findings. The columns are the first page's binding, the caption from its lane.
+    # with findings. The columns are the first page's binding, each captioned with the words
+    # that bound it there.
 
 
 # checkedtables/checks/engine.py

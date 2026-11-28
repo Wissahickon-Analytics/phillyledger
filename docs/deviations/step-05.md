@@ -189,13 +189,13 @@ to `docs/plans/step-05.md`.
   rows and no table name, so its subject is `<doc sha8>:stray:<printed label>`, as the reading
   findings use `<doc sha8>:reading:<id>`. Each code has a test in `test_rows.py` or
   `test_assemble.py`. Design section 3.1.
-- **What a row and a column carry** (November 27, 2026, S5-C). The design left three things
-  open. `Row.label_words` holds the line number words and then the label words, the words of
-  `Label.printed`, so every printed word of a row has a place in the table. `Column.caption` is
-  the first page's lane caption. A dash rule names itself on a `Dash` only when it sets ZERO,
-  which keeps the `Dash` block true, and a record is in `used` only when it changed a cell.
-  `starts_known_row` takes a line whose `normalize_label` text is a schema label or starts with
-  one and a space. Tests in `test_assemble.py` and `test_rows.py`. Design sections 2.1 and 3.1.
+- **Four choices the design left open** (November 27, 2026, S5-C). `Row.label_words` holds the
+  line number words and then the label words, the words of `Label.printed`, so every printed
+  word of a row has a place in the table. A dash rule names itself on a `Dash` only when it
+  sets ZERO, which keeps the `Dash` block true, and a record is in `used` only when it changed
+  a cell. `starts_known_row` takes a line whose `normalize_label` text is a schema label or
+  starts with one and a space. Tests in `test_assemble.py` and `test_rows.py`. Design sections
+  2.1 and 3.1.
 - **The ink property names its places** (November 27, 2026, S5-C). Section 11.2 listed a cell, a
   label, a prefix, furniture, and a stray-word or unknown-row finding. A header line is a place
   too, as clause C2 of the plan says, and an `ambiguous_row` finding names its raw row as
@@ -206,3 +206,15 @@ to `docs/plans/step-05.md`.
   and 35 OCR pages, and every word has one place. The probe above found none of the 18,541
   words of the 40 grid fixtures out of place.
   Design section 11.2.
+- **A column's caption is the words that bound it, and the binding keeps them** (November 27,
+  2026, S5-C fix round). `Column.caption`, which the release publishes as `caption_printed`, was
+  the first page's lane caption: every header word over the lane, title lines included. On all
+  20 P-1 editions some caption held title words, such as `TABLE P-1 CITY MANAGERS FULL TIME
+  POSITIONS ALL FUNDS PERIOD ENDING JUNE ADOPTED General` for `adopted_general` on page 33 of
+  `2026-06-30` (finding 1 of the Codex review). `bind_columns` now keeps, in the new field
+  `Binding.captions`, the whole words that the column's group regex found in its band's caption
+  and then those its caption regex found in its lane's caption, and `assemble` captions each
+  column with them. The lanes, bands and their captions do not change, and a dump of the
+  bindings and raw rows of the 40 grid fixtures is the same before and after.
+  `test_each_p1_caption_is_the_words_that_bound_its_column_and_no_title_word` in
+  `tests/test_p1_captions.py`. Design sections 2.1 and 3.1.
