@@ -1,0 +1,14 @@
+# Scopes that Table P-1 prints as one row and the City runs as several departments. No page
+# names a group, so a group has no name. Its P-1 label is an alias in aliases/qcmr_positions.toml.
+
+# Streets with Sanitation through FY2025 (QPOS-Q12). FY2025 Q4 prints Streets as 1,652 General
+# and 674 Other actual. FY2026 Q1 prints those prior-year counts under Sanitation and Streets.
+[[group]]
+id = "phl_group_streets_sanitation"
+members = ["phl_dept_streets", "phl_dept_streets_sanitation"]
+
+# Commerce with Aviation: the FY2024 grids print "In FY23 and prior, positions for the
+# Department of Aviation was reported under the Department of Commerce."
+[[group]]
+id = "phl_group_commerce_aviation"
+members = ["phl_dept_commerce", "phl_dept_aviation"]

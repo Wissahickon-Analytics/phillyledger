@@ -1,0 +1,236 @@
+# Departments, with each name as the pages print it and the fiscal years it holds in.
+# A department keeps its id from the old repo's config/entities.yml. A spelling that changes
+# inside a fiscal year is an alias with the shas of its editions, in aliases/.
+
+[[department]]
+id = "phl_dept_auditing_city_controllers_office"
+names = [{ value = "Auditing (City Controller's Office)" }]
+
+[[department]]
+id = "phl_dept_aviation"
+names = [{ value = "Aviation" }]
+
+[[department]]
+id = "phl_dept_board_of_ethics"
+names = [{ value = "Board of Ethics" }]
+
+[[department]]
+id = "phl_dept_board_of_pensions"
+names = [{ value = "Board of Pensions" }]
+
+[[department]]
+id = "phl_dept_board_of_revision_of_taxes"
+names = [{ value = "Board of Revision of Taxes" }]
+
+[[department]]
+id = "phl_dept_citizens_police_oversight_commission"
+names = [{ value = "Citizens Police Oversight Commission" }]
+
+[[department]]
+id = "phl_dept_city_commissioners_election_board"
+names = [{ value = "City Commissioners (Election Board)" }]
+
+[[department]]
+id = "phl_dept_city_council"
+names = [{ value = "City Council" }]
+
+[[department]]
+id = "phl_dept_city_representative"
+names = [{ value = "City Representative" }]
+
+[[department]]
+id = "phl_dept_city_treasurer"
+names = [{ value = "City Treasurer" }]
+
+[[department]]
+id = "phl_dept_civil_service_commission"
+names = [{ value = "Civil Service Commission" }]
+
+[[department]]
+id = "phl_dept_commerce"
+names = [{ value = "Commerce" }]
+
+[[department]]
+id = "phl_dept_district_attorney"
+names = [{ value = "District Attorney" }]
+
+[[department]]
+id = "phl_dept_finance"
+names = [{ value = "Finance" }]
+
+[[department]]
+id = "phl_dept_fire"
+names = [{ value = "Fire" }]
+
+[[department]]
+id = "phl_dept_first_judicial_district"
+names = [{ value = "First Judicial District" }]
+
+[[department]]
+id = "phl_dept_fleet_management"
+names = [
+  { value = "Fleet Services", first_fy = 2022 },
+]
+
+[[department]]
+id = "phl_dept_free_library"
+names = [{ value = "Free Library" }]
+
+[[department]]
+id = "phl_dept_human_relations_commission"
+names = [{ value = "Human Relations Commission" }]
+
+[[department]]
+id = "phl_dept_human_services"
+names = [{ value = "Human Services" }]
+
+[[department]]
+id = "phl_dept_labor_mayors_office_of"
+names = [{ value = "Labor" }]
+
+[[department]]
+id = "phl_dept_law"
+names = [{ value = "Law" }]
+
+[[department]]
+id = "phl_dept_licenses_and_inspections"
+names = [{ value = "Licenses & Inspections" }]
+
+[[department]]
+id = "phl_dept_l_and_i_board_of_building_standards"
+names = [{ value = "L&I-Board of Building Standards" }]
+
+[[department]]
+id = "phl_dept_l_and_i_board_of_l_and_i_review"
+names = [{ value = "L&I-Board of L & I Review" }]
+
+[[department]]
+id = "phl_dept_managing_directors_office"
+names = [{ value = "Managing Director's Office" }]
+
+[[department]]
+id = "phl_dept_mayors_office"
+names = [{ value = "Mayor's Office" }]
+
+[[department]]
+id = "phl_dept_mayors_office_of_community_empowerment_and_oppo"
+names = [{ value = "Mayor's Office-Comm. Empowerment & Opp." }]
+
+[[department]]
+id = "phl_dept_neighborhood_community_action_centers"
+names = [{ value = "Mayor's Office-Neighborhood Comm. Act. Ctrs." }]
+
+[[department]]
+id = "phl_dept_mural_arts_program"
+names = [{ value = "Mural Arts Program" }]
+
+[[department]]
+id = "phl_dept_office_of_arts_and_culture"
+names = [
+  { value = "Office of Arts and Culture", last_fy = 2025 },
+  { value = "Creative Philadelphia", first_fy = 2026 },
+]
+
+[[department]]
+id = "phl_dept_office_of_behavioral_health_and_intellectual_dis"
+names = [{ value = "Office of Behavioral Hlth & Intellectual disAbility" }]
+
+[[department]]
+id = "phl_dept_office_of_the_chief_administrative_officer"
+names = [{ value = "Office of the Chief Administrative Officer" }]
+
+[[department]]
+id = "phl_dept_office_of_children_and_families"
+names = [{ value = "Office of Children and Families" }]
+
+[[department]]
+id = "phl_dept_office_of_education"
+names = [{ value = "Office of Education" }]
+
+[[department]]
+id = "phl_dept_office_of_homeless_services"
+names = [{ value = "Office of Homeless Services" }]
+
+[[department]]
+id = "phl_dept_office_of_human_resources"
+names = [{ value = "Office of Human Resources" }]
+
+[[department]]
+id = "phl_dept_office_of_innovation_and_technology"
+names = [{ value = "Office of Innovation and Technology" }]
+
+[[department]]
+id = "phl_dept_office_of_the_inspector_general"
+names = [{ value = "Office of the Inspector General" }]
+
+[[department]]
+id = "phl_dept_office_of_property_assessment"
+names = [{ value = "Office of Property Assessment" }]
+
+[[department]]
+id = "phl_dept_office_of_public_safety"
+names = [{ value = "Office of Public Safety" }]
+
+[[department]]
+id = "phl_dept_office_of_sustainability"
+names = [{ value = "Office of Sustainability" }]
+
+[[department]]
+id = "phl_dept_parks_and_recreation"
+names = [{ value = "Parks and Recreation" }]
+
+[[department]]
+id = "phl_dept_planning_and_development"
+names = [{ value = "Planning & Development" }]
+
+[[department]]
+id = "phl_dept_police"
+names = [{ value = "Police" }]
+
+[[department]]
+id = "phl_dept_prisons"
+names = [{ value = "Prisons" }]
+
+[[department]]
+id = "phl_dept_procurement"
+names = [{ value = "Procurement" }]
+
+[[department]]
+id = "phl_dept_public_health"
+names = [{ value = "Public Health" }]
+
+[[department]]
+id = "phl_dept_public_property"
+names = [{ value = "Public Property" }]
+
+[[department]]
+id = "phl_dept_records"
+names = [{ value = "Records" }]
+
+[[department]]
+id = "phl_dept_register_of_wills"
+names = [{ value = "Register of Wills" }]
+
+[[department]]
+id = "phl_dept_revenue"
+names = [{ value = "Revenue" }]
+
+[[department]]
+id = "phl_dept_streets_sanitation"
+names = [{ value = "Sanitation" }]
+
+[[department]]
+id = "phl_dept_sheriff"
+names = [{ value = "Sheriff" }]
+
+[[department]]
+id = "phl_dept_streets"
+names = [{ value = "Streets" }]
+
+[[department]]
+id = "phl_dept_water"
+names = [{ value = "Water" }]
+
+[[department]]
+id = "phl_dept_water_sewer_and_stormwater_rate_board"
+names = [{ value = "Water,Sewer & Stormwater Rate Board" }]

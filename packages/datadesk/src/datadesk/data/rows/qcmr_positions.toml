@@ -1,0 +1,378 @@
+# The rows of QCMR Table P-1, full-time positions by department, in FY2022 Q1 to FY2026 Q4.
+# A row that names an entity carries no labels: the registry spells it (design section 7.2).
+# A row that some editions do not print has periods for the editions that do. A period starts
+# on the first day of the first quarter that prints the row, and ends open when FY2026 Q4,
+# the newest edition, prints it. Fact and shape numbers are those of docs/plans/step-05.md.
+table = "qcmr_positions"
+root = "line=total_all_funds"
+# The footnotes and the notice under the rows of the first grid page (shape 10).
+drop = ['^\(\d+\)\s', '^NOTE:']
+
+[[row]]
+key = "dept=phl_dept_auditing_city_controllers_office"
+kind = "item"
+entity = "phl_dept_auditing_city_controllers_office"
+
+[[row]]
+key = "dept=phl_dept_aviation"
+kind = "item"
+entity = "phl_dept_aviation"
+periods = [["2023-07-01", ""]]
+
+[[row]]
+key = "dept=phl_dept_board_of_ethics"
+kind = "item"
+entity = "phl_dept_board_of_ethics"
+
+[[row]]
+key = "dept=phl_dept_board_of_pensions"
+kind = "item"
+entity = "phl_dept_board_of_pensions"
+
+[[row]]
+key = "dept=phl_dept_board_of_revision_of_taxes"
+kind = "item"
+entity = "phl_dept_board_of_revision_of_taxes"
+
+[[row]]
+key = "dept=phl_dept_citizens_police_oversight_commission"
+kind = "item"
+entity = "phl_dept_citizens_police_oversight_commission"
+periods = [["2025-07-01", ""]]
+
+[[row]]
+key = "dept=phl_dept_city_commissioners_election_board"
+kind = "item"
+entity = "phl_dept_city_commissioners_election_board"
+
+[[row]]
+key = "dept=phl_dept_city_council"
+kind = "item"
+entity = "phl_dept_city_council"
+
+[[row]]
+key = "dept=phl_dept_city_representative"
+kind = "item"
+entity = "phl_dept_city_representative"
+periods = [
+  ["2021-07-01", "2021-12-31"],
+  ["2022-07-01", "2023-06-30"],
+  ["2024-04-01", "2024-06-30"],
+  ["2025-07-01", ""],
+]
+
+[[row]]
+key = "dept=phl_dept_city_treasurer"
+kind = "item"
+entity = "phl_dept_city_treasurer"
+
+[[row]]
+key = "dept=phl_dept_civil_service_commission"
+kind = "item"
+entity = "phl_dept_civil_service_commission"
+
+# Commerce labels this group through FY2023 Q4, and the department from FY2024 Q1 (fact 13).
+[[row]]
+key = "group=commerce_with_aviation"
+kind = "item"
+entity = "phl_group_commerce_aviation"
+periods = [["2021-07-01", "2023-06-30"]]
+
+[[row]]
+key = "dept=phl_dept_commerce"
+kind = "item"
+entity = "phl_dept_commerce"
+periods = [["2023-07-01", ""]]
+
+[[row]]
+key = "dept=phl_dept_district_attorney"
+kind = "subtotal"
+entity = "phl_dept_district_attorney"
+forms = ["{name} - Total"]
+
+[[row]]
+key = "breakdown=civilian|dept=phl_dept_district_attorney"
+kind = "breakdown"
+parent = "dept=phl_dept_district_attorney"
+within = "dept=phl_dept_district_attorney"
+labels = ["Civilian"]
+
+[[row]]
+key = "breakdown=uniform|dept=phl_dept_district_attorney"
+kind = "breakdown"
+parent = "dept=phl_dept_district_attorney"
+within = "dept=phl_dept_district_attorney"
+labels = ["Uniform"]
+
+[[row]]
+key = "dept=phl_dept_finance"
+kind = "item"
+entity = "phl_dept_finance"
+
+[[row]]
+key = "dept=phl_dept_fire"
+kind = "subtotal"
+entity = "phl_dept_fire"
+forms = ["{name} - Total"]
+
+[[row]]
+key = "breakdown=civilian|dept=phl_dept_fire"
+kind = "breakdown"
+parent = "dept=phl_dept_fire"
+within = "dept=phl_dept_fire"
+labels = ["Civilian"]
+
+[[row]]
+key = "breakdown=uniform|dept=phl_dept_fire"
+kind = "breakdown"
+parent = "dept=phl_dept_fire"
+within = "dept=phl_dept_fire"
+labels = ["Uniform"]
+
+[[row]]
+key = "dept=phl_dept_first_judicial_district"
+kind = "item"
+entity = "phl_dept_first_judicial_district"
+
+[[row]]
+key = "dept=phl_dept_fleet_management"
+kind = "item"
+entity = "phl_dept_fleet_management"
+
+[[row]]
+key = "dept=phl_dept_free_library"
+kind = "item"
+entity = "phl_dept_free_library"
+
+[[row]]
+key = "dept=phl_dept_human_relations_commission"
+kind = "item"
+entity = "phl_dept_human_relations_commission"
+
+[[row]]
+key = "dept=phl_dept_human_services"
+kind = "item"
+entity = "phl_dept_human_services"
+
+[[row]]
+key = "dept=phl_dept_labor_mayors_office_of"
+kind = "item"
+entity = "phl_dept_labor_mayors_office_of"
+
+[[row]]
+key = "dept=phl_dept_law"
+kind = "item"
+entity = "phl_dept_law"
+
+[[row]]
+key = "dept=phl_dept_licenses_and_inspections"
+kind = "item"
+entity = "phl_dept_licenses_and_inspections"
+
+[[row]]
+key = "dept=phl_dept_l_and_i_board_of_building_standards"
+kind = "item"
+entity = "phl_dept_l_and_i_board_of_building_standards"
+
+[[row]]
+key = "dept=phl_dept_l_and_i_board_of_l_and_i_review"
+kind = "item"
+entity = "phl_dept_l_and_i_board_of_l_and_i_review"
+
+[[row]]
+key = "dept=phl_dept_managing_directors_office"
+kind = "item"
+entity = "phl_dept_managing_directors_office"
+
+[[row]]
+key = "dept=phl_dept_mayors_office"
+kind = "item"
+entity = "phl_dept_mayors_office"
+
+[[row]]
+key = "dept=phl_dept_mayors_office_of_community_empowerment_and_oppo"
+kind = "item"
+entity = "phl_dept_mayors_office_of_community_empowerment_and_oppo"
+
+[[row]]
+key = "dept=phl_dept_neighborhood_community_action_centers"
+kind = "item"
+entity = "phl_dept_neighborhood_community_action_centers"
+periods = [["2025-07-01", ""]]
+
+[[row]]
+key = "dept=phl_dept_mural_arts_program"
+kind = "item"
+entity = "phl_dept_mural_arts_program"
+
+[[row]]
+key = "dept=phl_dept_office_of_arts_and_culture"
+kind = "item"
+entity = "phl_dept_office_of_arts_and_culture"
+periods = [
+  ["2021-07-01", "2021-12-31"],
+  ["2022-07-01", "2023-06-30"],
+  ["2024-04-01", ""],
+]
+
+[[row]]
+key = "dept=phl_dept_office_of_behavioral_health_and_intellectual_dis"
+kind = "item"
+entity = "phl_dept_office_of_behavioral_health_and_intellectual_dis"
+
+[[row]]
+key = "dept=phl_dept_office_of_the_chief_administrative_officer"
+kind = "item"
+entity = "phl_dept_office_of_the_chief_administrative_officer"
+
+[[row]]
+key = "dept=phl_dept_office_of_children_and_families"
+kind = "item"
+entity = "phl_dept_office_of_children_and_families"
+periods = [["2021-07-01", "2024-06-30"]]
+
+[[row]]
+key = "dept=phl_dept_office_of_education"
+kind = "item"
+entity = "phl_dept_office_of_education"
+periods = [["2024-07-01", ""]]
+
+[[row]]
+key = "dept=phl_dept_office_of_homeless_services"
+kind = "item"
+entity = "phl_dept_office_of_homeless_services"
+
+[[row]]
+key = "dept=phl_dept_office_of_human_resources"
+kind = "item"
+entity = "phl_dept_office_of_human_resources"
+
+[[row]]
+key = "dept=phl_dept_office_of_innovation_and_technology"
+kind = "item"
+entity = "phl_dept_office_of_innovation_and_technology"
+
+[[row]]
+key = "dept=phl_dept_office_of_the_inspector_general"
+kind = "item"
+entity = "phl_dept_office_of_the_inspector_general"
+
+[[row]]
+key = "dept=phl_dept_office_of_property_assessment"
+kind = "item"
+entity = "phl_dept_office_of_property_assessment"
+
+[[row]]
+key = "dept=phl_dept_office_of_public_safety"
+kind = "item"
+entity = "phl_dept_office_of_public_safety"
+periods = [["2025-07-01", ""]]
+
+[[row]]
+key = "dept=phl_dept_office_of_sustainability"
+kind = "item"
+entity = "phl_dept_office_of_sustainability"
+
+[[row]]
+key = "dept=phl_dept_parks_and_recreation"
+kind = "item"
+entity = "phl_dept_parks_and_recreation"
+
+[[row]]
+key = "dept=phl_dept_planning_and_development"
+kind = "item"
+entity = "phl_dept_planning_and_development"
+
+[[row]]
+key = "dept=phl_dept_police"
+kind = "subtotal"
+entity = "phl_dept_police"
+forms = ["{name} - Total"]
+
+[[row]]
+key = "breakdown=civilian|dept=phl_dept_police"
+kind = "breakdown"
+parent = "dept=phl_dept_police"
+within = "dept=phl_dept_police"
+labels = ["Civilian"]
+
+[[row]]
+key = "breakdown=uniform|dept=phl_dept_police"
+kind = "breakdown"
+parent = "dept=phl_dept_police"
+within = "dept=phl_dept_police"
+labels = ["Uniform"]
+
+[[row]]
+key = "dept=phl_dept_prisons"
+kind = "item"
+entity = "phl_dept_prisons"
+
+[[row]]
+key = "dept=phl_dept_procurement"
+kind = "item"
+entity = "phl_dept_procurement"
+
+[[row]]
+key = "dept=phl_dept_public_health"
+kind = "item"
+entity = "phl_dept_public_health"
+
+[[row]]
+key = "dept=phl_dept_public_property"
+kind = "item"
+entity = "phl_dept_public_property"
+
+[[row]]
+key = "dept=phl_dept_records"
+kind = "item"
+entity = "phl_dept_records"
+
+[[row]]
+key = "dept=phl_dept_register_of_wills"
+kind = "item"
+entity = "phl_dept_register_of_wills"
+
+[[row]]
+key = "dept=phl_dept_revenue"
+kind = "item"
+entity = "phl_dept_revenue"
+
+[[row]]
+key = "dept=phl_dept_streets_sanitation"
+kind = "item"
+entity = "phl_dept_streets_sanitation"
+periods = [["2025-07-01", ""]]
+
+[[row]]
+key = "dept=phl_dept_sheriff"
+kind = "item"
+entity = "phl_dept_sheriff"
+
+# Streets labels this group through FY2025 Q4, and the department from FY2026 Q1 (QPOS-Q12).
+[[row]]
+key = "group=streets_with_sanitation"
+kind = "item"
+entity = "phl_group_streets_sanitation"
+periods = [["2021-07-01", "2025-06-30"]]
+
+[[row]]
+key = "dept=phl_dept_streets"
+kind = "item"
+entity = "phl_dept_streets"
+periods = [["2025-07-01", ""]]
+
+[[row]]
+key = "dept=phl_dept_water"
+kind = "item"
+entity = "phl_dept_water"
+
+[[row]]
+key = "dept=phl_dept_water_sewer_and_stormwater_rate_board"
+kind = "item"
+entity = "phl_dept_water_sewer_and_stormwater_rate_board"
+
+[[row]]
+key = "line=total_all_funds"
+kind = "total"
+labels = ["TOTAL ALL FUNDS"]
