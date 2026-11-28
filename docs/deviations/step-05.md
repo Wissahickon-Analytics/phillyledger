@@ -283,3 +283,38 @@ to `docs/plans/step-05.md`.
   one-row schema that writes `label_editions = []` is refused with `rowschema_unknown_field`, as
   the `unknown_field` case of `test_load_row_schema_refuses_text_that_breaks_a_rule` refuses
   another field. Design section 6.1.
+- **`parse` takes its drop patterns from the schema** (November 28, 2026, S5-E). The sketch of
+  design section 5.1 passed `_FURNITURE`, whose `^Notes?:` does not match the printed `NOTE:`
+  (finding 4 of the Fable read of pull request 58). With that list as the drop, each of the 20
+  editions gives one BLOCK `unknown_row` for the notice under the rows of its first grid page.
+  The schema's `drop` holds `^\(\d+\)\s` and `^NOTE:` (shape 10), and `parse` passes it. The
+  sketch's title patterns are cut too: the body starts at the first row, so the title lines
+  are header. `test_the_footnotes_and_the_notice_are_furniture_and_no_finding_names_them`.
+  Design section 5.1.
+- **A first row that the schema lacks is a row, never header** (November 28, 2026, S5-E). The
+  sketch started the body at `starts_known_row(schema)`, so a page whose first printed row the
+  schema lacks put that row in the header with no finding (follow-up 7 of pull request 57).
+  The body now also starts at a line that ends with a count for each column. No header line of
+  the 40 grid pages ends so (fact 2), and `parse` gives equal results for the 20 editions under
+  both rules. With `Auditing` renamed `Zoo` on page 33 of `2026-06-30`, the sketch's rule gives one
+  BLOCK `missing_row` and puts the row in the header, and this rule also gives `unknown_row`
+  for `Zoo (City Controller's Office)` on page 33.
+  `test_a_first_row_that_the_schema_lacks_is_an_unknown_row_and_never_header` fails under the
+  sketch's rule. Design section 5.1.
+- **`layout` is public, and `parse` matches its unions** (November 28, 2026, S5-E). `layout(schema)`
+  gives the `Layout` that `parse` cuts with, so the test of clause C2 counts the ink of the cut
+  that `parse` makes. `parse` tells `PageRun` and `CutPages` from `Finding` with `match` and
+  `assert_never`, where the sketch wrote `isinstance` (shape 16). Design section 5.1.
+- **`ParseContext` derives its period and fiscal year, and checks its records** (November 28,
+  2026, S5-E). Shape 17 builds `core/context.py` as designed. The design gave `period` and
+  `fiscal_year` as fields beside `version`, which a builder could set apart from it, so they are
+  properties of `version` (`docs/principles.md`, section 8.3). The constructor refuses two
+  schemas of one table, since `schema` would take the first, and a note, a `TablePages` record
+  or a reading of another sha, since `declared_run` reads no sha. `Failed` refuses findings with
+  no BLOCK one. `test_context.py`. Design section 2.2.
+- **`TablePages`, `declared_run` and `illegible_pages`** (November 28, 2026, S5-E). Shape 17 as
+  planned: `parse` calls both functions with no record, and no loader is built. A `TablePages`
+  record refuses a first page under 1 and a last page before its first. `declared_run` raises
+  `ValueError` when two records name one table, and the note for the step 7 plan asks its
+  records loader to refuse such a pair. A HEADER_ILLEGIBLE note on no page names no page.
+  `test_records.py`. Design sections 2.2 and 3.2.

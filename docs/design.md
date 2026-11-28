@@ -1251,8 +1251,8 @@ class TablePages:
     id: str
     doc_sha256: Sha256
     table: str
-    first: int                       # 1-based page numbers in the whole report
-    last: int
+    first: int                       # 1-based page numbers in the whole report; the
+    last: int                        # constructor refuses first < 1 and last < first
     reason: str                      # "scan; no text to find the TABLE P-1 band"
 
 
@@ -1516,15 +1516,19 @@ judgment between two readings (section 16, decision 11).
 @dataclass(frozen=True, slots=True)
 class ParseContext:
     version: DocumentVersion
-    period: Period                         # version.edition.period, named once
-    fiscal_year: int
-    schemas: tuple[RowSchema, ...]         # narrowed to this edition by schema_for()
+    schemas: tuple[RowSchema, ...]         # narrowed to this edition by schema_for(), one per table
     registry: Registry
     cell_records: CellRecords
     notes: tuple[EditionNote, ...]         # for this sha only
     table_pages: tuple[TablePages, ...]    # for this sha only
+    # the constructor refuses two schemas of one table, and a note, a TablePages record or a
+    # reading of another sha
 
-    def schema(self, table: str) -> RowSchema: ...
+    @property
+    def period(self) -> Period: ...        # version.edition.period, named once
+    @property
+    def fiscal_year(self) -> int: ...      # fiscal_year_of(period.end)
+    def schema(self, table: str) -> RowSchema: ...   # KeyError for a table it holds no schema of
 
 
 @dataclass(frozen=True, slots=True)
@@ -1536,7 +1540,7 @@ class Parsed:
 
 @dataclass(frozen=True, slots=True)
 class Failed:
-    findings: tuple[Finding, ...]
+    findings: tuple[Finding, ...]          # at least one BLOCK, which the constructor checks
 
 
 ParseResult = Parsed | Failed
@@ -2406,8 +2410,11 @@ def drop_noted_lines(lines: Sequence[Line], notes: Sequence[EditionNote],
                      page: int) -> tuple[tuple[Line, ...], frozenset[str]]: ...
     # removes a line whose text equals a DROP_LINE note's printed text on that page
 def illegible_pages(notes: Sequence[EditionNote], sha: Sha256) -> tuple[frozenset[int], frozenset[str]]: ...
+    # the pages of the HEADER_ILLEGIBLE notes of this sha, and their ids; a note on no page
+    # names none and stays unused
 def declared_run(records: Sequence[TablePages], table: str) -> tuple[PageRun | None, frozenset[str]]: ...
-    # the run a TablePages record names for this table, and its id for the used set
+    # the run a TablePages record names for this table, and its id for the used set; raises
+    # ValueError when two records name the table
 
 
 # datadesk/core/registry/load.py
@@ -3177,6 +3184,8 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import date
 from decimal import Decimal
+from re import compile
+from typing import assert_never
 
 from checkedtables.assemble import assemble
 from checkedtables.checks.dsl import (EXACT, CheckSet, ChildrenSum, Kinds, RowDifference,
@@ -3184,9 +3193,9 @@ from checkedtables.checks.dsl import (EXACT, CheckSet, ChildrenSum, Kinds, RowDi
 from checkedtables.columns import ColumnSpec, Era, NumberFormat
 from checkedtables.kinds import ValueKind
 from checkedtables.lines import Line, page_lines
-from checkedtables.pages import BodyRule, find_runs, only_run
-from checkedtables.pipeline import Layout, cut_pages
-from checkedtables.rows import match_rows, starts_known_row, stray_findings
+from checkedtables.pages import BodyRule, PageRun, find_runs, only_run
+from checkedtables.pipeline import CutPages, Layout, cut_pages
+from checkedtables.rows import RowSchema, match_rows, starts_known_row, stray_findings
 from checkedtables.table import Finding, RowKind, TableId
 from checkedtables.words import Document
 
@@ -3215,8 +3224,8 @@ _ALL_COLUMNS = tuple(c.name for c in COLUMNS)
 ERAS = (Era("p1_ten_columns", signature=(*(gcap for _, gcap in _GROUPS), _OVER),
             columns=COLUMNS, expected=(date(2007, 7, 1), None)),)
 
-_FURNITURE = (r"^TABLE\s+P-1", r"^FULL.TIME\s+POSITIONS", r"^\(\d+\)\s", r"^Notes?:")
-_LINE_NO = r"(?:\d{1,2}|I)"          # "23 Civilian", "I Uniform" (QPOS-Q08)
+_LINE_NO = r"(?:\d{1,2}|I)"          # "23 Civilian", "I Uniform" (QPOS-Q08), "2 5 Records"
+_COUNT_WORD = compile(r"\(?\d[\d,]*\)?")
 
 
 _FUND_IDS = {"general": "phl_fund_general", "other": "phl_fund_other", "total": ALL}
@@ -3246,19 +3255,36 @@ def _is_grand_total(line: Line) -> bool:
     return "TOTAL ALL FUNDS" in line.text.upper()
 
 
+def _ends_with_counts(line: Line) -> bool:     # a word, then a count for each column
+    tail = line.words[-len(COLUMNS):]
+    return len(line.words) > len(COLUMNS) and all(_COUNT_WORD.fullmatch(w.text) for w in tail)
+
+
+def layout(schema: RowSchema) -> Layout:
+    known = starts_known_row(schema)
+
+    def starts(line: Line) -> bool:          # a first row the schema lacks is unknown_row,
+        return known(line) or _ends_with_counts(line)       # never header
+
+    body = BodyRule(start=starts, stop=_is_grand_total, drop=schema.drop, prefix=_LINE_NO)
+    return Layout(TABLE, ERAS, body)
+
+
 def parse(doc: Document, ctx: ParseContext) -> ParseResult:
     schema = ctx.schema(TABLE)
     pages = tuple(page_lines(p) for p in doc.pages)
     declared, pages_used = declared_run(ctx.table_pages, TABLE)          # older reports only
     run = declared or only_run(find_runs(pages, _is_p1), f"{doc.sha256[:8]}:{TABLE}")
-    if isinstance(run, Finding):
-        return Failed((run,))
-    body = BodyRule(start=starts_known_row(schema), stop=_is_grand_total,
-                    drop=_FURNITURE, prefix=_LINE_NO)
+    match run:
+        case PageRun(): pass
+        case Finding(): return Failed((run,))
+        case _: assert_never(run)
     positional, notes_used = illegible_pages(ctx.notes, doc.sha256)   # scans, with a note only
-    cut = cut_pages(Layout(TABLE, ERAS, body), run.take(pages), ctx.period.end, positional)
-    if isinstance(cut, Finding):
-        return Failed((cut,))
+    cut = cut_pages(layout(schema), run.take(pages), ctx.period.end, positional)
+    match cut:
+        case CutPages(): pass
+        case Finding(): return Failed((cut,))
+        case _: assert_never(cut)
     matched = match_rows(cut.raws, schema)
     built = assemble(TableId(TABLE), cut, matched.rows, ctx.cell_records)
     findings = tuple(sorted((*cut.findings, *matched.findings, *built.findings,
@@ -3286,7 +3312,9 @@ def checks_for(era: str, period: Period) -> CheckSet:
     )
 ```
 
-95 lines. The row schema is data. Department spellings are not in it (change 11):
+106 lines, with no blank line, docstring or path comment counted. Step 5 built `TABLE`,
+`COLUMNS`, `ERAS`, `layout` and `parse` as shown and ran them on the 20 editions of FY2022 to
+FY2026. The row schema is data. Department spellings are not in it (change 11):
 
 ```toml
 # datadesk/data/rows/qcmr_positions.toml (an excerpt)
@@ -3358,7 +3386,13 @@ What the module shows:
   `columns_out_of_order`. On all 40 grid pages of FY2022 to FY2026 the ten columns bind so
   (QPOS-Q02).
 - The `prefix` rule takes "23" and "I" off a line before lanes are found. A column of OCR
-  prefixes cannot form a lane (R3, QPOS-Q08).
+  prefixes cannot form a lane (R3, QPOS-Q08). On 14 grid pages of FY2022 Q1 to FY2023 Q3 it
+  takes the two digits of the sideways page number off the row they join (QPOS-Q10).
+- The body starts at the first line that opens with a schema label or ends with a count for
+  each column, so a first row that the schema lacks is `unknown_row`, never header. Its drop
+  patterns are the schema's `drop`, `^\(\d+\)\s` and `^NOTE:`, so the footnotes and the
+  notice under the first grid page's rows are furniture, and so is a line of line number words
+  alone, such as the page number at the foot.
 - Civilian and Uniform match only inside their parent's block. Indentation is never read
   (QPOS-Q07).
 - `all_funds_total` is a children sum under the schema root. The engine never counts a total

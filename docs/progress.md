@@ -237,6 +237,10 @@ session needs it. A note for one later step goes in `docs/plan-notes.md`.
   and `core/rowschemas.py` 176 (200). `load.py` runs 37 lines past its estimate, since it also
   holds the TOML record readers that `rowschemas` shares. The four hold 405 lines against the
   plan's 620.
+- **The parse modules against their estimates** (November 28, 2026, S5-E). Counted as design
+  section 12 counts: `core/context.py` 51 lines (estimate 80), `core/records.py` 53 for the
+  notes, `TablePages`, `declared_run` and `illegible_pages` (370 for the whole module), and
+  `core/tables/qcmr_positions.py` 81 (90), before `measures` (S5-F) and `checks_for` (step 6).
 - **Kit modules against their estimates** (November 23, 2026, step 2. Updated November 25,
   2026, standards sweep B, and November 27, 2026, S5-B and S5-C). The kit size report counts lines that
   are not blank, a comment or a docstring, as design section 12 counts. At the head of sweep B,
