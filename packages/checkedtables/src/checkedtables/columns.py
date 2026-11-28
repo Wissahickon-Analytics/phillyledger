@@ -155,11 +155,17 @@ class Binding:
         column that the page does not print.
     label_right : float
         The x where the label area ends: the left edge of the first lane.
+    captions : tuple[tuple[str, str], ...]
+        Each column that `bind_columns` bound by caption, in declared order, with the caption
+        it prints: its band's words on the header lines that its group regex matches, then its
+        lane's words from the first header line that its caption regex matches to the last.
+        Empty from `bind_by_position`.
     """
 
     era: str
     columns: tuple[tuple[ColumnSpec, Lane | None], ...]
     label_right: float
+    captions: tuple[tuple[str, str], ...] = ()
 
 
 def choose_era(eras: Sequence[Era], header_text: str, on: date) -> Era | Finding:
@@ -305,20 +311,22 @@ def bind_columns(
     Returns
     -------
     Binding | Finding
-        The binding, whose lanes hold their captions. Otherwise a BLOCK finding whose subject
-        is the era's name, the first of: ``columns_tie`` when two candidates of different
-        captions or groups match a lane equally long, ``column_unbound`` when a required column
-        has no lane, ``lane_unclaimed`` when a lane has no candidate, and
-        ``columns_out_of_order`` when the bound columns are not in their declared order left to
-        right.
+        The binding, whose lanes hold their captions and whose `captions` hold the caption that
+        each bound column prints. Otherwise a BLOCK finding whose subject is the era's name, the
+        first of: ``columns_tie`` when two candidates of different captions or groups match a
+        lane equally long, ``column_unbound`` when a required column has no lane,
+        ``lane_unclaimed`` when a lane has no candidate, and ``columns_out_of_order`` when the
+        bound columns are not in their declared order left to right.
     """
     named = [replace(lane, caption=_caption(header, _over(lane))) for lane in lanes]
     groups = [replace(band, caption=_caption(header, _centered(band))) for band in bands]
     bound: dict[str, Lane] = {}
+    bound_by: dict[str, str] = {}
     unclaimed: list[Lane] = []
     ties: list[str] = []
     for lane in named:
-        group = next((band.caption for band in groups if band.x0 < lane.x1 <= band.x1), None)
+        band = next((band for band in groups if band.x0 < lane.x1 <= band.x1), None)
+        group = None if band is None else band.caption
         scored = [
             (len(found.group()), column)
             for column in era.columns
@@ -335,6 +343,7 @@ def bind_columns(
             ties.append(f"{', '.join(column.name for column in top)} over {lane.caption!r}")
             continue
         bound[top[0].name] = lane
+        bound_by[top[0].name] = _printed_caption(top[0], header, lane, band)
     missing = [
         column.name
         for column in era.columns
@@ -353,7 +362,8 @@ def bind_columns(
         message = f"the page prints {', '.join(printed)} left to right"
         return _block("columns_out_of_order", era.name, message)
     columns = tuple((column, bound.get(column.name)) for column in era.columns)
-    return Binding(era.name, columns, min(lane.x0 for lane in bound.values()))
+    captioned = tuple((column.name, bound_by[column.name]) for column, lane in columns if lane)
+    return Binding(era.name, columns, min(lane.x0 for lane in bound.values()), captioned)
 
 
 def bind_by_position(era: Era, lanes: Sequence[Lane]) -> Binding | Finding:
@@ -503,6 +513,45 @@ def _caption(header: Sequence[Line], holds: Callable[[Word], bool]) -> str:
     return normalize_space(
         " ".join(word.text for line in header for word in line.words if holds(word))
     )
+
+
+def _printed_caption(
+    column: ColumnSpec, header: Sequence[Line], lane: Lane, band: Lane | None
+) -> str:
+    """Return the caption a bound column prints, from the header lines that its regexes match.
+
+    The band's words on the header lines that the group regex matches come first, then the
+    lane's words from the first line that the caption regex matches to the last header line.
+    So a title over the lane, or a fiscal year printed across several groups, is left out, and
+    the month and year printed under "MONTH OF" stay in (MCITY-Q11, MCITY-Q12).
+    """
+    first, _ = _matched_lines(column.caption, header, _over(lane))
+    own = _caption(header[first:], _over(lane))
+    if column.group is None or band is None:
+        return own
+    first, last = _matched_lines(column.group, header, _centered(band))
+    return f"{_caption(header[first : last + 1], _centered(band))} {own}"
+
+
+def _matched_lines(
+    regex: str, header: Sequence[Line], holds: Callable[[Word], bool]
+) -> tuple[int, int]:
+    """Return the first and last index of the topmost header lines whose words a regex matches.
+
+    The last is the first line by which the words from the top match. The first is the lowest
+    line from which the words down to the last still match. The caller has found the regex in
+    the words of the whole header.
+    """
+    pattern = compile(regex)
+    last = next(
+        end for end in range(len(header)) if pattern.search(_caption(header[: end + 1], holds))
+    )
+    first = max(
+        start
+        for start in range(last + 1)
+        if pattern.search(_caption(header[start : last + 1], holds))
+    )
+    return first, last
 
 
 def _in_group(column: ColumnSpec, group: str | None) -> bool:

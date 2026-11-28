@@ -52,7 +52,7 @@ FIELD_SNAPSHOT: dict[str, tuple[str, ...]] = {
     "ColumnSpec": ("name", "caption", "kind", "fmt", "presence", "dash", "group"),
     "Era": ("name", "signature", "columns", "expected", "excludes"),
     "Lane": ("x0", "x1", "caption"),
-    "Binding": ("era", "columns", "label_right"),
+    "Binding": ("era", "columns", "label_right", "captions"),
     "RowKey": ("parts",),
     "Finding": ("severity", "code", "subject", "message", "page"),
     "ReviewedReading": ("id", "doc_sha256", "page", "box", "source", "seen", "reading", "reason"),
@@ -65,6 +65,25 @@ FIELD_SNAPSHOT: dict[str, tuple[str, ...]] = {
     "CutPage": ("number", "source", "header", "binding", "raws", "furniture"),
     "CutPages": ("era", "binding", "pages", "findings"),
     "RawRow": ("page", "prefix", "label_words", "cells", "stray", "bold", "x0"),
+    "TableId": ("name", "instance"),
+    "Column": ("name", "kind", "caption", "printed"),
+    "Row": ("key", "kind", "label", "parent", "page", "label_words", "cells", "entity", "unit"),
+    "Table": ("id", "doc_sha256", "era", "pages", "columns", "rows"),
+    "RowDef": (
+        "key",
+        "kind",
+        "labels",
+        "parent",
+        "within",
+        "follows",
+        "presence",
+        "entity",
+        "unit",
+    ),
+    "RowSchema": ("table", "rows", "root", "drop", "truncation"),
+    "KeyedRow": ("raw", "label", "key", "kind", "parent", "entity", "unit"),
+    "RowMatch": ("rows", "findings"),
+    "Assembly": ("table", "findings", "used"),
 }
 
 
@@ -304,7 +323,11 @@ def test_kit_dataclass_fields_are_pinned() -> None:
 
 
 def test_bool_fields_are_page_facts_only() -> None:
-    assert bool_fields(kit_dataclasses()) == {("Word", "bold"), ("RawRow", "bold")}
+    assert bool_fields(kit_dataclasses()) == {
+        ("Word", "bold"),
+        ("RawRow", "bold"),
+        ("Column", "printed"),
+    }
 
 
 def planted_package(folder: Path, text: str) -> ModuleType:
@@ -390,6 +413,7 @@ def test_closed_lists_are_pinned() -> None:
         "decimals",
         "font_code",
         "reviewed_null",
+        "low_confidence",
     ]
 
 

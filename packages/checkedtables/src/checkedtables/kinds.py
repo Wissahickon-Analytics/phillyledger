@@ -71,6 +71,9 @@ class UnreadableReason(StrEnum):
     REVIEWED_NULL
         A person read an `Amount` cell on the rendered page and accepted it as null. Only
         `apply_reading` gives it.
+    LOW_CONFIDENCE
+        An OCR word of a cell that reads as an `Amount` has a confidence under the floor of
+        its records, and no reading covers the cell. Only `assemble` gives it.
     """
 
     NOT_A_NUMBER = "not_a_number"
@@ -81,3 +84,4 @@ class UnreadableReason(StrEnum):
     DECIMALS = "decimals"
     FONT_CODE = "font_code"
     REVIEWED_NULL = "reviewed_null"
+    LOW_CONFIDENCE = "low_confidence"
