@@ -532,6 +532,13 @@ file, `docs/progress.md`, `docs/followups.md` or `docs/deviations/`.
   FY2025, and `Commerce` is the same for `phl_dept_commerce` and `phl_group_commerce_aviation`
   in FY2022 and FY2023. No edition's schema holds both rows of a pair, so the lint reads the
   rows' periods before it calls the label claimed twice.
+- **A table line's label in one file, a note for the step 9 plan** (November 28, 2026, the S5-D
+  fix round). MSCH-Q23: June 2020 prints the School PILOT row as `MISCELLANEOUS NON TAX
+  REVENUES`. `docs/evidence/coverage.tsv`, line 205, has the PILOT `RowDef` carry that label
+  bound to the file's sha, and design section 6.1 named a `label_editions` field of the rows file
+  for it. Step 5 built no such field, so `load_row_schema` refuses it and section 6.1 names
+  `periods` and `absent_editions` alone. The step 9 plan gives the field its shape and its test,
+  in design sections 3.2 and 6.1.
 - **The catalog rule on `Quantity`, a note for the plan of the step that builds the last
   table** (November 27, 2026, the step 5 plan). Design section 11.2 has the catalog test require
   that every `Quantity` member is used by at least one table. With one table it cannot hold, so

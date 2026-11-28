@@ -274,3 +274,12 @@ to `docs/plans/step-05.md`.
   `uv run --offline --no-project --with pydantic` fails because the uv cache holds no pydantic,
   and the session made no download. The two cases of pull request 38 are refused as findings:
   `id_not_a_string` and `member_not_a_string` in `test_registry.py`. Section 8.7 is unchanged.
+- **A rows file holds no `label_editions`** (November 28, 2026, the S5-D fix round). Design
+  section 6.1 named `label_editions` among the fields of `datadesk/data/rows/<table>.toml`, and
+  `RowSource` in section 3.2 has no such field, so `load_row_schema` refuses it with
+  `rowschema_unknown_field`. Step 5 binds no table line's label to a file: the two P-1 spellings
+  that change inside a year are registry aliases with shas (shape 14). Section 6.1 now names
+  `periods` and `absent_editions` alone, and the note for the step 9 plan keeps MSCH-Q23. A
+  one-row schema that writes `label_editions = []` is refused with `rowschema_unknown_field`, as
+  the `unknown_field` case of `test_load_row_schema_refuses_text_that_breaks_a_rule` refuses
+  another field. Design section 6.1.

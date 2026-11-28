@@ -4005,7 +4005,7 @@ There are four kinds of era, and each lives in one place.
 | Kind of era | Lives in | Chosen by | Cross-check |
 |---|---|---|---|
 | Column layout | `ERAS` tuple in the table module | printed captions: `signature` all present, `excludes` all absent | `expected` date range; a mismatch is a BLOCK finding, fixed by widening the range in code |
-| Row set and labels | `periods`, `absent_editions` and `label_editions` in `datadesk/data/rows/<table>.toml`; entity spellings in the registry | the edition's period and sha, in `schema_for` | `match_rows` fails on unknown, missing and duplicate rows |
+| Row set and labels | `periods` and `absent_editions` in `datadesk/data/rows/<table>.toml`; entity spellings in the registry | the edition's period and sha, in `schema_for` | `match_rows` fails on unknown, missing and duplicate rows |
 | Line repairs and style rules | a named `Period` or a (fiscal year, fund) constant in the table module | the edition's period | a repair outside its window does not run |
 | Word source | `WordSourcePlan` records | the document sha and page | `compare_sources` where a record asks for it |
 
