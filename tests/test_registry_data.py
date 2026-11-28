@@ -27,6 +27,21 @@ DATA = REPO / "packages/datadesk/src/datadesk/data"
 SCHEMA_FILE = DATA / "rows" / f"{TABLE}.toml"
 SCHEMA_LABELS = {"Civilian", "Uniform", "TOTAL ALL FUNDS"}
 FORMS = {"{name}", "{name} - Total"}
+DROP = {r"^\(\d+\)\s", r"^NOTE:"}
+FILE_FIELDS = {"table", "root", "drop", "truncation", "row"}
+ROW_FIELDS = {
+    "key",
+    "kind",
+    "entity",
+    "forms",
+    "labels",
+    "parent",
+    "within",
+    "follows",
+    "presence",
+    "periods",
+    "absent_editions",
+}
 PARENTS = {
     "phl_dept_district_attorney": "District Attorney - Total",
     "phl_dept_fire": "Fire - Total",
@@ -119,9 +134,12 @@ def schemas() -> dict[str, RowSchema]:
 
 
 def department_spellings(text: str) -> list[str]:
-    problems: list[str] = []
-    for row in tomllib.loads(text).get("row", []):
+    file = tomllib.loads(text)
+    problems = [f"the file has the field {name!r}" for name in file if name not in FILE_FIELDS]
+    problems += [f"drop has the pattern {p!r}" for p in file.get("drop", ()) if p not in DROP]
+    for row in file.get("row", []):
         key = row.get("key")
+        problems += [f"{key} has the field {name!r}" for name in row if name not in ROW_FIELDS]
         if "entity" in row and "labels" in row:
             problems.append(f"{key} names an entity and has labels")
         problems += [
