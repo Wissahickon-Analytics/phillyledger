@@ -7,12 +7,19 @@ from tests.test_p1_pages import grid_of
 
 from checkedtables.rows import RowSchema, match_rows
 from checkedtables.table import RowKey, RowKind
+from checkedtables.text import parse_label
 from datadesk.core.domain import DocumentVersion
 from datadesk.core.fetch import INDEX_PATH
 from datadesk.core.index import parse_index
 from datadesk.core.registry.load import load_registry
 from datadesk.core.registry.model import Registry
-from datadesk.core.rowschemas import RegistryLabels, RowSchemaSource, load_row_schema, schema_for
+from datadesk.core.rowschemas import (
+    RegistryLabels,
+    RowSchemaSource,
+    SchemaLabels,
+    load_row_schema,
+    schema_for,
+)
 from datadesk.core.tables.qcmr_positions import TABLE
 
 REPO = Path(__file__).parents[1]
@@ -207,3 +214,31 @@ def test_every_cut_row_of_the_40_grid_pages_matches_one_schema_row() -> None:
         matched = match_rows(cut.raws, schemas()[run.edition])
         assert matched.findings == (), run.edition
         assert len(matched.rows) == len(cut.raws) == run.rows, run.edition
+
+
+def test_every_spelling_the_positions_rows_take_from_the_files_is_printed_on_a_grid_page() -> None:
+    printed: set[str] = set()
+    for run in RUNS:
+        _, cut = grid_of(run)
+        printed |= {parse_label(raw.prefix, raw.label_words).text for raw in cut.raws}
+    forms = {
+        row.labels.entity: row.labels.forms
+        for row in source().rows
+        if isinstance(row.labels, RegistryLabels)
+    }
+    spelled = {
+        form.replace("{name}", name.value)
+        for entity in registry().entities
+        if entity.id in forms
+        for name in entity.names
+        for form in forms[entity.id]
+    }
+    aliases = {alias.label for alias in registry().aliases if TABLE in alias.tables}
+    labels = {
+        text
+        for row in source().rows
+        if isinstance(row.labels, SchemaLabels)
+        for text in row.labels.labels
+    }
+    assert len(printed) == 62
+    assert spelled | aliases | labels == printed
